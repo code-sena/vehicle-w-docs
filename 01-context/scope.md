@@ -13,45 +13,42 @@ What the system **DOES build and maintain**:
 ### MVP Features
 
 | # | Feature | Description | Responsible service |
-|---|---------|-------------|---------------------|
-| 1 | [Feature A] | [Brief description] | [service-name] |
-| 2 | [Feature B] | [Brief description] | [service-name] |
-| 3 | [Feature C] | [Brief description] | [service-name] |
+|---|---------|-------------|--------------------|
+| 1 | User management | Sign-up, login, password recovery and change, and profiles with different roles and permissions | auth-service |
+| 2 | Wash service management | Service request with selection of branch, date, time and service type; changes and cancellation before execution | booking-service |
+| 3 | Operator assignment | Automatic by availability, direct selection by the customer, or manual override by the Administrator when needed | booking-service |
+| 4 | Payment management | Online payment (Nequi, card, PSE), transaction recording and payment history | payment-service |
+| 5 | Ratings and reviews | Customers rate and comment on the service once it is completed | booking-service |
+| 6 | Role-based dashboard and user preferences | Dashboard and notifications tailored to each user role, theme customisation, and interface available in four languages (Spanish, English, French, Portuguese) | Frontend only |
+| 7 | Administrative management | Management of branches, operator schedules and availability, plus operational reports and statistics | admin-service |
 
 ### Included integrations
 
 | External system | Integration type | Purpose |
 |----------------|-----------------|---------|
-| [System A] | REST API / Webhook / SDK | [purpose] |
-| [System B] | SFTP / Database | [purpose] |
+| Wompi | REST API | Online payments via Nequi, card and PSE, without storing card data |
 
 ### Environments being built
 
 | Environment | Purpose |
 |-------------|---------|
-| Local | Development on the developer's machine |
-| Development (dev) | Continuous integration and development testing |
-| Staging | Pre-production, PO acceptance testing |
-| Production | Production environment |
-
+| Local | Development and testing on each team member's machine, with Docker for the database and services |
 ---
-
-## Out of Scope
-
-What the system **does NOT build** in this version and why:
 
 | # | What is out of scope | Reason | Future version? |
 |---|---------------------|--------|----------------|
-| 1 | [Feature X] | [Out of budget / Not MVP / Uses external system] | Yes — H2 2024 |
-| 2 | [Integration with Y] | [Provider has no public API yet] | Pending provider |
-| 3 | [Module Z] | [Another team builds it] | N/A |
+| 1 | iOS mobile app | Current scope covers Android only | Yes — the React Native codebase allows it |
+| 2 | At-home / mobile wash service | The business model requires the customer to bring the vehicle to a branch | Under evaluation |
+| 3 | Electronic invoicing (DIAN) | Requires the business to be legally registered with the tax authority | No |
+| 4 | Supplies and inventory management | Outside the booking domain | No |
+| 5 | Staging and production deployment | Academic project, not deployed for real users | Yes — if the project continues |
+| 6 | Email notifications and password recovery by email | No mail provider integrated in this version | Yes |
 
 ### What another system / team handles (and why not us)
 
-| Feature | Who builds it | Why not us |
-|---------|--------------|-----------|
-| [SSO Authentication] | Central IAM team | Reuse existing implementation |
-| [Financial reports] | BI system / Analytics team | Outside the core domain |
+| Feature | Who handles it | Why not us |
+|---------|---------------|-----------|
+| Card data processing | Wompi | Avoids storing sensitive data and being subject to PCI-DSS compliance |
 
 ---
 
@@ -61,9 +58,11 @@ What the system **does NOT build** in this version and why:
 
 | # | Assumption | Consequence if false |
 |---|-----------|---------------------|
-| 1 | External system [X] has an available REST API | We would have to build the integration differently |
-| 2 | Users use [language / device / etc.] | The UX design would change |
-| 3 | Initial data volume is < [N] records | The database strategy might change |
+| 1 | Wompi's sandbox is available without a registered merchant account | Payment would have to be simulated and RF4 could not be demonstrated |
+| 2 | Customers have an Android device and internet access when booking | An alternative booking channel would be required |
+| 3 | Data volume matches an academic project, not real operation | Indexing, pagination and query strategy would need review |
+| 4 | Each branch has fixed schedules and assigned operators | Availability and assignment logic would change entirely |
+| 5 | The team keeps its three members throughout the phase | The MVP scope would have to be reduced |
 
 ---
 
@@ -71,22 +70,22 @@ What the system **does NOT build** in this version and why:
 
 | Type | Description |
 |------|-------------|
-| **Time** | [MVP must be ready in X weeks / by date Y] |
-| **Budget** | [N development hours / X USD of infrastructure] |
-| **Technology** | [Must use the corporate stack: Java + PostgreSQL] |
-| **Regulatory** | [Must comply with X regulation / certification] |
-| **Team** | [N developers available] |
+| **Time** | The MVP must be ready by the academic delivery date |
+| **Budget** | No assigned funding. Development runs on the team's own equipment and free or free-tier tools. The estimated cost under real conditions is COP 148,173,000. |
+| **Technology** | Java 21 + Spring Boot, Angular, React Native and SQL Server. |
+| **Regulatory** | Personal data handling under Colombian Law 1581 of 2012 (habeas data) |
+| **Team** | 3 part-time developers, alongside their academic workload |
 
 ---
 
 ## External dependencies
 
 | Dependency | Team / Provider | Required date | Status |
-|-----------|----------------|--------------|--------|
-| API of [System X] | [Team name] | [date] | 🟢 Available |
-| Credentials for [Provider Y] | [Contact] | [date] | 🟡 In progress |
-| [Infrastructure Z] | DevOps | [date] | 🔴 Pending |
-
+|-----------|--------------------|--------------|--------|
+| Wompi sandbox credentials | Wompi | Before starting the payment module | 🔴 Pending |
+| Wompi API documentation | Wompi | Before starting the payment module | 🟢 Available |
+| Development equipment | Team members | Project start | 🟢 Available |
+| Technical guidance and delivery reviews | Technical instructors | Each review cycle | 🟢 Available |
 ---
 
 ## How to update the scope
