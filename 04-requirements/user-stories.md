@@ -7,166 +7,703 @@
 ---
 
 ## Backlog status
-
-| Cut | Sprint | Total HUs | Refined | In progress | Completed |
-|-----|--------|-----------|---------|-------------|-----------|
-| Cut 1 | Sprint 1-2 | [N] | [N] | [N] | [N] |
-| Cut 2 | Sprint 3-4 | [N] | [N] | [N] | [N] |
-
+ 
+| Epic | HUs | Priority |
+|------|-----|----------|
+| EP-001 Account access | 4 | Must / Should Have |
+| EP-002 Booking lifecycle | 3 | Must / Should Have |
+| EP-003 Operator assignment | 4 | Must / Should Have |
+| EP-004 Payments | 2 | Must Have |
+| EP-005 Branch administration | 1 | Should Have |
+| EP-006 Promotions and loyalty | 2 | Should / Could Have |
+| EP-007 User experience & preferences | 3 | Should / Could Have |
+| **Total** | **19** | |
+ 
+> Project-level planning lives in `plan de actividades/scrum1.1.xlsx`.
+> The 21 HUs in that file describe project activities; the stories below
+> specify the software itself.
+ 
 ---
-
+ 
 ## Epics
-
+ 
 | ID | Epic | Description |
 |----|------|-------------|
-| EP-001 | [Epic name] | [Brief description of the epic's objective] |
-| EP-002 | [Name] | [Description] |
-
+| EP-001 | Account access | Sign-up, login, password recovery/change |
+| EP-002 | Booking lifecycle | Request, modify, cancel and rate a wash service |
+| EP-003 | Operator assignment | Automatic, customer-chosen and admin-assigned operators |
+| EP-004 | Payments | Online payment and history via Wompi |
+| EP-005 | Branch administration | Branches, operator availability, reports |
+| EP-006 | Promotions and loyalty | Discounts, promo codes, points program |
+| EP-007 | User experience & preferences | Role-based dashboard, notifications, theme and language |
+ 
 ---
-
+ 
 ## User Stories
-
-### HU-001 — [Descriptive name] {#HU-001}
-
-**Epic:** EP-00X
-
-> **As** [user role]
-> **I want** [action / feature]
-> **so that** [benefit / value received]
-
+ 
+### HU-AUTH-001 — Customer sign-up {#HU-AUTH-001}
+ 
+**Epic:** EP-001
+ 
+> **As** a new customer
+> **I want** to create an account with my name, phone, address, email and password
+> **so that** I can book wash services under my own profile
+ 
 **Acceptance Criteria:**
-
+ 
 ```gherkin
-Scenario 1: [Scenario name — happy path]
-  Given [initial context]
-  When  [user action]
-  Then  [expected result]
-  And   [additional condition if applicable]
-
-Scenario 2: [Scenario name — edge case / error]
-  Given [context]
-  When  [action]
-  Then  [error result, e.g.: validation message is shown]
+Scenario 1: Successful sign-up
+  Given I am on the sign-up screen
+  When  I submit a unique email and all required fields
+  Then  my account is created
+  And   I am able to log in with those credentials
+ 
+Scenario 2: Duplicate email
+  Given an account already exists with the email I entered
+  When  I submit the sign-up form
+  Then  the system shows an error indicating the email is already registered
+  And   no new account is created
 ```
-
-**Definition of Done:**
-- [ ] Code reviewed and approved
-- [ ] Unit tests written
-- [ ] Acceptance criteria verified (manual or automated)
-- [ ] API contract updated if applicable
-- [ ] Deployed to staging
-
+ 
 | Field | Value |
 |-------|-------|
-| Story Points | [1 / 2 / 3 / 5 / 8 / 13] |
-| Priority | [Must Have / Should Have / Could Have] |
-| Target sprint | Sprint [N] |
-| Assigned to | [Name] |
-| Status | [Backlog / Ready / In Progress / Done] |
-| Dependencies | [HU-00X, HU-00Y] |
-| Affected service(s) | [service-name] |
-
+| Story Points | 3 |
+| Priority | Must Have |
+| Status | Backlog |
+| Affected service(s) | auth-service |
+| Covers | RF-001 |
+ 
 ---
-
-### HU-002 — [Descriptive name] {#HU-002}
-
-**Epic:** EP-00X
-
-> **As** [role]
-> **I want** [action]
-> **so that** [benefit]
-
+ 
+### HU-AUTH-002 — Login with role-based redirect {#HU-AUTH-002}
+ 
+**Epic:** EP-001
+ 
+> **As** a registered user (customer, operator or administrator)
+> **I want** to log in with my email and password
+> **so that** I reach the screens relevant to my role
+ 
 **Acceptance Criteria:**
-
+ 
 ```gherkin
-Scenario 1: [Happy path]
-  Given [context]
-  When  [action]
-  Then  [result]
-
-Scenario 2: [Error case]
-  Given [context]
-  When  [invalid action]
-  Then  error "[error code]" is shown with message "[message]"
+Scenario 1: Successful login
+  Given I have a registered account
+  When  I submit the correct email and password
+  Then  I am redirected to the dashboard for my role
+ 
+Scenario 2: Repeated failed attempts
+  Given I have submitted the wrong password several times in a row
+  When  I exceed the allowed number of attempts
+  Then  my account is temporarily locked
+  And   I see a message explaining the lock
 ```
-
+ 
 | Field | Value |
 |-------|-------|
-| Story Points | [N] |
-| Priority | [Must Have] |
-| Target sprint | Sprint [N] |
-| Status | [Backlog] |
-
+| Story Points | 3 |
+| Priority | Must Have |
+| Status | Backlog |
+| Affected service(s) | auth-service |
+| Covers | RF-002, RF-004b |
+ 
 ---
-
+ 
+### HU-AUTH-003 — Password recovery {#HU-AUTH-003}
+ 
+**Epic:** EP-001
+ 
+> **As** a user who forgot their password
+> **I want** to request a reset link by email
+> **so that** I can regain access to my account
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Registered email
+  Given I submit an email that is registered in the system
+  When  I request a password reset
+  Then  a reset link is sent to that email
+ 
+Scenario 2: Unregistered email
+  Given I submit an email that is not registered
+  When  I request a password reset
+  Then  the system shows an error without revealing whether the email exists
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 2 |
+| Priority | Should Have |
+| Status | Backlog |
+| Affected service(s) | auth-service |
+| Covers | RF-003 |
+| Dependencies | Email provider not yet integrated — see `01-context/scope.md`, Out of Scope #6 |
+ 
+---
+ 
+### HU-AUTH-004 — Change password {#HU-AUTH-004}
+ 
+**Epic:** EP-001
+ 
+> **As** an authenticated user
+> **I want** to change my password from my account settings
+> **so that** I can keep my account secure without going through password recovery
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Correct current password
+  Given I am logged in and open account settings
+  When  I enter my correct current password and a new password that meets the security requirements
+  Then  my password is updated and I can log in with the new one
+ 
+Scenario 2: Incorrect current password
+  Given I am logged in and open account settings
+  When  I enter an incorrect current password
+  Then  the system rejects the change and my password stays unchanged
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 2 |
+| Priority | Should Have |
+| Status | Backlog |
+| Affected service(s) | auth-service |
+| Covers | RF-004 |
+ 
+---
+ 
+### HU-BOOK-001 — Request a wash service booking {#HU-BOOK-001}
+ 
+**Epic:** EP-002
+ 
+> **As** a customer
+> **I want** to book a wash service by choosing a branch, date, time and wash type
+> **so that** I can get my vehicle washed without calling or driving to check availability
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Slot available
+  Given I select a branch, date, time and wash type
+  When  the slot is available
+  Then  the booking is created and I see a confirmation
+ 
+Scenario 2: Slot already taken
+  Given I select a branch, date and time that is already booked
+  When  I submit the request
+  Then  the system shows alternative available times instead of confirming
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 5 |
+| Priority | Must Have |
+| Status | Backlog |
+| Affected service(s) | booking-service |
+| Covers | RF-005, RF-006 |
+ 
+---
+ 
+### HU-BOOK-002 — Modify or cancel a booking {#HU-BOOK-002}
+ 
+**Epic:** EP-002
+ 
+> **As** a customer
+> **I want** to modify or cancel a booking before it starts
+> **so that** I'm not stuck with a slot that no longer works for me
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Cancel before start
+  Given I have a booking that has not started yet
+  When  I cancel it
+  Then  the slot becomes available again for other customers
+ 
+Scenario 2: Cancel while in progress
+  Given my booking's service has already started
+  When  I try to cancel it
+  Then  the system blocks the cancellation and explains why
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 3 |
+| Priority | Must Have |
+| Status | Backlog |
+| Affected service(s) | booking-service |
+| Covers | RF-007 |
+ 
+---
+ 
+### HU-BOOK-003 — Automatic operator assignment {#HU-BOOK-003}
+ 
+**Epic:** EP-003
+ 
+> **As** a customer
+> **I want** the system to assign an available operator to my booking automatically
+> **so that** I don't have to pick one every time I book
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Operator available
+  Given my booking is confirmed at a branch
+  When  at least one operator is available for that slot
+  Then  the system assigns one automatically and notifies them
+ 
+Scenario 2: No operator available
+  Given my booking is confirmed at a branch
+  When  no operator is available for that slot
+  Then  the Administrator and I are both notified
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 5 |
+| Priority | Must Have |
+| Status | Backlog |
+| Affected service(s) | booking-service |
+| Covers | RF-008 |
+| Technical notes | Tie-break rule when multiple operators are equally available is still undefined — see `04-requirements/functional.md`, Notes |
+ 
+---
+ 
+### HU-BOOK-004 — Manual operator selection {#HU-BOOK-004}
+ 
+**Epic:** EP-003
+ 
+> **As** a customer
+> **I want** to pick a specific operator from those available at my branch
+> **so that** I can choose someone I trust or prefer
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Operator available
+  Given I am completing a booking
+  When  I open the list of available operators at the branch
+  Then  I can select one and the booking is assigned to them
+ 
+Scenario 2: Operator becomes unavailable
+  Given I have selected an operator from the list
+  When  that operator is no longer available for the slot
+  Then  the system tells me and shows the updated list of available operators
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 3 |
+| Priority | Should Have |
+| Status | Backlog |
+| Affected service(s) | booking-service |
+| Covers | RF-010 |
+ 
+---
+ 
+### HU-BOOK-006 — Administrator assigns or reassigns an operator {#HU-BOOK-006}
+ 
+**Epic:** EP-003
+ 
+> **As** an Administrator
+> **I want** to assign or reassign an operator to a booking
+> **so that** I can resolve absences and balance the workload at my branch
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Reassign to an available operator
+  Given a booking already has an assigned operator
+  When  I reassign it to a different operator who is available for that slot
+  Then  the new operator is notified and the previous one is released from that booking
+ 
+Scenario 2: Operator not available
+  Given a booking needs an operator
+  When  I try to assign an operator who is unavailable for that slot
+  Then  the system blocks the assignment and explains why
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 3 |
+| Priority | Should Have |
+| Status | Backlog |
+| Affected service(s) | booking-service |
+| Covers | RF-009 |
+ 
+---
+ 
+### HU-BOOK-007 — Operator views and updates assigned services {#HU-BOOK-007}
+ 
+**Epic:** EP-003
+ 
+> **As** an operator
+> **I want** to see the bookings assigned to me and update their status
+> **so that** the customer and the administrator know how the service is progressing
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: View assigned bookings
+  Given I am logged in as an operator
+  When  I open my assigned services
+  Then  I see each booking with its customer, branch, time and wash type
+ 
+Scenario 2: Update service status
+  Given I have a booking assigned for today
+  When  I mark it as started and later as completed
+  Then  the status is updated and the customer can rate the service
+ 
+Scenario 3: Booking not assigned to me
+  Given a booking is assigned to another operator
+  When  I try to update its status
+  Then  the system blocks the action
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 3 |
+| Priority | Must Have |
+| Status | Backlog |
+| Affected service(s) | booking-service |
+| Covers | RF-011, RF-012b |
+ 
+---
+ 
+### HU-BOOK-005 — Rate a completed service {#HU-BOOK-005}
+ 
+**Epic:** EP-002
+ 
+> **As** a customer
+> **I want** to rate and comment on a service after it's done
+> **so that** I can give feedback and help other customers choose
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Service completed
+  Given my booking's service has been marked as completed
+  When  I submit a rating and comment
+  Then  it is saved and visible on the operator's profile
+ 
+Scenario 2: Service not yet completed
+  Given my booking's service has not been completed yet
+  When  I try to submit a rating
+  Then  the system blocks it
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 2 |
+| Priority | Should Have |
+| Status | Backlog |
+| Affected service(s) | booking-service |
+| Covers | RF-012 |
+| Dependencies | HU-BOOK-007 — the service must be marked as completed first |
+ 
+---
+ 
+### HU-PAY-001 — Pay for a booking online {#HU-PAY-001}
+ 
+**Epic:** EP-004
+ 
+> **As** a customer
+> **I want** to pay for my booking online via Nequi, card or PSE
+> **so that** I don't have to handle cash at the branch
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Successful payment
+  Given I have a confirmed booking pending payment
+  When  I complete payment through Wompi
+  Then  the transaction is recorded and linked to the booking
+ 
+Scenario 2: Payment rejected
+  Given I attempt to pay for a booking
+  When  Wompi rejects the transaction
+  Then  I see an error and can retry
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 5 |
+| Priority | Must Have |
+| Status | Backlog |
+| Affected service(s) | payment-service |
+| Covers | RF-013, RF-014, RF-016 |
+| Dependencies | Wompi sandbox credentials — see `01-context/scope.md`, External dependencies (🔴 Pending) |
+ 
+---
+ 
+### HU-PAY-002 — View payment history {#HU-PAY-002}
+ 
+**Epic:** EP-004
+ 
+> **As** a customer
+> **I want** to see a history of my past payments organised by date and service
+> **so that** I can keep track of what I've spent and when
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Payments exist
+  Given I have made one or more payments
+  When  I open my payment history
+  Then  I see them listed by date, each linked to its corresponding service
+ 
+Scenario 2: No payments yet
+  Given I have not made any payments
+  When  I open my payment history
+  Then  I see a message indicating there are no payments yet
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 2 |
+| Priority | Should Have |
+| Status | Backlog |
+| Affected service(s) | payment-service |
+| Covers | RF-015 |
+ 
+---
+ 
+### HU-ADMIN-001 — Manage branches and view reports {#HU-ADMIN-001}
+ 
+**Epic:** EP-005
+ 
+> **As** an Administrator
+> **I want** to create/edit branches, manage operator availability, and view operational reports
+> **so that** I can run the business day to day and make informed decisions
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Create a branch
+  Given I am logged in as Administrator
+  When  I submit a new branch with its required data
+  Then  it becomes available for customers to book at
+ 
+Scenario 2: View reports
+  Given services have been completed at one or more branches
+  When  I open the reports section
+  Then  I see services performed, revenue, average rating and performance per branch/operator
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 5 |
+| Priority | Should Have |
+| Status | Backlog |
+| Affected service(s) | admin-service |
+| Covers | RF-021, RF-022, RF-023 |
+ 
+---
+ 
+### HU-UI-001 — Role-based dashboard {#HU-UI-001}
+ 
+**Epic:** EP-007
+ 
+> **As** a user (customer, operator or administrator)
+> **I want** to see a dashboard summarising what matters to my role when I log in
+> **so that** I can act on the most relevant information without hunting for it
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Data available
+  Given I log in and have data associated with my role (bookings, assignments, or operational metrics depending on the role)
+  When  I open the dashboard
+  Then  I see metrics, graphs and quick actions relevant to my role
+ 
+Scenario 2: No data yet
+  Given there is no data associated with me yet
+  When  I open the dashboard
+  Then  I see a message indicating there are no records yet, instead of a broken or empty screen
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 5 |
+| Priority | Should Have |
+| Status | Backlog |
+| Affected service(s) | Frontend only |
+| Covers | RF-017 |
+ 
+---
+ 
+### HU-UI-002 — Notifications inbox {#HU-UI-002}
+ 
+**Epic:** EP-007
+ 
+> **As** a user
+> **I want** to receive notifications about relevant events (booking created, status change, payment, assignment)
+> **so that** I stay informed without constantly checking the app
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Event occurs
+  Given a relevant event happens on my account (e.g. an operator is assigned to my booking)
+  When  I open my notifications
+  Then  I see it listed as unread
+ 
+Scenario 2: Marking as read
+  Given I have unread notifications
+  When  I open one
+  Then  it is marked as read and no longer counted as pending
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 3 |
+| Priority | Should Have |
+| Status | Backlog |
+| Affected service(s) | Frontend only |
+| Covers | RF-018 |
+ 
+---
+ 
+### HU-UI-003 — Interface preferences: theme and language {#HU-UI-003}
+ 
+**Epic:** EP-007
+ 
+> **As** a user
+> **I want** to choose my visual theme and interface language
+> **so that** I can use the app comfortably in the way that suits me best
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Change theme
+  Given I am in settings
+  When  I select a different visual theme
+  Then  the interface updates immediately and keeps that theme the next time I log in
+ 
+Scenario 2: Change language
+  Given I am in settings
+  When  I select one of the four supported languages (Spanish, English, French, Portuguese)
+  Then  all interface text updates to that language
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 3 |
+| Priority | Could Have |
+| Status | Backlog |
+| Affected service(s) | Frontend only |
+| Covers | RF-019, RF-020 |
+ 
+---
+ 
+### HU-PROMO-001 — Manage promotions {#HU-PROMO-001}
+ 
+**Epic:** EP-006
+ 
+> **As** an Administrator
+> **I want** to create, edit or deactivate promotions and discounts
+> **so that** I can run marketing campaigns to attract and retain customers
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Create a promotion
+  Given I am logged in as Administrator
+  When  I create a promotion with a discount, start date and end date
+  Then  it becomes available for customers to apply during its validity window
+ 
+Scenario 2: Deactivate a promotion
+  Given a promotion is currently active
+  When  I deactivate it
+  Then  customers can no longer apply it to new payments
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 3 |
+| Priority | Should Have |
+| Status | Backlog |
+| Affected service(s) | TBD (payment-service or a dedicated promotion-service) |
+| Covers | RF-024 |
+ 
+---
+ 
+### HU-PROMO-002 — Apply a promotion and earn loyalty points {#HU-PROMO-002}
+ 
+**Epic:** EP-006
+ 
+> **As** a customer
+> **I want** to apply a valid promotion code when paying, and earn points for completed services
+> **so that** I get a better price now and a reason to keep coming back
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Valid promotion at payment
+  Given I have a booking pending payment
+  When  I apply a promotion code that is currently valid
+  Then  the discount is reflected before I confirm payment
+ 
+Scenario 2: Expired or inapplicable promotion
+  Given I apply a promotion code that is expired or does not apply to this service
+  When  I try to use it
+  Then  the system notifies me and the original price stands
+ 
+Scenario 3: Earning points
+  Given a service has been completed and paid
+  When  the payment is confirmed
+  Then  loyalty points are credited to my account and can be redeemed later for a discount
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 5 |
+| Priority | Could Have |
+| Status | Backlog |
+| Affected service(s) | TBD (payment-service or a dedicated promotion-service) |
+| Covers | RF-025, RF-026 |
+ 
+---
+ 
 ## Rules for writing HUs
-
+ 
 ### 1. The role matters
 Do not write "As a user" — that says nothing. Use the specific role:
 ```
-✓ As a system administrator
 ✓ As a registered customer
-✓ As an inventory operator
+✓ As an operator
+✓ As an Administrator
 ✗ As a user
-✗ As a person
+✗ As the system
 ```
-
+ 
 ### 2. The benefit justifies the work
 The "so that" must describe a business benefit, not redescribe the action:
 ```
-✓ so that I can manage my orders without calling support
-✗ so that I can see my orders (this only describes the feature)
+✓ so that I can get my vehicle washed without driving to check availability
+✗ so that I can see the available slots (this only describes the feature)
 ```
-
+ 
 ### 3. ACs are verifiable
 Each AC must be verifiable manually or automatable as a test:
 ```
-✓ Then the system shows a message "Order #123 confirmed"
-✓ Then the confirmation email arrives in less than 30 seconds
+✓ Then the booking is created and I see a confirmation
+✓ Then the system blocks the cancellation and explains why
 ✗ Then the system works well (not verifiable)
 ✗ Then the user is satisfied (not verifiable)
 ```
-
+ 
 ### 4. One HU = one unit of value
 If the HU has 15 ACs, it is probably 3 HUs.
-The team must be able to complete it in one sprint (maximum 2 weeks).
-
+One HU must be completable within a single development phase.
+ 
 ---
-
-## Ready-to-copy HU template
-
-```markdown
-### HU-00X — [Name] {#HU-00X}
-
-**Epic:** EP-00X
-
-> **As** [role]
-> **I want** [action]
-> **so that** [benefit]
-
-**Acceptance Criteria:**
-
-\```gherkin
-Scenario 1: [name]
-  Given [context]
-  When  [action]
-  Then  [result]
-\```
-
-| Field | Value |
-|-------|-------|
-| Story Points | |
-| Priority | |
-| Target sprint | |
-| Status | Backlog |
-| Dependencies | |
-```
-
----
-
+ 
 ## Correlations
-
-- Full template with DoD checklist → `04-requirements/_template-hu.md`
+ 
+- Functional requirements each HU covers → `04-requirements/functional.md`
 - Non-functional requirements → `04-requirements/non-functional.md`
 - Traceability matrix → `04-requirements/traceability-matrix.md`
-- API contracts derived from these HUs → `07-api/contracts/openapi/`
+- Full HU template with DoD checklist → `04-requirements/_template-hu.md`
+ 
