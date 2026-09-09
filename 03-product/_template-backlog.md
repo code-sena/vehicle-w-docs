@@ -1,218 +1,38 @@
-# Product Backlog Template — Vehicle Washing
+# Product Backlog Item Template — Express Car Wash
 
-## 1. Epic
+## Epic
 
-**Epic ID:**  
-**Epic Name:**  
-**Service:**  
-**Roadmap Horizon:**  
-**Priority:**  
-**Description:**
+**Epic ID:** [EP-XX]
 
----
+**Milestone:** [M1/M2/M3/M4]
 
-## 2. User Story
+**Priority:** [P0/P1/P2]
+**Product outcome:** [Outcome]
 
-**Story ID:**  
+## User story
 
-**As a** [user role]
+**Story ID:** [US-XX]
+
+**As a** [Customer / Operator / Administrator]
 
 **I want** [capability]
+**So that** [benefit].
 
-**So that** [benefit/value]
+## Acceptance criteria
 
----
+- [ ] Given [context], when [action], then [expected result].
+- [ ] Given [context], when [invalid action], then [validation/authorization result].
 
-## 3. Business Value
+## Domain and scope checks
 
-Describe the value that the story provides to:
+- **Terms / rules involved:** [Booking, branch, wash service, operator, availability, assignment, payment, promotion or rating]
+- **Dependencies:** [Required prior capability]
+- **Scope check:** [Reference to `01-context/scope.md`]
+- **Evidence status:** [Validated/Pending]
 
-- Customer.
-- Operator.
-- Administrator.
-- Business.
+## Definition of Done
 
----
-
-## 4. Acceptance Criteria
-
-### AC-01
-
-**Given** [initial condition]
-
-**When** [action]
-
-**Then** [expected result]
-
-### AC-02
-
-**Given** [initial condition]
-
-**When** [action]
-
-**Then** [expected result]
-
----
-
-## 5. Service Ownership
-
-**Responsible Service:** Security / Operational / Commercial
-
-**Reason:**
-
-Describe why the selected service owns the business capability.
-
----
-
-## 6. Dependencies
-
-**Depends on:**
-
-- [Dependency]
-
-**Required by:**
-
-- [Dependent functionality]
-
----
-
-## 7. Frontend
-
-**Platform:**
-
-- Angular
-- React Native / Expo
-
-**Required screens/components:**
-
-- [Screen/component]
-
----
-
-## 8. Priority
-
-| Priority | Definition |
-|---|---|
-| P0 | Critical for the core product flow |
-| P1 | High business/product value |
-| P2 | Medium priority |
-| P3 | Future or optional |
-
----
-
-## 9. Definition of Ready
-
-The story is ready when:
-
-- User value is clear.
-- Service ownership is defined.
-- Acceptance criteria are defined.
-- Dependencies are identified.
-- Scope is understandable.
-- Required technical context is available.
-
----
-
-## 10. Definition of Done
-
-The story is done when:
-
-- Implementation is completed.
-- Acceptance criteria are satisfied.
-- Required tests pass.
-- Security requirements are satisfied.
-- Business logic belongs to the correct service.
-- Required API contracts are updated.
-- Frontend integration is completed when applicable.
-- No critical defects remain.
-
----
-
-## 11. Traceability
-
-```text
-Problem
-   ↓
-User Need
-   ↓
-Product Vision
-   ↓
-Roadmap
-   ↓
-Epic
-   ↓
-User Story
-   ↓
-Acceptance Criteria
-   ↓
-Implementation
-   ↓
-Test
-   ↓
-Metric
-```
-
----
-
-## 12. Example — Vehicle Washing
-
-### Epic
-
-**Epic ID:** COM-02  
-**Epic Name:** Appointment Management  
-**Service:** Commercial  
-**Roadmap Horizon:** H1 — MVP  
-**Priority:** P0
-
-### User Story
-
-**Story ID:** COM-US-04
-
-**As a** customer
-
-**I want** to create an appointment for my vehicle
-
-**So that** I can schedule a vehicle-washing service.
-
-### Acceptance Criteria
-
-- The customer must be authenticated.
-- The customer must have a registered vehicle.
-- The customer must select an available service.
-- The customer must select an available date and time.
-- The system must validate availability.
-- The appointment must be associated with the correct customer and vehicle.
-- The appointment must be stored successfully.
-- The customer must receive a confirmation.
-
-### Service Ownership
-
-**Responsible Service:** Commercial
-
-The appointment is a commercial capability and therefore belongs to the Commercial Service.
-
-The vehicle information remains owned by the Operational Service.
-
-### Dependencies
-
-- Security authentication.
-- Customer vehicle.
-- Service catalog.
-- Availability.
-
-### Frontend
-
-**React Native / Expo**
-
-Required screens:
-
-- Service selection.
-- Date and time selection.
-- Appointment confirmation.
-
-**Angular**
-
-Required screens:
-
-- Appointment consultation.
-- Administrative/operational appointment view.
+- [ ] Acceptance criteria pass.
+- [ ] Authorization and relevant business-rule tests pass.
+- [ ] Required UI/API integration is complete.
+- [ ] Product, glossary or domain documentation is updated if behavior or language changed.

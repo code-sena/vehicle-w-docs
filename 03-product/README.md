@@ -1,113 +1,39 @@
 # 03 — Product Definition
 
-> **What is this?** The answer to "what are we going to build?". It is not "how" — that comes in
-> architecture. Here the validated problem, product vision, and build plan are defined.
+This folder defines **what** Express Car Wash will deliver and **why**. It is grounded in the project context and scope in `01-context/`; it uses the domain language defined in `01-context/glossary.md`. Technical architecture is documented elsewhere and must not redefine product scope.
 
-## Why this section exists
+## Product at a glance
 
-Without a clear product definition:
-- The team builds features nobody asked for
-- Scope grows out of control (scope creep)
-- There is no way to know whether the project was successful
+Express Car Wash is a web and Android platform for a multi-branch car-wash business. A customer registers a vehicle, selects a branch, service, date and time, chooses an available operator or requests automatic assignment, pays online, and later rates the completed service. Administrators manage branches, services, operators, schedules, promotions and operational reporting; operators manage availability and the execution status of their assigned services.
 
-This section is the contract between the team and stakeholders about **what will be built and why**.
+## Documents
 
----
+| Document | Purpose |
+|---|---|
+| [problem-framing.md](problem-framing.md) | Defines the problem, affected users, assumptions, evidence status, risks and scope boundary. |
+| [discovery-brief.md](discovery-brief.md) | Plans the discovery work needed to validate assumptions without presenting them as facts. |
+| [vision.md](vision.md) | States the product direction, principles and measurable success criteria. |
+| [roadmap.md](roadmap.md) | Organizes the scoped MVP and later candidates by delivery milestone. |
+| [product-backlog.md](product-backlog.md) | Prioritized epics and user stories traceable to the MVP scope and business rules. |
+| `_template-*.md` | Reusable templates; they are not product decisions. |
 
-## What is here and how to fill it in
+## Source of truth and alignment rules
 
-### `problem-framing.md` ⭐ (Start here)
-Articulates the problem before proposing solutions.
-**Fill in:** who has the problem, exactly what pain, evidence of the problem, how they solve it today.
+- Product terms use the glossary: **booking**, **branch**, **wash service**, **operator**, **availability**, **assignment**, **promotion**, **payment** and **rating**.
+- The MVP boundary is `01-context/scope.md`. A roadmap or backlog item cannot silently expand it.
+- Product requirements must respect the existing business model: a booking is for one vehicle, branch, wash service and time; assignment can be customer-selected, automatic or administrator-set; payment is traceable to that booking; ratings are submitted only after completion.
+- `02-domain/domain-map.md` is the source of truth for the product's domain boundaries: Booking and Operations & Assignment are core; identity, vehicle, catalog, branch, payment, feedback, notification, promotions and loyalty support that core flow.
+- Booking status, assignment status and payment status are distinct. Product screens and stories must not collapse them into one ambiguous “status”.
+- Discovery assumptions and planning targets are not validated research results. They must be replaced with evidence when the team conducts research or pilots the product.
 
-**Format:**
-```markdown
-## The problem
-**Who has it?** [Profile of the affected user]
-**What problem do they have?** [Description of the pain, specific]
-**When does it occur?** [Situation that triggers the problem]
-**What is the impact?** [Concrete consequence: time, money, frustration]
-**How do they solve it today?** [Current workaround and why it is insufficient]
+## Traceability
 
-## Why it is worth solving
-[Justification for the value of building this system]
+```text
+Context and scope → problem framing → vision → roadmap → backlog → requirements → implementation and tests
+                              ↑
+                    discovery evidence and domain rules
 ```
 
-### `discovery-brief.md`
-Findings from user research.
-**Fill in:** interviews conducted, insights found, assumptions validated and invalidated.
+## Deliberately excluded from this folder
 
-### `vision.md` ⭐
-The product's north star in 1-2 sentences.
-**Fill in:** format "For [user], who [need], [system name] is a [product type]
-that [key benefit]. Unlike [alternative], our product [differentiator]."
-
-### `roadmap.md`
-Delivery plan over time.
-**Fill in:** milestones per quarter/sprint, which features go into each phase.
-
-**Format:**
-```markdown
-## Phase 1 — MVP (Sprint 1-3)
-- [Critical feature 1]
-- [Critical feature 2]
-
-## Phase 2 — Iteration (Sprint 4-6)
-- [Improvements based on feedback]
-```
-
-### `product-backlog.md` ⭐
-Prioritized list of everything that must be built.
-**Fill in:** using the `_template-backlog.md` template. Order by user value.
-
-### `_template-prd.md`
-Complete Product Requirements Document.
-**Use when:** you need to formalize requirements for an external stakeholder or academic delivery.
-
-### `_template-discovery-brief.md`
-Template for documenting user research.
-
-### `_template-problem-framing.md`
-Structured template for framing the problem.
-
-### `_template-backlog.md`
-Template for initial backlog user stories.
-
----
-
-## User Story format
-
-```markdown
-## HU-[SERVICE]-[NNN]: [Title]
-**As** [user role]
-**I want** [action they want to perform]
-**So that** [benefit they receive]
-
-### Acceptance criteria
-- [ ] AC1: Given [context], when [action], then [expected result]
-- [ ] AC2: ...
-
-### Technical notes
-[Constraints or implementation considerations]
-
-**Estimation:** [SP]  **Priority:** [High/Medium/Low]
-```
-
----
-
-## Correlations with other sections
-
-| This section feeds... | Why |
-|-----------------------|-----|
-| `04-requirements/` | Backlog HUs are formalized as requirements |
-| `02-domain/` | Problem framing reveals domain entities |
-| `15-project-control/technical-backlog.md` | Technical debt identified during definition |
-
----
-
-## Questions this section must answer
-
-- What problem exactly are we solving?
-- What does product success look like?
-- What do we build first and why?
-- What do we NOT build in this cycle?
+Detailed architecture, service decomposition, database design, API contracts and implementation tasks belong in their respective sections. They may support product decisions, but they do not replace them.
