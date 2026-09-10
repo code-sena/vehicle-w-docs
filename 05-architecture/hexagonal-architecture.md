@@ -1,355 +1,388 @@
-# Hexagonal Architecture (Ports & Adapters)
+# Hexagonal Architecture (Ports and Adapters)
 
-> Hexagonal architecture, proposed by Alistair Cockburn, organizes a service so that the
-> **business domain is completely independent** of the surrounding technology.
-> The database, the web framework, the message broker — all are interchangeable details.
-> What matters is the business logic, which lives at the center.
+> How the code inside each of our services is organised. The decision to use this
+> architecture is in [ADR-007](decisions/records/ADR-007-internal-service-architecture.md);
+> this document explains how we apply it, with examples from our own domain. The package
+> structure comes from `_stacks/java-spring.md`.
 
-> **Stack note:** The concepts in this document are valid for any language.
-> The code examples and folder structure specific to your technology are in:
-> - Node.js + TypeScript → [`_stacks/node-typescript.md`](../_stacks/node-typescript.md)
-> - Java + Spring Boot → [`_stacks/java-spring.md`](../_stacks/java-spring.md)
-> - Python + FastAPI → [`_stacks/python-fastapi.md`](../_stacks/python-fastapi.md)
-> - Go → [`_stacks/go.md`](../_stacks/go.md)
+**Last updated:** 2026-09-10
+**Applies to:** the ten backend services. The gateway has no domain, so it does not follow
+this structure.
 
 ---
 
-## The problem it solves
+## 1. Why we use it
 
-```
-❌ Traditional layered architecture:
+Our rules do not live in the database. `06-data` protects a lot — foreign keys inside a
+schema, `CHECK` constraints, overlap triggers, filtered indexes — but there is a whole set
+of rules it explicitly cannot enforce, listed in section 16 of that document:
 
-  [HTTP Controller]
-       ↓
-  [Service]
-       ↓
-  [Repository]
-       ↓
-  [Database]
+- A service can only be rated once its execution is finished.
+- The assigned operator has to be available and without a registered absence.
+- A booking cannot fall outside the establishment's business hours.
+- The points discount has to match the redeemed loyalty movements.
+- The eighteen references that cross schemas have to be valid before writing.
 
-Problem: The "Service" mixes business logic with framework calls.
-If you change the framework, you break the business. If you want to test the business,
-you need to simulate the database.
-```
+Those rules have to live somewhere in the code. If we organise a service the usual Spring
+way — controller, service, repository — they end up mixed with HTTP handling and JPA
+annotations, and the JPA entity slowly becomes the domain model.
 
-```
-✓ Hexagonal Architecture:
-
-  [HTTP Controller]  [CLI]  [Test]  ← Primary Adapters (enter the hexagon)
-          │            │      │
-          └────────────┴──────┘
-                       │
-                 [Driving Port]  ← Interface that defines the domain's API
-                       │
-               ┌───────────────┐
-               │               │
-               │    DOMAIN     │  ← Pure business logic, no external dependencies
-               │               │
-               └───────────────┘
-                       │
-                 [Driven Port]  ← Interface the domain needs from the outside world
-                       │
-          ┌────────────┴──────┐
-          │                   │
-  [DB Adapter]  [Kafka Adapter]  ← Secondary Adapters (exit the hexagon)
-```
+Hexagonal architecture gives us a place where a rule is just a rule: plain Java, no
+framework around it. Everything else — REST, SQL Server, RabbitMQ, the uploaded receipt —
+plugs into it from the outside.
 
 ---
 
-## Folder structure
+## 2. The idea in one picture
 
 ```
-src/
-├── domain/                          # The hexagon — no frameworks, no external dependencies
-│   ├── [aggregate]/
-│   │   ├── [Aggregate].ts           # Aggregate Root with invariants
-│   │   ├── [Aggregate]Id.ts         # Value Object for the ID
-│   │   ├── events/
-│   │   │   └── [EventOccurred].ts   # Domain events
-│   │   ├── services/
-│   │   │   └── [DomainService].ts   # Logic that does not belong to any entity
-│   │   └── ports/                   # Interfaces (ports) — abstract contracts
-│   │       ├── in/
-│   │       │   └── [UseCasePort].ts # Driving port: use case contract
-│   │       └── out/
-│   │           └── [RepoPort].ts    # Driven port: repository contract
-│   └── shared/
-│       └── value-objects/           # VOs shared between aggregates
-│           ├── Email.ts
-│           └── Money.ts
+                    ┌─────────────────────────────┐
+   REST controller  │                             │  JPA repository
+   ───────────────▶ │          DOMAIN             │ ◀───────────────
+   (primary         │   Reserva, ServiceBay,      │   (secondary
+    adapter)        │   rules and invariants      │    adapter)
+                    │                             │
+   RabbitMQ         │   knows nothing about       │  RabbitMQ publisher
+   consumer         │   Spring, JPA or HTTP       │  REST clients to other services
+   ───────────────▶ │                             │ ◀───────────────
+                    └─────────────────────────────┘
+                       ▲                      ▲
+                  input ports            output ports
+                  (what can be           (what the domain
+                   done to it)            needs from outside)
+```
+
+Everything points **inwards**. The domain never points out.
+
+---
+
+## 3. Package structure
+
+This is `reserva-service`; the other nine follow the same shape, each one named after its
+schema.
+
+```
+src/main/java/com/expresscarwash/reserva/
+├── domain/                          ← plain Java, no Spring, no JPA
+│   ├── model/
+│   │   ├── Reserva.java             ← aggregate root, holds the rules
+│   │   ├── ReservaStatus.java       ← AGENDADA, CONFIRMADA, EN_EJECUCION, FINALIZADA, CANCELADA, NO_ASISTIO
+│   │   ├── ReservaService.java      ← a service line inside a booking
+│   │   ├── TimeSlot.java            ← value object
+│   │   └── Money.java               ← value object
+│   ├── event/
+│   │   ├── ReservaConfirmed.java
+│   │   └── ReservaCancelled.java
+│   ├── service/
+│   │   └── ScheduleChecker.java     ← business hours, exceptions and bay availability
+│   └── port/
+│       ├── in/
+│       │   ├── CreateReservaUseCase.java
+│       │   └── CancelReservaUseCase.java
+│       └── out/
+│           ├── ReservaRepository.java
+│           ├── CustomerVehiclePort.java   ← what customer-service must confirm
+│           ├── ServicePricePort.java      ← what catalog-service must confirm
+│           ├── OperatorAvailabilityPort.java
+│           └── EventPublisher.java
 │
-├── application/                     # Use cases — orchestrate the domain
-│   └── [aggregate]/
-│       ├── [CreateXxxUseCase].ts    # Implements the driving port
-│       └── dtos/
-│           ├── [CreateXxxRequest].ts
-│           └── [CreateXxxResponse].ts
+├── application/                     ← orchestrates; uses Spring only for injection
+│   ├── CreateReservaService.java
+│   └── CancelReservaService.java
 │
-├── infrastructure/                  # Everything external to the hexagon
-│   ├── adapters/
-│   │   ├── in/                      # Primary adapters — receive external calls
-│   │   │   ├── http/
-│   │   │   │   ├── [XxxController].ts
-│   │   │   │   └── [XxxRouter].ts
-│   │   │   └── messaging/
-│   │   │       └── [XxxEventConsumer].ts
-│   │   └── out/                     # Secondary adapters — call the outside
-│   │       ├── persistence/
-│   │       │   └── [XxxRepositoryImpl].ts   # Implements the driven port
-│   │       ├── messaging/
-│   │       │   └── [XxxEventPublisher].ts
-│   │       └── external/
-│   │           └── [ExternalApiAdapter].ts
-│   └── config/
-│       ├── database.ts
-│       └── container.ts             # Dependency injection (IoC)
-│
-└── main.ts                          # Bootstrap — connects adapters with ports
+└── infrastructure/
+    ├── rest/
+    │   ├── ReservaController.java
+    │   └── dto/
+    ├── persistence/
+    │   ├── ReservaEntity.java       ← @Entity, maps to the reserva schema
+    │   ├── ReservaJpaRepository.java
+    │   ├── ReservaRepositoryAdapter.java
+    │   └── ReservaMapper.java
+    ├── messaging/
+    │   ├── RabbitEventPublisher.java
+    │   └── ExecutionEventListener.java
+    ├── client/
+    │   ├── CustomerHttpClient.java  ← calls customer-service (ADR-004)
+    │   ├── CatalogHttpClient.java
+    │   └── ExecutionHttpClient.java
+    └── config/
 ```
 
 ---
 
-## The Ports
+## 4. The ports
 
-Ports are **interfaces** (abstract contracts). The domain defines them;
-adapters implement them.
+A port is an interface that belongs to the domain. It says *what* is needed, never *how*.
 
-### Driving Port (Input Port)
+### Input port — what can be done to the domain
 
-Defines what the domain can do — its public API from the outside's perspective.
+```java
+package com.expresscarwash.reserva.domain.port.in;
 
-```typescript
-// src/domain/order/ports/in/CreateOrderPort.ts
-export interface CreateOrderPort {
-  execute(request: CreateOrderRequest): Promise<CreateOrderResponse>;
+public interface CreateReservaUseCase {
+    ReservaId create(CreateReservaCommand command);
 }
 ```
 
-### Driven Port (Output Port)
+### Output ports — what the domain needs from the outside
 
-Defines what the domain needs from the outside world — without knowing how it is implemented.
+```java
+package com.expresscarwash.reserva.domain.port.out;
 
-```typescript
-// src/domain/order/ports/out/OrderRepositoryPort.ts
-export interface OrderRepositoryPort {
-  save(order: Order): Promise<void>;
-  findById(id: OrderId): Promise<Order | null>;
-  findByCustomer(customerId: CustomerId): Promise<Order[]>;
+public interface ReservaRepository {
+    Optional<Reserva> findById(ReservaId id);
+    boolean bayIsTaken(ServiceBayId bay, TimeSlot slot);
+    void save(Reserva reserva);
 }
 
-// src/domain/order/ports/out/EventPublisherPort.ts
-export interface EventPublisherPort {
-  publish(event: DomainEvent): Promise<void>;
+public interface CustomerVehiclePort {
+    boolean vehicleBelongsToCustomer(CustomerVehicleId vehicle, CustomerId customer);
+}
+
+public interface ServicePricePort {
+    Money currentPriceOf(ServicePriceId priceId);
+}
+
+public interface EventPublisher {
+    void publish(DomainEvent event);
 }
 ```
+
+`CustomerVehiclePort` and `ServicePricePort` are the interesting ones. They exist because
+`06-data` removed the foreign keys that used to guarantee those references: the domain
+knows it needs the answer, and the adapter is the one that knows the answer arrives over
+REST from another service (ADR-004).
 
 ---
 
-## The Adapters
+## 5. The adapters
 
-### Primary Adapter — HTTP Controller
+### Primary adapter — REST controller
 
-The HTTP controller translates the HTTP request to the domain use case.
+Its whole job is translating HTTP into a call to a use case, and the result back into HTTP.
+No business rules here.
 
-```typescript
-// src/infrastructure/adapters/in/http/OrderController.ts
-import { CreateOrderPort } from '@domain/order/ports/in/CreateOrderPort';
+```java
+@RestController
+@RequestMapping("/api/reservas")
+public class ReservaController {
 
-@Controller('/orders')
-export class OrderController {
-  constructor(
-    // Inject the port, NOT the concrete implementation
-    private readonly createOrder: CreateOrderPort,
-  ) {}
+    private final CreateReservaUseCase createReserva;
 
-  @Post('/')
-  async create(@Body() body: CreateOrderHttpRequest): Promise<void> {
-    // Translate HTTP request → domain DTO
-    const request = new CreateOrderRequest(body.customerId, body.items);
-    // Call the use case through the port
-    const response = await this.createOrder.execute(request);
-    return response;
-  }
+    @PostMapping
+    @PreAuthorize("hasRole('CLIENTE')")
+    public ResponseEntity<ReservaResponse> create(@Valid @RequestBody CreateReservaRequest request,
+                                                  @AuthenticationPrincipal AppUser user) {
+        ReservaId id = createReserva.create(request.toCommand(user.id()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ReservaResponse.of(id));
+    }
 }
 ```
 
-### Secondary Adapter — Repository
+`@Valid` checks that the request is well formed. Whether the booking is *allowed* is a
+different question, answered inside the domain (`cross-cutting.md`, section 5).
 
-The repository implements the driven port. The domain does not know PostgreSQL exists.
+### Secondary adapter — persistence
 
-```typescript
-// src/infrastructure/adapters/out/persistence/OrderRepositoryImpl.ts
-import { OrderRepositoryPort } from '@domain/order/ports/out/OrderRepositoryPort';
+The domain model and the JPA entity are two different classes, with a mapper in between.
+The `reserva` schema is a detail of this adapter (ADR-003).
 
-export class OrderRepositoryImpl implements OrderRepositoryPort {
-  constructor(private readonly db: DatabaseConnection) {}
+```java
+@Repository
+public class ReservaRepositoryAdapter implements ReservaRepository {
 
-  async save(order: Order): Promise<void> {
-    // Translate Aggregate → database row
-    await this.db.query(
-      'INSERT INTO orders (id, customer_id, status, total) VALUES ($1, $2, $3, $4)',
-      [order.id.value, order.customerId.value, order.status, order.total.amount],
-    );
-  }
+    private final ReservaJpaRepository jpa;
+    private final ReservaMapper mapper;
 
-  async findById(id: OrderId): Promise<Order | null> {
-    const row = await this.db.queryOne('SELECT * FROM orders WHERE id = $1', [id.value]);
-    if (!row) return null;
-    // Translate database row → Aggregate
-    return OrderMapper.toDomain(row);
-  }
-}
-```
-
----
-
-## The Use Case (Application Service)
-
-The use case orchestrates the domain. It uses driving and driven ports. It contains no business logic — that lives in the Aggregate.
-
-```typescript
-// src/application/order/CreateOrderUseCase.ts
-import { CreateOrderPort } from '@domain/order/ports/in/CreateOrderPort';
-import { OrderRepositoryPort } from '@domain/order/ports/out/OrderRepositoryPort';
-import { EventPublisherPort } from '@domain/order/ports/out/EventPublisherPort';
-
-export class CreateOrderUseCase implements CreateOrderPort {
-  constructor(
-    private readonly orderRepo: OrderRepositoryPort,
-    private readonly eventPublisher: EventPublisherPort,
-  ) {}
-
-  async execute(request: CreateOrderRequest): Promise<CreateOrderResponse> {
-    // 1. Create the aggregate (business logic lives HERE, in the domain)
-    const order = Order.create(request.customerId, request.items);
-
-    // 2. Persist (through the port — the use case does not know which DB is used)
-    await this.orderRepo.save(order);
-
-    // 3. Publish domain events (through the port)
-    for (const event of order.domainEvents) {
-      await this.eventPublisher.publish(event);
+    @Override
+    public void save(Reserva reserva) {
+        jpa.save(mapper.toEntity(reserva));
     }
 
-    return new CreateOrderResponse(order.id.value);
-  }
+    @Override
+    public Optional<Reserva> findById(ReservaId id) {
+        return jpa.findById(id.value()).map(mapper::toDomain);
+    }
+}
+```
+
+The audit columns (`created_by`, `updated_by`, `row_version`) are filled here, not in the
+domain: they are a persistence concern, and `row_version` is what makes the optimistic
+locking of `cross-cutting.md` work.
+
+### Secondary adapter — another service
+
+```java
+@Component
+public class CustomerHttpClient implements CustomerVehiclePort {
+
+    private final RestClient rest;
+
+    @Override
+    public boolean vehicleBelongsToCustomer(CustomerVehicleId vehicle, CustomerId customer) {
+        return rest.get()
+                   .uri("/api/customers/{c}/vehicles/{v}", customer.value(), vehicle.value())
+                   .retrieve()
+                   .toEntity(VehicleResponse.class)
+                   .getStatusCode().is2xxSuccessful();
+    }
+}
+```
+
+The domain asks whether the vehicle belongs to the customer. It does not know that
+`customer-service` exists, or that the answer travels over HTTP.
+
+### Secondary adapter — event publishing
+
+```java
+@Component
+public class RabbitEventPublisher implements EventPublisher {
+
+    private final RabbitTemplate rabbit;
+
+    @Override
+    public void publish(DomainEvent event) {
+        rabbit.convertAndSend("carwash.events", event.routingKey(), Envelope.of(event));
+    }
 }
 ```
 
 ---
 
-## The Dependency Rule
+## 6. The use case
 
-> **Dependencies always point inward.**
-> The domain does not import anything from application or infrastructure.
-> Infrastructure imports from the domain (but never the other way around).
+The use case orchestrates: it validates references, calls the domain, saves and publishes.
+It does not decide business rules — it asks the domain to decide.
 
+```java
+@Service
+public class CreateReservaService implements CreateReservaUseCase {
+
+    private final ReservaRepository reservas;
+    private final CustomerVehiclePort vehicles;
+    private final ServicePricePort prices;
+    private final ScheduleChecker schedule;
+    private final EventPublisher events;
+
+    @Override
+    public ReservaId create(CreateReservaCommand command) {
+
+        // 1. Cross-schema references, validated BEFORE opening the transaction (ADR-004)
+        if (!vehicles.vehicleBelongsToCustomer(command.vehicle(), command.customer())) {
+            throw new DomainException("The vehicle does not belong to this customer");
+        }
+        Money price = prices.currentPriceOf(command.servicePrice());
+
+        return persist(command, price);
+    }
+
+    @Transactional
+    private ReservaId persist(CreateReservaCommand command, Money price) {
+        schedule.ensureWithinBusinessHours(command.slot());
+        schedule.ensureBayIsFree(command.bay(), command.slot());
+
+        Reserva reserva = Reserva.create(command.vehicle(), command.slot(), price, command.bookedBy());
+
+        reservas.save(reserva);
+        events.publish(new ReservaConfirmed(reserva));   // published after the commit
+        return reserva.id();
+    }
+}
 ```
-infrastructure/ → application/ → domain/
-                                    ↑
-                         CANNOT import anything from application/ or infrastructure/
-```
 
-### Dependency inversion (DI) in practice
-
-```typescript
-// ✓ Correct — domain defines the interface, infrastructure implements it
-// In domain/:
-export interface OrderRepositoryPort { ... }
-
-// In infrastructure/:
-export class OrderRepositoryImpl implements OrderRepositoryPort { ... }
-
-// In the bootstrap (main.ts), the concrete implementation is injected:
-const orderRepo = new OrderRepositoryImpl(dbConnection);
-const createOrderUseCase = new CreateOrderUseCase(orderRepo, eventPublisher);
-const orderController = new OrderController(createOrderUseCase);
-```
+Two rules from `cross-cutting.md` are visible here: the remote validations happen **before**
+the transaction opens, and the event leaves **after** the commit.
 
 ---
 
-## Advantages for TDD
+## 7. The dependency rule
 
-Hexagonal architecture is ideal for TDD because:
-
-1. **The domain is testable without framework mocks.** You do not need to start a server
-   or a database to test business logic.
-
-2. **Driven ports can be faked easily.** In tests, you use an
-   in-memory repository (Fake) instead of the real one.
-
-3. **Invariants are explicit** and tested in isolation.
-
-```typescript
-// Domain unit test — zero external dependencies
-describe('Order', () => {
-  it('cannot be created without items', () => {
-    expect(() => Order.create(customerId, [])).toThrow('INV-001');
-  });
-
-  it('on confirm changes status to CONFIRMED', () => {
-    const order = Order.create(customerId, [validItem]);
-    order.confirm();
-    expect(order.status).toBe(OrderStatus.CONFIRMED);
-  });
-
-  it('on confirm emits OrderConfirmed event', () => {
-    const order = Order.create(customerId, [validItem]);
-    order.confirm();
-    expect(order.domainEvents).toContainEqual(expect.any(OrderConfirmedEvent));
-  });
-});
-
-// Use case test with FAKE repository (not a real DB mock)
-describe('CreateOrderUseCase', () => {
-  it('saves the order and publishes the event', async () => {
-    const fakeOrderRepo = new InMemoryOrderRepository();
-    const fakeEventPublisher = new InMemoryEventPublisher();
-    const useCase = new CreateOrderUseCase(fakeOrderRepo, fakeEventPublisher);
-
-    await useCase.execute(new CreateOrderRequest(customerId, [validItem]));
-
-    expect(fakeOrderRepo.orders).toHaveLength(1);
-    expect(fakeEventPublisher.events).toContainEqual(expect.any(OrderCreated));
-  });
-});
+```
+infrastructure ──▶ application ──▶ domain
+                                     │
+                          domain depends on nothing
 ```
 
-> See full TDD guide in `11-quality/tdd-guide.md`
+In practice it is one line, and it is what we check in every Pull Request:
+
+> **No file under `domain/` may import Spring or JPA.**
+
+If an `@Entity`, an `@Autowired` or a `RabbitTemplate` shows up in there, the separation is
+gone and the domain stops being testable on its own.
 
 ---
 
-## Hexagonal Architecture Checklist
+## 8. What this buys us in testing
 
-When reviewing a PR or new service, verify:
+A domain rule is tested with plain JUnit — no Spring context, no database, no Docker:
 
-- [ ] `domain/` has no imports from `infrastructure/` or `application/`
-- [ ] `domain/` has no imports from frameworks (Express, NestJS, TypeORM, etc.)
-- [ ] Every repository interface lives in `domain/ports/out/`
-- [ ] Every use case interface lives in `domain/ports/in/`
-- [ ] Mappers (`toDomain` / `toPersistence`) live in `infrastructure/`, not in `domain/`
-- [ ] HTTP API DTOs live in `infrastructure/adapters/in/http/`, not in `domain/`
-- [ ] There is a unit test for each Aggregate invariant
+```java
+@Test
+void aFinishedReservaCannotBeCancelled() {
+    Reserva reserva = aReserva().withStatus(FINALIZADA).build();
+
+    assertThrows(DomainException.class, reserva::cancel);
+}
+```
+
+That test runs in milliseconds. Only the scenarios that really need infrastructure — two
+customers taking the same bay at the same time, where the overlap trigger does the work —
+need the real database.
 
 ---
 
-## Common mistakes (anti-patterns)
+## 9. How strict we are, service by service
 
-| Anti-pattern | Why it is bad | Solution |
-|-------------|--------------|---------|
-| `import { Repository } from 'typeorm'` in the domain | Couples the domain to TypeORM | Define your own port interface |
-| Business logic in the Controller | If you change the endpoint, you change the business | Move to the Aggregate |
-| Repository returning DTOs instead of Aggregates | The domain cannot validate invariants | Use Mapper to reconstruct the Aggregate |
-| Use case with 15 dependencies | It probably does too much | Split into smaller use cases |
-| `any` in port interfaces | You lose the typed contract | Always use explicit typing |
+Not every service has the same amount of logic, and we are not going to pretend otherwise:
+
+| Service | Domain layer |
+|---------|--------------|
+| `reserva-service`, `execution-service` | Real rules to protect: schedules, bays, availability, execution. Full structure |
+| `payment-service`, `promotion-service`, `security-service` | Fewer rules, but they matter: receipt verification, eligibility, lockout. Full structure |
+| `customer-service`, `catalog-service`, `notification-service` | Some rules — loyalty balance, price validity, read state. Thin domain layer |
+| `settings-service`, `audit-service` | Close to CRUD and queries. Same structure, almost empty domain layer |
+
+The structure is the same everywhere so that moving between services is easy, but we do not
+invent abstractions to fill a domain layer that has nothing to protect (ADR-007).
+
+---
+
+## 10. Checklist before opening a Pull Request
+
+- [ ] Nothing under `domain/` imports Spring or JPA.
+- [ ] The business rule is inside the aggregate, not in the controller or the use case.
+- [ ] The controller only translates HTTP and delegates.
+- [ ] The JPA entity is not the domain model; there is a mapper.
+- [ ] Ports are declared in `domain/port`, implemented in `infrastructure`.
+- [ ] A cross-schema reference is validated before the transaction opens.
+- [ ] The use case writes only its own schema.
+- [ ] The event is published after the commit.
+- [ ] The domain rule has a test that runs without Spring.
+- [ ] Queries exclude logically deleted rows (`deleted_at`).
+
+---
+
+## 11. Mistakes we want to avoid
+
+| Mistake | Why it hurts |
+|---------|--------------|
+| Annotating the domain entity with `@Entity` to save a mapper | The database ends up shaping the domain, and changing a column changes a business rule |
+| Putting the rule in the controller because it is quicker | The rule cannot be tested without HTTP, and it gets duplicated the day a RabbitMQ consumer needs it |
+| Injecting `RestClient` or `RabbitTemplate` into a domain class | The domain stops being plain Java and its tests need infrastructure |
+| Creating an interface for every class "because hexagonal" | Ports exist for what crosses the boundary, not for every collaboration inside the domain |
+| Reading another schema directly to avoid a REST call | It breaks the ownership rule in ADR-003, and the database user will reject it anyway |
+| Forgetting `deleted_at` in a query | Deleted rows come back to life in a screen or a report |
 
 ---
 
 ## References and correlations
 
-- Bounded Contexts → `02-domain/domain-map.md`
-- Entities and invariants → `02-domain/entities-and-rules.md`
-- Domain events → `02-domain/domain-events.md`
-- Complementary patterns (CQRS, Event Sourcing, Saga) → `05-architecture/pattern-guide.md`
-- TDD applied to hexagonal architecture → `11-quality/tdd-guide.md`
-- Service template with hexagonal structure → `09-microservices/_template/service/`
+- Decision to use this architecture → [ADR-007](decisions/records/ADR-007-internal-service-architecture.md)
+- Package structure, dependencies and test examples for Java 21 → `_stacks/java-spring.md`
+- Rules the database cannot enforce → `06-data/MODELO-DE-DATOS.md`, section 16
+- What the database does enforce → `06-data/MODELO-DE-DATOS.md`, section 15
+- Transactions, logging and error rules → `05-architecture/cross-cutting.md`
+- Schemas and data ownership → [ADR-003](decisions/records/ADR-003-database-strategy.md)
+- Validations and events between services → [ADR-004](decisions/records/ADR-004-service-communication.md)
+- General pattern catalog → `05-architecture/pattern-guide.md`

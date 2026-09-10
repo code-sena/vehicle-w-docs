@@ -394,6 +394,18 @@ async function withRetry<T>(
 
 **How do I share data then?** With APIs or events, never with direct SQL.
 
+> **In this project:** we did **not** adopt Database per Service. Express car wash uses a
+> single SQL Server database with **one schema per service**, and the ownership rule above
+> is enforced with a database user per service instead of with separate databases. The
+> alternative was evaluated and discarded in
+> [ADR-003](decisions/records/ADR-003-database-strategy.md); the reasons are that the
+> `security` and `audit` schemas come from the instructor's shared core and are used by
+> every other schema, that reporting needs to read across schemas, and that ten SQL Server
+> instances on a laptop is not realistic. The rule that does hold for us is the one this
+> section ends with, and the model enforces it hard: **there is not a single foreign key
+> crossing between schemas**, and the eighteen cross-schema references are validated by the
+> application before writing.
+
 ---
 
 #### Saga (Distributed transactions)
@@ -538,27 +550,37 @@ Kubernetes Pod:
 
 ## Patterns adopted in this project
 
-> **Fill in with your specific project's decisions.**
-> For each pattern: decide whether it is adopted, document the ADR that justifies the decision,
-> and link to the section in this document where you learned when to use it.
+These are the decisions taken for Express car wash. Each one is argued in the ADR listed in
+the last column; this table is only the summary.
 
 | Pattern | Adopted? | Justification / ADR |
-|---------|---------|---------------------|
-| API Gateway | [Yes / No — see ADR-NNN] | [Brief reason] |
-| Database per Service | [Yes / No — see ADR-NNN] | [Brief reason] |
-| Circuit Breaker | [Yes / No — see ADR-NNN] | [Brief reason] |
-| Saga (choreographed) | [Yes / No — see ADR-NNN] | [Brief reason] |
-| Outbox Pattern | [Yes / No — see ADR-NNN] | [Brief reason] |
-| CQRS | [Yes / No — see ADR-NNN] | [Brief reason] |
-| Event Sourcing | [Yes / No — see ADR-NNN] | [Brief reason] |
-| BFF | [Yes / No — see ADR-NNN] | [Brief reason] |
+|---------|----------|---------------------|
+| API Gateway | Yes | Single entry point for the web and mobile clients, with Spring Cloud Gateway — ADR-005 |
+| Hexagonal architecture | Yes | Gives the domain model from `02-domain` a place to live, and lets business rules be tested without Spring — ADR-007 |
+| Publish/Subscribe (topic exchange) | Yes | The event catalog and its routing keys were already defined in `02-domain/domain-events.md` — ADR-004 |
+| Idempotent Consumer | **Pending** | Required by at-least-once delivery, but the data model has no table to record processed events — ADR-004 |
+| Dead Letter Queue | Yes | A message that cannot be processed is kept for review instead of being lost — ADR-004 |
+| Retry with backoff | Yes | Limited attempts before the dead letter queue — ADR-004 |
+| Database per Service | No | One SQL Server database with a schema per service; the alternative was evaluated and discarded — ADR-003 |
+| Saga (choreographed) | No | No distributed transaction is attempted: a reference that crosses services is validated before writing, not compensated afterwards — ADR-004 |
+| Outbox Pattern | No | Evaluated and postponed: events are published after the commit. It becomes necessary if we start losing events — ADR-004 |
+| Circuit Breaker | No | Only three internal synchronous calls and no external traffic; the overhead is not justified — ADR-004 |
+| CQRS | No | The read and write models are practically the same, which is exactly the case the table above warns about |
+| Event Sourcing | No | No requirement asks for the complete history of changes |
+| BFF | No | The web and mobile clients consume the same API; the gateway is enough — ADR-005 |
+| Optimistic locking (`row_version`) | Yes | Two administrators editing the same row do not overwrite each other — ADR-003 |
+| Logical deletion | Yes | Nothing is physically deleted; `deleted_at` is filled instead — ADR-003 |
+| Audit log written by triggers | Yes | One `audit.audit_log` instead of a history table per entity — ADR-003 |
+| External payment gateway | No | Payment is verified in-house with a QR and an uploaded receipt — ADR-008 |
+| Service Discovery | No | Fixed service addresses inside the Docker environment — `deployment.md` |
 
 ---
 
 ## Correlations
 
-- Hexagonal Architecture → `05-architecture/hexagonal-architecture.md`
-- ADR for pattern decisions → `05-architecture/decisions/`
-- Saga implementation → `09-microservices/services/XX/events.md`
-- Circuit Breaker runbook → `09-microservices/services/XX/runbook.md`
-- Outbox in the data model → `06-data/models.md`
+- Hexagonal architecture → `05-architecture/hexagonal-architecture.md`
+- Decisions behind each adopted pattern → `05-architecture/decisions/records/`
+- Event catalog, routing keys and consumers → `02-domain/domain-events.md`
+- Broker topology and dead letter queues → `05-architecture/decisions/records/ADR-004-service-communication.md`
+- Cross-cutting rules (logging, errors, transactions) → `05-architecture/cross-cutting.md`
+- Data model, constraints and triggers → `06-data/MODELO-DE-DATOS.md`
