@@ -25,7 +25,7 @@
 
 ## Domain and scope checks
 
-- **Terms / rules involved:** [Booking, wash service, operator, availability, assignment, payment, promotion or rating]
+- **Terms / rules involved:** [Booking, branch, wash service, operator, availability, assignment, payment, promotion or rating]
 - **Dependencies:** [Required prior capability]
 - **Scope check:** [Reference to `01-context/scope.md`]
 - **Evidence status:** [Validated/Pending]

@@ -2,20 +2,20 @@
 
 ## Vision statement
 
-**For** vehicle owners who need to arrange a wash without uncertain availability, and for car-wash staff who need an organized daily operation, **Express Car Wash** is a web and Android booking-management platform **that** connects vehicle, service, operator availability, QR-based payment, notifications and service execution in one traceable flow. **Unlike** calls, walk-ins and handwritten registers, it gives customers a confirmed booking and gives the business a current, role-appropriate view of the work.
+**For** vehicle owners who need to arrange a wash without uncertain availability, and for car-wash staff who need an organized daily operation, **Express Car Wash** is a web and Android booking-management platform **that** connects vehicle, branch, service, operator availability, payment, notifications and service execution in one traceable flow. **Unlike** calls, walk-ins and handwritten registers, it gives customers a confirmed booking and gives the business a current, role-appropriate view of the work.
 
 ## Mission
 
-Make the car-wash experience easier to plan, execute and follow up: customers should know what they booked and paid for; operators should know what to perform; and administrators should be able to manage the operation from reliable records.
+Make the branch car-wash experience easier to plan, execute and follow up: customers should know what they booked and paid for; operators should know what to perform; and administrators should be able to manage the operation from reliable records.
 
 ## Strategic pillars
 
 | Pillar | Product commitment | Evidence of value |
 |---|---|---|
-| Reliable booking | Show a customer valid service, time and operator options and prevent conflicts. | Digital bookings are completed without a conflict. |
+| Reliable booking | Show a customer valid branch, service, time and operator options and prevent conflicts. | Digital bookings are completed without a conflict. |
 | Clear execution | Give operators their availability, assigned services and status changes. | Assigned services progress through recorded statuses. |
-| Trustworthy transaction | Link the booking, applicable promotion and the reviewed QR payment result. | Payments reconcile to their booking. |
-| Controlled operation | Give administrators the tools to manage schedules, services, promotions, payment review and reports. | Operational records can be consulted without a separate manual register. |
+| Trustworthy transaction | Link the booking, applicable promotion and Wompi payment result. | Payments reconcile to their booking. |
+| Controlled operation | Give administrators the tools to manage branches, schedules, services, promotions and reports. | Operational records can be consulted without a separate manual register. |
 | Simple access | Adapt the experience and permissions to customer, operator and administrator roles. | Each role can complete its scoped tasks. |
 | Informed participants | Notify the relevant customer or operator when a meaningful booking, assignment, payment or service event occurs. | Notification records reach the intended recipient and can be read. |
 
@@ -30,13 +30,13 @@ Make the car-wash experience easier to plan, execute and follow up: customers sh
 
 ## Definition of product success
 
-The MVP is successful when a customer can authenticate, register a vehicle, select a wash service and available slot, receive a recorded booking and payment result, and follow relevant notifications; an operator can see and update their assigned work; and an administrator can maintain operating data, reassign pending work, review and approve payments, apply approved promotions and consult the resulting records.
+The MVP is successful when a customer can authenticate, register a vehicle, select a branch, wash service and available slot, receive a recorded booking and payment result, and follow relevant notifications; an operator can see and update their assigned work; and an administrator can maintain operating data, reassign pending work, apply approved promotions and consult the resulting records.
 
 There is no live baseline yet. The team will establish pilot baselines and targets for the measures in `problem-framing.md` before claiming product outcomes.
 
 ## Scope boundary
 
-The vision includes the approved MVP in `01-context/scope.md` and the current domain requirements: user and role management, booking changes/cancellation, assignment, QR-based payment with receipt review, in-app notifications, ratings, promotions and loyalty, role-based interfaces and administrative management. iOS, at-home washing, electronic invoicing, inventory, production deployment, additional locations and email notifications are excluded from this version.
+The vision includes the approved MVP in `01-context/scope.md` and the current domain requirements: user and role management, booking changes/cancellation, assignment, Wompi payment, in-app notifications, ratings, promotions and loyalty, role-based interfaces and administrative management. iOS, at-home washing, electronic invoicing, inventory, production deployment and email notifications are excluded from this version.
 
 ## Traceability
 

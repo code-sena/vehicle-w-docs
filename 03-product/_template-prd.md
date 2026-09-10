@@ -34,7 +34,7 @@ Use this document when a release, milestone or stakeholder needs a formal produc
 
 | Rule / dependency | Requirement |
 |---|---|
-| Booking | [One vehicle, wash service, date and time; validate current domain rule.] |
+| Booking | [One vehicle, branch, wash service, date and time; validate current domain rule.] |
 | Availability | [State the relevant schedule/assignment conflict rule.] |
 | Payment | [State the required confirmation and provider behavior.] |
 | Authorization | [State which role can perform the action.] |

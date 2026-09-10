@@ -8,16 +8,16 @@ Validate whether the documented booking and operational problems occur in the ta
 
 | Participant | Questions to answer |
 |---|---|
-| Customers | How do they choose a service and time? How often do they find a slot unavailable? Would they scan a QR code and upload a receipt at booking? Which booking, payment and notification states do they need to understand? |
+| Customers | How do they choose a branch, service and time? How often do they find a slot unavailable? Would they pay at booking? Which booking, payment and notification states do they need to understand? |
 | Operators | How are schedules and assignments communicated? When can availability change? Which assignment states are useful during execution? Is reassignment needed before work starts? |
-| Administrators | How are operator schedules, services, promotions, loyalty and payment receipts managed today? What report and notification information is needed to run the day? |
+| Administrators | How are branches, operator schedules, services, promotions, loyalty and payments managed today? What report and notification information is needed to run the day? |
 
 ## Methods and minimum evidence
 
 | Activity | Participants / artifact | Output |
 |---|---|---|
 | Semi-structured interviews | At least 3 customers, 2 operators and 1 administrator if access is available | Pain points, language and current workaround. |
-| Observation of a service day | The shop, with permission | Booking, assignment, payment and status workflow. |
+| Observation of a service day | One branch with permission | Booking, assignment, payment and status workflow. |
 | Prototype or sandbox walkthrough | One representative from each role | Usability findings for the MVP flow. |
 | Operational-record review | Existing appointment/payment records, if permitted | Baseline for conflicts, no-shows and reconciliation. |
 
@@ -25,10 +25,10 @@ Validate whether the documented booking and operational problems occur in the ta
 
 | ID | Assumption | Related decision | Status |
 |---|---|---|---|
-| D-01 | Customers value seeing availability before travelling. | Slot selection. | Pending |
-| D-02 | Customers will complete the QR-scan-and-receipt-upload flow at booking instead of paying in person. | Payment confirmation flow. | Pending |
+| D-01 | Customers value seeing availability before travelling. | Branch and slot selection. | Pending |
+| D-02 | Customers will complete online payment during booking. | Wompi payment confirmation. | Pending |
 | D-03 | Operators can keep their availability and service status current. | Assignment and execution workflow. | Pending |
-| D-04 | Administrator-configured schedules reflect real shop operation. | Availability calculation. | Pending |
+| D-04 | Administrator-configured schedules reflect real branch operation. | Availability calculation. | Pending |
 | D-05 | Customer-selected operators add value versus automatic assignment. | Assignment options. | Pending |
 | D-06 | A post-service rating is useful to customers and the business. | Rating and review feature. | Pending |
 | D-07 | In-app notifications are sufficient for the MVP even though email is excluded. | Notification channel and read/unread experience. | Pending |
@@ -48,7 +48,7 @@ Add one row for every interview, observation or test. Do not convert a hypothesi
 
 - Keep a capability when evidence shows it solves a frequent, consequential user problem and it fits the approved scope.
 - Refine a capability when users use different terminology, a rule is missing, or the current workflow reveals an exception.
-- Do not create automatic-assignment criteria beyond operator availability at the shop unless evidence becomes an approved requirement.
+- Do not create automatic-assignment criteria beyond availability at the branch unless evidence becomes an approved requirement.
 - Do not decide payment-before-service, promotion eligibility, loyalty-point calculation or notification delivery channel through a product assumption; record the decision and update the domain rule.
 - Escalate a scope change when evidence requires a feature outside `01-context/scope.md`; do not add it directly to the MVP backlog.
 
