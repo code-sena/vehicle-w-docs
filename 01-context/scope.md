@@ -14,19 +14,20 @@ What the system **DOES build and maintain**:
 
 | # | Feature | Description | Responsible service |
 |---|---------|-------------|--------------------|
-| 1 | User management | Sign-up, login, password recovery and change, and profiles with different roles and permissions | auth-service |
-| 2 | Wash service management | Service request with selection of branch, date, time and service type; changes and cancellation before execution | booking-service |
-| 3 | Operator assignment | Automatic by availability, direct selection by the customer, or manual override by the Administrator when needed | booking-service |
-| 4 | Payment management | Online payment (Nequi, card, PSE), transaction recording and payment history | payment-service |
-| 5 | Ratings and reviews | Customers rate and comment on the service once it is completed | booking-service |
-| 6 | Role-based dashboard and user preferences | Dashboard and notifications tailored to each user role, theme customisation, and interface available in four languages (Spanish, English, French, Portuguese) | Frontend only |
-| 7 | Administrative management | Management of branches, operator schedules and availability, plus operational reports and statistics | admin-service |
+| 1 | User management | Sign-up, login, password recovery and change, and profiles with different roles and permissions | security |
+| 2 | Wash service management | Service request with selection of date, time and service type; changes and cancellation before execution | reserve |
+| 3 | Operator assignment | Automatic by availability, direct selection by the customer, or manual override by the Administrator when needed | execution |
+| 4 | Payment management | QR-based payment (cash, Nequi, Daviplata, bank transfer) with an uploaded receipt reviewed by an administrator; transaction recording and payment history | payment |
+| 5 | Ratings and reviews | Customers rate and comment on the service once it is completed | execution |
+| 6 | Role-based dashboard and user preferences | Dashboard and notifications tailored to each user role, theme customisation, and interface available in four languages (Spanish, English, French, Portuguese) | settings, notification (dashboard itself is frontend-only) |
+| 7 | Administrative management | Management of the shop's settings and business hours, wash bays, operator schedules and availability, plus operational reports and statistics | settings, reserve, execution |
 
 ### Included integrations
 
-| External system | Integration type | Purpose |
-|----------------|-----------------|---------|
-| Wompi | REST API | Online payments via Nequi, card and PSE, without storing card data |
+No external systems are integrated in this version. Payment is a manual QR
+transfer verified by an administrator against a customer-uploaded receipt —
+there is no payment gateway in the loop, and no card data is ever collected
+or transmitted.
 
 ### Environments being built
 
@@ -38,7 +39,7 @@ What the system **DOES build and maintain**:
 | # | What is out of scope | Reason | Future version? |
 |---|---------------------|--------|----------------|
 | 1 | iOS mobile app | Current scope covers Android only | Yes — the React Native codebase allows it |
-| 2 | At-home / mobile wash service | The business model requires the customer to bring the vehicle to a branch | Under evaluation |
+| 2 | At-home / mobile wash service | The business model requires the customer to bring the vehicle to the shop | Under evaluation |
 | 3 | Electronic invoicing (DIAN) | Requires the business to be legally registered with the tax authority | No |
 | 4 | Supplies and inventory management | Outside the booking domain | No |
 | 5 | Staging and production deployment | Academic project, not deployed for real users | Yes — if the project continues |
@@ -46,9 +47,8 @@ What the system **DOES build and maintain**:
 
 ### What another system / team handles (and why not us)
 
-| Feature | Who handles it | Why not us |
-|---------|---------------|-----------|
-| Card data processing | Wompi | Avoids storing sensitive data and being subject to PCI-DSS compliance |
+Nothing is delegated to an external system in this version — payment
+verification is done manually by an administrator, inside the platform.
 
 ---
 
@@ -58,10 +58,10 @@ What the system **DOES build and maintain**:
 
 | # | Assumption | Consequence if false |
 |---|-----------|---------------------|
-| 1 | Wompi's sandbox is available without a registered merchant account | Payment would have to be simulated and RF4 could not be demonstrated |
+| 1 | Customers accept paying by QR transfer and uploading a receipt, instead of an automated gateway | RF4 would need a different payment story before it could be demonstrated |
 | 2 | Customers have an Android device and internet access when booking | An alternative booking channel would be required |
 | 3 | Data volume matches an academic project, not real operation | Indexing, pagination and query strategy would need review |
-| 4 | Each branch has fixed schedules and assigned operators | Availability and assignment logic would change entirely |
+| 4 | The shop has fixed schedules and assigned operators | Availability and assignment logic would change entirely |
 | 5 | The team keeps its three members throughout the phase | The MVP scope would have to be reduced |
 
 ---
@@ -82,8 +82,6 @@ What the system **DOES build and maintain**:
 
 | Dependency | Team / Provider | Required date | Status |
 |-----------|--------------------|--------------|--------|
-| Wompi sandbox credentials | Wompi | Before starting the payment module | 🔴 Pending |
-| Wompi API documentation | Wompi | Before starting the payment module | 🟢 Available |
 | Development equipment | Team members | Project start | 🟢 Available |
 | Technical guidance and delivery reviews | Technical instructors | Each review cycle | 🟢 Available |
 ---
