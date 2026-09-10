@@ -1,98 +1,82 @@
 # 06 — Data
 
-> **What is this?** How the system stores, structures, and migrates data.
-> In microservices, data management is one of the most complex challenges.
+How the Vehicle Washing Service Management System stores, structures, and migrates its data.
 
-## Fundamental principle in microservices
+## The rule everything else follows
 
-> **Each microservice owns its own data.**
+> **Each microservice owns its data.** No service reaches into another service's tables
+> directly — it asks over an API, or reacts to an event.
 
-No service should access another service's database directly. If it needs data from another
-service, it requests it via API or receives it via event. This principle guarantees independence.
+In practice, that means the 43 tables in this system are split across 10 SQL Server schemas —
+one per microservice — and **not one foreign key crosses a schema boundary**. Where one
+service genuinely needs another's data (18 places, listed at the end of `models.md`), it's a
+plain, indexed column with no FK, validated by the application instead of the database. See
+`modeling-conventions.md` for why we run this as schemas inside one instance rather than ten
+separate physical databases, and what that trade-off costs us.
 
----
+## What's in this folder
 
-## What is here and how to fill it in
+### [`models.md`](./models.md) ⭐
+The full schema, service by service: DB engine, every table's DDL, its data dictionary, its
+indexes, and the reasoning behind the non-obvious decisions (why a column is immutable, why a
+FK is missing on purpose, why a value is denormalized). This is the source of truth — if
+`schema_sqlserver.sql` and this file ever disagree, the SQL wins and this file is out of date.
 
-### `models.md` ⭐
-Data models for each microservice.
-**Fill in:** ER (entity-relationship) diagram or description of collections/tables for each service.
+### [`data-dictionary.md`](./data-dictionary.md) ⭐
+The fields that are easy to get wrong across services: status codes with hard-coded IDs,
+flags that only make sense in combination (`is_public` + `min_completed_reserve`,
+`points_redeemed` + `points_discount_amount`), and columns whose name alone doesn't say what
+they mean.
 
-**Format per service:**
-```markdown
-## Service: [name]
-**DB Engine:** [PostgreSQL / MongoDB / Redis / etc.]
-**Justification:** [why this engine for this service]
+### [`modeling-conventions.md`](./modeling-conventions.md)
+Naming, the standard audit block, soft delete, UTC timestamps, surrogate keys — the rules
+that are supposed to look the same in every schema.
 
-### Table/Collection: [name]
-| Field | Type | Nullable | Description | Constraints |
-|-------|------|----------|-------------|-------------|
-| id | UUID | No | Unique identifier | PK |
-| [field] | [type] | [Yes/No] | [description] | [FK/Unique/etc.] |
+### [`normalization-assessment.md`](./normalization-assessment.md)
+Where the model normalizes strictly (and why), and the handful of places it deliberately
+doesn't — each one named, with the reason and the guard that keeps it from drifting.
 
-### Indexes
-| Name | Fields | Type | Justification |
-|------|--------|------|---------------|
-```
+### [`migration-strategy.md`](./migration-strategy.md)
+How `schema_sqlserver.sql` turns into versioned Flyway migrations, the two IDs that must
+never be re-seeded out of order, and how to make a breaking change without downtime.
 
-### `data-dictionary.md` ⭐
-Exact meaning of each important field in the system.
-**Fill in:** especially for fields that may be ambiguous or have business rules.
+## SQL or NoSQL?
 
-**Format:**
-```markdown
-| Field | Service | Table | Type | Detailed description | Possible values |
-|-------|---------|-------|------|---------------------|-----------------|
-| status | scheduling | schedule | ENUM | Current status of the schedule | ACTIVE, CANCELLED, PENDING |
-```
+All 10 services currently run on the same engine (SQL Server), not because every service
+needs a relational model, but because the data itself — accounts, reservetions, payments,
+loyalty points — is relational by nature: fixed shape, real transactions, lots of joins within
+a service. If a future service needed something else (a document store for flexible product
+metadata, Redis for a cache or session store), nothing about the schema-per-service boundary
+would need to change to add it — see `models.md`'s engine note for each service.
 
-### `modeling-conventions.md`
-Naming and style conventions for the project's databases.
-**Fill in:** naming (snake_case or camelCase), use of UUIDs vs sequential, standard timestamps,
-soft delete vs hard delete, auditing (created_at, updated_at, created_by).
+## How consistency works without a shared database
 
-### `normalization-assessment.md`
-Analysis of the normalization level and justification for denormalizations.
-**Fill in:** for each intentional denormalization, explain why (performance, simplification).
+Without cross-schema foreign keys, consistency between services is **eventual**, not
+transactional. Two patterns cover the gap where it matters:
 
-### `migration-strategy.md`
-Strategy for migrating data between schema versions.
-**Fill in:** migration tool (Flyway, Liquibase, Alembic), rollback policy,
-how to handle migrations with data in production.
+- **Saga pattern** for multi-step flows that touch more than one service (e.g. approving a
+  payment, then crediting loyalty points) — a chain of compensating actions if a later step
+  fails.
+- **Outbox pattern** to guarantee an event is published if and only if the transaction that
+  triggered it actually committed.
 
----
+Today, `audit.audit_log` gives every service one shared place to record what changed and why;
+the Saga/Outbox implementation details for cross-service flows live in
+`05-architecture/pattern-guide.md`, not here.
 
 ## Correlations with other sections
 
-| This section is fed by... | And feeds into... |
-|---------------------------|-------------------|
-| `02-domain/entities-and-rules.md` → domain entities | DB tables |
-| `05-architecture/` → DB engine decisions | Engine choice in `models.md` |
-| `models.md` | `07-api/contracts/` → what data each service exposes |
-| `models.md` | `08-uml/` → ER diagrams |
-| `models.md` | `09-microservices/[service]/data-model.md` |
+| This section is fed by… | And feeds into… |
+|---|---|
+| `02-domain/entities-and-rules.md` — the domain entities | The tables in `models.md` |
+| `05-architecture/` — engine decisions per service | The `DB Engine` line in each service section of `models.md` |
+| `models.md` | `07-api/contracts/openapi/` — what each service exposes over its API |
+| `models.md` | `08-uml/` — the DBML ER diagrams (`00-full-model.dbml` and one file per service) |
+| `models.md` | `09-microservices/services/<service>/data-model.md` |
 
----
+## What this section answers
 
-## Important data decisions in microservices
-
-### SQL or NoSQL?
-There is no single answer. It depends on the service:
-- **SQL** (PostgreSQL, MySQL): relational data, ACID transactions, fixed schema
-- **Document** (MongoDB): hierarchical data, flexible schema, high variability
-- **Key-value** (Redis): cache, sessions, high-speed temporary data
-- **Time series** (InfluxDB, TimescaleDB): metrics, event logs
-
-### How to handle consistency between services?
-Without a shared database, consistency is **eventual**:
-- Saga Pattern: chain of compensating transactions
-- Outbox Pattern: guarantee that the event is published along with the transaction
-
----
-
-## Questions this section must answer
-
-- What data does each microservice handle?
-- Why was that database engine chosen for each service?
-- How is the schema updated without breaking the system?
-- Who is the "owner" of each piece of data in the system?
+- What data does each microservice own, and in which engine?
+- Why does a given table look the way it does — what would break if it were simpler?
+- How does the schema change without breaking a service that's already running?
+- Who is the "owner" of any given piece of data, and how does every other service reach it?

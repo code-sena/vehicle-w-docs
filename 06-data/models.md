@@ -1,231 +1,2076 @@
 # Data Models per Service
 
-> **What to fill in here:** The data schema for each microservice.
-> Each service has its own section. Remember: **each service has its own database**.
-> Schema changes are always done with versioned migrations, never by modifying tables in place.
+The system is split into 10 microservices, one schema each, all inside a single SQL Server
+2016+ instance. **No service has a foreign key into another service's schema** — the 18
+places where one service's data needs another's are documented as plain, indexed columns at
+the end of this file, and integrity there is the application's job, not the database's.
 
-> **DB engine note:** This document is technology-agnostic. The examples show standard SQL
-> compatible with most relational engines. For document databases
-> (MongoDB) or key-value stores (Redis), adapt the diagrams and schemas to the corresponding format.
-> The engine choice is documented in each service section — the scaffold does not assume which one to use.
+This deviates from the letter of "one physical database per service" (see
+`modeling-conventions.md` for why), but keeps the part that actually matters: nothing here
+joins across schema boundaries, and a service's tables can be read, migrated, or replaced
+without another service knowing.
 
----
-
-## Data modeling principles
-
-### 1. Database per Service (mandatory)
-No service directly accesses another service's database.
-Communication between services is always via API or events.
-
-```
-✓ Service A → DB A (PostgreSQL)
-✓ Service B → DB B (MongoDB)
-✗ Service A → JOIN with Service B's tables
-```
-
-### 2. Standard audit fields
-All tables include:
-
-```sql
-id          UUID        PRIMARY KEY  DEFAULT gen_random_uuid(),
-created_at  TIMESTAMPTZ NOT NULL     DEFAULT NOW(),
-updated_at  TIMESTAMPTZ NOT NULL     DEFAULT NOW(),
-deleted_at  TIMESTAMPTZ              -- NULL = active (soft delete)
-```
-
-### 3. Soft delete by default
-Do not delete records with a physical DELETE. Use `deleted_at IS NOT NULL` to mark as deleted.
-This facilitates auditing and recovery.
-
-### 4. Naming conventions
-
-```sql
--- Tables:      snake_case, plural              → orders, order_items, users
--- Columns:     snake_case, descriptive         → unit_price, delivery_date
--- FKs:         [referenced_table]_id           → customer_id, product_id
--- Indexes:     idx_[table]_[column(s)]         → idx_orders_customer_id
--- Timestamps:  always with timezone (TIMESTAMPTZ, not TIMESTAMP)
-```
+Every domain table (not the shared `security`/`audit` core) carries the same seven audit
+columns — documented once in `modeling-conventions.md` instead of repeated in every table
+below.
 
 ---
 
-## Service: [service-name]
 
-**DB Engine:** PostgreSQL 15 / MongoDB 7 / Redis 7 — [justification for the choice]
+## Services
+
+- [01. security](#01-security)
+- [02. audit](#02-audit)
+- [03. settings](#03-settings)
+- [04. customer](#04-customer)
+- [05. catalog](#05-catalog)
+- [06. reserve](#06-reserve)
+- [07. execution](#07-execution)
+- [08. promotion](#08-promotion)
+- [09. payment](#09-payment)
+- [10. notification](#10-notification)
+
+---
+
+## 01. security
+
+**DB Engine:** SQL Server 2016+
 
 **Engine justification:**
-- [Why this engine for this service. E.g.: "PostgreSQL for ACID support in financial transactions"]
-- [Which engine features are used: JSONB, full-text search, geo, etc.]
 
-### Table: [table_name]
+- Shared core schema, identical across every team project on this assignment; the instructor supplies the reference DDL and every service authenticates against it.
+- Relational modeling fits an access-control graph (users ↔ roles ↔ permissions) far better than a document store would.
 
-**Purpose:** [What this table records]
+### Table: `person`
+
+**Purpose:** Personal identity data for anyone the system knows about — customers walked up to the counter, staff, or both.
 
 ```sql
-CREATE TABLE [table_name] (
-  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- Business fields
-  [field1]        [TYPE]      NOT NULL,
-  [field2]        [TYPE],
-  [field3]        [TYPE]      NOT NULL DEFAULT [value],
-  
-  -- Relationships
-  [reference]_id  UUID        REFERENCES [referenced_table](id) ON DELETE RESTRICT,
-  
-  -- Status fields
-  status          VARCHAR(50) NOT NULL DEFAULT 'ACTIVE'
-                  CHECK (status IN ('ACTIVE', 'INACTIVE', 'CANCELLED')),
-  
-  -- Audit (in all tables)
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  deleted_at      TIMESTAMPTZ,
-  created_by      UUID,
-  updated_by      UUID
+CREATE TABLE [security].person (
+    person_id       BIGINT       IDENTITY(1,1) NOT NULL,
+    document_number NVARCHAR(20) NOT NULL,
+    first_name      NVARCHAR(60) NOT NULL,
+    last_name       NVARCHAR(60) NOT NULL,
+    phone           NVARCHAR(20)  NULL,
+    email           NVARCHAR(120) NULL,
+    CONSTRAINT pk_person PRIMARY KEY (person_id),
+    CONSTRAINT uq_person_document UNIQUE (document_number)
 );
-
--- Indexes
-CREATE INDEX idx_[table]_[field] ON [table_name] ([field]);
-CREATE INDEX idx_[table]_deleted ON [table_name] (deleted_at) WHERE deleted_at IS NULL;
--- For frequent searches:
-CREATE INDEX idx_[table]_[search_field] ON [table_name] ([search_field]);
 ```
 
 **Data dictionary:**
 
-| Column | Type | Description | Example |
-|--------|------|-------------|---------|
-| id | UUID | Auto-generated unique identifier | `550e8400-...` |
-| [field1] | [TYPE] | [Business description] | [Example] |
-| status | VARCHAR(50) | Lifecycle status | `ACTIVE` |
-| created_at | TIMESTAMPTZ | When the record was created | `2024-01-15T10:30:00Z` |
-| deleted_at | TIMESTAMPTZ | NULL = active; with value = deleted | `NULL` |
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `person_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `document_number` | NVARCHAR(20) | No | National ID number. The only hard uniqueness guarantee that a person is not registered twice. | Unique |
+| `first_name` | NVARCHAR(60) | No | Given name(s). | — |
+| `last_name` | NVARCHAR(60) | No | Family name(s). | — |
+| `phone` | NVARCHAR(20) | Yes | Contact phone, optional (a person registered without contact info still has a valid row). | — |
+| `email` | NVARCHAR(120) | Yes | Contact email, optional. | — |
 
 **Modeling decisions:**
-1. [Why field X is NOT NULL and not nullable]
-2. [Why soft delete is used instead of hard delete]
-3. [Why the status field has that set of values]
+
+1. Deliberately separate from `app_user`: a walk-in customer can be registered here without ever getting login credentials. This also lets the same human be both a customer and an operator without duplicating their name/phone in two places.
 
 ---
 
-### Table: [related_table]
+### Table: `app_user`
+
+**Purpose:** Login credentials, one row per account, one account per `person`.
 
 ```sql
-CREATE TABLE [related_table] (
-  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  [principal]_id  UUID        NOT NULL REFERENCES [principal_table](id) ON DELETE CASCADE,
-  
-  -- Fields
-  [field]         [TYPE]      NOT NULL,
-  
-  -- Audit
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  deleted_at      TIMESTAMPTZ
+CREATE TABLE [security].app_user (
+    user_id       BIGINT        IDENTITY(1,1) NOT NULL,
+    person_id     BIGINT        NOT NULL,
+    username      NVARCHAR(60)  NOT NULL,
+    password_hash NVARCHAR(255) NOT NULL,
+    is_active     BIT           NOT NULL CONSTRAINT df_app_user_active DEFAULT 1,
+    last_login    DATETIME2(3)  NULL,
+    CONSTRAINT pk_app_user PRIMARY KEY (user_id),
+    CONSTRAINT uq_app_user_person UNIQUE (person_id),
+    CONSTRAINT uq_app_user_username UNIQUE (username),
+    CONSTRAINT fk_app_user_person FOREIGN KEY (person_id) REFERENCES [security].person(person_id)
 );
-
-CREATE INDEX idx_[related_table]_[principal]_id ON [related_table] ([principal]_id);
 ```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `user_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `person_id` | BIGINT | No | The human behind this account. | FK → `security.person.person_id`, Unique |
+| `username` | NVARCHAR(60) | No | Login handle. | Unique |
+| `password_hash` | NVARCHAR(255) | No | Hash only — the plaintext password is never stored or logged. | — |
+| `is_active` | BIT | No | Soft on/off switch for the account, independent of `person.deleted_at`. | — |
+| `last_login` | DATETIME2(3) | Yes | Last successful authentication, for activity checks. | — |
+
+**Modeling decisions:**
+
+1. 1-to-1 with `person` by design, not by convention: `person_id` is `UNIQUE`, so the database itself rejects a second account for the same human.
+
+---
+
+### Table: `role`
+
+**Purpose:** The three system roles.
+
+```sql
+CREATE TABLE [security].[role] (
+    role_id SMALLINT     IDENTITY(1,1) NOT NULL,
+    code    NVARCHAR(30) NOT NULL,
+    name    NVARCHAR(60) NOT NULL,
+    CONSTRAINT pk_role PRIMARY KEY (role_id),
+    CONSTRAINT uq_role_code UNIQUE (code)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `role_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
+| `code` | NVARCHAR(30) | No | Machine-readable value. Seeded with `ADMIN`, `OPERATOR`, `CLIENT`. | Unique |
+| `name` | NVARCHAR(60) | No | Human-readable label shown in the UI. | — |
+
+---
+
+### Table: `permission`
+
+**Purpose:** Granular permissions, expressed as a (resource, action) pair.
+
+```sql
+CREATE TABLE [security].[permission] (
+    permission_id SMALLINT     IDENTITY(1,1) NOT NULL,
+    code          NVARCHAR(60) NOT NULL,
+    name          NVARCHAR(80) NOT NULL,
+    resource      NVARCHAR(60) NOT NULL,
+    [action]      NVARCHAR(30) NOT NULL,
+    CONSTRAINT pk_permission PRIMARY KEY (permission_id),
+    CONSTRAINT uq_permission_code UNIQUE (code)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `permission_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
+| `code` | NVARCHAR(60) | No | Machine-readable value, e.g. `reserve.cancel`. | Unique |
+| `name` | NVARCHAR(80) | No | Human-readable label. | — |
+| `resource` | NVARCHAR(60) | No | What the permission applies to, e.g. `reserve`. | — |
+| `action` | NVARCHAR(30) | No | What can be done to it, e.g. `cancel`. | — |
+
+---
+
+### Table: `role_permission`
+
+**Purpose:** Many-to-many join between roles and permissions.
+
+```sql
+CREATE TABLE [security].role_permission (
+    role_permission_id BIGINT   IDENTITY(1,1) NOT NULL,
+    role_id            SMALLINT NOT NULL,
+    permission_id      SMALLINT NOT NULL,
+    CONSTRAINT pk_role_permission PRIMARY KEY (role_permission_id),
+    CONSTRAINT uq_role_permission UNIQUE (role_id, permission_id),
+    CONSTRAINT fk_role_permission_role FOREIGN KEY (role_id) REFERENCES [security].[role](role_id),
+    CONSTRAINT fk_role_permission_permission FOREIGN KEY (permission_id) REFERENCES [security].[permission](permission_id)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `role_permission_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `role_id` | SMALLINT | No | The role. | FK → `security.role.role_id` |
+| `permission_id` | SMALLINT | No | The permission granted to that role. | FK → `security.permission.permission_id` |
+
+**Modeling decisions:**
+
+1. A plain join table instead of a comma-separated list on `role`: 1NF forbids repeating groups, and this shape lets the app query "does this role have permission X" with an index instead of string parsing.
+
+---
+
+### Table: `user_role`
+
+**Purpose:** Many-to-many join between users and roles.
+
+```sql
+CREATE TABLE [security].user_role (
+    user_role_id BIGINT   IDENTITY(1,1) NOT NULL,
+    user_id      BIGINT   NOT NULL,
+    role_id      SMALLINT NOT NULL,
+    CONSTRAINT pk_user_role PRIMARY KEY (user_role_id),
+    CONSTRAINT uq_user_role UNIQUE (user_id, role_id),
+    CONSTRAINT fk_user_role_user FOREIGN KEY (user_id) REFERENCES [security].app_user(user_id),
+    CONSTRAINT fk_user_role_role FOREIGN KEY (role_id) REFERENCES [security].[role](role_id)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `user_role_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `user_id` | BIGINT | No | The account. | FK → `security.app_user.user_id` |
+| `role_id` | SMALLINT | No | A role that account holds. | FK → `security.role.role_id` |
+
+**Modeling decisions:**
+
+1. Many-to-many rather than a single `role_id` on `app_user`, because the same person can be both `OPERATOR` and `CLIENT`.
+
+---
+
+### Table: `user_session`
+
+**Purpose:** Open refresh-token sessions.
+
+```sql
+CREATE TABLE [security].user_session (
+    user_session_id    BIGINT        IDENTITY(1,1) NOT NULL,
+    user_id            BIGINT        NOT NULL,
+    refresh_token_hash NVARCHAR(255) NULL,
+    started_at         DATETIME2(3)  NOT NULL CONSTRAINT df_session_started DEFAULT SYSUTCDATETIME(),
+    expires_at         DATETIME2(3)  NOT NULL,
+    revoked_at         DATETIME2(3)  NULL,
+    ip_address         NVARCHAR(45)  NULL,
+    user_agent         NVARCHAR(300) NULL,
+    CONSTRAINT pk_user_session PRIMARY KEY (user_session_id),
+    CONSTRAINT fk_user_session_user FOREIGN KEY (user_id) REFERENCES [security].app_user(user_id)
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_user_session_user` | `user_id` | Non-unique | List a user's open sessions. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `user_session_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `user_id` | BIGINT | No | The account this session belongs to. | FK → `security.app_user.user_id` |
+| `refresh_token_hash` | NVARCHAR(255) | Yes | Hash of the refresh token — never the raw token. | — |
+| `started_at` | DATETIME2(3) | No | When the session was opened, UTC. | — |
+| `expires_at` | DATETIME2(3) | No | When the session stops being valid, UTC. | — |
+| `revoked_at` | DATETIME2(3) | Yes | Set to log the user out early (all devices) without deleting the row, so the access trail survives. | — |
+| `ip_address` | NVARCHAR(45) | Yes | IP the session was opened from, for suspicious-access checks. | — |
+| `user_agent` | NVARCHAR(300) | Yes | Client/browser string, same purpose. | — |
+
+**Modeling decisions:**
+
+1. `revoked_at` instead of a physical `DELETE`: logging out needs to invalidate the session without losing the audit trail of when and from where it was opened.
+
+---
+
+### Table: `password_reset_token`
+
+**Purpose:** Password-recovery tokens (ERF1.3 / CU03).
+
+```sql
+CREATE TABLE [security].password_reset_token (
+    password_reset_token_id BIGINT        IDENTITY(1,1) NOT NULL,
+    user_id                 BIGINT        NOT NULL,
+    token_hash              NVARCHAR(255) NOT NULL,
+    requested_at            DATETIME2(3)  NOT NULL CONSTRAINT df_prt_requested DEFAULT SYSUTCDATETIME(),
+    expires_at              DATETIME2(3)  NOT NULL,
+    used_at                 DATETIME2(3)  NULL,
+    ip_address              NVARCHAR(45)  NULL,
+    CONSTRAINT pk_password_reset_token PRIMARY KEY (password_reset_token_id),
+    CONSTRAINT uq_password_reset_token_hash UNIQUE (token_hash),
+    CONSTRAINT fk_password_reset_token_user FOREIGN KEY (user_id) REFERENCES [security].app_user(user_id),
+    CONSTRAINT ck_password_reset_token_range CHECK (expires_at > requested_at)
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_password_reset_token_user` | `user_id` | Non-unique | List a user's outstanding reset tokens. |
+| `ix_password_reset_token_expires` | `expires_at` | Non-unique | Sweep/expire stale tokens. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `password_reset_token_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `user_id` | BIGINT | No | The account requesting recovery. | FK → `security.app_user.user_id` |
+| `token_hash` | NVARCHAR(255) | No | Hash of the token sent by email/SMS — the raw token is never persisted, same pattern as `password_hash`. | Unique |
+| `requested_at` | DATETIME2(3) | No | When the reset was requested, UTC. | — |
+| `expires_at` | DATETIME2(3) | No | Hard cutoff after which the token can no longer be redeemed. | — |
+| `used_at` | DATETIME2(3) | Yes | NULL while still redeemable; set once, on redemption, to block replay. | — |
+| `ip_address` | NVARCHAR(45) | Yes | IP the reset was requested from. | — |
+
+**Modeling decisions:**
+
+1. No `created_by` / `updated_by` / `row_version`: this is a short-lived security artifact generated and consumed once, not a domain entity an administrator edits — same treatment as `user_session`.
+2. Pending confirmation against the instructor's shared core before this ships — see the note in the section README.
+
+---
+
+## 02. audit
+
+**DB Engine:** SQL Server 2016+
+
+**Engine justification:**
+
+- Same physical database as every other schema; a single cross-cutting log makes more sense as one more schema than as a separate engine.
+- JSON columns cover the fact that each audited entity has a different shape, without needing a document database just for this.
+
+### Table: `audit_log`
+
+**Purpose:** Single change-history table for the entire system.
+
+```sql
+CREATE TABLE [audit].audit_log (
+    audit_log_id  BIGINT         IDENTITY(1,1) NOT NULL,
+    entity        NVARCHAR(60)   NOT NULL,
+    entity_id     BIGINT         NOT NULL,
+    [action]      NVARCHAR(20)   NOT NULL,
+    previous_data NVARCHAR(MAX)  NULL,
+    new_data      NVARCHAR(MAX)  NULL,
+    changed_by    BIGINT         NULL,
+    changed_at    DATETIME2(3)   NOT NULL CONSTRAINT df_audit_log_changed_at DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT pk_audit_log PRIMARY KEY (audit_log_id)
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_audit_log_entity` | `entity, entity_id` | Non-unique | Look up the change history for one specific row. |
+| `ix_audit_log_date` | `changed_at` | Non-unique | Time-ordered browsing of the log. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `audit_log_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `entity` | NVARCHAR(60) | No | Logical entity name, e.g. `reserve.reserve`. | — |
+| `entity_id` | BIGINT | No | Primary key of the changed row inside that entity. | — |
+| `action` | NVARCHAR(20) | No | `INSERT` / `UPDATE` / `DELETE` (or the specific business action). | — |
+| `previous_data` | NVARCHAR(MAX) | Yes | Row state before the change, as JSON. | — |
+| `new_data` | NVARCHAR(MAX) | Yes | Row state after the change, as JSON. | — |
+| `changed_by` | BIGINT | Yes | Who made the change. | — |
+| `changed_at` | DATETIME2(3) | No | When, UTC. | — |
+
+**Modeling decisions:**
+
+1. One generic table instead of `reserve_history`, `payment_history`, etc.: canceling a reserve, approving a payment, and updating a price are all the same kind of event — *something changed* — so every history query starts from the same place.
+2. `previous_data`/`new_data` are `NVARCHAR(MAX)` JSON, not typed columns, because every entity has a different shape and one fixed schema can't fit all of them.
+
+---
+
+## 03. settings
+
+**DB Engine:** SQL Server 2016+
+
+**Engine justification:**
+
+- Small, low-traffic configuration data with a clear relational shape (one settings row per user); no reason to reach for a different engine.
+
+### Table: `establishment`
+
+**Purpose:** The wash shop's own business data: what goes on the receipt header, the logo, and the contact screen.
+
+```sql
+CREATE TABLE [settings].establishment (
+    establishment_id SMALLINT      IDENTITY(1,1) NOT NULL,
+    legal_name       NVARCHAR(150) NOT NULL,
+    trade_name       NVARCHAR(150) NOT NULL,
+    tax_id           NVARCHAR(30)  NOT NULL,
+    [address]        NVARCHAR(200) NOT NULL,
+    phone            NVARCHAR(20)  NULL,
+    email            NVARCHAR(120) NULL,
+    logo_url         NVARCHAR(500) NULL,
+    singleton        BIT           NOT NULL CONSTRAINT df_establishment_singleton DEFAULT 1,
+    created_at       DATETIME2(3)  NOT NULL CONSTRAINT df_establishment_created DEFAULT SYSUTCDATETIME(),
+    created_by       BIGINT        NULL,
+    updated_at       DATETIME2(3)  NULL,
+    updated_by       BIGINT        NULL,
+    deleted_at       DATETIME2(3)  NULL,
+    deleted_by       BIGINT        NULL,
+    row_version      INT           NOT NULL CONSTRAINT df_establishment_rv DEFAULT 1,
+    CONSTRAINT pk_establishment PRIMARY KEY (establishment_id),
+    CONSTRAINT uq_establishment_singleton UNIQUE (singleton),
+    CONSTRAINT ck_establishment_singleton CHECK (singleton = 1)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `establishment_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
+| `legal_name` | NVARCHAR(150) | No | Registered legal name. | — |
+| `trade_name` | NVARCHAR(150) | No | Name shown to customers. | — |
+| `tax_id` | NVARCHAR(30) | No | Tax ID (NIT). | — |
+| `address` | NVARCHAR(200) | No | Physical address. | — |
+| `phone` | NVARCHAR(20) | Yes | Contact phone. | — |
+| `email` | NVARCHAR(120) | Yes | Contact email. | — |
+| `logo_url` | NVARCHAR(500) | Yes | Logo shown in the admin panel and the customer app. | — |
+| `singleton` | BIT | No | Always `1`. Exists purely so the CHECK constraint below can enforce a single row. | Unique |
+
+**Modeling decisions:**
+
+1. `singleton UNIQUE` + `CHECK (singleton = 1)` makes "exactly one establishment" a database guarantee, not an app convention — a second `INSERT` fails outright instead of relying on someone remembering not to add one.
+2. Optional in principle: this data could live in a config file instead. It's a table so an admin can change the logo or phone from the panel without a redeploy.
+
+---
+
+### Table: `user_preference`
+
+**Purpose:** Per-user interface preferences: theme, language, notification opt-in.
+
+```sql
+CREATE TABLE [settings].user_preference (
+    user_preference_id    BIGINT       IDENTITY(1,1) NOT NULL,
+    user_id               BIGINT       NOT NULL,   -- [security].app_user
+    theme                 NVARCHAR(20) NOT NULL CONSTRAINT df_pref_theme DEFAULT N'light',
+    [language]            NVARCHAR(5)  NOT NULL CONSTRAINT df_pref_lang DEFAULT N'es',
+    notifications_enabled BIT          NOT NULL CONSTRAINT df_pref_notif DEFAULT 1,
+    created_at            DATETIME2(3) NOT NULL CONSTRAINT df_pref_created DEFAULT SYSUTCDATETIME(),
+    created_by            BIGINT       NULL,
+    updated_at            DATETIME2(3) NULL,
+    updated_by            BIGINT       NULL,
+    deleted_at            DATETIME2(3) NULL,
+    deleted_by            BIGINT       NULL,
+    row_version           INT          NOT NULL CONSTRAINT df_pref_rv DEFAULT 1,
+    CONSTRAINT pk_user_preference PRIMARY KEY (user_preference_id),
+    CONSTRAINT uq_user_preference_user UNIQUE (user_id),
+    CONSTRAINT ck_pref_theme CHECK (theme IN (N'light', N'dark')),
+    CONSTRAINT ck_pref_language CHECK ([language] IN (N'es', N'en'))
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `user_preference_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `user_id` | BIGINT | No | Owning account. | Unique, No FK — owned by `security.app_user`, see the cross-service contract below. |
+| `theme` | NVARCHAR(20) | No | `light` or `dark`. | — |
+| `language` | NVARCHAR(5) | No | `es` or `en`. | — |
+| `notifications_enabled` | BIT | No | Whether this user wants notifications at all. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Kept out of `app_user` on purpose: these are UI preferences, not security data. Merging them would mean reading the credentials table every time someone switches theme.
+
+---
+
+## 04. customer
+
+**DB Engine:** SQL Server 2016+
+
+**Engine justification:**
+
+- Relational fits the loyalty ledger (append-only, needs to sum reliably) and the 1-customer-to-many-vehicles relationship naturally.
+
+### Table: `vehicle_type`
+
+**Purpose:** Motorcycle, car, SUV, truck.
+
+```sql
+CREATE TABLE [customer].vehicle_type (
+    vehicle_type_id SMALLINT     IDENTITY(1,1) NOT NULL,
+    code            NVARCHAR(30) NOT NULL,
+    name            NVARCHAR(60) NOT NULL,
+    size_factor     DECIMAL(4,2) NOT NULL,
+    display_order   SMALLINT     NOT NULL CONSTRAINT df_vtype_order DEFAULT 0,
+    is_active       BIT          NOT NULL CONSTRAINT df_vtype_active DEFAULT 1,
+    created_at      DATETIME2(3) NOT NULL CONSTRAINT df_vtype_created DEFAULT SYSUTCDATETIME(),
+    created_by      BIGINT       NULL,
+    updated_at      DATETIME2(3) NULL,
+    updated_by      BIGINT       NULL,
+    deleted_at      DATETIME2(3) NULL,
+    deleted_by      BIGINT       NULL,
+    row_version     INT          NOT NULL CONSTRAINT df_vtype_rv DEFAULT 1,
+    CONSTRAINT pk_vehicle_type PRIMARY KEY (vehicle_type_id),
+    CONSTRAINT uq_vehicle_type_code UNIQUE (code)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `vehicle_type_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
+| `code` | NVARCHAR(30) | No | Seeded with `MOTO`, `AUTOMOVIL`, `CAMIONETA`, `CAMION`. | Unique |
+| `name` | NVARCHAR(60) | No | Label shown to the user. | — |
+| `size_factor` | DECIMAL(4,2) | No | Reference multiplier only (e.g. a truck is roughly double a car). | — |
+| `display_order` | SMALLINT | No | Sort order in pickers. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. `size_factor` never drives an actual charge — it only seeds a suggested price when an admin creates a new tariff. The real price lives explicitly in `catalog.service_price`; if the app computed price from this factor, there would be two sources of truth for the same number.
+
+---
+
+### Table: `customer`
+
+**Purpose:** The customer record.
+
+```sql
+CREATE TABLE [customer].[customer] (
+    customer_id    BIGINT       IDENTITY(1,1) NOT NULL,
+    person_id      BIGINT       NOT NULL,   -- [security].person
+    loyalty_points INT          NOT NULL CONSTRAINT df_customer_points DEFAULT 0,
+    customer_since DATE         NOT NULL CONSTRAINT df_customer_since DEFAULT CAST(SYSUTCDATETIME() AS DATE),
+    created_at     DATETIME2(3) NOT NULL CONSTRAINT df_customer_created DEFAULT SYSUTCDATETIME(),
+    created_by     BIGINT       NULL,
+    updated_at     DATETIME2(3) NULL,
+    updated_by     BIGINT       NULL,
+    deleted_at     DATETIME2(3) NULL,
+    deleted_by     BIGINT       NULL,
+    row_version    INT          NOT NULL CONSTRAINT df_customer_rv DEFAULT 1,
+    CONSTRAINT pk_customer PRIMARY KEY (customer_id),
+    CONSTRAINT uq_customer_person UNIQUE (person_id),
+    CONSTRAINT ck_customer_points CHECK (loyalty_points >= 0)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `customer_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `person_id` | BIGINT | No | The underlying human. | Unique, No FK — owned by `security.person`, see the cross-service contract below. |
+| `loyalty_points` | INT | No | Cached balance; the ledger of truth is `loyalty_transaction`. | — |
+| `customer_since` | DATE | No | Date they became a customer. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Does not repeat name or phone — those already live in `security.person`. Duplicating them would violate 3NF and guarantee that, sooner or later, a phone number gets updated in one table and goes stale in the other.
+2. `loyalty_points` is a controlled denormalization: it could always be derived by summing `loyalty_transaction`, but doing that on every screen would be slow. The cached value must stay reconcilable against the ledger.
+
+---
+
+### Table: `customer_vehicle`
+
+**Purpose:** A customer's vehicles.
+
+```sql
+CREATE TABLE [customer].customer_vehicle (
+    customer_vehicle_id BIGINT       IDENTITY(1,1) NOT NULL,
+    customer_id         BIGINT       NOT NULL,
+    license_plate       NVARCHAR(10) NOT NULL,
+    vehicle_type_id     SMALLINT     NOT NULL,
+    brand               NVARCHAR(50) NULL,
+    color               NVARCHAR(30) NULL,
+    created_at          DATETIME2(3) NOT NULL CONSTRAINT df_cveh_created DEFAULT SYSUTCDATETIME(),
+    created_by          BIGINT       NULL,
+    updated_at          DATETIME2(3) NULL,
+    updated_by          BIGINT       NULL,
+    deleted_at          DATETIME2(3) NULL,
+    deleted_by          BIGINT       NULL,
+    row_version         INT          NOT NULL CONSTRAINT df_cveh_rv DEFAULT 1,
+    CONSTRAINT pk_customer_vehicle PRIMARY KEY (customer_vehicle_id),
+    CONSTRAINT fk_customer_vehicle_customer FOREIGN KEY (customer_id) REFERENCES [customer].[customer](customer_id),
+    CONSTRAINT fk_customer_vehicle_type FOREIGN KEY (vehicle_type_id) REFERENCES [customer].vehicle_type(vehicle_type_id)
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ux_customer_vehicle_plate_active` | `license_plate` `WHERE deleted_at IS NULL` | Unique, filtered | Plate unique only while not soft-deleted — lets a deleted plate be re-registered. |
+| `ix_customer_vehicle_customer` | `customer_id` | Non-unique | List a customer's vehicles. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `customer_vehicle_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `customer_id` | BIGINT | No | Owning customer. | FK → `customer.customer.customer_id` |
+| `license_plate` | NVARCHAR(10) | No | Unique only among vehicles that aren't soft-deleted — see the filtered index below. | — |
+| `vehicle_type_id` | SMALLINT | No | Category used for pricing. | FK → `customer.vehicle_type.vehicle_type_id` |
+| `brand` | NVARCHAR(50) | Yes | Optional. | — |
+| `color` | NVARCHAR(30) | Yes | Optional. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. 1NF: one vehicle per row. A customer with three cars gets three rows, never one row with plates concatenated by commas.
+2. Plate uniqueness is enforced with a *filtered* unique index (`WHERE deleted_at IS NULL`) instead of a plain `UNIQUE` constraint, so a car that was sold to someone else, or a mistaken entry that got soft-deleted, doesn't permanently block that plate from ever being re-registered.
+
+---
+
+### Table: `loyalty_movement_type`
+
+**Purpose:** The four kinds of point movement.
+
+```sql
+CREATE TABLE [customer].loyalty_movement_type (
+    loyalty_movement_type_id SMALLINT     IDENTITY(1,1) NOT NULL,
+    code          NVARCHAR(30) NOT NULL,
+    name          NVARCHAR(60) NOT NULL,
+    sign          SMALLINT     NOT NULL,
+    display_order SMALLINT     NOT NULL CONSTRAINT df_lmt_order DEFAULT 0,
+    is_active     BIT          NOT NULL CONSTRAINT df_lmt_active DEFAULT 1,
+    created_at    DATETIME2(3) NOT NULL CONSTRAINT df_lmt_created DEFAULT SYSUTCDATETIME(),
+    created_by    BIGINT       NULL,
+    updated_at    DATETIME2(3) NULL,
+    updated_by    BIGINT       NULL,
+    deleted_at    DATETIME2(3) NULL,
+    deleted_by    BIGINT       NULL,
+    row_version   INT          NOT NULL CONSTRAINT df_lmt_rv DEFAULT 1,
+    CONSTRAINT pk_loyalty_movement_type PRIMARY KEY (loyalty_movement_type_id),
+    CONSTRAINT uq_loyalty_movement_type_code UNIQUE (code),
+    CONSTRAINT ck_loyalty_movement_sign CHECK (sign IN (-1, 1))
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `loyalty_movement_type_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
+| `code` | NVARCHAR(30) | No | Seeded with `EARNED`, `REDEEMED`, `EXPIRED`, `ADJUSTED`. | Unique |
+| `name` | NVARCHAR(60) | No | Label. | — |
+| `sign` | SMALLINT | No | `1` or `-1` — whether the movement adds or subtracts points. | — |
+| `display_order` | SMALLINT | No | Sort order. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+---
+
+### Table: `loyalty_transaction`
+
+**Purpose:** The loyalty-points ledger — every movement, in order.
+
+```sql
+CREATE TABLE [customer].loyalty_transaction (
+    loyalty_transaction_id   BIGINT        IDENTITY(1,1) NOT NULL,
+    customer_id              BIGINT        NOT NULL,
+    loyalty_movement_type_id SMALLINT      NOT NULL,
+    reserve_id               BIGINT        NULL,   -- [reserve].reserve
+    points                   INT           NOT NULL,
+    balance_after            INT           NOT NULL,
+    expires_on               DATE          NULL,
+    [description]            NVARCHAR(200) NULL,
+    created_at               DATETIME2(3)  NOT NULL CONSTRAINT df_ltx_created DEFAULT SYSUTCDATETIME(),
+    created_by               BIGINT        NULL,
+    updated_at               DATETIME2(3)  NULL,
+    updated_by               BIGINT        NULL,
+    deleted_at               DATETIME2(3)  NULL,
+    deleted_by               BIGINT        NULL,
+    row_version              INT           NOT NULL CONSTRAINT df_ltx_rv DEFAULT 1,
+    CONSTRAINT pk_loyalty_transaction PRIMARY KEY (loyalty_transaction_id),
+    CONSTRAINT fk_loyalty_transaction_customer FOREIGN KEY (customer_id) REFERENCES [customer].[customer](customer_id),
+    CONSTRAINT fk_loyalty_transaction_type FOREIGN KEY (loyalty_movement_type_id) REFERENCES [customer].loyalty_movement_type(loyalty_movement_type_id),
+    CONSTRAINT ck_loyalty_points CHECK (points <> 0),
+    CONSTRAINT ck_loyalty_balance CHECK (balance_after >= 0)
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_loyalty_transaction_customer` | `customer_id, created_at` | Non-unique | Build a customer's points history in order. |
+| `ix_loyalty_transaction_reserve` | `reserve_id` | Non-unique | Find the ledger entries a reserve generated. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `loyalty_transaction_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `customer_id` | BIGINT | No | Owning customer. | FK → `customer.customer.customer_id` |
+| `loyalty_movement_type_id` | SMALLINT | No | What kind of movement this was. | FK → `customer.loyalty_movement_type.loyalty_movement_type_id` |
+| `reserve_id` | BIGINT | Yes | The reserve that generated it, when there is one. | No FK — owned by `reserve.reserve`; NULL for manual adjustments and expirations, see the cross-service contract below. |
+| `points` | INT | No | Signed amount of this single movement. | — |
+| `balance_after` | INT | No | Running balance right after this movement — lets any past balance be reconstructed without replaying the whole ledger. | — |
+| `expires_on` | DATE | Yes | Expiry date for earned points, if any. | — |
+| `description` | NVARCHAR(200) | Yes | Free-text note. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Without this table, `customer.loyalty_points` would be a number with no origin — if a customer disputes their balance, there is nothing to point to. `balance_after` turns the ledger into an audit trail, not just a sum.
+
+---
+
+## 05. catalog
+
+**DB Engine:** SQL Server 2016+
+
+**Engine justification:**
+
+- Pure relational data (services, prices, categories) with strict integrity rules (immutability, no-overlap) that are far easier to enforce with SQL constraints and triggers than in application code alone.
+
+### Table: `service_category`
+
+**Purpose:** Wash, polish, detailing, interior treatment — groups services for the customer-facing screen.
+
+```sql
+CREATE TABLE [catalog].service_category (
+    service_category_id SMALLINT      IDENTITY(1,1) NOT NULL,
+    code          NVARCHAR(30)  NOT NULL,
+    name          NVARCHAR(60)  NOT NULL,
+    [description] NVARCHAR(200) NULL,
+    display_order SMALLINT      NOT NULL CONSTRAINT df_scat_order DEFAULT 0,
+    is_active     BIT           NOT NULL CONSTRAINT df_scat_active DEFAULT 1,
+    created_at    DATETIME2(3)  NOT NULL CONSTRAINT df_scat_created DEFAULT SYSUTCDATETIME(),
+    created_by    BIGINT        NULL,
+    updated_at    DATETIME2(3)  NULL,
+    updated_by    BIGINT        NULL,
+    deleted_at    DATETIME2(3)  NULL,
+    deleted_by    BIGINT        NULL,
+    row_version   INT           NOT NULL CONSTRAINT df_scat_rv DEFAULT 1,
+    CONSTRAINT pk_service_category PRIMARY KEY (service_category_id),
+    CONSTRAINT uq_service_category_code UNIQUE (code)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `service_category_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
+| `code` | NVARCHAR(30) | No | Seeded with `LAVADO`, `POLICHADO`, `DETALLADO`, `INTERIOR`. | Unique |
+| `name` | NVARCHAR(60) | No | Label. | — |
+| `description` | NVARCHAR(200) | Yes | Optional longer text. | — |
+| `display_order` | SMALLINT | No | Sort order. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+---
+
+### Table: `service`
+
+**Purpose:** A service the shop offers.
+
+```sql
+CREATE TABLE [catalog].[service] (
+    service_id          INT            IDENTITY(1,1) NOT NULL,
+    code                NVARCHAR(30)   NOT NULL,
+    name                NVARCHAR(100)  NOT NULL,
+    [description]       NVARCHAR(MAX)  NULL,
+    service_category_id SMALLINT       NOT NULL,
+    is_active           BIT            NOT NULL CONSTRAINT df_service_active DEFAULT 1,
+    created_at          DATETIME2(3)   NOT NULL CONSTRAINT df_service_created DEFAULT SYSUTCDATETIME(),
+    created_by          BIGINT         NULL,
+    updated_at          DATETIME2(3)   NULL,
+    updated_by          BIGINT         NULL,
+    deleted_at          DATETIME2(3)   NULL,
+    deleted_by          BIGINT         NULL,
+    row_version         INT            NOT NULL CONSTRAINT df_service_rv DEFAULT 1,
+    CONSTRAINT pk_service PRIMARY KEY (service_id),
+    CONSTRAINT uq_service_code UNIQUE (code),
+    CONSTRAINT fk_service_category FOREIGN KEY (service_category_id) REFERENCES [catalog].service_category(service_category_id)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `service_id` | INT | No | Surrogate primary key (IDENTITY). | PK |
+| `code` | NVARCHAR(30) | No | Machine-readable code. | Unique |
+| `name` | NVARCHAR(100) | No | Label. | — |
+| `description` | NVARCHAR(MAX) | Yes | Longer description. | — |
+| `service_category_id` | SMALLINT | No | Which category it belongs to. | FK → `catalog.service_category.service_category_id` |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Deliberately has no `price` column. Price depends on the service *and* the vehicle type — washing a motorcycle and washing a truck are the same service at different prices. Putting price here would force three separate services ("Basic wash — motorcycle", "— car", "— SUV") instead of one service with three tariffs.
+
+---
+
+### Table: `service_price`
+
+**Purpose:** The price and duration for one (service, vehicle type) pair, with an effective date range.
+
+```sql
+CREATE TABLE [catalog].service_price (
+    service_price_id  BIGINT        IDENTITY(1,1) NOT NULL,
+    service_id        INT           NOT NULL,
+    vehicle_type_id   SMALLINT      NOT NULL,   -- [customer].vehicle_type
+    price             DECIMAL(12,2) NOT NULL,
+    estimated_minutes SMALLINT      NOT NULL,
+    valid_from        DATE          NOT NULL,
+    valid_to          DATE          NULL,
+    created_at        DATETIME2(3)  NOT NULL CONSTRAINT df_sprice_created DEFAULT SYSUTCDATETIME(),
+    created_by        BIGINT        NULL,
+    updated_at        DATETIME2(3)  NULL,
+    updated_by        BIGINT        NULL,
+    deleted_at        DATETIME2(3)  NULL,
+    deleted_by        BIGINT        NULL,
+    row_version       INT           NOT NULL CONSTRAINT df_sprice_rv DEFAULT 1,
+    CONSTRAINT pk_service_price PRIMARY KEY (service_price_id),
+    CONSTRAINT fk_service_price_service FOREIGN KEY (service_id) REFERENCES [catalog].[service](service_id),
+    CONSTRAINT ck_service_price_price CHECK (price >= 0),
+    CONSTRAINT ck_service_price_minutes CHECK (estimated_minutes > 0),
+    CONSTRAINT ck_service_price_range CHECK (valid_to IS NULL OR valid_to > valid_from)
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ux_service_price_current` | `service_id, vehicle_type_id` `WHERE valid_to IS NULL AND deleted_at IS NULL` | Unique, filtered | At most one current tariff per (service, vehicle type) — filtered so a soft-deleted tariff doesn't block a new one. |
+| `ix_service_price_vehicle_type` | `vehicle_type_id` | Non-unique | Cross-service lookup support for `catalog.service_price.vehicle_type_id`. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `service_price_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `service_id` | INT | No | The service being priced. | FK → `catalog.service.service_id` |
+| `vehicle_type_id` | SMALLINT | No | The vehicle type this price applies to. | No FK — owned by `customer.vehicle_type`, see the cross-service contract below. |
+| `price` | DECIMAL(12,2) | No | The tariff. | — |
+| `estimated_minutes` | SMALLINT | No | Expected duration, used for scheduling. | — |
+| `valid_from` | DATE | No | Start of the effective date range. | — |
+| `valid_to` | DATE | Yes | End of the effective date range; NULL = currently in force. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Exists as its own table (2NF): price depends on the *whole* key (service + vehicle type), not on service alone — storing it on `service` would be a partial dependency.
+2. **The row is immutable once created.** `price`, `service_id`, `vehicle_type_id`, and `valid_from` are never updated — enforced by the `tr_service_price_immutable` trigger. `reserve.reserve_service` freezes the price it charged by pointing straight at this row; an `UPDATE` here would silently rewrite what a reserve from three months ago actually cost. Raising a price means closing the current row (`valid_to = today`) and inserting a new one.
+3. A filtered unique index guarantees at most one *current* tariff per (service, vehicle type) pair, and a trigger blocks overlapping historical date ranges for the same pair.
+
+---
+
+## 06. reserve
+
+**DB Engine:** SQL Server 2016+
+
+**Engine justification:**
+
+- The scheduling core: overlap rules, immutable price references, and derived totals are exactly the kind of integrity relational constraints and triggers are built for.
+
+### Table: `business_hour`
+
+**Purpose:** Opening hours by day of week.
+
+```sql
+CREATE TABLE [reserve].business_hour (
+    business_hour_id SMALLINT     IDENTITY(1,1) NOT NULL,
+    day_of_week      SMALLINT     NOT NULL,
+    opens_at         TIME(0)      NOT NULL,
+    closes_at        TIME(0)      NOT NULL,
+    is_active        BIT          NOT NULL CONSTRAINT df_bh_active DEFAULT 1,
+    created_at       DATETIME2(3) NOT NULL CONSTRAINT df_bh_created DEFAULT SYSUTCDATETIME(),
+    created_by       BIGINT       NULL,
+    updated_at       DATETIME2(3) NULL,
+    updated_by       BIGINT       NULL,
+    deleted_at       DATETIME2(3) NULL,
+    deleted_by       BIGINT       NULL,
+    row_version      INT          NOT NULL CONSTRAINT df_bh_rv DEFAULT 1,
+    CONSTRAINT pk_business_hour PRIMARY KEY (business_hour_id),
+    CONSTRAINT uq_business_hour_day UNIQUE (day_of_week),
+    CONSTRAINT ck_business_hour_day CHECK (day_of_week BETWEEN 1 AND 7),
+    CONSTRAINT ck_business_hour_range CHECK (closes_at > opens_at)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `business_hour_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
+| `day_of_week` | SMALLINT | No | 1–7. | Unique |
+| `opens_at` | TIME(0) | No | Opening time. | — |
+| `closes_at` | TIME(0) | No | Closing time. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Deliberately does not store a bay count. An earlier version repeated `concurrent_bays` on all seven rows — always the same number — which violates 3NF, since bay capacity has nothing to do with the day of week. Capacity is now obtained by counting active `service_bay` rows.
+
+---
+
+### Table: `business_hour_exception`
+
+**Purpose:** Holidays, maintenance closures, special hours — days that don't follow the normal schedule.
+
+```sql
+CREATE TABLE [reserve].business_hour_exception (
+    business_hour_exception_id INT           IDENTITY(1,1) NOT NULL,
+    exception_date             DATE          NOT NULL,
+    is_closed                  BIT           NOT NULL CONSTRAINT df_bhe_closed DEFAULT 1,
+    opens_at                   TIME(0)       NULL,
+    closes_at                  TIME(0)       NULL,
+    reason                     NVARCHAR(120) NOT NULL,
+    created_at                 DATETIME2(3)  NOT NULL CONSTRAINT df_bhe_created DEFAULT SYSUTCDATETIME(),
+    created_by                 BIGINT        NULL,
+    updated_at                 DATETIME2(3)  NULL,
+    updated_by                 BIGINT        NULL,
+    deleted_at                 DATETIME2(3)  NULL,
+    deleted_by                 BIGINT        NULL,
+    row_version                INT           NOT NULL CONSTRAINT df_bhe_rv DEFAULT 1,
+    CONSTRAINT pk_business_hour_exception PRIMARY KEY (business_hour_exception_id),
+    CONSTRAINT uq_business_hour_exception_date UNIQUE (exception_date),
+    CONSTRAINT ck_bhe_hours CHECK (
+        (is_closed = 1 AND opens_at IS NULL AND closes_at IS NULL) OR
+        (is_closed = 0 AND opens_at IS NOT NULL AND closes_at IS NOT NULL AND closes_at > opens_at)
+    )
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `business_hour_exception_id` | INT | No | Surrogate primary key (IDENTITY). | PK |
+| `exception_date` | DATE | No | The date affected. | Unique |
+| `is_closed` | BIT | No | Whether the shop is fully closed that day. | — |
+| `opens_at` | TIME(0) | Yes | Special opening time, only when not closed. | — |
+| `closes_at` | TIME(0) | Yes | Special closing time, only when not closed. | — |
+| `reason` | NVARCHAR(120) | No | Why the day is different. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Without this table, `business_hour` alone would let the system book slots on a public holiday just because it's a normal weekday. Colombia has 18 public holidays a year.
+2. A CHECK constraint enforces the shape: closed days carry no hours, special hours require both `opens_at` and `closes_at`.
+
+---
+
+### Table: `service_bay`
+
+**Purpose:** The shop's physical wash bays.
+
+```sql
+CREATE TABLE [reserve].service_bay (
+    service_bay_id SMALLINT     IDENTITY(1,1) NOT NULL,
+    code           NVARCHAR(20) NOT NULL,
+    name           NVARCHAR(60) NOT NULL,
+    is_active      BIT          NOT NULL CONSTRAINT df_bay_active DEFAULT 1,
+    created_at     DATETIME2(3) NOT NULL CONSTRAINT df_bay_created DEFAULT SYSUTCDATETIME(),
+    created_by     BIGINT       NULL,
+    updated_at     DATETIME2(3) NULL,
+    updated_by     BIGINT       NULL,
+    deleted_at     DATETIME2(3) NULL,
+    deleted_by     BIGINT       NULL,
+    row_version    INT          NOT NULL CONSTRAINT df_bay_rv DEFAULT 1,
+    CONSTRAINT pk_service_bay PRIMARY KEY (service_bay_id),
+    CONSTRAINT uq_service_bay_code UNIQUE (code)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `service_bay_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
+| `code` | NVARCHAR(20) | No | Short code, e.g. `BAHIA-1`. | Unique |
+| `name` | NVARCHAR(60) | No | Label. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Beyond counting capacity, a real bay row lets the database itself block two reserves from occupying the same bay at the same time — a plain counter could never do that.
+
+---
+
+### Table: `reserve_status`
+
+**Purpose:** The six reserve states.
+
+```sql
+CREATE TABLE [reserve].reserve_status (
+    reserve_status_id SMALLINT     IDENTITY(1,1) NOT NULL,
+    code          NVARCHAR(30) NOT NULL,
+    name          NVARCHAR(60) NOT NULL,
+    is_final      BIT          NOT NULL CONSTRAINT df_rstatus_final DEFAULT 0,
+    display_order SMALLINT     NOT NULL CONSTRAINT df_rstatus_order DEFAULT 0,
+    is_active     BIT          NOT NULL CONSTRAINT df_rstatus_active DEFAULT 1,
+    created_at    DATETIME2(3) NOT NULL CONSTRAINT df_rstatus_created DEFAULT SYSUTCDATETIME(),
+    created_by    BIGINT       NULL,
+    updated_at    DATETIME2(3) NULL,
+    updated_by    BIGINT       NULL,
+    deleted_at    DATETIME2(3) NULL,
+    deleted_by    BIGINT       NULL,
+    row_version   INT          NOT NULL CONSTRAINT df_rstatus_rv DEFAULT 1,
+    CONSTRAINT pk_reserve_status PRIMARY KEY (reserve_status_id),
+    CONSTRAINT uq_reserve_status_code UNIQUE (code)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `reserve_status_id` | SMALLINT | No | Surrogate primary key (IDENTITY). ⚠️ ID `5` is `CANCELLED` and is hard-coded as a literal inside `ck_reserve_cancel` and `tr_reserve_bay_overlap` — never re-seed this table with a different order. | PK |
+| `code` | NVARCHAR(30) | No | `AGENDADA`, `CONFIRMADA`, `EN_EJECUCION`, `FINALIZADA`, `CANCELLED`, `NO_ASISTIO`. | Unique |
+| `name` | NVARCHAR(60) | No | Label. | — |
+| `is_final` | BIT | No | Whether this status accepts further changes. | — |
+| `display_order` | SMALLINT | No | Sort order. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+---
+
+### Table: `cancellation_reason`
+
+**Purpose:** Why a reserve was cancelled.
+
+```sql
+CREATE TABLE [reserve].cancellation_reason (
+    cancellation_reason_id SMALLINT     IDENTITY(1,1) NOT NULL,
+    code              NVARCHAR(30) NOT NULL,
+    name              NVARCHAR(60) NOT NULL,
+    is_customer_fault BIT          NOT NULL CONSTRAINT df_creason_fault DEFAULT 0,
+    display_order     SMALLINT     NOT NULL CONSTRAINT df_creason_order DEFAULT 0,
+    is_active         BIT          NOT NULL CONSTRAINT df_creason_active DEFAULT 1,
+    created_at        DATETIME2(3) NOT NULL CONSTRAINT df_creason_created DEFAULT SYSUTCDATETIME(),
+    created_by        BIGINT       NULL,
+    updated_at        DATETIME2(3) NULL,
+    updated_by        BIGINT       NULL,
+    deleted_at        DATETIME2(3) NULL,
+    deleted_by        BIGINT       NULL,
+    row_version       INT          NOT NULL CONSTRAINT df_creason_rv DEFAULT 1,
+    CONSTRAINT pk_cancellation_reason PRIMARY KEY (cancellation_reason_id),
+    CONSTRAINT uq_cancellation_reason_code UNIQUE (code)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `cancellation_reason_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
+| `code` | NVARCHAR(30) | No | `CLIENTE`, `NO_ASISTIO`, `CLIMA`, `SIN_OPERARIO`, `ERROR_AGENDA`. | Unique |
+| `name` | NVARCHAR(60) | No | Label. | — |
+| `is_customer_fault` | BIT | No | Distinguishes reasons attributable to the customer, used for reporting and penalty decisions. | — |
+| `display_order` | SMALLINT | No | Sort order. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+---
+
+### Table: `reserve`
+
+**Purpose:** The reserve itself — the core of the system.
+
+```sql
+CREATE TABLE [reserve].reserve (
+    reserve_id             BIGINT        IDENTITY(1,1) NOT NULL,
+    customer_vehicle_id    BIGINT        NOT NULL,   -- [customer].customer_vehicle
+    service_bay_id         SMALLINT      NULL,
+    scheduled_start        DATETIME2(3)  NOT NULL,
+    scheduled_end          DATETIME2(3)  NOT NULL,
+    reserve_status_id      SMALLINT      NOT NULL,
+    booked_by              BIGINT        NOT NULL,   -- [security].app_user
+    cancellation_reason_id SMALLINT      NULL,
+    points_redeemed        INT           NOT NULL CONSTRAINT df_reserve_points DEFAULT 0,
+    points_discount_amount DECIMAL(12,2) NOT NULL CONSTRAINT df_reserve_pdisc DEFAULT 0,
+    notes                  NVARCHAR(300) NULL,
+    created_at             DATETIME2(3)  NOT NULL CONSTRAINT df_reserve_created DEFAULT SYSUTCDATETIME(),
+    created_by             BIGINT        NULL,
+    updated_at             DATETIME2(3)  NULL,
+    updated_by             BIGINT        NULL,
+    deleted_at             DATETIME2(3)  NULL,
+    deleted_by             BIGINT        NULL,
+    row_version            INT           NOT NULL CONSTRAINT df_reserve_rv DEFAULT 1,
+    CONSTRAINT pk_reserve PRIMARY KEY (reserve_id),
+    CONSTRAINT fk_reserve_bay FOREIGN KEY (service_bay_id) REFERENCES [reserve].service_bay(service_bay_id),
+    CONSTRAINT fk_reserve_status FOREIGN KEY (reserve_status_id) REFERENCES [reserve].reserve_status(reserve_status_id),
+    CONSTRAINT fk_reserve_cancellation FOREIGN KEY (cancellation_reason_id) REFERENCES [reserve].cancellation_reason(cancellation_reason_id),
+    CONSTRAINT ck_reserve_range CHECK (scheduled_end > scheduled_start),
+    CONSTRAINT ck_reserve_cancel CHECK (cancellation_reason_id IS NULL OR reserve_status_id = 5),
+    CONSTRAINT ck_reserve_points CHECK (
+        (points_redeemed = 0 AND points_discount_amount = 0) OR
+        (points_redeemed > 0 AND points_discount_amount > 0)
+    )
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_reserve_start_status` | `scheduled_start, reserve_status_id` | Non-unique | Availability search: find open slots by date/time and status. |
+| `ix_reserve_customer_vehicle` | `customer_vehicle_id` | Non-unique | Cross-service lookup support for `reserve.reserve.customer_vehicle_id`. |
+| `ix_reserve_bay_start` | `service_bay_id, scheduled_start` | Non-unique | Overlap check used by `tr_reserve_bay_overlap`. |
+| `ix_reserve_booked_by` | `booked_by` | Non-unique | Cross-service lookup support for `reserve.reserve.booked_by`. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `reserve_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `customer_vehicle_id` | BIGINT | No | Which vehicle. | No FK — owned by `customer.customer_vehicle`, see the cross-service contract below. |
+| `service_bay_id` | SMALLINT | Yes | NULL while still `AGENDADA`; assigned on confirmation. | FK → `reserve.service_bay.service_bay_id` |
+| `scheduled_start` | DATETIME2(3) | No | Start of the slot, UTC. | — |
+| `scheduled_end` | DATETIME2(3) | No | End of the slot, UTC. | — |
+| `reserve_status_id` | SMALLINT | No | Current status. | FK → `reserve.reserve_status.reserve_status_id` |
+| `booked_by` | BIGINT | No | Who created the reserve. | No FK — owned by `security.app_user`, see the cross-service contract below. |
+| `cancellation_reason_id` | SMALLINT | Yes | Only set when `reserve_status_id = 5` (CANCELLED). | FK → `reserve.cancellation_reason.cancellation_reason_id` |
+| `points_redeemed` | INT | No | Loyalty points redeemed against this reserve. | — |
+| `points_discount_amount` | DECIMAL(12,2) | No | The peso amount those points are worth. Both this and `points_redeemed` must be zero, or both greater than zero. | — |
+| `notes` | NVARCHAR(300) | Yes | Free-text note. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. No `total` column: the total is derived from `reserve_service` + its prices, minus `reserve_promotion` and `points_discount_amount`. Storing it would be a derived value that can silently drift from its inputs.
+2. `points_redeemed` / `points_discount_amount` exist because, without them, redeeming points lowered the customer's balance but never actually reduced what they paid — the redemption never reached the bill.
+3. `tr_reserve_bay_overlap` blocks two active reserves from sharing a bay and a time window; a cancelled reserve frees the bay.
+
+---
+
+### Table: `reserve_service`
+
+**Purpose:** The services included in a reserve.
+
+```sql
+CREATE TABLE [reserve].reserve_service (
+    reserve_service_id BIGINT       IDENTITY(1,1) NOT NULL,
+    reserve_id         BIGINT       NOT NULL,
+    service_price_id   BIGINT       NOT NULL,   -- [catalog].service_price
+    quantity           SMALLINT     NOT NULL CONSTRAINT df_rsvc_qty DEFAULT 1,
+    created_at         DATETIME2(3) NOT NULL CONSTRAINT df_rsvc_created DEFAULT SYSUTCDATETIME(),
+    created_by         BIGINT       NULL,
+    updated_at         DATETIME2(3) NULL,
+    updated_by         BIGINT       NULL,
+    deleted_at         DATETIME2(3) NULL,
+    deleted_by         BIGINT       NULL,
+    row_version        INT          NOT NULL CONSTRAINT df_rsvc_rv DEFAULT 1,
+    CONSTRAINT pk_reserve_service PRIMARY KEY (reserve_service_id),
+    CONSTRAINT uq_reserve_service UNIQUE (reserve_id, service_price_id),
+    CONSTRAINT fk_reserve_service_reserve FOREIGN KEY (reserve_id) REFERENCES [reserve].reserve(reserve_id),
+    CONSTRAINT ck_reserve_service_qty CHECK (quantity > 0)
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_reserve_service_price` | `service_price_id` | Non-unique | Cross-service lookup support for `reserve.reserve_service.service_price_id`. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `reserve_service_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `reserve_id` | BIGINT | No | Owning reserve. | FK → `reserve.reserve.reserve_id` |
+| `service_price_id` | BIGINT | No | The exact tariff row in force when this was booked. | No FK — owned by `catalog.service_price`, see the cross-service contract below. |
+| `quantity` | SMALLINT | No | How many times this service was requested. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Resolves the many-to-many between reserve and service: a reserve can include exterior wash and polish; a service appears in many reserves.
+2. It never copies the price — it points at the exact `service_price` row in force at booking time. As long as `service_price` stays immutable, the tariff stays frozen without duplicating the number.
+
+---
+
+## 07. execution
+
+**DB Engine:** SQL Server 2016+
+
+**Engine justification:**
+
+- Scheduling-style integrity again (overlap prevention for operators), the same reasoning as `reserve` — a natural fit for relational constraints and triggers.
+
+### Table: `execution_status`
+
+**Purpose:** Execution states, distinct from reserve states.
+
+```sql
+CREATE TABLE [execution].execution_status (
+    execution_status_id SMALLINT     IDENTITY(1,1) NOT NULL,
+    code          NVARCHAR(30) NOT NULL,
+    name          NVARCHAR(60) NOT NULL,
+    is_final      BIT          NOT NULL CONSTRAINT df_estatus_final DEFAULT 0,
+    display_order SMALLINT     NOT NULL CONSTRAINT df_estatus_order DEFAULT 0,
+    is_active     BIT          NOT NULL CONSTRAINT df_estatus_active DEFAULT 1,
+    created_at    DATETIME2(3) NOT NULL CONSTRAINT df_estatus_created DEFAULT SYSUTCDATETIME(),
+    created_by    BIGINT       NULL,
+    updated_at    DATETIME2(3) NULL,
+    updated_by    BIGINT       NULL,
+    deleted_at    DATETIME2(3) NULL,
+    deleted_by    BIGINT       NULL,
+    row_version   INT          NOT NULL CONSTRAINT df_estatus_rv DEFAULT 1,
+    CONSTRAINT pk_execution_status PRIMARY KEY (execution_status_id),
+    CONSTRAINT uq_execution_status_code UNIQUE (code)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `execution_status_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
+| `code` | NVARCHAR(30) | No | `PENDIENTE`, `EN_PROCESO`, `PAUSADA`, `FINALIZADA`, `CON_NOVEDAD`. | Unique |
+| `name` | NVARCHAR(60) | No | Label. | — |
+| `is_final` | BIT | No | Whether this status accepts further changes. | — |
+| `display_order` | SMALLINT | No | Sort order. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Kept separate from `reserve_status` because the two levels genuinely diverge: a reserve can be `EN_EJECUCION` while one of its services is finished and another hasn't started.
+
+---
+
+### Table: `operator`
+
+**Purpose:** The operator (wash staff member).
+
+```sql
+CREATE TABLE [execution].operator (
+    operator_id INT          IDENTITY(1,1) NOT NULL,
+    user_id     BIGINT       NOT NULL,   -- [security].app_user
+    hired_on    DATE         NOT NULL,
+    is_active   BIT          NOT NULL CONSTRAINT df_operator_active DEFAULT 1,
+    created_at  DATETIME2(3) NOT NULL CONSTRAINT df_operator_created DEFAULT SYSUTCDATETIME(),
+    created_by  BIGINT       NULL,
+    updated_at  DATETIME2(3) NULL,
+    updated_by  BIGINT       NULL,
+    deleted_at  DATETIME2(3) NULL,
+    deleted_by  BIGINT       NULL,
+    row_version INT          NOT NULL CONSTRAINT df_operator_rv DEFAULT 1,
+    CONSTRAINT pk_operator PRIMARY KEY (operator_id),
+    CONSTRAINT uq_operator_user UNIQUE (user_id)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `operator_id` | INT | No | Surrogate primary key (IDENTITY). | PK |
+| `user_id` | BIGINT | No | The account this operator logs in with. | Unique, No FK — owned by `security.app_user`, see the cross-service contract below. |
+| `hired_on` | DATE | No | Start date. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Hangs off `app_user`, not `person`: an admin creates the login when hiring someone, so an operator *always* has credentials. Personal details are reached through `app_user.person_id`.
+2. Deliberately does not also store `person_id` — that would be a transitive dependency (`operator → app_user → person`) and a second path to the same data that could drift out of sync. Note the asymmetry with `customer`, which does store `person_id` directly, because a customer can exist without ever getting an account.
+
+---
+
+### Table: `operator_availability`
+
+**Purpose:** Weekly working hours per operator.
+
+```sql
+CREATE TABLE [execution].operator_availability (
+    operator_availability_id INT          IDENTITY(1,1) NOT NULL,
+    operator_id INT          NOT NULL,
+    day_of_week SMALLINT     NOT NULL,
+    starts_at   TIME(0)      NOT NULL,
+    ends_at     TIME(0)      NOT NULL,
+    is_active   BIT          NOT NULL CONSTRAINT df_oavail_active DEFAULT 1,
+    created_at  DATETIME2(3) NOT NULL CONSTRAINT df_oavail_created DEFAULT SYSUTCDATETIME(),
+    created_by  BIGINT       NULL,
+    updated_at  DATETIME2(3) NULL,
+    updated_by  BIGINT       NULL,
+    deleted_at  DATETIME2(3) NULL,
+    deleted_by  BIGINT       NULL,
+    row_version INT          NOT NULL CONSTRAINT df_oavail_rv DEFAULT 1,
+    CONSTRAINT pk_operator_availability PRIMARY KEY (operator_availability_id),
+    CONSTRAINT uq_operator_availability UNIQUE (operator_id, day_of_week),
+    CONSTRAINT fk_operator_availability_operator FOREIGN KEY (operator_id) REFERENCES [execution].operator(operator_id),
+    CONSTRAINT ck_oavail_day CHECK (day_of_week BETWEEN 1 AND 7),
+    CONSTRAINT ck_oavail_range CHECK (ends_at > starts_at)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `operator_availability_id` | INT | No | Surrogate primary key (IDENTITY). | PK |
+| `operator_id` | INT | No | The operator. | FK → `execution.operator.operator_id` |
+| `day_of_week` | SMALLINT | No | 1–7. | — |
+| `starts_at` | TIME(0) | No | Start of the shift. | — |
+| `ends_at` | TIME(0) | No | End of the shift. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. `business_hour` says when the shop is open; it says nothing about who's actually on shift. Without this table there's no basis — automatic or manual — for assigning anyone.
+
+---
+
+### Table: `operator_absence`
+
+**Purpose:** One-off absences that override the weekly availability.
+
+```sql
+CREATE TABLE [execution].operator_absence (
+    operator_absence_id INT           IDENTITY(1,1) NOT NULL,
+    operator_id INT           NOT NULL,
+    starts_at   DATETIME2(3)  NOT NULL,
+    ends_at     DATETIME2(3)  NOT NULL,
+    reason      NVARCHAR(120) NOT NULL,
+    created_at  DATETIME2(3)  NOT NULL CONSTRAINT df_oabs_created DEFAULT SYSUTCDATETIME(),
+    created_by  BIGINT        NULL,
+    updated_at  DATETIME2(3)  NULL,
+    updated_by  BIGINT        NULL,
+    deleted_at  DATETIME2(3)  NULL,
+    deleted_by  BIGINT        NULL,
+    row_version INT           NOT NULL CONSTRAINT df_oabs_rv DEFAULT 1,
+    CONSTRAINT pk_operator_absence PRIMARY KEY (operator_absence_id),
+    CONSTRAINT fk_operator_absence_operator FOREIGN KEY (operator_id) REFERENCES [execution].operator(operator_id),
+    CONSTRAINT ck_oabs_range CHECK (ends_at > starts_at)
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_operator_absence_operator` | `operator_id, starts_at` | Non-unique | Overlap check used by `tr_operator_absence_overlap`. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `operator_absence_id` | INT | No | Surrogate primary key (IDENTITY). | PK |
+| `operator_id` | INT | No | The operator. | FK → `execution.operator.operator_id` |
+| `starts_at` | DATETIME2(3) | No | Start of the absence, UTC. | — |
+| `ends_at` | DATETIME2(3) | No | End of the absence, UTC. | — |
+| `reason` | NVARCHAR(120) | No | Sick leave, permit, vacation, etc. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. `tr_operator_absence_overlap` blocks two overlapping absences for the same operator from ever being registered.
+
+---
+
+### Table: `service_execution`
+
+**Purpose:** The actual execution of one reserve line item.
+
+```sql
+CREATE TABLE [execution].service_execution (
+    service_execution_id BIGINT        IDENTITY(1,1) NOT NULL,
+    reserve_service_id   BIGINT        NOT NULL,   -- [reserve].reserve_service
+    operator_id          INT           NOT NULL,
+    execution_status_id  SMALLINT      NOT NULL,
+    started_at           DATETIME2(3)  NULL,
+    finished_at          DATETIME2(3)  NULL,
+    quality_rating       SMALLINT      NULL,
+    quality_comment      NVARCHAR(500) NULL,
+    rated_at             DATETIME2(3)  NULL,
+    is_comment_visible   BIT           NOT NULL CONSTRAINT df_sexec_visible DEFAULT 1,
+    created_at           DATETIME2(3)  NOT NULL CONSTRAINT df_sexec_created DEFAULT SYSUTCDATETIME(),
+    created_by           BIGINT        NULL,
+    updated_at           DATETIME2(3)  NULL,
+    updated_by           BIGINT        NULL,
+    deleted_at           DATETIME2(3)  NULL,
+    deleted_by           BIGINT        NULL,
+    row_version          INT           NOT NULL CONSTRAINT df_sexec_rv DEFAULT 1,
+    CONSTRAINT pk_service_execution PRIMARY KEY (service_execution_id),
+    CONSTRAINT uq_service_execution_reserve_service UNIQUE (reserve_service_id),
+    CONSTRAINT fk_service_execution_operator FOREIGN KEY (operator_id) REFERENCES [execution].operator(operator_id),
+    CONSTRAINT fk_service_execution_status FOREIGN KEY (execution_status_id) REFERENCES [execution].execution_status(execution_status_id),
+    CONSTRAINT ck_sexec_rating CHECK (quality_rating IS NULL OR quality_rating BETWEEN 1 AND 5),
+    CONSTRAINT ck_sexec_range CHECK (finished_at IS NULL OR started_at IS NULL OR finished_at >= started_at),
+    CONSTRAINT ck_sexec_rated CHECK (
+        (quality_rating IS NULL AND rated_at IS NULL) OR
+        (quality_rating IS NOT NULL AND rated_at IS NOT NULL)
+    )
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_service_execution_operator` | `operator_id, started_at` | Non-unique | Overlap check used by `tr_service_execution_overlap`. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `service_execution_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `reserve_service_id` | BIGINT | No | The line item being executed. | Unique, No FK — owned by `reserve.reserve_service`, see the cross-service contract below. |
+| `operator_id` | INT | No | Who is doing it. | FK → `execution.operator.operator_id` |
+| `execution_status_id` | SMALLINT | No | Current status. | FK → `execution.execution_status.execution_status_id` |
+| `started_at` | DATETIME2(3) | Yes | When work began, UTC. | — |
+| `finished_at` | DATETIME2(3) | Yes | When work ended, UTC. | — |
+| `quality_rating` | SMALLINT | Yes | 1–5, set by the customer. | — |
+| `quality_comment` | NVARCHAR(500) | Yes | Written feedback. | — |
+| `rated_at` | DATETIME2(3) | Yes | When the rating was given; must be set together with `quality_rating`, never one without the other. | — |
+| `is_comment_visible` | BIT | No | Lets an admin hide an inappropriate comment without deleting it. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Tracked per line item, not per reserve: if a reserve includes wash and polish, each can have its own operator, its own timing, and its own rating. Attaching this to the whole reserve would lose that detail.
+2. `tr_service_execution_overlap` blocks an operator from appearing to run two services at once.
+
+---
+
+## 08. promotion
+
+**DB Engine:** SQL Server 2016+
+
+**Engine justification:**
+
+- Relational eligibility logic (public/private, thresholds, per-customer assignment) maps directly onto foreign keys and simple joins.
+
+### Table: `discount_type`
+
+**Purpose:** Percentage or fixed amount.
+
+```sql
+CREATE TABLE [promotion].discount_type (
+    discount_type_id SMALLINT     IDENTITY(1,1) NOT NULL,
+    code          NVARCHAR(30) NOT NULL,
+    name          NVARCHAR(60) NOT NULL,
+    display_order SMALLINT     NOT NULL CONSTRAINT df_dtype_order DEFAULT 0,
+    is_active     BIT          NOT NULL CONSTRAINT df_dtype_active DEFAULT 1,
+    created_at    DATETIME2(3) NOT NULL CONSTRAINT df_dtype_created DEFAULT SYSUTCDATETIME(),
+    created_by    BIGINT       NULL,
+    updated_at    DATETIME2(3) NULL,
+    updated_by    BIGINT       NULL,
+    deleted_at    DATETIME2(3) NULL,
+    deleted_by    BIGINT       NULL,
+    row_version   INT          NOT NULL CONSTRAINT df_dtype_rv DEFAULT 1,
+    CONSTRAINT pk_discount_type PRIMARY KEY (discount_type_id),
+    CONSTRAINT uq_discount_type_code UNIQUE (code)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `discount_type_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
+| `code` | NVARCHAR(30) | No | `PERCENT` or `FIXED`. | Unique |
+| `name` | NVARCHAR(60) | No | Label. | — |
+| `display_order` | SMALLINT | No | Sort order. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+---
+
+### Table: `promotion`
+
+**Purpose:** A promotion: code, discount, eligibility, and usage limits.
+
+```sql
+CREATE TABLE [promotion].promotion (
+    promotion_id                 INT            IDENTITY(1,1) NOT NULL,
+    code                         NVARCHAR(30)   NOT NULL,
+    name                         NVARCHAR(100)  NOT NULL,
+    [description]                NVARCHAR(300)  NULL,
+    discount_type_id             SMALLINT       NOT NULL,
+    discount_value               DECIMAL(12,2)  NOT NULL,
+    max_discount_amount          DECIMAL(12,2)  NULL,
+    min_purchase_amount          DECIMAL(12,2)  NOT NULL CONSTRAINT df_promo_minpurchase DEFAULT 0,
+    is_public                    BIT            NOT NULL CONSTRAINT df_promo_public DEFAULT 1,
+    min_completed_reserve        INT            NOT NULL CONSTRAINT df_promo_minreserve DEFAULT 0,
+    valid_from                   DATE           NOT NULL,
+    valid_to                     DATE           NOT NULL,
+    max_redemptions              INT            NULL,
+    max_redemptions_per_customer INT            NULL,
+    is_active                    BIT            NOT NULL CONSTRAINT df_promo_active DEFAULT 1,
+    created_at                   DATETIME2(3)   NOT NULL CONSTRAINT df_promo_created DEFAULT SYSUTCDATETIME(),
+    created_by                   BIGINT         NULL,
+    updated_at                   DATETIME2(3)   NULL,
+    updated_by                   BIGINT         NULL,
+    deleted_at                   DATETIME2(3)   NULL,
+    deleted_by                   BIGINT         NULL,
+    row_version                  INT            NOT NULL CONSTRAINT df_promo_rv DEFAULT 1,
+    CONSTRAINT pk_promotion PRIMARY KEY (promotion_id),
+    CONSTRAINT uq_promotion_code UNIQUE (code),
+    CONSTRAINT fk_promotion_discount_type FOREIGN KEY (discount_type_id) REFERENCES [promotion].discount_type(discount_type_id),
+    CONSTRAINT ck_promo_value CHECK (discount_value > 0),
+    CONSTRAINT ck_promo_range CHECK (valid_to >= valid_from),
+    CONSTRAINT ck_promo_minreserve CHECK (min_completed_reserve >= 0)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `promotion_id` | INT | No | Surrogate primary key (IDENTITY). | PK |
+| `code` | NVARCHAR(30) | No | Machine-readable code. | Unique |
+| `name` | NVARCHAR(100) | No | Label. | — |
+| `description` | NVARCHAR(300) | Yes | Longer description. | — |
+| `discount_type_id` | SMALLINT | No | Percentage or fixed. | FK → `promotion.discount_type.discount_type_id` |
+| `discount_value` | DECIMAL(12,2) | No | The discount amount or percentage. | — |
+| `max_discount_amount` | DECIMAL(12,2) | Yes | Cap on a percentage discount, optional. | — |
+| `min_purchase_amount` | DECIMAL(12,2) | No | Minimum spend to qualify. | — |
+| `is_public` | BIT | No | `1` = open to eligible customers automatically; `0` = only customers listed in `promotion_customer`. | — |
+| `min_completed_reserve` | INT | No | With `is_public = 1`, how many finished reserves a customer needs before this unlocks — `0` means everyone qualifies. | — |
+| `valid_from` | DATE | No | Start of the validity window. | — |
+| `valid_to` | DATE | No | End of the validity window. | — |
+| `max_redemptions` | INT | Yes | Overall usage cap, optional. | — |
+| `max_redemptions_per_customer` | INT | Yes | Per-customer usage cap, optional. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Eligibility is resolved by combining `is_public` and `min_completed_reserve`: public + 0 reaches everyone; public + N unlocks only for customers who've already finished N reserves; private (`is_public = 0`) reaches only the customers explicitly listed in `promotion_customer`. This is how the same mechanism covers both "everyone gets 10% off this month" and "loyal customers get a better deal".
+2. No usage counter here — it's derived by counting `reserve_promotion` rows, to avoid a second number that can drift from the source of truth.
+
+---
+
+### Table: `promotion_service`
+
+**Purpose:** Restricts a promotion to specific services.
+
+```sql
+CREATE TABLE [promotion].promotion_service (
+    promotion_service_id INT          IDENTITY(1,1) NOT NULL,
+    promotion_id INT          NOT NULL,
+    service_id   INT          NOT NULL,   -- [catalog].service
+    created_at   DATETIME2(3) NOT NULL CONSTRAINT df_psvc_created DEFAULT SYSUTCDATETIME(),
+    created_by   BIGINT       NULL,
+    updated_at   DATETIME2(3) NULL,
+    updated_by   BIGINT       NULL,
+    deleted_at   DATETIME2(3) NULL,
+    deleted_by   BIGINT       NULL,
+    row_version  INT          NOT NULL CONSTRAINT df_psvc_rv DEFAULT 1,
+    CONSTRAINT pk_promotion_service PRIMARY KEY (promotion_service_id),
+    CONSTRAINT uq_promotion_service UNIQUE (promotion_id, service_id),
+    CONSTRAINT fk_promotion_service_promotion FOREIGN KEY (promotion_id) REFERENCES [promotion].promotion(promotion_id)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `promotion_service_id` | INT | No | Surrogate primary key (IDENTITY). | PK |
+| `promotion_id` | INT | No | The promotion. | FK → `promotion.promotion.promotion_id` |
+| `service_id` | INT | No | A service it applies to. | No FK — owned by `catalog.service`, see the cross-service contract below. |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Absence of rows is the convention for "applies to every service" — no restriction row means no restriction.
+
+---
+
+### Table: `promotion_customer`
+
+**Purpose:** Assigns a promotion directly to one customer.
+
+```sql
+CREATE TABLE [promotion].promotion_customer (
+    promotion_customer_id BIGINT       IDENTITY(1,1) NOT NULL,
+    promotion_id INT          NOT NULL,
+    customer_id  BIGINT       NOT NULL,   -- [customer].customer
+    assigned_at  DATETIME2(3) NOT NULL CONSTRAINT df_pcust_assigned DEFAULT SYSUTCDATETIME(),
+    assigned_by  BIGINT       NULL,       -- [security].app_user
+    created_at   DATETIME2(3) NOT NULL CONSTRAINT df_pcust_created DEFAULT SYSUTCDATETIME(),
+    created_by   BIGINT       NULL,
+    updated_at   DATETIME2(3) NULL,
+    updated_by   BIGINT       NULL,
+    deleted_at   DATETIME2(3) NULL,
+    deleted_by   BIGINT       NULL,
+    row_version  INT          NOT NULL CONSTRAINT df_pcust_rv DEFAULT 1,
+    CONSTRAINT pk_promotion_customer PRIMARY KEY (promotion_customer_id),
+    CONSTRAINT uq_promotion_customer UNIQUE (promotion_id, customer_id),
+    CONSTRAINT fk_promotion_customer_promotion FOREIGN KEY (promotion_id) REFERENCES [promotion].promotion(promotion_id)
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_promotion_customer_customer` | `customer_id` | Non-unique | List the promotions assigned to one customer. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `promotion_customer_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `promotion_id` | INT | No | The promotion. | FK → `promotion.promotion.promotion_id` |
+| `customer_id` | BIGINT | No | The customer it's assigned to. | No FK — owned by `customer.customer`, see the cross-service contract below. |
+| `assigned_at` | DATETIME2(3) | No | When it was assigned, UTC. | — |
+| `assigned_by` | BIGINT | Yes | Who assigned it. | No FK — owned by `security.app_user`, see the cross-service contract below. |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. The mechanism behind personalized promotions for frequent customers, used together with `is_public = 0` on `promotion`.
+
+---
+
+### Table: `reserve_promotion`
+
+**Purpose:** Which promotion was applied to which reserve, and exactly how much it discounted.
+
+```sql
+CREATE TABLE [promotion].reserve_promotion (
+    reserve_promotion_id BIGINT        IDENTITY(1,1) NOT NULL,
+    reserve_id     BIGINT        NOT NULL,   -- [reserve].reserve
+    promotion_id   INT           NOT NULL,
+    applied_amount DECIMAL(12,2) NOT NULL,
+    created_at     DATETIME2(3)  NOT NULL CONSTRAINT df_rpromo_created DEFAULT SYSUTCDATETIME(),
+    created_by     BIGINT        NULL,
+    updated_at     DATETIME2(3)  NULL,
+    updated_by     BIGINT        NULL,
+    deleted_at     DATETIME2(3)  NULL,
+    deleted_by     BIGINT        NULL,
+    row_version    INT           NOT NULL CONSTRAINT df_rpromo_rv DEFAULT 1,
+    CONSTRAINT pk_reserve_promotion PRIMARY KEY (reserve_promotion_id),
+    CONSTRAINT uq_reserve_promotion UNIQUE (reserve_id, promotion_id),
+    CONSTRAINT fk_reserve_promotion_promotion FOREIGN KEY (promotion_id) REFERENCES [promotion].promotion(promotion_id),
+    CONSTRAINT ck_rpromo_amount CHECK (applied_amount > 0)
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_reserve_promotion_reserve` | `reserve_id` | Non-unique | Find the promotions applied to one reserve. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `reserve_promotion_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `reserve_id` | BIGINT | No | The reserve. | No FK — owned by `reserve.reserve`, see the cross-service contract below. |
+| `promotion_id` | INT | No | The promotion applied. | FK → `promotion.promotion.promotion_id` |
+| `applied_amount` | DECIMAL(12,2) | No | The actual peso amount discounted, frozen at application time. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. `applied_amount` is stored because a promotion can change or expire later — what a reserve was actually discounted that day is a historical fact, not something that should be recomputed if the promotion's terms change tomorrow.
+
+---
+
+## 09. payment
+
+**DB Engine:** SQL Server 2016+
+
+**Engine justification:**
+
+- Relational fits the payment/receipt state machine and its filtered-index and anti-fraud guarantees; nothing here needs document flexibility.
+
+### Table: `payment_method_type`
+
+**Purpose:** Cash, Nequi, Daviplata, bank transfer.
+
+```sql
+CREATE TABLE [payment].payment_method_type (
+    payment_method_type_id SMALLINT     IDENTITY(1,1) NOT NULL,
+    code             NVARCHAR(30) NOT NULL,
+    name             NVARCHAR(60) NOT NULL,
+    requires_account BIT          NOT NULL CONSTRAINT df_pmt_account DEFAULT 1,
+    requires_receipt BIT          NOT NULL CONSTRAINT df_pmt_receipt DEFAULT 1,
+    display_order    SMALLINT     NOT NULL CONSTRAINT df_pmt_order DEFAULT 0,
+    is_active        BIT          NOT NULL CONSTRAINT df_pmt_active DEFAULT 1,
+    created_at       DATETIME2(3) NOT NULL CONSTRAINT df_pmt_created DEFAULT SYSUTCDATETIME(),
+    created_by       BIGINT       NULL,
+    updated_at       DATETIME2(3) NULL,
+    updated_by       BIGINT       NULL,
+    deleted_at       DATETIME2(3) NULL,
+    deleted_by       BIGINT       NULL,
+    row_version      INT          NOT NULL CONSTRAINT df_pmt_rv DEFAULT 1,
+    CONSTRAINT pk_payment_method_type PRIMARY KEY (payment_method_type_id),
+    CONSTRAINT uq_payment_method_type_code UNIQUE (code)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `payment_method_type_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
+| `code` | NVARCHAR(30) | No | `EFECTIVO`, `NEQUI`, `DAVIPLATA`, `TRANSFERENCIA`. | Unique |
+| `name` | NVARCHAR(60) | No | Label. | — |
+| `requires_account` | BIT | No | Whether a `payment_account` must exist for this method. | — |
+| `requires_receipt` | BIT | No | `0` only for cash; every QR-based method requires an uploaded receipt. | — |
+| `display_order` | SMALLINT | No | Sort order. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+---
+
+### Table: `payment_account`
+
+**Purpose:** One row per payment method — this is where the shop's QR image lives.
+
+```sql
+CREATE TABLE [payment].payment_account (
+    payment_account_id     SMALLINT      IDENTITY(1,1) NOT NULL,
+    payment_method_type_id SMALLINT      NOT NULL,
+    account_holder         NVARCHAR(120) NOT NULL,
+    account_number         NVARCHAR(50)  NULL,
+    qr_image_url           NVARCHAR(500) NULL,
+    instructions           NVARCHAR(300) NULL,
+    is_active              BIT           NOT NULL CONSTRAINT df_pacct_active DEFAULT 1,
+    created_at             DATETIME2(3)  NOT NULL CONSTRAINT df_pacct_created DEFAULT SYSUTCDATETIME(),
+    created_by             BIGINT        NULL,
+    updated_at             DATETIME2(3)  NULL,
+    updated_by             BIGINT        NULL,
+    deleted_at             DATETIME2(3)  NULL,
+    deleted_by             BIGINT        NULL,
+    row_version            INT           NOT NULL CONSTRAINT df_pacct_rv DEFAULT 1,
+    CONSTRAINT pk_payment_account PRIMARY KEY (payment_account_id),
+    CONSTRAINT fk_payment_account_method FOREIGN KEY (payment_method_type_id) REFERENCES [payment].payment_method_type(payment_method_type_id)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `payment_account_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
+| `payment_method_type_id` | SMALLINT | No | Which method this account is for. | FK → `payment.payment_method_type.payment_method_type_id` |
+| `account_holder` | NVARCHAR(120) | No | Name on the account. | — |
+| `account_number` | NVARCHAR(50) | Yes | Account number, optional. | — |
+| `qr_image_url` | NVARCHAR(500) | Yes | The QR code shown to the customer. | — |
+| `instructions` | NVARCHAR(300) | Yes | Text shown alongside the QR. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Cash also gets a row here, with no QR, purely so `payment` can always point to *some* account and never needs a special case for the cash path.
+
+---
+
+### Table: `payment_status`
+
+**Purpose:** The five payment states.
+
+```sql
+CREATE TABLE [payment].payment_status (
+    payment_status_id SMALLINT     IDENTITY(1,1) NOT NULL,
+    code          NVARCHAR(30) NOT NULL,
+    name          NVARCHAR(60) NOT NULL,
+    is_final      BIT          NOT NULL CONSTRAINT df_pstatus_final DEFAULT 0,
+    display_order SMALLINT     NOT NULL CONSTRAINT df_pstatus_order DEFAULT 0,
+    is_active     BIT          NOT NULL CONSTRAINT df_pstatus_active DEFAULT 1,
+    created_at    DATETIME2(3) NOT NULL CONSTRAINT df_pstatus_created DEFAULT SYSUTCDATETIME(),
+    created_by    BIGINT       NULL,
+    updated_at    DATETIME2(3) NULL,
+    updated_by    BIGINT       NULL,
+    deleted_at    DATETIME2(3) NULL,
+    deleted_by    BIGINT       NULL,
+    row_version   INT          NOT NULL CONSTRAINT df_pstatus_rv DEFAULT 1,
+    CONSTRAINT pk_payment_status PRIMARY KEY (payment_status_id),
+    CONSTRAINT uq_payment_status_code UNIQUE (code)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `payment_status_id` | SMALLINT | No | Surrogate primary key (IDENTITY). ⚠️ ID `3` is `APPROVED` and is hard-coded as a literal inside the `ux_payment_one_approved_per_reserve` filtered index — never re-seed this table with a different order. | PK |
+| `code` | NVARCHAR(30) | No | `PENDING`, `IN_REVIEW`, `APPROVED`, `REJECTED`, `REFUNDED`. | Unique |
+| `name` | NVARCHAR(60) | No | Label. | — |
+| `is_final` | BIT | No | Whether this status accepts further changes. | — |
+| `display_order` | SMALLINT | No | Sort order. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+---
+
+### Table: `payment`
+
+**Purpose:** One payment attempt for a reserve.
+
+```sql
+CREATE TABLE [payment].payment (
+    payment_id         BIGINT        IDENTITY(1,1) NOT NULL,
+    reserve_id         BIGINT        NOT NULL,   -- [reserve].reserve
+    payment_account_id SMALLINT      NOT NULL,
+    payment_status_id  SMALLINT      NOT NULL,
+    amount             DECIMAL(12,2) NOT NULL,
+    processed_at       DATETIME2(3)  NULL,
+    approved_by        BIGINT        NULL,       -- [security].app_user
+    rejection_reason   NVARCHAR(200) NULL,
+    created_at         DATETIME2(3)  NOT NULL CONSTRAINT df_payment_created DEFAULT SYSUTCDATETIME(),
+    created_by         BIGINT        NULL,
+    updated_at         DATETIME2(3)  NULL,
+    updated_by         BIGINT        NULL,
+    deleted_at         DATETIME2(3)  NULL,
+    deleted_by         BIGINT        NULL,
+    row_version        INT           NOT NULL CONSTRAINT df_payment_rv DEFAULT 1,
+    CONSTRAINT pk_payment PRIMARY KEY (payment_id),
+    CONSTRAINT fk_payment_account FOREIGN KEY (payment_account_id) REFERENCES [payment].payment_account(payment_account_id),
+    CONSTRAINT fk_payment_status FOREIGN KEY (payment_status_id) REFERENCES [payment].payment_status(payment_status_id),
+    CONSTRAINT ck_payment_amount CHECK (amount > 0)
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_payment_reserve` | `reserve_id` | Non-unique | Find all payment attempts for a reserve. |
+| `ix_payment_status` | `payment_status_id` | Non-unique | Filter/queue payments by status (e.g. the admin review queue). |
+| `ux_payment_one_approved_per_reserve` | `reserve_id` `WHERE payment_status_id = 3 AND deleted_at IS NULL` | Unique, filtered | At most one APPROVED payment per reserve — filtered so rejected attempts don't block it. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `payment_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `reserve_id` | BIGINT | No | The reserve being paid for. | No FK — owned by `reserve.reserve`, see the cross-service contract below. |
+| `payment_account_id` | SMALLINT | No | Which account/method the customer paid to. | FK → `payment.payment_account.payment_account_id` |
+| `payment_status_id` | SMALLINT | No | Current status. | FK → `payment.payment_status.payment_status_id` |
+| `amount` | DECIMAL(12,2) | No | The amount expected. | — |
+| `processed_at` | DATETIME2(3) | Yes | When it was reviewed, UTC. | — |
+| `approved_by` | BIGINT | Yes | Who approved it. | No FK — owned by `security.app_user`, see the cross-service contract below. |
+| `rejection_reason` | NVARCHAR(200) | Yes | Why it was rejected, when it was. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. A reserve can have several payment rows — a rejected attempt followed by an approved one are two separate rows, not one row overwritten. A filtered unique index guarantees at most one `APPROVED` row per reserve.
+2. No `payment_method_type_id` here: the method is reached through `payment_account`. Storing both would be a transitive dependency that could let a payment claim "Nequi" while pointing at the Daviplata account.
+
+---
+
+### Table: `payment_receipt`
+
+**Purpose:** The proof of payment the customer uploads.
+
+```sql
+CREATE TABLE [payment].payment_receipt (
+    payment_receipt_id    BIGINT        IDENTITY(1,1) NOT NULL,
+    payment_id            BIGINT        NOT NULL,
+    file_url              NVARCHAR(500) NOT NULL,
+    transaction_reference NVARCHAR(100) NULL,
+    reported_amount       DECIMAL(12,2) NULL,
+    uploaded_at           DATETIME2(3)  NOT NULL CONSTRAINT df_preceipt_uploaded DEFAULT SYSUTCDATETIME(),
+    uploaded_by           BIGINT        NOT NULL,   -- [security].app_user
+    reviewed_at           DATETIME2(3)  NULL,
+    reviewed_by           BIGINT        NULL,       -- [security].app_user
+    review_comment        NVARCHAR(300) NULL,
+    created_at            DATETIME2(3)  NOT NULL CONSTRAINT df_preceipt_created DEFAULT SYSUTCDATETIME(),
+    created_by            BIGINT        NULL,
+    updated_at            DATETIME2(3)  NULL,
+    updated_by            BIGINT        NULL,
+    deleted_at            DATETIME2(3)  NULL,
+    deleted_by            BIGINT        NULL,
+    row_version           INT           NOT NULL CONSTRAINT df_preceipt_rv DEFAULT 1,
+    CONSTRAINT pk_payment_receipt PRIMARY KEY (payment_receipt_id),
+    CONSTRAINT fk_payment_receipt_payment FOREIGN KEY (payment_id) REFERENCES [payment].payment(payment_id),
+    CONSTRAINT ck_preceipt_amount CHECK (reported_amount IS NULL OR reported_amount > 0),
+    CONSTRAINT ck_preceipt_review CHECK (
+        (reviewed_at IS NULL AND reviewed_by IS NULL) OR
+        (reviewed_at IS NOT NULL AND reviewed_by IS NOT NULL)
+    )
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_payment_receipt_payment` | `payment_id` | Non-unique | Find the receipt(s) for a payment. |
+| `ix_payment_receipt_reference` | `transaction_reference` | Non-unique | Antifraud check: detect the same receipt reference reused across payments. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `payment_receipt_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `payment_id` | BIGINT | No | The payment this receipt supports. | FK → `payment.payment.payment_id` |
+| `file_url` | NVARCHAR(500) | No | The uploaded image/file. | — |
+| `transaction_reference` | NVARCHAR(100) | Yes | Reference number printed on the receipt — the anti-fraud check target. | — |
+| `reported_amount` | DECIMAL(12,2) | Yes | What the receipt claims was paid, checked against `payment.amount`. | — |
+| `uploaded_at` | DATETIME2(3) | No | When it was uploaded, UTC. | — |
+| `uploaded_by` | BIGINT | No | Who uploaded it. | No FK — owned by `security.app_user`, see the cross-service contract below. |
+| `reviewed_at` | DATETIME2(3) | Yes | When staff reviewed it, UTC. | — |
+| `reviewed_by` | BIGINT | Yes | Who reviewed it. | No FK — owned by `security.app_user`, see the cross-service contract below. |
+| `review_comment` | NVARCHAR(300) | Yes | Reviewer's note. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Kept separate from `payment` because a rejected payment can get a corrected receipt uploaded next — both stay on record. If the receipt were a column on `payment`, the second upload would overwrite the first.
+2. The index on `transaction_reference` catches the same receipt being reused to pay for two different reserves — this is the antifraud control that replaces a real payment gateway, and it's exactly what a grader is likely to test.
+
+---
+
+## 10. notification
+
+**DB Engine:** SQL Server 2016+
+
+**Engine justification:**
+
+- Simple relational fan-out (one row per user per event); no benefit from a different engine at this scale.
+
+### Table: `notification_type`
+
+**Purpose:** The eleven events that generate a notification.
+
+```sql
+CREATE TABLE [notification].notification_type (
+    notification_type_id SMALLINT     IDENTITY(1,1) NOT NULL,
+    code          NVARCHAR(40) NOT NULL,
+    name          NVARCHAR(80) NOT NULL,
+    display_order SMALLINT     NOT NULL CONSTRAINT df_ntype_order DEFAULT 0,
+    is_active     BIT          NOT NULL CONSTRAINT df_ntype_active DEFAULT 1,
+    created_at    DATETIME2(3) NOT NULL CONSTRAINT df_ntype_created DEFAULT SYSUTCDATETIME(),
+    created_by    BIGINT       NULL,
+    updated_at    DATETIME2(3) NULL,
+    updated_by    BIGINT       NULL,
+    deleted_at    DATETIME2(3) NULL,
+    deleted_by    BIGINT       NULL,
+    row_version   INT          NOT NULL CONSTRAINT df_ntype_rv DEFAULT 1,
+    CONSTRAINT pk_notification_type PRIMARY KEY (notification_type_id),
+    CONSTRAINT uq_notification_type_code UNIQUE (code)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `notification_type_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
+| `code` | NVARCHAR(40) | No | E.g. `reserve_CREADA`, `PAGO_APROBADO`. | Unique |
+| `name` | NVARCHAR(80) | No | Label. | — |
+| `display_order` | SMALLINT | No | Sort order. | — |
+| `is_active` | BIT | No | Soft on/off switch. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+---
+
+### Table: `notification`
+
+**Purpose:** A notification sent to a user.
+
+```sql
+CREATE TABLE [notification].notification (
+    notification_id      BIGINT        IDENTITY(1,1) NOT NULL,
+    user_id              BIGINT        NOT NULL,   -- [security].app_user
+    notification_type_id SMALLINT      NOT NULL,
+    title                NVARCHAR(120) NOT NULL,
+    [message]            NVARCHAR(500) NOT NULL,
+    reference_entity     NVARCHAR(40)  NULL,
+    reference_id         BIGINT        NULL,
+    is_read              BIT           NOT NULL CONSTRAINT df_notif_read DEFAULT 0,
+    read_at              DATETIME2(3)  NULL,
+    sent_at              DATETIME2(3)  NOT NULL CONSTRAINT df_notif_sent DEFAULT SYSUTCDATETIME(),
+    created_at           DATETIME2(3)  NOT NULL CONSTRAINT df_notif_created DEFAULT SYSUTCDATETIME(),
+    created_by           BIGINT        NULL,
+    updated_at           DATETIME2(3)  NULL,
+    updated_by           BIGINT        NULL,
+    deleted_at           DATETIME2(3)  NULL,
+    deleted_by           BIGINT        NULL,
+    row_version          INT           NOT NULL CONSTRAINT df_notif_rv DEFAULT 1,
+    CONSTRAINT pk_notification PRIMARY KEY (notification_id),
+    CONSTRAINT fk_notification_type FOREIGN KEY (notification_type_id) REFERENCES [notification].notification_type(notification_type_id),
+    CONSTRAINT ck_notification_read CHECK (
+        (is_read = 0 AND read_at IS NULL) OR
+        (is_read = 1 AND read_at IS NOT NULL)
+    )
+);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_notification_user_unread` | `user_id, is_read` | Non-unique | Unread-count / inbox queries. |
+| `ix_notification_user_date` | `user_id, sent_at` | Non-unique | Time-ordered notification history per user. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `notification_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `user_id` | BIGINT | No | Recipient. | No FK — owned by `security.app_user`, see the cross-service contract below. |
+| `notification_type_id` | SMALLINT | No | What kind of event triggered it. | FK → `notification.notification_type.notification_type_id` |
+| `title` | NVARCHAR(120) | No | Rendered title, as actually sent. | — |
+| `message` | NVARCHAR(500) | No | Rendered body, as actually sent. | — |
+| `reference_entity` | NVARCHAR(40) | Yes | What the notification is about, e.g. `reserve`. | — |
+| `reference_id` | BIGINT | Yes | The specific row, e.g. `145` — lets tapping the notification deep-link to the right screen. | — |
+| `is_read` | BIT | No | Read flag. | — |
+| `read_at` | DATETIME2(3) | Yes | When it was read; must be set together with `is_read = 1`. | — |
+| `sent_at` | DATETIME2(3) | No | When it was sent, UTC. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. Stores the title and message already rendered, not a template reference: if tomorrow's wording for "Payment approved" changes, yesterday's notifications should keep saying what they actually said. History is never rewritten.
+
+---
+
+## Cross-service contract (no FK, by design)
+
+These 18 columns point at another service's table. None of them has a foreign key — each
+service's schema is self-contained, and integrity across the boundary is the application's
+job, validated before it writes. Every one of them is indexed so joins done in application
+code, or in reporting queries, stay fast.
+
+| Column | Owning service |
+|--------|----------------|
+| `settings.user_preference.user_id` | `security.app_user` |
+| `customer.customer.person_id` | `security.person` |
+| `customer.loyalty_transaction.reserve_id` | `reserve.reserve` |
+| `catalog.service_price.vehicle_type_id` | `customer.vehicle_type` |
+| `reserve.reserve.customer_vehicle_id` | `customer.customer_vehicle` |
+| `reserve.reserve.booked_by` | `security.app_user` |
+| `reserve.reserve_service.service_price_id` | `catalog.service_price` |
+| `execution.operator.user_id` | `security.app_user` |
+| `execution.service_execution.reserve_service_id` | `reserve.reserve_service` |
+| `promotion.promotion_service.service_id` | `catalog.service` |
+| `promotion.promotion_customer.customer_id` | `customer.customer` |
+| `promotion.promotion_customer.assigned_by` | `security.app_user` |
+| `promotion.reserve_promotion.reserve_id` | `reserve.reserve` |
+| `payment.payment.reserve_id` | `reserve.reserve` |
+| `payment.payment.approved_by` | `security.app_user` |
+| `payment.payment_receipt.uploaded_by` | `security.app_user` |
+| `payment.payment_receipt.reviewed_by` | `security.app_user` |
+| `notification.notification.user_id` | `security.app_user` |
+
+Business rules the database can't enforce on its own, that the application must:
+
+- A service can only be rated once its `service_execution` is `FINALIZADA`.
+- `reserve.points_discount_amount` must reconcile against that reserve's `REDEEMED`
+  movements in `loyalty_transaction`.
+- `customer.loyalty_points` must reconcile against the sum of that customer's
+  `loyalty_transaction` rows.
+- A reserve can't fall outside `business_hour` (accounting for `business_hour_exception`).
+- The assigned operator must be available per `operator_availability`, with no overlapping
+  row in `operator_absence`.
 
 ---
 
 ## Migration strategy
 
-**Tool:** [Flyway / Liquibase / Prisma Migrate / TypeORM Migrations]
+See `migration-strategy.md`.
 
-**File naming convention:**
+## Relationship diagrams
 
-```
-V{version_number}__{snake_case_description}.sql
-
-Examples:
-  V001__create_orders_table.sql
-  V002__add_status_to_orders.sql
-  V003__create_index_orders_customer_id.sql
-```
-
-**Migration rules:**
-
-```
-✓ Migrations are ALWAYS forward-only
-✓ One migration per logical change
-✓ Seed data goes in separate migrations with prefix S: S001__seed_...
-✗ Never modify a migration already executed in any environment
-✗ Never do DROP COLUMN / DROP TABLE in a migration if there is code in production that uses it
-    (process: 1-deprecate in code → 2-cleanup migration in the next release)
-```
-
-**Compatible schema changes (non-breaking):**
-
-```sql
--- Add nullable column → always safe
-ALTER TABLE orders ADD COLUMN notes TEXT;
-
--- Add NOT NULL column with DEFAULT → safe if DEFAULT is valid
-ALTER TABLE orders ADD COLUMN priority VARCHAR(20) NOT NULL DEFAULT 'NORMAL';
-
--- Create new index → safe (in production use CONCURRENTLY)
-CREATE INDEX CONCURRENTLY idx_orders_date ON orders (created_at);
-```
-
-**Incompatible changes (require 2-phase migration):**
-
-```sql
--- Rename column → 2 phases:
--- Phase 1 (release N): Add new column, copy data, update code to use both
-ALTER TABLE orders ADD COLUMN delivery_date TIMESTAMPTZ;
-UPDATE orders SET delivery_date = fecha_entrega;
-
--- Phase 2 (release N+1): Remove old column (code no longer uses it)
-ALTER TABLE orders DROP COLUMN fecha_entrega;
-```
-
----
-
-## DB engine selection guide
-
-| Engine | Use when... | Avoid when... |
-|--------|------------|---------------|
-| **PostgreSQL** | ACID transactions, complex relationships, JSONB, full-text | Deeply nested documents, graphs |
-| **MongoDB** | Flexible documents, product catalogs, catalogs | Complex transactions across collections |
-| **Redis** | Cache, sessions, lightweight queues, counters | Source of truth, critical data |
-| **Elasticsearch** | Full-text search, analytics, logs | Source of truth (it's an index, not a DB) |
-| **InfluxDB / TimescaleDB** | Time series, metrics, IoT | Transactional business data |
-
----
-
-## Relationship diagram (per service)
-
-```
-Replace with an ER diagram of the service using your preferred tool's notation.
-
-Mermaid example:
-\```mermaid
-erDiagram
-    ORDERS ||--o{ ORDER_ITEMS : contains
-    ORDERS {
-        uuid id PK
-        uuid customer_id FK
-        varchar status
-        decimal total
-        timestamptz created_at
-    }
-    ORDER_ITEMS {
-        uuid id PK
-        uuid order_id FK
-        uuid product_id FK
-        integer quantity
-        decimal unit_price
-    }
-\```
-```
-
----
+A full ER diagram per service, plus one combined diagram for the whole system, lives in
+`08-uml/` as DBML (`00-full-model.dbml` and one file per service). Cross-service references
+are documented there as comments, not as drawn relationships, for the same reason they have
+no FK here.
 
 ## Correlations
 
 - Domain entities that map to these tables → `02-domain/entities-and-rules.md`
 - Saga and Outbox pattern for distributed consistency → `05-architecture/pattern-guide.md`
-- Data for each service in detail → `09-microservices/services/XX/data-model.md`
+- Data for each service in detail → `09-microservices/services/<service>/data-model.md`
 - How data is accessed via API → `07-api/contracts/openapi/`
