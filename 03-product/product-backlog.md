@@ -39,7 +39,7 @@ This is the product-level, prioritized backlog. It uses the terms and MVP bounda
 
 | ID | User story | Acceptance criteria |
 |---|---|---|
-| US-07 | As a customer, I want to create a booking for my vehicle so that I have a confirmed wash slot. | The customer is authenticated; the vehicle belongs to that customer; one service and time slot are selected; availability is revalidated before confirmation; the agreed price is frozen at creation; the booking starts `AGENDADA` and is confirmed only through the valid availability transition. |
+| US-07 | As a customer, I want to create a booking for my vehicle so that I have a confirmed wash slot. | The customer is authenticated; the vehicle belongs to that customer; one service and time slot are selected; availability is revalidated before confirmation; the agreed price is frozen at creation; the booking starts `PENDING` and is confirmed only through the valid availability transition. |
 | US-08 | As a customer, I want to pay for my booking by scanning the shop's QR code and uploading a receipt so that the payment is traceable. | The customer picks a payment method (cash, Nequi, Daviplata or bank transfer) and sees the corresponding QR/account details; card data is never collected or stored; one booking can have several payment attempts but at most one `APPROVED` payment; the payment moves through `PENDING → IN_REVIEW → APPROVED/REJECTED`; the reported receipt amount is checked against the booking amount; a reused receipt reference is flagged. The payment-before-service policy is resolved before release. |
 
 ## M3 — Service execution and changes
@@ -111,7 +111,7 @@ Electronic invoicing, inventory and production deployment are not backlog candid
 |---|---|
 | Identity & Access | EP-01 |
 | Vehicle Management | EP-02 |
-| Service Catalog and Shop Management | EP-01, EP-03 |
+| Service Catalog | EP-01, EP-03 |
 | Booking | EP-03, EP-04, EP-06 |
 | Operations & Assignment | EP-03, EP-05, EP-06A |
 | Payment | EP-04, EP-07 |
