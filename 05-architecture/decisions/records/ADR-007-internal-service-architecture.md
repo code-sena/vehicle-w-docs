@@ -46,7 +46,7 @@ and adapters)**, following the package structure already defined in
 |-------|-----------------|------------|
 | `domain` | Aggregates, entities, value objects, domain events, invariants, domain services (`AvailabilityChecker`, `OperatorAssigner`), and the ports | Nothing. Plain Java, no Spring, no JPA |
 | `application` | Use cases that implement the input ports and orchestrate the domain | `domain` |
-| `infrastructure` | REST controllers, JPA repositories, RabbitMQ publishers and consumers, the Wompi client, configuration | `domain` and `application` |
+| `infrastructure` | REST controllers, JPA repositories, RabbitMQ publishers and consumers, receipt file storage, configuration | `domain` and `application` |
 
 Rules that make it real:
 

@@ -162,9 +162,8 @@ Three things to read carefully in this diagram:
 
 Ports, container names and environment variables are defined in `deployment.md`.
 
-RF-017 (dashboard by role) is resolved in the clients. RF-021 and RF-023 refer to branches
-and per-branch reports, and have to be rewritten in `04-requirements`: the system has one
-establishment with bays.
+RF-017 (dashboard by role) is resolved in the clients. RF-021 and RF-023 were rewritten in
+`04-requirements` to match the system: one establishment with bays, not branches.
 
 ---
 
@@ -257,7 +256,6 @@ Distributed tracing, Prometheus metrics and alerting are **not** part of this pr
 | AT-002 | Where receipt images are stored is not decided | Blocks RF-013 and the local environment | P1 |
 | AT-003 | RNF-003 requires a payment and its booking to be written in one transaction, which is impossible with two services and two schemas | The requirement cannot be met as written | P1 |
 | AT-004 | RF-004b does not define how many failed attempts trigger the lock, or for how long | The feature cannot be built | P1 |
-| AT-005 | `01` and `04` still describe branches and a payment gateway | The documentation contradicts itself | P1 |
 | AT-006 | The JWT is signed with HS256 and every service holds the secret | High if deployed, low while local | P2 |
 | AT-007 | A JWT cannot be revoked: logout or lockout takes effect up to an hour later | Limited security window, accepted | P3 |
 | AT-008 | Dead letter queues are reviewed by hand in the RabbitMQ console | A failure can go unnoticed | P3 |
