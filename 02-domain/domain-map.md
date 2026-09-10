@@ -13,23 +13,25 @@
 
 ## 1. Domain overview
 
-Express car wash manages on-demand vehicle washing. A customer registers,
-adds their vehicle(s), and books a wash for a specific branch, date, and
-time. The customer drives the vehicle to that branch — this isn't a mobile
-or at-home service, the business model requires the branch visit.
+Express car wash manages on-demand vehicle washing at a single shop
+location. A customer registers, adds their vehicle(s), and books a wash for
+a date and time. The customer drives the vehicle to the shop — this isn't a
+mobile or at-home service, the business model requires the visit.
 
 The **booking** is the center of everything else in this document. Once a
-customer picks a vehicle, a service, a branch, and a time slot, the system
-checks that the slot is actually available and confirms it. From there, an
+customer picks a vehicle, a service, and a time slot, the system checks
+that the slot is actually available and confirms it. From there, an
 operator needs to be assigned to carry out the wash — either automatically
-based on who's free at that branch, chosen directly by the customer from the
-operators available, or assigned/reassigned by an administrator if something
-needs to change. The booking gets paid for through Wompi, and once the wash
-is done the customer can rate it and leave a comment.
+based on who's free, chosen directly by the customer from the operators
+available, or assigned/reassigned by an administrator if something
+needs to change. The customer pays by scanning the shop's QR code for
+their chosen method and uploading a payment receipt, which an
+administrator reviews and approves or rejects; once the wash is done the
+customer can rate it and leave a comment.
 
-Branch management, operator availability, the service catalog (what washes
-exist and what they cost), promotions/loyalty points, and things like
-language and theme preferences all exist to support that one core flow.
+Operator availability, the service catalog (what washes exist and what
+they cost), promotions/loyalty points, and things like language and theme
+preferences all exist to support that one core flow.
 
 ### Main actors
 
@@ -37,8 +39,7 @@ language and theme preferences all exist to support that one core flow.
 |---|---|
 | **Customer** | Registers, manages vehicles, creates and manages bookings, optionally picks an operator, pays, gets notified, rates completed services. |
 | **Operator** | Keeps their availability up to date and works the services assigned to them, updating status as they go. |
-| **Administrator** | Manages branches, operator availability, assignments/reassignments, promotions, and pulls operational reports. |
-| **Payment Gateway** | External — Wompi processes card, PSE, and Nequi payments. We never touch that data directly. |
+| **Administrator** | Manages operator availability, assignments/reassignments, promotions, payment review, and pulls operational reports. |
 
 ---
 
@@ -53,7 +54,7 @@ are different enough from the rest that it deserves its own boundary.
 | Field | Value |
 |---|---|
 | **Name** | IdentityAccess |
-| **Responsibility** | Registration, login, password recovery/change, account lockout, and role-based access. |
+| **Responsibility** | Registration, login, password recovery/change, and role-based access. |
 | **Type** | Generic |
 
 Nothing here is specific to washing cars — it's the same authentication
@@ -67,7 +68,7 @@ instead of Core.
 | **User** | Anyone with an account on the platform. |
 | **Role** | Customer, Operator, or Administrator — nothing else. |
 | **Authentication** | Confirming a user is who they say they are before letting them in. |
-| **Temporary lock** | The account gets locked for a while after too many failed logins. |
+| **Password reset token** | A single-use, time-limited token issued to recover a forgotten password. |
 
 **Requirements covered:** RF-001, RF-002, RF-003, RF-004, RF-004b.
 
@@ -88,9 +89,10 @@ feeds into a booking or reacts to one.
 
 | Term | Meaning in this context |
 |---|---|
-| **Booking / Reserva** | A scheduled wash: one vehicle, one service, one branch, one date/time. |
+| **Booking / Reserva** | A scheduled wash: one vehicle, one service, one date/time. |
 | **Booking status** | Where the booking is in its lifecycle — see section 5. |
 | **Time slot** | The date and time reserved. |
+| **Wash bay** | The physical bay assigned to a booking once confirmed; two bookings can share a time slot as long as they're in different bays. |
 | **Availability** | Whether that slot can actually be booked given the current rules. |
 | **Cancellation** | Backing out of a booking before the service starts, when the rules allow it. |
 
@@ -166,12 +168,12 @@ finished." That's what this context is for.
 
 There are three ways an operator ends up assigned:
 
-1. **Automatically**, based on who's available at the selected branch.
+1. **Automatically**, based on who's available.
 2. **The customer picks one directly** from whoever's available.
 3. **An administrator assigns or reassigns** one when needed.
 
 Worth being honest about a gap here: the current requirements only confirm
-"available at the branch" (RF-008) as the automatic-assignment rule. Older
+availability (RF-008) as the automatic-assignment rule. Older
 project drafts mentioned things like proximity or workload, but those never
 made it into the current RF-008, so we're not treating them as real rules
 until someone actually writes them down as one.
@@ -181,7 +183,7 @@ until someone actually writes them down as one.
 | Term | Meaning in this context |
 |---|---|
 | **Operator** | A user with the Operator role who performs the washes. |
-| **Availability** | The windows of time an operator can work at a branch. |
+| **Availability** | The windows of time an operator can work. |
 | **Assignment** | The link between a booking and the operator doing it. |
 | **Assignment status** | Where that operator's task is — see section 5. |
 | **Reassignment** | An administrator swapping out the assigned operator. |
@@ -190,53 +192,32 @@ until someone actually writes them down as one.
 
 ---
 
-### Bounded Context: Branch Management
-
-| Field | Value |
-|---|---|
-| **Name** | BranchManagement |
-| **Responsibility** | The physical branches the business runs, and where bookings actually happen. |
-| **Type** | Supporting |
-
-A branch is where the customer drives to. We had zones grouping branches
-geographically in an earlier version of the data model, but dropped the
-idea — RF-008 resolves availability directly at the branch, nothing in the
-current requirements needs a layer above that, and the glossary doesn't
-define "zone" anymore either. If regional reporting ever becomes a real
-need, adding it back later wouldn't touch this context.
-
-**Context-specific terms (Ubiquitous Language):**
-
-| Term | Meaning in this context |
-|---|---|
-| **Branch / Sucursal** | A physical location offering the wash service, where the customer brings the vehicle. |
-
-**Requirements covered:** RF-005, RF-021, RF-022.
-
----
-
 ### Bounded Context: Payment
 
 | Field | Value |
 |---|---|
 | **Name** | Payment |
-| **Responsibility** | Tracks payment attempts, transaction records, status, and history for a booking — Wompi does the actual charging. |
+| **Responsibility** | Tracks payment attempts, uploaded receipts, review status, and history for a booking. |
 | **Type** | Supporting |
 
-We never store raw card data. Wompi handles anything sensitive; what we keep
-is just enough to tie a payment to its booking and show the customer their
-history.
+There is no payment gateway integration — this platform never collects or
+transmits card data at all. The customer scans the shop's QR code for their
+chosen method and pays outside the platform (bank transfer, Nequi,
+Daviplata, or in person for cash), then uploads a receipt as proof. An
+administrator compares the receipt against the booking and approves or
+rejects it.
 
-Card, PSE, and Nequi are the methods the current requirements name, through
-**Wompi**.
+Cash, Nequi, Daviplata, and bank transfer are the methods the current
+requirements name.
 
 **Context-specific terms (Ubiquitous Language):**
 
 | Term | Meaning in this context |
 |---|---|
-| **Payment** | A payment tied to one booking. |
-| **Transaction** | What Wompi returns — reference, status, all of that. |
-| **Payment status** | Where the payment is right now. |
+| **Payment** | A payment attempt tied to one booking. |
+| **Payment account** | The shop's QR code and account details shown to the customer for a given method. |
+| **Payment receipt** | The proof of payment the customer uploads — file, transaction reference, reported amount. |
+| **Payment status** | Where the payment is right now — see section 5. |
 | **Payment history** | Past payments the customer can look back at. |
 
 **Requirements covered:** RF-013, RF-014, RF-015, RF-016.
@@ -350,20 +331,14 @@ a final REST/messaging/microservice design.
 │ Supporting      │       └───────┬──────────┘       └─────────┬──────────┘
 └─────────────────┘               │                            │
                                   │                            │
-                    ┌─────────────┼─────────────┐              │
-                    │             │             │              │
-                    ▼             ▼             ▼              ▼
-             ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐
-             │  Service   │ │  Branch    │ │  Payment   │ │Notification│
-             │  Catalog   │ │ Management │ │ Supporting │ │  Generic   │
-             │ Supporting │ │ Supporting │ │            │ │ /Supporting│
-             └────────────┘ └────────────┘ └─────┬──────┘ └────────────┘
-                                                 │
-                                                 ▼
-                                      ┌────────────────────┐
-                                      │ External Gateway   │
-                                      │       Wompi        │
-                                      └────────────────────┘
+                    ┌─────────────┴─────────────┐              │
+                    │                           │              │
+                    ▼                           ▼              ▼
+             ┌────────────┐              ┌────────────┐ ┌────────────┐
+             │  Service   │              │  Payment   │ │Notification│
+             │  Catalog   │              │ Supporting │ │  Generic   │
+             │ Supporting │              └────────────┘ │ /Supporting│
+             └────────────┘                             └────────────┘
 
                  Booking ───────────────▶ Feedback & Rating
                  (completed service)
@@ -379,11 +354,8 @@ a final REST/messaging/microservice design.
 |---|---|---|---|
 | Booking | depends on | Vehicle Management | A booking references a vehicle the customer registered. |
 | Booking | depends on | Service Catalog | A booking picks a service from the catalog. |
-| Booking | depends on | Branch Management | A booking happens at a chosen branch. |
 | Booking | collaborates with | Operations & Assignment | A confirmed booking needs an operator and a way to track execution. |
-| Operations & Assignment | depends on | Branch Management | Availability and assignment are resolved right at the branch. |
 | Booking | enables | Payment | A payment always belongs to a booking. |
-| Payment | integrates with | External Payment Gateway | Wompi processes the payment and hands back a result. |
 | Booking | enables | Feedback & Rating | Completing a service unlocks rating it. |
 | Booking / Payment | collaborates with | Promotions & Loyalty | Promotions and loyalty rules can affect a payment when eligible. |
 | Identity & Access | provides identity information to | All contexts | Every protected operation checks who you are and what role you have. |
@@ -397,10 +369,10 @@ a final REST/messaging/microservice design.
    assignment is who's responsible for carrying it out.
 3. A service isn't a booking either — the catalog defines what's offered,
    Booking represents one specific occurrence of it actually happening.
-4. Payment doesn't own the booking, just the transaction tied to it.
+4. Payment doesn't own the booking, just the payment attempt tied to it.
 5. Notification doesn't own whatever triggered it — it just tells people.
-6. Wompi sits outside our domain entirely; it's an integration boundary, not
-   something we model internally.
+6. There is no external payment gateway to model — Payment owns the whole
+   attempt-to-review lifecycle itself, end to end.
 
 ---
 
@@ -413,8 +385,7 @@ a final REST/messaging/microservice design.
 | **Identity & Access** | Generic | Standard auth — nothing about it is specific to car washes. |
 | **Vehicle Management** | Supporting | Needed for a booking, but not the transaction itself. |
 | **Service Catalog** | Supporting | Reference data — what's on offer and at what price. |
-| **Branch Management** | Supporting | Where the service happens, nothing more. |
-| **Payment** | Supporting | Critical, but the actual processing work is Wompi's job. |
+| **Payment** | Supporting | Critical for traceability, but a manual QR-and-receipt review, not a real-time transaction engine. |
 | **Feedback & Rating** | Supporting | Adds value after the fact, doesn't drive the transaction. |
 | **Notification** | Generic / Supporting | Communicates what other contexts already decided. |
 | **Promotions & Loyalty** | Supporting | Retention feature, not the core exchange. |
@@ -468,25 +439,24 @@ The exact transition rules and guards belong in `entities-and-rules.md`.
 ## 6. Key domain rules derived from current requirements
 
 1. A customer has to be authenticated to do anything that requires being one.
-2. A booking always identifies a customer, a vehicle, a wash service, a branch, and a scheduled date/time.
+2. A booking always identifies a customer, a vehicle, a wash service, and a scheduled date/time.
 3. The requested time slot gets validated before the booking is confirmed.
 4. A customer can only modify or cancel a booking when the rules allow it — mainly, before the service starts.
-5. Automatic assignment goes by operator availability at the branch (RF-008).
+5. Automatic assignment goes by operator availability (RF-008).
 6. A customer can pick an operator from whoever's available (RF-010).
 7. An administrator can assign or reassign an operator (RF-009).
 8. An operator only sees and updates the bookings assigned to them, nothing else.
 9. A rating can only happen after the service is completed.
 10. Every payment belongs to exactly one booking.
-11. Raw card data and other sensitive payment info never get stored on our side — Wompi handles that.
+11. No card data is ever collected or stored on our side — payment is a manual QR transfer verified against an uploaded receipt, reviewed by an administrator.
 12. Customers can pull up their payment history.
 13. Promotions only apply when their validity and eligibility conditions hold.
 14. Loyalty points only get earned or redeemed under the defined loyalty rules.
 15. A notification always has a recipient and a read/unread state.
 16. What an admin or operator can do depends on their role.
-17. Managing branches is an admin-only responsibility.
-18. Operator availability lives in the operational domain and feeds directly into whether they can be assigned.
-19. Theme and language are user preferences — they don't touch the booking domain at all.
-20. Reports read from the business contexts; they don't own any of the concepts they report on.
+17. Operator availability lives in the operational domain and feeds directly into whether they can be assigned.
+18. Theme and language are user preferences — they don't touch the booking domain at all.
+19. Reports read from the business contexts; they don't own any of the concepts they report on.
 
 ---
 
@@ -498,14 +468,14 @@ The exact transition rules and guards belong in `entities-and-rules.md`.
 | Split **BookingStatus** from **AssignmentStatus** | One shared status field | A reservation and an operator's task don't move through the same states for the same reasons. |
 | Keep **Service** in its own catalog | Hardcode service types as an enum | The catalog needs to grow without anyone touching the domain model to add a wash type. |
 | Keep **Vehicle Management** separate from Booking | Treat vehicle as part of the booking itself | A customer manages vehicles on their own, independent of whether they're booking anything right now. |
-| Drop **Zone** as a domain concept | Group branches under a geographic zone | An earlier version of the data model had zones, but nothing in the current requirements needs one — RF-008 resolves availability directly at the branch, and `01-context/glossary.md` doesn't define the term anymore. Bringing it back later for regional reporting wouldn't require touching this context. |
-| Keep **Payment** separate from Booking | Store payment details inside the booking | Payment has its own lifecycle, history, and external integration — bundling it in would make Booking own things it shouldn't. |
+| Drop **Branch** (and the earlier **Zone** grouping) as a domain concept | Model a multi-location business | The approved MVP scope is a single shop location — RF-008 resolves availability directly against operator schedules, with no location layer above it, and `01-context/glossary.md` doesn't define either term. Reintroducing multi-location later wouldn't require touching Booking's internal shape, since it never depended on a location for anything but a reference. |
+| Keep **Payment** separate from Booking | Store payment details inside the booking | Payment has its own lifecycle, history, and review workflow — bundling it in would make Booking own things it shouldn't. |
 | Keep **Feedback & Rating** separate | Put rating rules directly into Booking | Rating is a separate, post-service capability with its own rule (can't rate before completion). |
 | Treat **Notification** as generic/supporting | Let Notification own business changes | It communicates what happened elsewhere; it shouldn't decide what happens. |
 | Keep **Promotions & Loyalty** in the map | Leave it out since it's not built yet | RF-024 through RF-026 are current requirements — leaving it out would make it too easy to forget before delivery. |
 | Don't fix microservice boundaries here | One microservice per Bounded Context | A Bounded Context is a domain boundary, not a deployment decision — that belongs to architecture. |
 | Don't model SQL Server tables here | Model persistence directly in the domain map | Keeping this independent of the database is the whole point of a domain map. |
-| Don't assume proximity, workload, specialization, or rating for automatic assignment | Copy the criteria from older documentation | RF-008 only confirms availability at the branch — the rest was never carried over from the old drafts. |
+| Don't assume proximity, workload, specialization, or rating for automatic assignment | Copy the criteria from older documentation | RF-008 only confirms availability — the rest was never carried over from the old drafts. |
 | Use the current role vocabulary (Customer, Operator, Administrator) | Bring back roles from the old database scripts (Supervisor, Cajero) | Those roles were dropped; the current context only defines three. |
 
 ---
@@ -528,8 +498,8 @@ They're all past tense, since an event is something that already happened.
 | `ServiceStarted` | Operations & Assignment | The operator started the wash. |
 | `ServiceCompleted` | Operations & Assignment | The wash is done. |
 | `PaymentInitiated` | Payment | A payment attempt started. |
-| `PaymentConfirmed` | Payment | Wompi confirmed the payment went through. |
-| `PaymentRejected` | Payment | The payment failed or got rejected. |
+| `PaymentConfirmed` | Payment | An administrator approved the payment after reviewing the uploaded receipt. |
+| `PaymentRejected` | Payment | The payment was rejected on review, or the attempt failed. |
 | `RatingSubmitted` | Feedback & Rating | A customer left a rating/comment after completion. |
 | `NotificationCreated` | Notification | A notification went out to someone. |
 | `PromotionApplied` | Promotions & Loyalty | An eligible promotion got applied. |
@@ -548,10 +518,10 @@ These are left for later on purpose, instead of guessing at an answer now.
 
 | # | Question | Where it gets resolved |
 |---|---|---|
-| 1 | Do small contexts (like Vehicle Management or Branch Management) get their own microservice, or fold into a bigger one? | `05-architecture` / `09-microservices` |
+| 1 | Does Vehicle Management get its own microservice, or fold into a bigger one? | `05-architecture` / `09-microservices` |
 | 2 | Exact SQL Server tables, keys, indexes, constraints. | `06-data` |
 | 3 | Exact API endpoints, DTOs, integration contracts. | `07-api` |
-| 4 | Assignment algorithm beyond "available at the branch." | Requirements / domain rules / architecture |
+| 4 | Assignment algorithm beyond operator availability. | Requirements / domain rules / architecture |
 | 5 | Promotion eligibility rules, discount math, loyalty point formulas. | `04-requirements` / `02-domain/entities-and-rules.md` |
 | 6 | How notifications actually get delivered (channels, mechanism). | `05-architecture` / `09-microservices` |
 | 7 | Exact report calculations. | `04-requirements` / reporting docs |
@@ -569,9 +539,9 @@ API, UML, or microservice docs catch up to it.
 
 - **Actors:** Customer, Operator, Administrator.
 - **Core process:** booking and delivering a vehicle wash.
-- **Main business objects:** User, Vehicle, Booking, Wash Service, Branch,
+- **Main business objects:** User, Vehicle, Booking, Wash Service,
   Operator, Assignment, Payment, Rating, Promotion, Loyalty Points, Notification.
-- **External payment integration:** Wompi.
+- **Payment verification:** manual QR transfer with an uploaded receipt, reviewed by an administrator — no external payment gateway.
 - **Persistence technology:** SQL Server, documented outside the domain model.
 
 ### Requirements alignment
@@ -579,13 +549,13 @@ API, UML, or microservice docs catch up to it.
 | Requirement area | Domain Context |
 |---|---|
 | RF-001 to RF-004b — account access and security | Identity & Access |
-| RF-005 to RF-007 — booking | Booking + Vehicle Management + Service Catalog + Branch Management |
+| RF-005 to RF-007 — booking | Booking + Vehicle Management + Service Catalog |
 | RF-008 to RF-012b — operator assignment and service execution | Operations & Assignment |
 | RF-013 to RF-016 — payments | Payment |
 | RF-017 — role dashboards | Cross-cutting presentation capability |
 | RF-018 — notifications | Notification |
 | RF-019 to RF-020 — theme/language | Cross-cutting user preferences |
-| RF-021 to RF-022 — branches and operator availability | Branch Management + Operations & Assignment |
+| RF-021 to RF-022 — operator schedules and availability | Operations & Assignment |
 | RF-023 — operational reports | Cross-cutting reporting capability |
 | RF-024 to RF-026 — promotions and loyalty | Promotions & Loyalty |
 
