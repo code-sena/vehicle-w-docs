@@ -22,7 +22,7 @@
 | Attribute | Metric | How it is verified |
 |-----------|--------|--------------------|
 | API response time — booking and auth endpoints | p95 < 2 s | Manual measurement with Postman in the local/Docker environment |
-| Branch availability query | < 2 s with the seeded test dataset | Manual test |
+| Availability query | < 2 s with the seeded test dataset | Manual test |
 | Booking confirmation | Must not wait on asynchronous side-effects (operator notification, receipt); these are queued | Integration test |
  
 > The SRS mentioned load tests with 500 concurrent users. No load-testing tool has been adopted
@@ -50,9 +50,9 @@
  
 | Scenario | Expected behaviour | How it is verified |
 |---------|--------------------|--------------------|
-| Two customers booking the same branch, date and time | The system must confirm only one of them; the second receives the updated availability | Integration test on the booking flow (RF-006) |
+| Two customers booking the same wash bay, date and time | The system must confirm only one of them; the second receives the updated availability | Integration test on the booking flow (RF-006) |
 | Assigning an operator already booked for that slot | The system must block the assignment | Integration test (RF-009) |
-| Payment recorded without a booking, or booking confirmed without its payment record | Must not be possible — both are written in the same transaction | Integration test (RF-014) |
+| A second payment being approved for a booking that already has an approved payment, or a receipt's transaction reference being reused across bookings | Must not be possible — enforced by a filtered unique index per booking and a unique index on the transaction reference | Integration test (RF-014, RF-016) |
  
 > This replaces the SRS's original scalability target (1000 concurrent users with cloud
 > auto-scaling): there is no cloud deployment in scope, and what actually matters for this system
@@ -69,7 +69,7 @@
 | 4.3 | Passwords are stored hashed with BCrypt, never in plain text | Database inspection |
 | 4.4 | Accounts lock temporarily after repeated failed login attempts (RF-004b) | Manual test |
 | 4.5 | Each role (Administrator, Operator, Customer) can only reach its own endpoints | A cross-role request returns 403 |
-| 4.6 | Card data is never stored by this system — it is handled entirely by Wompi (RF-016), which keeps the project out of PCI-DSS scope | Code and schema review |
+| 4.6 | No card data is ever collected or stored by this system — digital payments are manual QR transfers verified against an uploaded receipt, and cash is confirmed directly by the Administrator (RF-013 to RF-016) | Code and schema review |
 | 4.7 | Credentials and API keys live in environment variables, never in the repository | Code review before each PR |
 | 4.8 | HTTPS is required in any environment reachable outside the team's machines; HTTP is acceptable for local development only | Deployment review |
 | 4.9 | Personal data is handled under Colombian Law 1581 of 2012: the user accepts the data-processing policy at sign-up | Sign-up flow review |

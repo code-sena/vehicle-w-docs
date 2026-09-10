@@ -23,34 +23,35 @@ If there is code without an HU: possible gold-plating, or a change made without 
 
 | RF ID | RF Description | HU(s) | Tests that verify it | Service | Status |
 |-------|-----------------|-------|-----------------------|---------|--------|
-| RF-001 | Customer sign-up | HU-AUTH-001 | — | auth-service | 🔴 Pending |
-| RF-002 | Login with role-based redirect | HU-AUTH-002 | — | auth-service | 🔴 Pending |
-| RF-003 | Password recovery via email | HU-AUTH-003 | — | auth-service | ⏸ Blocked |
-| RF-004 | Change password (authenticated) | HU-AUTH-004 | — | auth-service | 🔴 Pending |
-| RF-004b | Account lockout after failed logins | HU-AUTH-002 | — | auth-service | 🔴 Pending |
-| RF-005 | Request booking (branch, date, time, type) | HU-BOOK-001 | — | booking-service | 🔴 Pending |
-| RF-006 | Slot availability validation | HU-BOOK-001 | — | booking-service | 🔴 Pending |
-| RF-007 | Modify/cancel booking before start | HU-BOOK-002 | — | booking-service | 🔴 Pending |
-| RF-008 | Automatic operator assignment | HU-BOOK-003 | — | booking-service | 🔴 Pending |
-| RF-009 | Assignment/reassignment by Administrator | HU-BOOK-006 | — | booking-service | 🔴 Pending |
-| RF-010 | Operator selection by customer | HU-BOOK-004 | — | booking-service | 🔴 Pending |
-| RF-011 | Operator views assigned bookings | HU-BOOK-007 | — | booking-service | 🔴 Pending |
-| RF-012 | Rate a completed service | HU-BOOK-005 | — | booking-service | 🔴 Pending |
-| RF-012b | Operator updates service status | HU-BOOK-007 | — | booking-service | 🔴 Pending |
-| RF-013 | Pay online via Wompi | HU-PAY-001 | — | payment-service | ⏸ Blocked |
-| RF-014 | Record and link transaction to booking | HU-PAY-001 | — | payment-service | ⏸ Blocked |
-| RF-015 | Payment history by date/service | HU-PAY-002 | — | payment-service | 🔴 Pending |
-| RF-016 | No raw card data stored (delegated to Wompi) | HU-PAY-001 | — | payment-service | ⏸ Blocked |
+| RF-001 | Customer sign-up | HU-AUTH-001 | — | security | 🔴 Pending |
+| RF-002 | Login with role-based redirect | HU-AUTH-002 | — | security | 🔴 Pending |
+| RF-003 | Password recovery via email | HU-AUTH-003 | — | security | ⏸ Blocked |
+| RF-004 | Change password (authenticated) | HU-AUTH-004 | — | security | 🔴 Pending |
+| RF-004b | Account lockout after failed logins | HU-AUTH-002 | — | security | 🔴 Pending |
+| RF-005 | Request booking (date, time, type) | HU-BOOK-001 | — | reserve | 🔴 Pending |
+| RF-006 | Slot availability validation | HU-BOOK-001 | — | reserve | 🔴 Pending |
+| RF-007 | Modify/cancel booking before start | HU-BOOK-002 | — | reserve | 🔴 Pending |
+| RF-008 | Automatic operator assignment | HU-BOOK-003 | — | execution | 🔴 Pending |
+| RF-009 | Assignment/reassignment by Administrator | HU-BOOK-006 | — | execution | 🔴 Pending |
+| RF-010 | Operator selection by customer | HU-BOOK-004 | — | execution | 🔴 Pending |
+| RF-011 | Operator views assigned bookings | HU-BOOK-007 | — | execution | 🔴 Pending |
+| RF-012 | Rate a completed service | HU-BOOK-005 | — | execution | 🔴 Pending |
+| RF-012b | Operator updates service status | HU-BOOK-007 | — | execution | 🔴 Pending |
+| RF-013 | Show QR (digital methods only) and payment instructions | HU-PAY-001 | — | payment | 🔴 Pending |
+| RF-013b | Upload payment receipt (digital methods only) | HU-PAY-001 | — | payment | 🔴 Pending |
+| RF-014 | Admin reviews digital receipt or confirms cash payment | HU-PAY-003 | — | payment | 🔴 Pending |
+| RF-015 | Payment history by date/service | HU-PAY-002 | — | payment | 🔴 Pending |
+| RF-016 | No card data collected; reject reused transaction reference | HU-PAY-001 | — | payment | 🔴 Pending |
 | RF-017 | Role-based dashboard | HU-UI-001 | — | Frontend only | 🔴 Pending |
-| RF-018 | Notifications with read/unread state | HU-UI-002 | — | Frontend only | 🔴 Pending |
-| RF-019 | Theme customisation | HU-UI-003 | Manual check | Frontend only | 🟡 In progress |
-| RF-020 | Language switch (4 languages) | HU-UI-003 | Manual check | Frontend only | 🟡 In progress |
-| RF-021 | Create/edit/deactivate branches | HU-ADMIN-001 | — | admin-service | 🔴 Pending |
-| RF-022 | Operator availability registration/adjustment | HU-ADMIN-001 | — | admin-service | 🔴 Pending |
-| RF-023 | Operational reports | HU-ADMIN-001 | — | admin-service | 🔴 Pending |
-| RF-024 | Manage promotions (create/edit/deactivate) | HU-PROMO-001 | — | TBD | 🔴 Pending |
-| RF-025 | Apply promotion at payment | HU-PROMO-002 | — | TBD | 🔴 Pending |
-| RF-026 | Earn/redeem loyalty points | HU-PROMO-002 | — | TBD | 🔴 Pending |
+| RF-018 | Notifications with read/unread state | HU-UI-002 | — | notification | 🔴 Pending |
+| RF-019 | Theme customisation | HU-UI-003 | Manual check | settings | 🟡 In progress |
+| RF-020 | Language switch (4 languages) | HU-UI-003 | Manual check | settings | 🟡 In progress |
+| RF-021 | Configure business hours and exceptions | HU-ADMIN-001 | — | reserve | 🔴 Pending |
+| RF-022 | Operator availability registration/adjustment | HU-ADMIN-001 | — | execution | 🔴 Pending |
+| RF-023 | Operational reports | HU-ADMIN-001 | — | reserve, execution, payment | 🔴 Pending |
+| RF-024 | Manage promotions (create/edit/deactivate) | HU-PROMO-001 | — | promotion | 🔴 Pending |
+| RF-025 | Apply promotion at payment | HU-PROMO-002 | — | promotion | 🔴 Pending |
+| RF-026 | Earn/redeem loyalty points | HU-PROMO-002 | — | customer | 🔴 Pending |
 
 ---
 
@@ -86,9 +87,10 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | HU-BOOK-005 | Rate a completed service | RF-012 | Should Have |
 | HU-BOOK-006 | Administrator assigns or reassigns an operator | RF-009 | Should Have |
 | HU-BOOK-007 | Operator views and updates assigned services | RF-011, RF-012b | Must Have |
-| HU-PAY-001 | Pay for a booking online | RF-013, RF-014, RF-016 | Must Have |
+| HU-PAY-001 | Pay for a booking via QR and receipt | RF-013, RF-013b, RF-016 | Must Have |
 | HU-PAY-002 | View payment history | RF-015 | Should Have |
-| HU-ADMIN-001 | Manage branches and view reports | RF-021, RF-022, RF-023 | Should Have |
+| HU-PAY-003 | Administrator reviews a payment receipt | RF-014 | Must Have |
+| HU-ADMIN-001 | Manage shop schedule and view reports | RF-021, RF-022, RF-023 | Should Have |
 | HU-UI-001 | Role-based dashboard | RF-017 | Should Have |
 | HU-UI-002 | Notifications inbox | RF-018 | Should Have |
 | HU-UI-003 | Interface preferences: theme and language | RF-019, RF-020 | Could Have |
@@ -113,11 +115,8 @@ If there is code without an HU: possible gold-plating, or a change made without 
 
 | Gap type | Description | Required action | Owner |
 |----------|-------------|------------------|-------|
-| HU without test | None of the 19 HUs has an automated test yet | Write tests before marking any HU as Done | Whole team |
+| HU without test | None of the 20 HUs has an automated test yet | Write tests before marking any HU as Done | Whole team |
 | Blocked RF | RF-003 needs an email provider, which is out of scope in `01-context/scope.md` (Out of Scope #6) | Integrate SMTP or drop the requirement | Whole team |
-| Blocked RF | RF-013, RF-014 and RF-016 depend on Wompi sandbox credentials (🔴 Pending in scope.md, External dependencies) | Request the credentials | Whole team |
-| Undefined service | RF-024 to RF-026 have "TBD" as their service | Decide between `payment-service` and a dedicated `promotion-service` | Backend lead |
-| Documents disagree | `functional.md` lists promotions as RF-024 to RF-026, while `01-context/scope.md` places them in phase 2, outside the MVP | Decide which is correct and update the other | Whole team |
 | Undefined rule | No tie-breaker is defined when several operators are equally available for the same slot (RF-008) | Define the rule before implementing automatic assignment | Backend lead |
 
 ---
