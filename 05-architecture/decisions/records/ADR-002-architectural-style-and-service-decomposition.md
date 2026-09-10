@@ -5,8 +5,8 @@
 | **ID** | ADR-002 |
 | **Date** | 2026-09-10 |
 | **Status** | Accepted |
-| **Authors** | Juan Camilo |
-| **Reviewers** | Brayan patiño, merari urbano, juan camilo — Development team |
+| **Authors** | Juan Camilo Guilombo — [role] |
+| **Reviewers** | Brayan Patiño, Merari Urbano, Juan Camilo Guilombo — Development team |
 
 ---
 
@@ -79,7 +79,7 @@ renaming them in the documentation alone would create two vocabularies for the s
 | Payment | `payment-service` |
 | Notification | `notification-service` |
 | Promotions & Loyalty | Split: promotions in `promotion-service`, loyalty points in `customer-service` |
-| **Branch Management** | **Removed.** The system has one establishment; capacity is handled with bays in `reserva` |
+| **Branch Management** | **Dropped from the domain.** The system has one establishment; capacity is handled with bays in `reserva` |
 | *(not in 02)* | `audit-service`, `settings-service` |
 
 **Justification:**
@@ -134,8 +134,8 @@ renaming them in the documentation alone would create two vocabularies for the s
 **Impact on the system:**
 
 - Documents that must be updated:
-  - `02-domain/domain-map.md` — remove `BranchManagement`, move Feedback & Rating into
-    Operations, split Promotions & Loyalty, and add the Audit and Settings capabilities.
+  - `02-domain/` — already corrected: branches and zones were dropped, and payment is
+    described as an administrator approving a reviewed receipt.
   - `04-requirements/functional.md` and the traceability matrix — RF-021 and RF-023 refer
     to branches; the Module column has to point to these ten services.
   - `01-context/scope.md` — branches are no longer part of the system.

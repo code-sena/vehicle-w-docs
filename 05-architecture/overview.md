@@ -114,12 +114,12 @@ C4Container
     Rel(promotion, customersvc, "Checks eligibility", "REST")
     Rel(payment, reserva, "Reads the booking being paid", "REST")
 
-    Rel(reserva, broker, "Publishes reserva.*", "AMQP")
-    Rel(execution, broker, "Publishes execution.* / consumes reserva.*", "AMQP")
+    Rel(reserva, broker, "Publishes booking.*", "AMQP")
+    Rel(execution, broker, "Publishes operations.* / consumes booking.*", "AMQP")
     Rel(payment, broker, "Publishes payment.*", "AMQP")
     Rel(broker, notification, "Delivers the events it reacts to", "AMQP")
-    Rel(broker, customersvc, "Delivers payment.approved for loyalty points", "AMQP")
-    Rel(broker, reserva, "Delivers execution.service_started / finished", "AMQP")
+    Rel(broker, customersvc, "Delivers payment.confirmed for loyalty points", "AMQP")
+    Rel(broker, reserva, "Delivers operations.service_started / completed", "AMQP")
 
     Rel(security, db, "security schema", "JDBC")
     Rel(settings, db, "settings schema", "JDBC")
@@ -257,7 +257,7 @@ Distributed tracing, Prometheus metrics and alerting are **not** part of this pr
 | AT-002 | Where receipt images are stored is not decided | Blocks RF-013 and the local environment | P1 |
 | AT-003 | RNF-003 requires a payment and its booking to be written in one transaction, which is impossible with two services and two schemas | The requirement cannot be met as written | P1 |
 | AT-004 | RF-004b does not define how many failed attempts trigger the lock, or for how long | The feature cannot be built | P1 |
-| AT-005 | `01`, `02` and `04` still describe branches and a payment gateway | The documentation contradicts itself | P1 |
+| AT-005 | `01` and `04` still describe branches and a payment gateway | The documentation contradicts itself | P1 |
 | AT-006 | The JWT is signed with HS256 and every service holds the secret | High if deployed, low while local | P2 |
 | AT-007 | A JWT cannot be revoked: logout or lockout takes effect up to an hour later | Limited security window, accepted | P3 |
 | AT-008 | Dead letter queues are reviewed by hand in the RabbitMQ console | A failure can go unnoticed | P3 |
