@@ -21,6 +21,7 @@ What the system **DOES build and maintain**:
 | 5 | Ratings and reviews | Customers rate and comment on the service once it is completed | execution |
 | 6 | Role-based dashboard and user preferences | Dashboard and notifications tailored to each user role, theme customisation, and interface available in four languages (Spanish, English, French, Portuguese) | settings, notification (dashboard itself is frontend-only) |
 | 7 | Administrative management | Management of the shop's settings and business hours, wash bays, operator schedules and availability, plus operational reports and statistics | settings, reserve, execution |
+| 8 | Promotions and loyalty | Administrator-created discounts/promotions, customer-applied promo codes at payment time, and a loyalty points program (accumulate on completed services, redeem for discounts) | promotion, customer |
 
 ### Included integrations
 
