@@ -13,11 +13,11 @@
 | EP-001 Account access | 4 | Must / Should Have |
 | EP-002 Booking lifecycle | 3 | Must / Should Have |
 | EP-003 Operator assignment | 4 | Must / Should Have |
-| EP-004 Payments | 2 | Must Have |
-| EP-005 Branch administration | 1 | Should Have |
+| EP-004 Payments | 3 | Must / Should Have |
+| EP-005 Shop administration | 1 | Should Have |
 | EP-006 Promotions and loyalty | 2 | Should / Could Have |
 | EP-007 User experience & preferences | 3 | Should / Could Have |
-| **Total** | **19** | |
+| **Total** | **20** | |
  
 > Project-level planning lives in `plan de actividades/scrum1.1.xlsx`.
 > The 21 HUs in that file describe project activities; the stories below
@@ -32,8 +32,8 @@
 | EP-001 | Account access | Sign-up, login, password recovery/change |
 | EP-002 | Booking lifecycle | Request, modify, cancel and rate a wash service |
 | EP-003 | Operator assignment | Automatic, customer-chosen and admin-assigned operators |
-| EP-004 | Payments | Online payment and history via Wompi |
-| EP-005 | Branch administration | Branches, operator availability, reports |
+| EP-004 | Payments | QR-based payment with receipt review, and history |
+| EP-005 | Shop administration | Business hours, operator availability, reports |
 | EP-006 | Promotions and loyalty | Discounts, promo codes, points program |
 | EP-007 | User experience & preferences | Role-based dashboard, notifications, theme and language |
  
@@ -70,7 +70,7 @@ Scenario 2: Duplicate email
 | Story Points | 3 |
 | Priority | Must Have |
 | Status | Backlog |
-| Affected service(s) | auth-service |
+| Affected service(s) | security |
 | Covers | RF-001 |
  
 ---
@@ -103,7 +103,7 @@ Scenario 2: Repeated failed attempts
 | Story Points | 3 |
 | Priority | Must Have |
 | Status | Backlog |
-| Affected service(s) | auth-service |
+| Affected service(s) | security |
 | Covers | RF-002, RF-004b |
  
 ---
@@ -135,7 +135,7 @@ Scenario 2: Unregistered email
 | Story Points | 2 |
 | Priority | Should Have |
 | Status | Backlog |
-| Affected service(s) | auth-service |
+| Affected service(s) | security |
 | Covers | RF-003 |
 | Dependencies | Email provider not yet integrated — see `01-context/scope.md`, Out of Scope #6 |
  
@@ -168,7 +168,7 @@ Scenario 2: Incorrect current password
 | Story Points | 2 |
 | Priority | Should Have |
 | Status | Backlog |
-| Affected service(s) | auth-service |
+| Affected service(s) | security |
 | Covers | RF-004 |
  
 ---
@@ -178,19 +178,19 @@ Scenario 2: Incorrect current password
 **Epic:** EP-002
  
 > **As** a customer
-> **I want** to book a wash service by choosing a branch, date, time and wash type
+> **I want** to book a wash service by choosing a date, time and wash type
 > **so that** I can get my vehicle washed without calling or driving to check availability
  
 **Acceptance Criteria:**
  
 ```gherkin
 Scenario 1: Slot available
-  Given I select a branch, date, time and wash type
+  Given I select a date, time and wash type
   When  the slot is available
   Then  the booking is created and I see a confirmation
  
 Scenario 2: Slot already taken
-  Given I select a branch, date and time that is already booked
+  Given I select a date and time that is already fully booked
   When  I submit the request
   Then  the system shows alternative available times instead of confirming
 ```
@@ -200,7 +200,7 @@ Scenario 2: Slot already taken
 | Story Points | 5 |
 | Priority | Must Have |
 | Status | Backlog |
-| Affected service(s) | booking-service |
+| Affected service(s) | reserve |
 | Covers | RF-005, RF-006 |
  
 ---
@@ -232,7 +232,7 @@ Scenario 2: Cancel while in progress
 | Story Points | 3 |
 | Priority | Must Have |
 | Status | Backlog |
-| Affected service(s) | booking-service |
+| Affected service(s) | reserve |
 | Covers | RF-007 |
  
 ---
@@ -249,12 +249,12 @@ Scenario 2: Cancel while in progress
  
 ```gherkin
 Scenario 1: Operator available
-  Given my booking is confirmed at a branch
+  Given my booking is confirmed
   When  at least one operator is available for that slot
   Then  the system assigns one automatically and notifies them
  
 Scenario 2: No operator available
-  Given my booking is confirmed at a branch
+  Given my booking is confirmed
   When  no operator is available for that slot
   Then  the Administrator and I are both notified
 ```
@@ -264,7 +264,7 @@ Scenario 2: No operator available
 | Story Points | 5 |
 | Priority | Must Have |
 | Status | Backlog |
-| Affected service(s) | booking-service |
+| Affected service(s) | execution |
 | Covers | RF-008 |
 | Technical notes | Tie-break rule when multiple operators are equally available is still undefined — see `04-requirements/functional.md`, Notes |
  
@@ -275,7 +275,7 @@ Scenario 2: No operator available
 **Epic:** EP-003
  
 > **As** a customer
-> **I want** to pick a specific operator from those available at my branch
+> **I want** to pick a specific operator from those available
 > **so that** I can choose someone I trust or prefer
  
 **Acceptance Criteria:**
@@ -283,7 +283,7 @@ Scenario 2: No operator available
 ```gherkin
 Scenario 1: Operator available
   Given I am completing a booking
-  When  I open the list of available operators at the branch
+  When  I open the list of available operators
   Then  I can select one and the booking is assigned to them
  
 Scenario 2: Operator becomes unavailable
@@ -297,7 +297,7 @@ Scenario 2: Operator becomes unavailable
 | Story Points | 3 |
 | Priority | Should Have |
 | Status | Backlog |
-| Affected service(s) | booking-service |
+| Affected service(s) | execution |
 | Covers | RF-010 |
  
 ---
@@ -308,7 +308,7 @@ Scenario 2: Operator becomes unavailable
  
 > **As** an Administrator
 > **I want** to assign or reassign an operator to a booking
-> **so that** I can resolve absences and balance the workload at my branch
+> **so that** I can resolve absences and balance the workload
  
 **Acceptance Criteria:**
  
@@ -329,7 +329,7 @@ Scenario 2: Operator not available
 | Story Points | 3 |
 | Priority | Should Have |
 | Status | Backlog |
-| Affected service(s) | booking-service |
+| Affected service(s) | execution |
 | Covers | RF-009 |
  
 ---
@@ -348,7 +348,7 @@ Scenario 2: Operator not available
 Scenario 1: View assigned bookings
   Given I am logged in as an operator
   When  I open my assigned services
-  Then  I see each booking with its customer, branch, time and wash type
+  Then  I see each booking with its customer, vehicle, time and wash type
  
 Scenario 2: Update service status
   Given I have a booking assigned for today
@@ -366,7 +366,7 @@ Scenario 3: Booking not assigned to me
 | Story Points | 3 |
 | Priority | Must Have |
 | Status | Backlog |
-| Affected service(s) | booking-service |
+| Affected service(s) | execution |
 | Covers | RF-011, RF-012b |
  
 ---
@@ -398,32 +398,37 @@ Scenario 2: Service not yet completed
 | Story Points | 2 |
 | Priority | Should Have |
 | Status | Backlog |
-| Affected service(s) | booking-service |
+| Affected service(s) | execution |
 | Covers | RF-012 |
 | Dependencies | HU-BOOK-007 — the service must be marked as completed first |
  
 ---
  
-### HU-PAY-001 — Pay for a booking online {#HU-PAY-001}
+### HU-PAY-001 — Pay for a booking via QR and receipt upload {#HU-PAY-001}
  
 **Epic:** EP-004
  
 > **As** a customer
-> **I want** to pay for my booking online via Nequi, card or PSE
-> **so that** I don't have to handle cash at the branch
+> **I want** to pay for my booking with the method I choose — scanning the shop's QR and uploading a receipt for a digital method, or paying in person for cash
+> **so that** I have a traceable record of payment when I pay digitally, without being forced through a QR I can't use for cash
  
 **Acceptance Criteria:**
  
 ```gherkin
-Scenario 1: Successful payment
-  Given I have a confirmed booking pending payment
-  When  I complete payment through Wompi
-  Then  the transaction is recorded and linked to the booking
+Scenario 1: Receipt submitted for a digital method
+  Given I have a confirmed booking pending payment and I pick Nequi, Daviplata or bank transfer
+  When  I see that method's QR and account details, pay through my banking app, and upload a receipt with the transaction reference and amount
+  Then  the payment is recorded as awaiting review and linked to the booking
  
-Scenario 2: Payment rejected
-  Given I attempt to pay for a booking
-  When  Wompi rejects the transaction
-  Then  I see an error and can retry
+Scenario 2: Cash payment needs no receipt
+  Given I have a confirmed booking pending payment and I pick cash
+  When  I select cash as my payment method
+  Then  the system shows no QR and does not ask me to upload a receipt — the Administrator confirms the cash payment directly
+ 
+Scenario 3: Receipt reused
+  Given I upload a receipt whose transaction reference was already used for another payment
+  When  I submit it
+  Then  the system rejects the upload and asks for a different receipt
 ```
  
 | Field | Value |
@@ -431,9 +436,8 @@ Scenario 2: Payment rejected
 | Story Points | 5 |
 | Priority | Must Have |
 | Status | Backlog |
-| Affected service(s) | payment-service |
-| Covers | RF-013, RF-014, RF-016 |
-| Dependencies | Wompi sandbox credentials — see `01-context/scope.md`, External dependencies (🔴 Pending) |
+| Affected service(s) | payment |
+| Covers | RF-013, RF-013b, RF-016 |
  
 ---
  
@@ -464,31 +468,68 @@ Scenario 2: No payments yet
 | Story Points | 2 |
 | Priority | Should Have |
 | Status | Backlog |
-| Affected service(s) | payment-service |
+| Affected service(s) | payment |
 | Covers | RF-015 |
  
 ---
  
-### HU-ADMIN-001 — Manage branches and view reports {#HU-ADMIN-001}
+### HU-PAY-003 — Administrator reviews a payment receipt {#HU-PAY-003}
+ 
+**Epic:** EP-004
+ 
+> **As** an Administrator
+> **I want** to review a digital payment's receipt against the booking amount, or confirm a cash payment directly
+> **so that** I can approve or reject the payment before the wash is confirmed as paid
+ 
+**Acceptance Criteria:**
+ 
+```gherkin
+Scenario 1: Digital payment — amount matches
+  Given a digital payment is awaiting review with an uploaded receipt
+  When  I compare the reported amount against the booking and it matches
+  Then  I approve the payment and the customer is notified
+ 
+Scenario 2: Digital payment — amount doesn't match or the receipt is unreadable
+  Given a digital payment is awaiting review
+  When  the reported amount doesn't match, or the receipt can't be verified
+  Then  I reject the payment with a reason and the customer is notified to try again
+ 
+Scenario 3: Cash payment
+  Given a customer chose to pay in cash
+  When  I confirm that the cash was received
+  Then  I approve the payment directly — no receipt is needed
+```
+ 
+| Field | Value |
+|-------|-------|
+| Story Points | 3 |
+| Priority | Must Have |
+| Status | Backlog |
+| Affected service(s) | payment |
+| Covers | RF-014 |
+ 
+---
+ 
+### HU-ADMIN-001 — Manage shop schedule and view reports {#HU-ADMIN-001}
  
 **Epic:** EP-005
  
 > **As** an Administrator
-> **I want** to create/edit branches, manage operator availability, and view operational reports
+> **I want** to configure the shop's business hours, manage operator availability, and view operational reports
 > **so that** I can run the business day to day and make informed decisions
  
 **Acceptance Criteria:**
  
 ```gherkin
-Scenario 1: Create a branch
+Scenario 1: Configure business hours
   Given I am logged in as Administrator
-  When  I submit a new branch with its required data
-  Then  it becomes available for customers to book at
+  When  I set the opening and closing hours for each day, or register an exception (holiday, special hours)
+  Then  the new schedule applies to future availability checks
  
 Scenario 2: View reports
-  Given services have been completed at one or more branches
+  Given services have been completed
   When  I open the reports section
-  Then  I see services performed, revenue, average rating and performance per branch/operator
+  Then  I see services performed, revenue, average rating and performance per operator
 ```
  
 | Field | Value |
@@ -496,7 +537,7 @@ Scenario 2: View reports
 | Story Points | 5 |
 | Priority | Should Have |
 | Status | Backlog |
-| Affected service(s) | admin-service |
+| Affected service(s) | reserve, execution |
 | Covers | RF-021, RF-022, RF-023 |
  
 ---
@@ -560,7 +601,7 @@ Scenario 2: Marking as read
 | Story Points | 3 |
 | Priority | Should Have |
 | Status | Backlog |
-| Affected service(s) | Frontend only |
+| Affected service(s) | notification |
 | Covers | RF-018 |
  
 ---
@@ -592,7 +633,7 @@ Scenario 2: Change language
 | Story Points | 3 |
 | Priority | Could Have |
 | Status | Backlog |
-| Affected service(s) | Frontend only |
+| Affected service(s) | settings |
 | Covers | RF-019, RF-020 |
  
 ---
@@ -624,7 +665,7 @@ Scenario 2: Deactivate a promotion
 | Story Points | 3 |
 | Priority | Should Have |
 | Status | Backlog |
-| Affected service(s) | TBD (payment-service or a dedicated promotion-service) |
+| Affected service(s) | promotion |
 | Covers | RF-024 |
  
 ---
@@ -661,7 +702,7 @@ Scenario 3: Earning points
 | Story Points | 5 |
 | Priority | Could Have |
 | Status | Backlog |
-| Affected service(s) | TBD (payment-service or a dedicated promotion-service) |
+| Affected service(s) | promotion, customer |
 | Covers | RF-025, RF-026 |
  
 ---

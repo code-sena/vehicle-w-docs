@@ -5,7 +5,7 @@
 | **ID** | ADR-004 |
 | **Date** | 2026-09-10 |
 | **Status** | Accepted |
-| **Authors** | Juan Camilo Guilombo — [role] |
+| **Authors** | Juan Camilo Guilombo  — [role] |
 | **Reviewers** | Brayan Patiño, Merari Urbano, Juan Camilo Guilombo — Development team |
 
 ---
@@ -68,11 +68,16 @@ token (ADR-006).
 
 | Flow | Event | Why it is not a call |
 |------|-------|----------------------|
-| A confirmed booking has to be assigned | `reserva.confirmed` | The customer gets the confirmation without waiting for an operator to be found (RNF-001) |
-| A cancelled booking releases its bay and its assignment | `reserva.cancelled` | The cancellation is already valid on its own |
-| The operator starts or finishes a service line | `execution.service_started`, `execution.service_finished` | `reserva-service` moves the booking forward when it hears about it |
-| An approved payment adds loyalty points | `payment.approved` | `customer-service` reacts; the payment does not need to wait |
-| Anything the user should be told about | every event above, plus `payment.under_review` and `payment.rejected` | `notification-service` builds the notice; the publisher does not know it exists |
+| A confirmed booking has to be assigned | `booking.confirmed` | The customer gets the confirmation without waiting for an operator to be found (RNF-001) |
+| A cancelled booking releases its bay and its assignment | `booking.cancelled` | The cancellation is already valid on its own |
+| The operator starts or finishes a service line | `operations.service_started`, `operations.service_completed` | `reserva-service` moves the booking forward when it hears about it |
+| An approved payment adds loyalty points | `payment.confirmed` | `customer-service` reacts; the payment does not need to wait |
+| Anything the user should be told about | every event above, plus `payment.initiated` and `payment.rejected` | `notification-service` builds the notice; the publisher does not know it exists |
+
+**The event names and their routing keys are the ones in `02-domain/domain-events.md`**, not
+the schema names. A service is named after the schema it owns (`reserva-service`), but the
+event vocabulary belongs to the domain (`booking.confirmed`). They are two different things
+and neither one renames the other.
 
 The eleven rows of `notification.notification_type` are the reference list: **an event
 exists because something reacts to it**, and we do not create events with no consumer.
@@ -85,8 +90,8 @@ trigger on each domain table (ADR-003), which is simpler and cannot be skipped.
 | Element | Value |
 |---------|-------|
 | Exchange | `carwash.events`, type `topic` |
-| Routing keys | `<schema>.<event>`, for example `reserva.confirmed`, `execution.service_finished`, `payment.approved` |
-| Queues | One per consuming service, bound to the routing keys it needs: `execution.reserva-events`, `reserva.execution-events`, `customer.payment-events`, `notification.events` |
+| Routing keys | The ones defined in `02-domain/domain-events.md`: `booking.*`, `operations.*`, `payment.*`, `identity.*`, `rating.submitted`, and `promotion.*` / `loyalty.*` when those flows are built |
+| Queues | One per consuming service, bound to the routing keys it needs: `execution.booking-events`, `reserva.operations-events`, `customer.payment-events`, `notification.events` |
 | Dead letter | Exchange `carwash.events.dlx`, with one `<queue>.dlq` per queue |
 | Retries | Limited attempts with backoff, then the dead letter queue |
 | Acknowledgement | Manual, after the consumer finishes its work |
@@ -132,10 +137,9 @@ The broker is not re-evaluated here: RabbitMQ is fixed by `01-context/overview.m
 **Impact on the system:**
 
 - Affected services: all ten.
-- Documents that must be updated:
-  - `02-domain/domain-events.md` — the delivered catalog still contains events tied to
-    branches and to an external payment gateway, and uses routing keys that no longer match
-    the schema names.
+- Documents that must be updated: none. The corrected `02-domain/domain-events.md` already
+  drops branches and describes `PaymentConfirmed` as the administrator approving a reviewed
+  receipt, which is what ADR-008 decides.
 
 ---
 

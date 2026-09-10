@@ -24,7 +24,7 @@ them differs.
 
 ```
 ✓ Entity: Booking — two bookings made at the exact same time, for the
-  same branch and service, are still two different bookings, distinguished
+  same service, are still two different bookings, distinguished
   by their id.
 ✓ Entity: User — changes email, password, even role over time, but stays
   the same user.
@@ -87,8 +87,6 @@ operator, or administrator.
 | email | String | | Yes | Unique across the platform |
 | passwordHash | String | | Yes | Never the raw password — INV-013 |
 | role | Role (enum) | `CUSTOMER`, `OPERATOR`, `ADMINISTRATOR` | Yes | Set once at registration, immutable afterward |
-| failedLoginAttempts | int | | Yes | Resets on successful login |
-| lockedUntil | DateTime | | No | Null unless temporarily locked (RF-004b) |
 | createdAt | DateTime | | Yes | Immutable |
 
 **Invariants:**
@@ -110,8 +108,6 @@ public final class User {
     private final Email email;
     private String passwordHash;
     private final Role role;
-    private int failedLoginAttempts;
-    private LocalDateTime lockedUntil;
 
     private User(UserId id, String name, Email email, String passwordHash, Role role) {
         this.id = id;
@@ -119,22 +115,10 @@ public final class User {
         this.email = email;
         this.passwordHash = passwordHash;
         this.role = role;
-        this.failedLoginAttempts = 0;
     }
 
     public static User register(String name, Email email, String passwordHash, Role role) {
         return new User(UserId.newId(), name, email, passwordHash, role);
-    }
-
-    public void registerFailedLogin() {
-        this.failedLoginAttempts++;
-        if (this.failedLoginAttempts >= 5) {
-            this.lockedUntil = LocalDateTime.now().plusMinutes(15);
-        }
-    }
-
-    public boolean isLocked() {
-        return lockedUntil != null && LocalDateTime.now().isBefore(lockedUntil);
     }
 }
 ```
@@ -145,7 +129,7 @@ public final class User {
 
 **Context:** Booking
 
-**Description:** A scheduled wash — one vehicle, one service, one branch,
+**Description:** A scheduled wash — one vehicle, one service,
 one time slot. The central transaction of the whole platform.
 
 **Attributes:**
@@ -156,8 +140,8 @@ one time slot. The central transaction of the whole platform.
 | customerId | UUID | References a `User` | Yes | |
 | vehicleId | UUID | References a `Vehicle` | Yes | Must belong to `customerId` — INV-002 |
 | serviceId | UUID | References a `Service` | Yes | One service per booking — confirmed with the team, 2026-09-08 |
-| branchId | UUID | References a `Branch` | Yes | |
 | scheduledAt | TimeSlot | Value Object | Yes | |
+| assignedBayId | UUID | The wash bay assigned to this booking | No | Null while `PENDING`; set by `confirm()` — INV-014 |
 | status | BookingStatus | | Yes | See lifecycle below |
 | priceAtBooking | Money | Value Object | Yes | Frozen at creation — INV-006 |
 | createdAt / updatedAt | DateTime | | Yes | |
@@ -181,8 +165,8 @@ PENDING ──(confirm)──▶ CONFIRMED ──(operator starts)──▶ IN_P
 **Invariants:**
 
 ```
-INV-001: A booking always has all five core references
-  - Rule: customerId, vehicleId, serviceId, branchId and scheduledAt must
+INV-001: A booking always has all four core references
+  - Rule: customerId, vehicleId, serviceId and scheduledAt must
     all be present
   - Violation: a booking missing any of these was never actually created
   - Implementation: validated in the static factory method, not in a setter
@@ -193,9 +177,10 @@ INV-002: A booking's vehicle must belong to its customer
   - Implementation: checked in booking-service before Booking.create() is called,
     since it needs to look up the Vehicle in another aggregate
 
-INV-003: No two confirmed bookings share the same branch + time slot
+INV-003: No two confirmed bookings share the same time slot at the same
+wash bay
   - Rule: this is what "availability" means in RF-006/RF-007
-  - Violation: two customers get double-booked for the same operator at the
+  - Violation: two customers get double-booked for the same bay at the
     same time
   - Implementation: AvailabilityChecker domain service, checked before confirm()
 
@@ -215,6 +200,15 @@ INV-006: priceAtBooking is frozen at creation time
   - Violation: a customer gets charged a different price than what they agreed to
   - Implementation: priceAtBooking is read once, in Booking.create(), and
     never recalculated from Service.price afterward
+
+INV-014: assignedBayId is only ever set by confirm(), never by create()
+  - Rule: a booking has no bay while PENDING; confirm() looks up a free bay
+    for the requested TimeSlot and assigns it, which is also what makes
+    INV-003 checkable
+  - Violation: a booking confirmed without an assigned bay, or a bay
+    assigned before the slot was validated
+  - Implementation: confirm() delegates to AvailabilityChecker, which
+    returns the bay to assign or rejects the confirmation
 ```
 
 **Code example:**
@@ -226,39 +220,39 @@ public final class Booking {
     private final CustomerId customerId;
     private final VehicleId vehicleId;
     private final ServiceId serviceId;
-    private final BranchId branchId;
     private final TimeSlot scheduledAt;
     private final Money priceAtBooking;
+    private ServiceBayId assignedBayId;
     private BookingStatus status;
 
     private Booking(BookingId id, CustomerId customerId, VehicleId vehicleId,
-                     ServiceId serviceId, BranchId branchId, TimeSlot scheduledAt,
+                     ServiceId serviceId, TimeSlot scheduledAt,
                      Money priceAtBooking) {
         this.id = id;
         this.customerId = customerId;
         this.vehicleId = vehicleId;
         this.serviceId = serviceId;
-        this.branchId = branchId;
         this.scheduledAt = scheduledAt;
         this.priceAtBooking = priceAtBooking;
         this.status = BookingStatus.PENDING;
     }
 
     public static Booking create(CustomerId customerId, VehicleId vehicleId,
-                                  ServiceId serviceId, BranchId branchId,
+                                  ServiceId serviceId,
                                   TimeSlot scheduledAt, Money priceAtBooking) {
         if (customerId == null || vehicleId == null || serviceId == null
-                || branchId == null || scheduledAt == null) {
-            throw new DomainException("INV-001: a booking needs customer, vehicle, service, branch and time slot");
+                || scheduledAt == null) {
+            throw new DomainException("INV-001: a booking needs customer, vehicle, service and time slot");
         }
         return new Booking(BookingId.newId(), customerId, vehicleId, serviceId,
-                branchId, scheduledAt, priceAtBooking);
+                scheduledAt, priceAtBooking);
     }
 
-    public void confirm() {
+    public void confirm(ServiceBayId bayId) {
         if (this.status != BookingStatus.PENDING) {
             throw new DomainException("INV-004: only a PENDING booking can be confirmed");
         }
+        this.assignedBayId = bayId;
         this.status = BookingStatus.CONFIRMED;
     }
 
@@ -329,7 +323,6 @@ without a code change.
 |---|---|---|---|---|
 | id | UUID | Identity | Yes | |
 | userId | UUID | References the underlying `User` (role `OPERATOR`) | Yes | |
-| branchId | UUID | The branch this operator works at | Yes | |
 | available | boolean | | Yes | |
 
 ---
@@ -369,9 +362,8 @@ PENDING ──(operator starts)──▶ IN_PROGRESS ──(operator finishes)�
 **Invariants:**
 
 ```
-INV-008: Automatic assignment only considers operators available at the
-requested branch
-  - Rule: RF-008 confirms availability-at-branch as the only automatic
+INV-008: Automatic assignment only considers currently available operators
+  - Rule: RF-008 confirms availability as the only automatic
     criterion. Proximity, workload, specialization and rating are NOT
     applied unless a future requirement defines them.
   - Violation: assigning based on undocumented criteria the team never agreed on
@@ -448,20 +440,6 @@ public final class Assignment {
 
 ---
 
-### Entity: Branch
-
-**Context:** Branch Management
-
-| Attribute | Type | Description | Required | Rules |
-|---|---|---|---|---|
-| id | UUID | Identity | Yes | |
-| name | String | | Yes | |
-| address | String | | Yes | |
-| city | String | | Yes | |
-| active | boolean | | Yes | An inactive branch can't take new bookings |
-
----
-
 ### Entity: Payment
 
 **Context:** Payment
@@ -471,9 +449,12 @@ public final class Assignment {
 | id | UUID | Identity | Yes | |
 | bookingId | UUID | References the `Booking` | Yes | Exactly one per payment — INV-010 |
 | amount | Money | Value Object | Yes | |
-| method | PaymentMethod (enum) | `CARD`, `PSE`, `NEQUI` | Yes | |
-| status | PaymentStatus | `PENDING`, `CONFIRMED`, `REJECTED` | Yes | |
-| gatewayReference | String | Wompi's transaction reference | Yes, once confirmed | |
+| method | PaymentMethod (enum) | `CASH`, `NEQUI`, `DAVIPLATA`, `BANK_TRANSFER` | Yes | |
+| status | PaymentStatus | `PENDING`, `IN_REVIEW`, `APPROVED`, `REJECTED`, `REFUNDED` | Yes | |
+| receiptFileUrl | String | The uploaded proof of payment | Yes, once submitted for review | |
+| receiptReference | String | Transaction reference printed on the receipt | No | Checked for reuse across payments — INV-015 |
+| reportedAmount | Money | What the receipt claims was paid | No | Compared against `amount` on review |
+| reviewedBy | UUID | The administrator who approved/rejected it | Yes, once reviewed | |
 | createdAt | DateTime | | Yes | |
 
 **Invariants:**
@@ -488,8 +469,14 @@ INV-012: Raw payment card data is never stored anywhere in this system
   - Rule: no field on Payment (or anywhere else) may hold a card number, CVV
     or expiration date
   - Violation: a data breach and a direct violation of RF-016
-  - Implementation: enforced by never defining such a field — Wompi is the
-    only party that ever touches that information
+  - Implementation: enforced by never defining such a field — there is no
+    card-based payment method in the first place; every method is a manual
+    QR transfer verified against an uploaded receipt
+
+INV-015: The same receiptReference can't be reused across two payments
+  - Rule: a transaction reference already tied to another payment is rejected
+  - Violation: one bank transfer receipt used to "pay" for two different bookings
+  - Implementation: checked by payment-service before accepting a new receipt upload
 ```
 
 ---
@@ -616,7 +603,7 @@ public final class Money {
 ### Value Object: TimeSlot
 
 **Description:** The date and time reserved for a wash. Used to check
-availability at a branch.
+availability against the shop's wash bays.
 
 | Attribute | Type | Description |
 |---|---|---|
@@ -713,7 +700,6 @@ relationship rules in `domain-map.md`, section 3).
 | Service | Entity | Service Catalog | Yes |
 | Operator | Entity | Operations & Assignment | Yes |
 | Assignment | Entity | Operations & Assignment | Yes |
-| Branch | Entity | Branch Management | Yes |
 | Payment | Entity | Payment | Yes |
 | Rating | Entity | Feedback & Rating | Yes |
 | Notification | Entity | Notification | Yes |
@@ -735,18 +721,23 @@ of an entity, or several aggregates, to make a decision.
 
 **Context:** Booking
 
-Decides whether a requested `TimeSlot` at a given branch can be booked. It
-has to look at every existing `Booking` for that branch, which is more than
+Decides whether a requested `TimeSlot` can be booked into some wash bay. It
+has to look at every existing `Booking`, which is more than
 any single `Booking` instance could decide about itself.
 
 ```java
 public class AvailabilityChecker {
 
-    public boolean isAvailable(BranchId branchId, TimeSlot requested, List<Booking> existingBookings) {
-        return existingBookings.stream()
-                .filter(b -> b.getBranchId().equals(branchId))
-                .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
-                .noneMatch(b -> b.getScheduledAt().overlaps(requested));
+    public Optional<ServiceBayId> findAvailableBay(TimeSlot requested,
+            List<ServiceBay> bays, List<Booking> existingBookings) {
+        return bays.stream()
+                .filter(ServiceBay::isActive)
+                .filter(bay -> existingBookings.stream()
+                        .filter(b -> bay.getId().equals(b.getAssignedBayId()))
+                        .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
+                        .noneMatch(b -> b.getScheduledAt().overlaps(requested)))
+                .map(ServiceBay::getId)
+                .findFirst();
     }
 }
 ```
@@ -756,15 +747,15 @@ public class AvailabilityChecker {
 **Context:** Operations & Assignment
 
 Implements the three assignment paths from RF-008/009/010. Automatic
-assignment needs to look across every operator at a branch — again, more
+assignment needs to look across every operator, again more
 than a single `Operator` or `Assignment` can decide alone.
 
 ```java
 public class OperatorAssigner {
 
-    // RF-008: automatic assignment by availability at the branch
-    public Optional<OperatorId> assignAutomatically(List<Operator> operatorsAtBranch) {
-        return operatorsAtBranch.stream()
+    // RF-008: automatic assignment by current availability
+    public Optional<OperatorId> assignAutomatically(List<Operator> availableOperators) {
+        return availableOperators.stream()
                 .filter(Operator::isAvailable)
                 .findFirst()
                 .map(Operator::getId);

@@ -92,7 +92,6 @@ the envelope around it is always the same shape from this table.
     "customerId": "c1a2c3d4-0000-0000-0000-000000000002",
     "vehicleId": "v1a2c3d4-0000-0000-0000-000000000003",
     "serviceId": "s1a2c3d4-0000-0000-0000-000000000004",
-    "branchId": "br1a2c3d-0000-0000-0000-000000000005",
     "scheduledAt": "2026-09-11T09:00:00Z",
     "priceAtBooking": { "amount": 20000, "currency": "COP" }
   }
@@ -132,7 +131,7 @@ the envelope around it is always the same shape from this table.
   "version": 1,
   "payload": {
     "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "branchId": "br1a2c3d-0000-0000-0000-000000000005",
+    "assignedBayId": "bay1a2c3-0000-0000-0000-000000000005",
     "scheduledAt": "2026-09-11T09:00:00Z",
     "operatorPreselected": false
   }
@@ -407,7 +406,7 @@ creates a new one, it doesn't mutate the existing record.
 | **Name** | `PaymentInitiated` |
 | **Bounded Context** | Payment |
 | **Aggregate** | Payment |
-| **Trigger** | A customer starts a payment attempt through Wompi |
+| **Trigger** | A customer scans the shop's QR code and submits a payment attempt |
 | **Consumers** | *(none currently — internal to payment-service)* |
 | **Channel (routing key)** | `payment.initiated` |
 | **Schema version** | v1 |
@@ -444,7 +443,7 @@ to subscribe to — right now nothing in the platform reacts to it.
 | **Name** | `PaymentConfirmed` |
 | **Bounded Context** | Payment |
 | **Aggregate** | Payment |
-| **Trigger** | Wompi confirms the payment succeeded |
+| **Trigger** | An administrator approves the payment after reviewing the uploaded receipt |
 | **Consumers** | Notification, Promotions & Loyalty *(planned)* |
 | **Channel (routing key)** | `payment.confirmed` |
 | **Schema version** | v1 |
@@ -464,7 +463,7 @@ to subscribe to — right now nothing in the platform reacts to it.
     "paymentId": "pay1a2c3-0000-0000-0000-000000000010",
     "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
     "amount": { "amount": 20000, "currency": "COP" },
-    "gatewayReference": "wompi-txn-abc123"
+    "reviewedBy": "adm1a2c3-0000-0000-0000-000000000020"
   }
 }
 ```
@@ -485,7 +484,7 @@ to subscribe to — right now nothing in the platform reacts to it.
 | **Name** | `PaymentRejected` |
 | **Bounded Context** | Payment |
 | **Aggregate** | Payment |
-| **Trigger** | Wompi rejects or fails the payment attempt |
+| **Trigger** | An administrator rejects the payment on review — amount mismatch, unreadable receipt, or a reused transaction reference |
 | **Consumers** | Notification |
 | **Channel (routing key)** | `payment.rejected` |
 | **Schema version** | v1 |
@@ -504,7 +503,8 @@ to subscribe to — right now nothing in the platform reacts to it.
   "payload": {
     "paymentId": "pay1a2c3-0000-0000-0000-000000000010",
     "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "reason": "INSUFFICIENT_FUNDS"
+    "reviewedBy": "adm1a2c3-0000-0000-0000-000000000020",
+    "reason": "AMOUNT_MISMATCH"
   }
 }
 ```
@@ -585,7 +585,7 @@ to subscribe to — right now nothing in the platform reacts to it.
     "notificationId": "nt1a2c3d-0000-0000-0000-000000000016",
     "recipientId": "c1a2c3d4-0000-0000-0000-000000000002",
     "type": "SERVICE_STARTED",
-    "message": "Your wash just started at Branch Chapinero."
+    "message": "Your wash just started."
   }
 }
 ```
@@ -886,7 +886,8 @@ public void onBookingConfirmed(BookingConfirmedEvent event) {
         return;
     }
 
-    operatorAssigner.assignAutomatically(event.getBranchId());
+    List<Operator> availableOperators = operatorRepository.findAvailable(event.getScheduledAt());
+    operatorAssigner.assignAutomatically(availableOperators);
 
     // marked in the same transaction as the actual work, so a crash
     // between the two never leaves the event "half processed"

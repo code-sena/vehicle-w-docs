@@ -62,11 +62,12 @@ All containers share one Compose network and reach each other by container name,
 
 1. `sqlserver` and `rabbitmq` start first and must be healthy before anything else.
 2. The database, the ten schemas and the ten users are created (section 4).
-3. Each service applies its Liquibase migrations at startup, limited to its own schema
-   (RNF-006.3).
-4. The seed data is loaded. **Without it the system does not start working**: there is no
-   booking without the `AGENDADA` status row.
-5. `api-gateway` starts last.
+3. The Liquibase changelog is applied once against the database — schemas, tables,
+   triggers and seed data, in the order the master file lists (RNF-006.3). **The services
+   do not migrate on startup.**
+4. Without the seed data the system does not start working: there is no booking without the
+   `AGENDADA` status row.
+5. The services start, and `api-gateway` last.
 
 A service that cannot reach its dependencies fails on startup instead of running
 half-broken (`cross-cutting.md`).
@@ -75,24 +76,33 @@ half-broken (`cross-cutting.md`).
 
 ## 4. Database initialisation
 
-Before any service migrates, the database has to exist with its schemas and its users:
+Two steps, in this order:
+
+**Step 1 — what Liquibase cannot do**, because it needs an administrator connection:
 
 1. Create the database.
-2. Create the ten schemas: `security`, `audit`, `settings`, `customer`, `catalog`,
-   `reserva`, `execution`, `promotion`, `payment`, `notification`.
-3. Create one database user per service, with permissions only on its own schema (ADR-003).
-4. Load the seed catalogs — 13 tables, listed in section 17 of `06-data`.
+2. Create one database user per service, with permissions only on its own schema (ADR-003).
 
-**[to confirm]** Where this script lives: an init script mounted into the `sqlserver`
-container, or a documented manual step. It cannot be a Liquibase changelog, because a
-service needs its user to exist before it can connect.
+**Step 2 — the Liquibase changelog**, run once with that administrator connection:
+
+3. The ten schemas, the tables, the constraints and the triggers, in the order the master
+   file lists.
+4. The seed catalogs — 13 tables, listed in section 17 of `06-data`.
+
+**[to confirm]** Where step 1 lives: an init script mounted into the `sqlserver` container,
+or a documented manual step.
+
+**[to confirm]** Who runs step 2: a one-off container in the Compose file, or a command the
+developer runs. It is not run by the services.
 
 ⚠️ The seed inserts use `SET IDENTITY_INSERT` with explicit ids on purpose.
 `reserva_status.CANCELADA = 5` and `payment_status.APPROVED = 3` are written as literals
 inside constraints and indexes, so **those two ids cannot change**.
 
-From there on, every schema change goes through the changelog of the service that owns it.
-No manual changes to the database.
+From there on, every schema change is a **new changeset** in that same changelog, written
+by whoever owns the schema. A changeset that has already run is never edited — Liquibase
+refuses to proceed on a checksum mismatch, and that is the safety net, not a bug. No manual
+changes to the database.
 
 ---
 
