@@ -239,7 +239,7 @@ stack and no payment gateway.
 | Traceability | Correlation id generated at the gateway and carried in the event envelope | ADR-005 |
 | Health checks | Health endpoint per service with Spring Boot Actuator — proposed | `deployment.md` |
 | Configuration and secrets | Environment variables, never in the repository | RNF-004.7 |
-| Migrations | One Liquibase changelog per service, limited to its schema | RNF-006.3, ADR-003 |
+| Migrations | One ordered Liquibase changelog for the whole database, applied before the services start; forward-only | RNF-006.3, ADR-003 |
 | Rate limiting | Not adopted; no public exposure | ADR-005 |
 
 Detail in `cross-cutting.md`.

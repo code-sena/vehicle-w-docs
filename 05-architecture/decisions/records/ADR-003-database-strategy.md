@@ -5,8 +5,8 @@
 | **ID** | ADR-003 |
 | **Date** | 2026-09-10 |
 | **Status** | Accepted |
-| **Authors** | Juan Camilo Guilombo  — [role] |
-| **Reviewers** | Brayan Patiño, Merari Urbano, Juan Camilo Guilombo — Development team |
+| **Authors** | Juan Camilo Guilombo — [role] |
+| **Reviewers** | Brayan Patiño, Merari Urbano, Camilo Guilombo — Development team |
 
 ---
 
@@ -60,7 +60,7 @@ per service**, exactly as defined in `06-data`.
 | Deletion | Logical: `deleted_at` is filled and the row stops counting. Nothing is physically deleted |
 | Concurrency | Optimistic locking through `row_version`, incremented by a trigger |
 | Change history | One `audit.audit_log` table written by a trigger per domain table, storing the old and new values as JSON |
-| Migrations | One Liquibase changelog per service, limited to its own schema |
+| Migrations | One ordered Liquibase changelog for the whole database: a master file that includes one file per schema, then the triggers, then the seed data. Applied once, before the services start |
 
 **Justification:**
 
@@ -77,6 +77,11 @@ per service**, exactly as defined in `06-data`.
 - **Reports need to read across schemas.** RF-023 asks for figures that live in `reserva`,
   `execution` and `payment` at the same time. With one database that is a query; with ten
   it would need replication.
+- **The schema is created and versioned as one ordered history.** The audit trigger
+  generator has to run after every domain table exists, so migrations are applied once, in
+  order, against the whole database — not by each service on its own startup. Migrations
+  are forward-only: there are no rollback blocks, and a changeset that has already run is
+  never edited (`06-data/migration-strategy.md`).
 
 ---
 
@@ -143,7 +148,8 @@ per service**, exactly as defined in `06-data`.
 | A service queries another schema because it is faster than calling the API | High | Medium | One database user per service, with permissions only on its own schema |
 | A cross-schema reference is written without validating it and leaves an orphan row | High | High | The eighteen references are listed in `06-data`, section 16; each is validated against its owning service before writing |
 | Someone renumbers the seed catalogs and breaks the constraints that use literal IDs | Medium | High | The seed inserts use `SET IDENTITY_INSERT` with explicit IDs; the two frozen values are documented in `06-data`, section 17 |
-| Two services' migrations conflict on the same database | Medium | Medium | One changelog per service, limited to its schema, reviewed in the Pull Request (RNF-006.1) |
+| A domain table added later never gets its `tr_touch_` trigger, because the bulk generator changeset already ran | Medium | Medium | Any changeset that adds a domain table creates its trigger explicitly (`06-data/migration-strategy.md`) |
+| A changeset that already ran is edited and every environment breaks | Medium | Medium | Liquibase refuses to proceed on a checksum mismatch; a change is always a new changeset, reviewed in the Pull Request (RNF-006.1) |
 
 ---
 
