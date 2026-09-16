@@ -7,49 +7,53 @@
 
 ## Sprint structure
 
+The cadence follows the SENA ADSO academic calendar in `plan de actividades/scrum1.1.xlsx`,
+not a fixed weekly cycle — each sprint lines up with a delivery milestone reviewed by the
+instructor rather than an arbitrary week boundary.
+
 | Field | Value |
 |-------|-------|
-| Duration | [1 week / 2 weeks / 3 weeks] |
-| Sprint start | [Monday / Tuesday / Wednesday] |
-| Sprint end | [Friday of week N] |
-| Current sprint | Sprint [N] — [start date] to [end date] |
-| Estimated capacity | [N story points per sprint] |
+| Duration | 2 weeks, aligned to each academic review cycle |
+| Sprint start | Monday |
+| Sprint end | Friday of week 2, the day before the instructor review |
+| Current sprint | Sprint covering `04-requirements` → `06-data` (see `03-product/roadmap.md`, M1–M2) |
+| Estimated capacity | 3 part-time apprentices alongside their academic workload — capacity is reduced accordingly, see `01-context/scope.md`, Constraints |
 
 ---
 
 ## Ceremonies
 
 ### Sprint Planning
-- **When:** First day of the sprint — [time]
-- **Duration:** Maximum [1h per week of sprint]
-- **Who:** Entire team
+- **When:** First day of the sprint
+- **Duration:** Maximum 1 hour, scheduled around the team's academic timetable
+- **Who:** Brayan Patiño, Juan Camilo Guilombo, Merari Urbano
 - **Goal:** Select and commit to sprint user stories, break down into technical tasks
-- **Output artifact:** Sprint Backlog updated in [tool: Jira / Linear / GitHub Issues]
+- **Output artifact:** Sprint backlog updated in `plan de actividades/scrum1.1.xlsx`
 
 ### Daily Stand-up
-- **When:** Every day — [time]
-- **Duration:** Maximum 15 minutes
+- **When:** Async, in the team's WhatsApp/Discord channel — not a synchronous meeting, since the three members have different class schedules
+- **Duration:** N/A (async)
 - **Format:**
   1. What did I do yesterday?
   2. What will I do today?
   3. Is anything blocking me?
-- **Rule:** Technical discussions happen after the daily, not during it
+- **Rule:** Technical discussions move to a call, they are not resolved in the async thread
 
 ### Sprint Review
-- **When:** Last day of the sprint — [time]
-- **Duration:** Maximum [30 min]
-- **Who:** Team + Product Owner (+ stakeholders if applicable)
-- **Goal:** Show what was built and collect feedback
+- **When:** Last day of the sprint, before the instructor review session
+- **Duration:** Maximum 30 min
+- **Who:** Team (Product Owner role rotates — see `documentation-rules.md`, Owners per section)
+- **Goal:** Show what was built and collect feedback before presenting to the instructor
 
 ### Sprint Retrospective
 - **When:** Last day of the sprint — after the review
-- **Duration:** Maximum [45 min]
-- **Format:** [What went well / What to improve / Action commitments]
+- **Duration:** Maximum 30 min
+- **Format:** What went well / what to improve / action commitments
 - **Rule:** Each retro produces at least 1 improvement action with an owner and due date
 
 ### Backlog Refinement
-- **When:** [Wednesday of the second week / mid-sprint]
-- **Duration:** Maximum [1h]
+- **When:** Mid-sprint, whenever the three members can align a call
+- **Duration:** Maximum 1 hour
 - **Goal:** Detail and estimate user stories for the next sprint
 - **Exit criterion:** The user story meets the Definition of Ready
 
@@ -67,8 +71,8 @@
 | 8 | Very large — should be split |
 | 13 | Epic — MUST be split before the sprint |
 
-**Technique:** [Planning Poker / T-shirt sizing]
-**Tool:** [tool name]
+**Technique:** Planning Poker over a call — with 3 people, a full poker deck is unnecessary ceremony, but voting independently before discussing still avoids anchoring on the first number said
+**Tool:** `plan de actividades/scrum1.1.xlsx`
 
 ### Estimation rule
 - If there is disagreement of 2+ levels (e.g., someone says 3 and another says 8), discuss before voting again.
@@ -78,8 +82,8 @@
 
 ## Backlog tool
 
-**Tool:** [Jira / Linear / GitHub Projects / Trello]
-**Board URL:** [URL]
+**Tool:** `plan de actividades/scrum1.1.xlsx`, tracked alongside GitHub Issues for code-level tasks — the team chose a spreadsheet over Jira/Linear because it is what the ficha's academic delivery format expects, and a paid board tool is not justified for 3 part-time apprentices
+**Board URL:** N/A — the spreadsheet lives in the repository, not in an external tool
 
 ### Board columns
 | Column | Meaning |

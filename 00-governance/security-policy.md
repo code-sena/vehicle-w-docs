@@ -22,23 +22,21 @@
 
 | Property | Required value |
 |----------|---------------|
-| Signing algorithm | RS256 (asymmetric) or HS256 with 256+ bit secret |
-| Access token expiration | 1 hour (`exp`) |
-| Refresh token expiration | 7 days |
-| Required claims | `sub` (userId), `iat`, `exp`, `jti` (unique token ID) |
-| Client storage | `httpOnly cookie` (web) or Keychain/Keystore (mobile) |
+| Signing algorithm | HS256, shared secret delivered to every service as an environment variable (ADR-006) |
+| Access token expiration | 1 hour (`exp`) — RNF-004.2 |
+| Refresh token | **Not used in this version.** When the token expires, the user logs in again (ADR-006, evaluated and deferred — see "Planned evolution" in `05-architecture/overview.md`) |
+| Required claims | User id and role codes only — no personal data beyond what authorization needs (RNF-004.9) |
+| Client storage | Whatever Angular/React Native storage the client implementation chooses; the token is never logged |
 
 **Prohibited in the payload:**
 - Passwords
-- Card data
-- Full PII (only the user ID)
+- Card data — moot in this project, since no card data is ever collected (ADR-008)
+- Full PII (only the user ID and role codes)
 
-### Refresh Token
+### Session tracking and token revocation
 
-- Stored in the database (with bcrypt hash)
-- Mandatory rotation on each use (one refresh token = one use)
-- Invalidated on logout and on password change
-- ALL active tokens invalidated if use of a revoked token is detected
+- `security.user_session` records who logged in, when, and whether the session was closed — it answers "who was connected and when," it is **not** checked on every request (ADR-006)
+- **A JWT cannot be revoked before it expires.** Logging out or locking an account closes the session row, but a token issued before that moment stays valid until its hour runs out. This is an accepted trade-off (`05-architecture/overview.md`, AT-007), not an oversight — checking `user_session` on every request would turn `security-service` into a bottleneck all ten services depend on
 
 ---
 
@@ -46,32 +44,22 @@
 
 ### RBAC (Role-Based Access Control)
 
+Only three roles are seeded, exactly as defined in `security.role` (`06-data`, section 4) — there is no `SUPER_ADMIN` and no room for a custom role without a migration:
+
 | Role | Description | Permissions |
 |------|-------------|------------|
-| `SUPER_ADMIN` | System technical administrator | All |
-| `ADMIN` | Business administrator | [define] |
-| `OPERATOR` | Operator with write permissions | [define] |
-| `VIEWER` | Read-only | [define] |
-| `[CUSTOM_ROLE]` | [description] | [define] |
+| `ADMINISTRATOR` | Business owner or manager | Configures the establishment, services and promotions; assigns/reassigns operators; reviews and approves payments; consults operational reports (RF-021 to RF-023) |
+| `OPERATOR` | Performs the wash | Records their own availability; views and updates only the `service_execution` rows assigned to them (RF-008 to RF-012b, RF-022) |
+| `CLIENT` | Registers vehicles and books | Manages their own vehicles and bookings, pays by QR, rates completed services, views only their own records (RF-005 to RF-016) |
 
 **Permission model:**
 
-```
-Permission: [resource]:[action]
-
-Examples:
-  orders:create
-  orders:read
-  orders:update
-  orders:delete
-  users:read
-  reports:export
-```
+The `security` schema also defines granular `permission` and `role_permission` tables (resource + action, e.g. `reserva:cancel`), inherited from the instructor's shared core. **This project's requirements only ask for role-level control** — whether services check fine-grained permissions or only the role is confirmed when the endpoints are designed in `07-api` (ADR-006, Pending decisions). Until then, treat the role as the unit of authorization.
 
 **Validation:**
-- The API Gateway validates the JWT (signature and expiration)
-- Each service validates the role permissions for the specific operation
-- Roles are included in the JWT as claim `roles: ["OPERATOR", "VIEWER"]`
+- The API Gateway rejects a request with a missing, invalid or expired JWT before it reaches any service (ADR-005)
+- Each service validates the JWT again and checks the role for that endpoint — service-to-service calls do not pass through the gateway (ADR-004), so skipping this would leave internal calls unauthenticated
+- On top of the role, each service checks **ownership**: an `OPERATOR` with a valid token still cannot update a `service_execution` line that is not theirs, and a `CLIENT` only reaches their own bookings, vehicles and payments
 
 ---
 

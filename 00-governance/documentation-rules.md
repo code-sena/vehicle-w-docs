@@ -67,16 +67,21 @@ ADRs are numbered sequentially: ADR-001-short-title.md.
 
 ## Owners per section
 
+The team has no dedicated Product Owner or Tech Lead role — three part-time apprentices share
+those responsibilities by section, matching who actually leads each area in practice:
+
 | Section | Owner | Review frequency |
 |---------|-------|-----------------|
-| `00-governance/` | Tech Lead | Start of each sprint |
-| `02-domain/` | Tech Lead + PO | When the domain changes |
-| `04-requirements/` | Product Owner | Each sprint |
-| `05-architecture/` | Tech Lead | Each design decision |
+| `00-governance/` | Brayan Patiño (Project Lead) | Start of each sprint |
+| `01-context/`, `03-product/` | Brayan Patiño (Project Lead) | When scope or vision changes |
+| `02-domain/` | Whole team | When the domain changes |
+| `04-requirements/` | Whole team, consolidated by Brayan Patiño | Each sprint |
+| `05-architecture/` | Juan Camilo Guilombo (Frontend Lead) + Merari Urbano (Backend Lead) | Each design decision |
+| `06-data/` | Merari Urbano (Backend Lead) | Each schema change |
 | `07-api/contracts/` | Service-owning developer | Each API change |
 | `09-microservices/` | Service-owning developer | Each release |
-| `13-operations/` | DevOps / On-call | After each incident |
-| `15-project-control/` | Tech Lead | Weekly review |
+| `12-ux-ui/` | Juan Camilo Guilombo (Frontend Lead) | Each design change |
+| `13-operations/`, `15-project-control/` | Whole team | Each academic review cycle |
 
 ---
 

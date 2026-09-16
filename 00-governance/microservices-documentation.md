@@ -15,8 +15,10 @@ Each microservice lives in `09-microservices/services/NN-service-name/` and MUST
 ├── data-model.md     ⭐ REQUIRED before creating migrations
 ├── events.md         ⭐ REQUIRED if the service emits/consumes events
 ├── decisions.md      🔵 RECOMMENDED — internal technical decisions of the service
-└── runbook.md        🟢 REQUIRED before first deploy to staging
+└── runbook.md        🟢 REQUIRED before the service runs in the shared Docker Compose environment
 ```
+
+There is no staging or production environment for this project — every "before deploy" checkpoint below means "before it runs in the team's local Docker environment" (`05-architecture/deployment.md`).
 
 And its OpenAPI contract in:
 ```
@@ -53,8 +55,8 @@ Minimum content (use `_template/service/README.md`):
 Minimum content:
 - ER diagram (Mermaid) of the service's tables
 - Description of each table with its columns, types, constraints, and purpose
-- Justification of the chosen DB engine (PostgreSQL, MongoDB, Redis, etc.)
-- Migration strategy (Flyway, Liquibase, or manual scripts)
+- All 10 services share the same engine, SQL Server, and the same database (one schema per service, ADR-003) — no per-service engine choice to justify here, only how this service's schema maps to `06-data/models.md`
+- Migration strategy: one ordered Liquibase changelog for the whole database, not per service (ADR-003, `06-data/migration-strategy.md`)
 
 **Rule:** A field whose reason for existing is not obvious MUST have a comment in the diagram.
 
@@ -94,7 +96,7 @@ Recommended format: miniADR (without the full rigor of an architecture ADR):
 
 ## runbook.md — Service operations manual
 
-**When to create it:** Before the first deploy to staging
+**When to create it:** Before the service first runs in the shared Docker Compose environment
 **Owner:** Responsible developer + DevOps
 **Update when:** A new operational issue is discovered or a procedure changes
 

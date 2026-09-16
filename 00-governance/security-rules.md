@@ -20,18 +20,17 @@ const userId = req.user.sub; // req.user comes from the authentication middlewar
 
 **Rules:**
 - Every protected endpoint MUST have the authentication middleware applied
-- Permissions are verified in the Use Case, not in the Controller
-- A resource is only returned if the user has `[resource]:read` permission
-- Write actions require `[resource]:write` or `[resource]:delete` permission
+- Permissions are verified in the application layer, not the controller (hexagonal architecture, ADR-007)
+- A resource is only returned to the role allowed to read it — see `security-policy.md` for the three seeded roles
+- On top of the role, ownership is checked in the service: an `OPERATOR` only reaches their own `service_execution` rows, a `CLIENT` only their own bookings/vehicles/payments (ADR-006)
 
 ### A02 — Cryptographic Failures
 
 **Rules:**
-- Passwords: use **bcrypt** with cost factor ≥ 12. Never MD5 or SHA-1 for passwords
-- JWTs: sign with RS256 (asymmetric). Never HS256 in production with a weak secret
-- Sensitive data in transit: HTTPS mandatory in all environments except local
-- Sensitive data at rest: encrypt with AES-256-GCM the fields marked as PII
-- Never log passwords, tokens, or credit card data
+- Passwords: **BCrypt** (RNF-004.3). Never MD5 or SHA-1 for passwords
+- JWTs: this project signs with **HS256 and a shared secret**, not RS256 — a deliberate, documented trade-off (ADR-006), not an oversight. Every service holds the secret as an environment variable, and the accepted risk is tracked as `05-architecture/overview.md`, AT-006. RS256 is the planned evolution if the project moves past the academic delivery
+- Sensitive data in transit: HTTPS mandatory outside the team's own machines; HTTP is acceptable for local development only (RNF-004.8)
+- Never log passwords, tokens, or payment receipt contents
 
 ### A03 — Injection
 
@@ -54,9 +53,9 @@ const user = await userRepository.findOne({ where: { id: userId } });
 
 ### A04 — Insecure Design
 
-- Every HU that exposes user data must undergo privacy review
-- Bulk query endpoints have mandatory pagination (maximum [100] records per page)
-- Do not expose sequential internal IDs; use UUIDs
+- Every HU that exposes user data must undergo privacy review (RNF-004.9, Colombian Law 1581 of 2012)
+- Bulk query endpoints have mandatory pagination
+- **Internal IDs are sequential `IDENTITY(1,1)` integers, not UUIDs — by design (ADR-003), not an oversight.** They are never exposed as the sole access control: exposing a sequential id is not the same as authorizing access to it, and every endpoint still checks role and ownership (A01) regardless of how guessable the id is
 
 ### A05 — Security Misconfiguration
 
@@ -75,32 +74,28 @@ const user = await userRepository.findOne({ where: { id: userId } });
 ### A06 — Vulnerable Components
 
 **Rules:**
-- Run `npm audit` (or equivalent) before each release
-- **Critical/High** vulnerabilities block the deploy
-- Renew dependencies each sprint (at least once)
-- Do not use `latest` versions without pinning in `package.json`; use exact versions or conservative ranges
+- Run `mvn versions:display-dependency-updates` (or the Gradle equivalent) before each academic delivery — there is no continuous release cycle to gate, so this runs per milestone, not per merge
+- Critical/High vulnerabilities in a dependency are fixed before the next review session
+- Do not use floating versions; pin exact versions in `pom.xml` / `build.gradle`
 
 ### A07 — Identification and Authentication Failures
 
-- JWT with maximum expiration of **1 hour** for access tokens
-- Refresh tokens with expiration of **[7 days / 30 days]** and rotation on each use
-- Rate limiting on `/auth/login`: maximum [10] attempts per IP in 5 minutes
-- Account lockout after [5] consecutive failed attempts
+- JWT with maximum expiration of **1 hour** for access tokens (RNF-004.2)
+- **No refresh tokens in this version.** The user logs in again once the token expires — deferred by ADR-006, not implemented as a stopgap
+- Account lockout after **5 consecutive failed attempts, for 15 minutes** — this is the definition RF-004b was missing (`05-architecture/overview.md`, closes AT-004). Confirm this in `04-requirements/functional.md` before building the feature
+- No rate limiting at the gateway: there is no public exposure to rate-limit against (ADR-005, Pending decisions) — the account lockout above is the actual defense against brute-forcing a single account
 
 ### A08 — Software and Data Integrity Failures
 
-- Verify Docker image checksum before using in production
-- Third-party webhooks must verify cryptographic signature
-- Validate that messages from the broker (Kafka/RabbitMQ) have the expected schema
+- Verify the Docker image digest for `sqlserver` and `rabbitmq` matches what the team last tested — there is no production registry to pull from, only the local Compose environment (`05-architecture/deployment.md`)
+- There are no third-party webhooks: payment verification is manual, in-house (ADR-008)
+- Validate that messages from RabbitMQ have the expected schema before processing them — there is no Kafka in this stack (ADR-004)
 
 ### A09 — Security Logging and Monitoring Failures
 
-- Every failed authentication must be logged with IP, timestamp, and user-agent
-- Log delete operations with who, when, and what was deleted
-- Security logs are retained for a minimum of **90 days**
-- Automatic alerts configured for:
-  - More than [50] 401/403 errors in 5 minutes
-  - Access to a resource from an unexpected country (if applicable)
+- Every failed authentication must be logged with the account and timestamp (no IP/user-agent capture is planned — the environment is local Docker, not a public-facing service)
+- Log delete operations with who, when, and what was deleted — covered by the audit block on every domain table (`deleted_at`/`deleted_by`) and `audit.audit_log` (`06-data`, ADR-003)
+- Security logs are plain output, readable with `docker logs` — there is no log retention policy or alerting stack: `04-requirements/non-functional.md` explicitly drops metrics and alerting from this academic delivery's scope
 
 ### A10 — Server-Side Request Forgery (SSRF)
 

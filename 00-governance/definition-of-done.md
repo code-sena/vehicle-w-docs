@@ -26,8 +26,8 @@
 ### Deployment
 - [ ] Code is mergeable to `dev` (no conflicts)
 - [ ] CI/CD green on the branch
-- [ ] Deployed to staging environment
-- [ ] Basic smoke test passing on staging
+- [ ] Runs locally via Docker Compose, following `05-architecture/deployment.md` — there is no staging or production environment for this project (`01-context/scope.md`, Out of Scope #5)
+- [ ] Basic smoke test passing locally
 
 ### Documentation
 - [ ] Service `README.md` updated if the public interface changed

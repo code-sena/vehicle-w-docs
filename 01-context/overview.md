@@ -23,6 +23,13 @@ system assign one. The customer pays by scanning the shop's own QR code
 and uploading proof of payment, which the Administrator verifies against
 the amount due, and every service keeps a history and a rating.
 
+**Where this comes from:** this is a documented project hypothesis, not
+measured field research — no booking-error rate, wasted-trip count or
+adoption figure has been collected yet. The team will capture a pilot
+baseline before claiming any of those outcomes (full detail, including
+the risks to validate before trusting this hypothesis, in
+`03-product/problem-framing.md`).
+
 ## Main users
 
 | Role | Description | What they do in the system |
@@ -43,10 +50,10 @@ the amount due, and every service keeps a history and a rating.
 
 ## Current status
 
-- **Phase:** In development
-- **Current version:** N/A — the project does not use release versioning yet
+- **Phase:** Design complete, implementation not started. Domain (`02-domain`), product definition (`03-product`), requirements (`04-requirements`), architecture (`05-architecture`, 8 ADRs) and the data model (`06-data`, `MODELO-DE-DATOS.md`) are all written and cross-checked against each other
+- **Current version:** N/A — the project does not use release versioning yet; no code has been written
 - **Last release:** N/A
-- **Next milestone:** Authentication and role-based access — working login with JWT, where each role (administrator, operator, customer) can only access the features assigned to it
+- **Next milestone:** `security-service` first, following the build order in ADR-002 (`security` → `customer` → `catalog` → `reserva` → `execution`, then the rest) — working login and role-based access with JWT (RF-001 to RF-004b), which every other service depends on
 
 ## Project contacts
 
