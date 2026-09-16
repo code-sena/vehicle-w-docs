@@ -88,7 +88,7 @@
       flex-shrink: 0;
     }
 
-    .sidebar-usuario {
+    .sidebar-user {
       display: flex;
       align-items: center;
       gap: 12px;
@@ -112,14 +112,14 @@
       font-weight: 600;
     }
 
-    .usuario-info .nombre {
+    .user-info .name {
       font-size: 13px;
       font-weight: 500;
       color: #ffffff;
       margin: 0;
     }
 
-    .usuario-info .correo {
+    .user-info .email {
       font-size: 11px;
       color: rgba(255, 255, 255, 0.7);
       margin: 0;
@@ -157,11 +157,11 @@
       padding-left: 10px;
     }
 
-    .menu-item.is-active .menu-icono {
+    .menu-item.is-active .menu-icon {
       color: var(--primary);
     }
 
-    .menu-icono {
+    .menu-icon {
       font-size: 18px;
       width: 22px;
       text-align: center;
@@ -173,7 +173,7 @@
       border-top: 2px solid rgba(255, 255, 255, 0.08);
     }
 
-    .btn-cerrar {
+    .btn-logout {
       width: 100%;
       background: none;
       border: none;
@@ -186,7 +186,7 @@
       font-family: inherit;
     }
 
-    .btn-cerrar:hover {
+    .btn-logout:hover {
       color: var(--primary);
     }
 
@@ -226,7 +226,7 @@
       margin: 0;
     }
 
-    .btn-ver-servicios {
+    .btn-view-services {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -242,11 +242,11 @@
       box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.25);
     }
 
-    .btn-ver-servicios:hover {
+    .btn-view-services:hover {
       background-color: var(--primary-hover);
     }
 
-    .btn-ver-servicios .material-icons {
+    .btn-view-services .material-icons {
       font-size: 18px;
       width: 18px;
       height: 18px;
@@ -336,7 +336,7 @@
 
     .progress-card,
     .counter-card,
-    .reservas-section {
+    .bookings-section {
       background-color: var(--card);
       border-radius: 16px;
       padding: 24px;
@@ -407,7 +407,7 @@
       margin: 0;
     }
 
-    .reservas-section {
+    .bookings-section {
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -429,7 +429,7 @@
       margin: 0;
     }
 
-    .reservas-list {
+    .bookings-list {
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -485,7 +485,7 @@
       flex-wrap: wrap;
     }
 
-    .estado-badge {
+    .status-badge {
       display: flex;
       align-items: center;
       gap: 6px;
@@ -495,17 +495,17 @@
       font-weight: 600;
     }
 
-    .estado-badge.is-in-progress {
+    .status-badge.is-in-progress {
       background-color: var(--primary-soft);
       color: var(--primary);
     }
 
-    .estado-badge.is-pending {
+    .status-badge.is-pending {
       background-color: var(--neutral-badge-soft);
       color: var(--neutral-badge);
     }
 
-    .estado-badge.is-finished {
+    .status-badge.is-finished {
       background-color: var(--success);
       color: #ffffff;
     }
@@ -516,7 +516,7 @@
       height: 16px;
     }
 
-    .btn-iniciar {
+    .btn-start {
       padding: 8px 20px;
       background-color: var(--primary);
       color: #ffffff;
@@ -528,11 +528,11 @@
       font-family: inherit;
     }
 
-    .btn-iniciar:hover {
+    .btn-start:hover {
       background-color: var(--primary-hover);
     }
 
-    .btn-ver {
+    .btn-view {
       width: 36px;
       height: 36px;
       display: flex;
@@ -545,11 +545,11 @@
       color: var(--text-muted);
     }
 
-    .btn-ver .material-icons {
+    .btn-view .material-icons {
       font-size: 18px;
     }
 
-    .btn-ver:hover {
+    .btn-view:hover {
       border-color: var(--primary);
       color: var(--primary);
     }
@@ -568,51 +568,51 @@
         <span>Lavado Vehicular</span>
       </div>
 
-      <div class="sidebar-usuario">
+      <div class="sidebar-user">
         <div class="avatar">C</div>
-        <div class="usuario-info">
-          <p class="nombre">Camilo</p>
-          <p class="correo">camilo.operario@lavadovehicular.com</p>
+        <div class="user-info">
+          <p class="name">Camilo</p>
+          <p class="email">camilo.operario@lavadovehicular.com</p>
         </div>
       </div>
 
       <nav class="sidebar-menu">
         <a href="#" class="menu-item is-active">
-          <span class="material-icons menu-icono">space_dashboard</span>
+          <span class="material-icons menu-icon">space_dashboard</span>
           <span class="menu-label">Dashboard</span>
         </a>
         <a href="#" class="menu-item">
-          <span class="material-icons menu-icono">person</span>
+          <span class="material-icons menu-icon">person</span>
           <span class="menu-label">Perfil</span>
         </a>
         <a href="#" class="menu-item">
-          <span class="material-icons menu-icono">calendar_month</span>
+          <span class="material-icons menu-icon">calendar_month</span>
           <span class="menu-label">Mi Agenda</span>
         </a>
         <a href="#" class="menu-item">
-          <span class="material-icons menu-icono">assignment</span>
+          <span class="material-icons menu-icon">assignment</span>
           <span class="menu-label">Servicios asignados</span>
         </a>
         <a href="#" class="menu-item">
-          <span class="material-icons menu-icono">notifications</span>
+          <span class="material-icons menu-icon">notifications</span>
           <span class="menu-label">Notificaciones</span>
         </a>
         <a href="#" class="menu-item">
-          <span class="material-icons menu-icono">history</span>
+          <span class="material-icons menu-icon">history</span>
           <span class="menu-label">Historial</span>
         </a>
         <a href="#" class="menu-item">
-          <span class="material-icons menu-icono">star_outline</span>
+          <span class="material-icons menu-icon">star_outline</span>
           <span class="menu-label">Calificaciones</span>
         </a>
         <a href="#" class="menu-item">
-          <span class="material-icons menu-icono">settings</span>
+          <span class="material-icons menu-icon">settings</span>
           <span class="menu-label">Configuración</span>
         </a>
       </nav>
 
       <div class="sidebar-footer">
-        <button class="btn-cerrar">
+        <button class="btn-logout">
           <span class="material-icons">logout</span>
           <span>Cerrar Sesión</span>
         </button>
@@ -627,7 +627,7 @@
           <h1 class="page-title">¡Hola, Camilo! ¡Bienvenido!</h1>
           <p class="page-subtitle">Tienes 1 servicios pendientes para hoy</p>
         </div>
-        <button class="btn-ver-servicios">
+        <button class="btn-view-services">
           <span class="material-icons">visibility</span>
           Ver servicios asignados
         </button>
@@ -693,13 +693,13 @@
         </div>
       </div>
 
-      <div class="reservas-section">
+      <div class="bookings-section">
         <div class="section-header">
           <span class="material-icons section-icon">trending_up</span>
           <h2 class="section-title">Servicios de hoy</h2>
         </div>
 
-        <div class="reservas-list">
+        <div class="bookings-list">
           <div class="service-card">
             <div class="card-content">
               <div class="service-info">
@@ -712,11 +712,11 @@
                 </p>
               </div>
               <div class="card-actions">
-                <span class="estado-badge is-in-progress">
+                <span class="status-badge is-in-progress">
                   <span class="material-icons badge-icon">sync</span>
                   En progreso
                 </span>
-                <button class="btn-ver">
+                <button class="btn-view">
                   <span class="material-icons">visibility</span>
                 </button>
               </div>
@@ -735,12 +735,12 @@
                 </p>
               </div>
               <div class="card-actions">
-                <span class="estado-badge is-pending">
+                <span class="status-badge is-pending">
                   <span class="material-icons badge-icon">schedule</span>
                   Pendiente
                 </span>
-                <button class="btn-iniciar">Iniciar</button>
-                <button class="btn-ver">
+                <button class="btn-start">Iniciar</button>
+                <button class="btn-view">
                   <span class="material-icons">visibility</span>
                 </button>
               </div>
