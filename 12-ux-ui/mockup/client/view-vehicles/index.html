@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client Vehicles Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+
+    body {
+      --primary: #2ec4b6;
+      --primary-rgb: 46, 196, 182;
+      --primary-hover: #229990;
+      --primary-soft: rgba(46, 196, 182, 0.13);
+
+      --sidebar: #0d3830;
+
+      --bg: #f5f6f8;
+      --card: #ffffff;
+      --item-bg: #f0f3f3;
+
+      --text: #1a1a2e;
+      --text-secondary: #5f6f75;
+      --text-muted: #9aa5ab;
+
+      --border: #e6eaea;
+
+      --success: #29aea0;
+      --success-soft: rgba(41, 174, 160, 0.13);
+      --error: #e53935;
+      --error-soft: rgba(229, 57, 53, 0.1);
+      --warning: #f59e0b;
+      --neutral-badge: #67777e;
+      --neutral-badge-soft: #edf2f2;
+
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--text);
+      background-color: var(--bg);
+    }
+
+    * { box-sizing: border-box; }
+
+    .material-icons { font-size: 20px; vertical-align: middle; }
+
+    .page-container { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 260px; flex-shrink: 0; background-color: var(--sidebar);
+      display: flex; flex-direction: column; padding: 20px 0; position: relative;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px; padding: 0 20px 18px;
+      color: #ffffff; font-weight: 600; font-size: 16px;
+    }
+    .sidebar-logo .logo-img { width: 28px; height: 28px; flex-shrink: 0; }
+    .sidebar-user {
+      display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+      border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 8px;
+    }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%; background-color: rgba(0,0,0,0.2);
+      border: 2px solid var(--primary); color: #ffffff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600;
+    }
+    .user-info .name { font-size: 13px; font-weight: 600; color: #ffffff; margin: 0; }
+    .user-info .email { font-size: 11px; color: rgba(255,255,255,0.65); margin: 0; }
+    .sidebar-menu { flex: 1; display: flex; flex-direction: column; padding: 0 12px; }
+    .menu-item {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px;
+      color: rgba(255,255,255,0.85); text-decoration: none; font-size: 13px; margin-bottom: 2px;
+    }
+    .menu-item:hover { background: rgba(46,196,182,0.15); color: #ffffff; }
+    .menu-item.is-active { background: rgba(46,196,182,0.22); color: #ffffff; font-weight: 500; }
+    .menu-item.is-active .menu-icon { color: var(--primary); }
+    .menu-icon { font-size: 18px; width: 22px; text-align: center; color: rgba(255,255,255,0.75); }
+    .sidebar-footer { padding: 12px 20px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+    .btn-logout {
+      width: 100%; background: none; border: none; color: rgba(255,255,255,0.75);
+      font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;
+    }
+    .btn-logout:hover { color: var(--primary); }
+
+    .main-content { flex: 1; padding: 32px 40px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+    .page-title { font-size: 22px; font-weight: 700; margin: 0; }
+    .page-subtitle { font-size: 13px; color: var(--text-secondary); margin: 3px 0 0; }
+
+
+    .top-row { display: flex; align-items: flex-start; justify-content: space-between; }
+    .btn-add {
+      display: flex; align-items: center; gap: 8px; background: var(--primary); color: #fff; border: none;
+      padding: 11px 18px; border-radius: 10px; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap;
+    }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .stat-card {
+      background: var(--card); border-radius: 16px; padding: 22px; border: 1px solid var(--border);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04); display: flex; flex-direction: column; gap: 10px;
+    }
+    .stat-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--primary-soft); color: var(--primary);
+      display: flex; align-items: center; justify-content: center; }
+    .stat-value { font-size: 24px; font-weight: 700; margin: 0; }
+    .stat-label { font-size: 13px; color: var(--text-secondary); margin: 0; }
+
+    .vehicles-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .vehicle-card { background: var(--card); border-radius: 16px; padding: 20px; border: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+    .vehicle-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .vehicle-card-id { display: flex; align-items: center; gap: 12px; }
+    .vehicle-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--primary-soft); color: var(--primary);
+      display: flex; align-items: center; justify-content: center; }
+    .vehicle-name { font-size: 14px; font-weight: 700; margin: 0; }
+    .vehicle-type { font-size: 12px; color: var(--text-secondary); margin: 2px 0 0; }
+    .btn-delete-icon { background: none; border: none; color: var(--text-muted); cursor: pointer; }
+    .vehicle-detail-row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; }
+    .vehicle-detail-row .label { color: var(--text-secondary); }
+    .vehicle-detail-row .value { font-weight: 700; }
+
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <svg class="logo-img" width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9.33333 21.7333C12.2667 21.7333 14.6667 19.2933 14.6667 16.3333C14.6667 14.7867 13.9067 13.32 12.3867 12.08C10.8667 10.84 9.72 8.99998 9.33333 7.06665C8.94667 8.99998 7.81333 10.8533 6.28 12.08C4.74667 13.3067 4 14.8 4 16.3333C4 19.2933 6.4 21.7333 9.33333 21.7333Z" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M16.7467 8.79994C17.6637 7.33478 18.3137 5.71867 18.6667 4.02661C19.3333 7.35994 21.3333 10.5599 24 12.6933C26.6667 14.8266 28 17.3599 28 20.0266C28.0076 21.8697 27.4678 23.6735 26.4491 25.2094C25.4303 26.7453 23.9784 27.9441 22.2775 28.6539C20.5766 29.3637 18.7032 29.5525 16.8949 29.1963C15.0866 28.8401 13.4247 27.9551 12.12 26.6533" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Lavado Vehicular</span>
+      </div>
+      <div class="sidebar-user">
+        <div class="avatar">JD</div>
+        <div class="user-info">
+          <p class="name">Juan Díaz</p>
+          <p class="email">juan@email.com</p>
+        </div>
+      </div>
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">space_dashboard</span>
+          <span class="menu-label">Dashboard</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">person</span>
+          <span class="menu-label">Perfil</span>
+        </a>
+        <a href="#" class="menu-item is-active">
+          <span class="material-icons menu-icon">directions_car</span>
+          <span class="menu-label">Mis vehículos</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">garage</span>
+          <span class="menu-label">Reservar lavado</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">credit_card</span>
+          <span class="menu-label">Pagar servicio</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">notifications</span>
+          <span class="menu-label">Notificaciones</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">history</span>
+          <span class="menu-label">Historial</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">settings</span>
+          <span class="menu-label">Configuración</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-logout">
+          <span class="material-icons">logout</span>
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+    </aside>
+    <main class="main-content">
+      <div class="top-row">
+        <div>
+          <h1 class="page-title">Mis Vehículos</h1>
+          <p class="page-subtitle">Consulta tus vehículos registrados y su último lavado</p>
+        </div>
+        <button class="btn-add"><span class="material-icons" style="font-size:16px;">add</span> Registrar vehículo</button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon"><span class="material-icons">directions_car</span></div>
+          <p class="stat-value">3</p>
+          <p class="stat-label">Vehículos registrados</p>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><span class="material-icons">water_drop</span></div>
+          <p class="stat-value">14</p>
+          <p class="stat-label">Lavados acumulados</p>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><span class="material-icons">schedule</span></div>
+          <p class="stat-value">10 Ago 2026</p>
+          <p class="stat-label">Último lavado realizado</p>
+        </div>
+      </div>
+
+      <div class="vehicles-grid">
+
+        <div class="vehicle-card">
+          <div class="vehicle-card-top">
+            <div class="vehicle-card-id">
+              <div class="vehicle-icon"><span class="material-icons">directions_car</span></div>
+              <div>
+                <p class="vehicle-name">Mazda 3 Sedán</p>
+                <p class="vehicle-type">Sedán · Gris</p>
+              </div>
+            </div>
+            <button class="btn-delete-icon"><span class="material-icons">delete</span></button>
+          </div>
+          <div class="vehicle-detail-row"><span class="label">Placa</span><span class="value">ABC-123</span></div>
+          <div class="vehicle-detail-row"><span class="label">Último lavado</span><span class="value">10 Ago 2026</span></div>
+          <div class="vehicle-detail-row"><span class="label">Servicio</span><span class="value">Premium</span></div>
+          <div class="vehicle-detail-row"><span class="label">Total de lavados</span><span class="value">8</span></div>
+        </div>
+
+        <div class="vehicle-card">
+          <div class="vehicle-card-top">
+            <div class="vehicle-card-id">
+              <div class="vehicle-icon"><span class="material-icons">two_wheeler</span></div>
+              <div>
+                <p class="vehicle-name">Yamaha FZ 2.0</p>
+                <p class="vehicle-type">Moto · Azul</p>
+              </div>
+            </div>
+            <button class="btn-delete-icon"><span class="material-icons">delete</span></button>
+          </div>
+          <div class="vehicle-detail-row"><span class="label">Placa</span><span class="value">XYZ-98D</span></div>
+          <div class="vehicle-detail-row"><span class="label">Último lavado</span><span class="value">02 Ago 2026</span></div>
+          <div class="vehicle-detail-row"><span class="label">Servicio</span><span class="value">Básico</span></div>
+          <div class="vehicle-detail-row"><span class="label">Total de lavados</span><span class="value">4</span></div>
+        </div>
+
+        <div class="vehicle-card">
+          <div class="vehicle-card-top">
+            <div class="vehicle-card-id">
+              <div class="vehicle-icon"><span class="material-icons">local_shipping</span></div>
+              <div>
+                <p class="vehicle-name">Toyota Prado</p>
+                <p class="vehicle-type">Camioneta · Blanco</p>
+              </div>
+            </div>
+            <button class="btn-delete-icon"><span class="material-icons">delete</span></button>
+          </div>
+          <div class="vehicle-detail-row"><span class="label">Placa</span><span class="value">JKL-457</span></div>
+          <div class="vehicle-detail-row"><span class="label">Último lavado</span><span class="value">24 Jul 2026</span></div>
+          <div class="vehicle-detail-row"><span class="label">Servicio</span><span class="value">Completo</span></div>
+          <div class="vehicle-detail-row"><span class="label">Total de lavados</span><span class="value">2</span></div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+</body>
+</html>
