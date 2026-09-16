@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client Payment Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+
+    body {
+      --primary: #2ec4b6;
+      --primary-rgb: 46, 196, 182;
+      --primary-hover: #229990;
+      --primary-soft: rgba(46, 196, 182, 0.13);
+
+      --sidebar: #0d3830;
+
+      --bg: #f5f6f8;
+      --card: #ffffff;
+      --item-bg: #f0f3f3;
+
+      --text: #1a1a2e;
+      --text-secondary: #5f6f75;
+      --text-muted: #9aa5ab;
+
+      --border: #e6eaea;
+
+      --success: #29aea0;
+      --success-soft: rgba(41, 174, 160, 0.13);
+      --error: #e53935;
+      --error-soft: rgba(229, 57, 53, 0.1);
+      --warning: #f59e0b;
+      --neutral-badge: #67777e;
+      --neutral-badge-soft: #edf2f2;
+
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--text);
+      background-color: var(--bg);
+    }
+
+    * { box-sizing: border-box; }
+
+    .material-icons { font-size: 20px; vertical-align: middle; }
+
+    .page-container { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 260px; flex-shrink: 0; background-color: var(--sidebar);
+      display: flex; flex-direction: column; padding: 20px 0; position: relative;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px; padding: 0 20px 18px;
+      color: #ffffff; font-weight: 600; font-size: 16px;
+    }
+    .sidebar-logo .logo-img { width: 28px; height: 28px; flex-shrink: 0; }
+    .sidebar-user {
+      display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+      border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 8px;
+    }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%; background-color: rgba(0,0,0,0.2);
+      border: 2px solid var(--primary); color: #ffffff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600;
+    }
+    .user-info .name { font-size: 13px; font-weight: 600; color: #ffffff; margin: 0; }
+    .user-info .email { font-size: 11px; color: rgba(255,255,255,0.65); margin: 0; }
+    .sidebar-menu { flex: 1; display: flex; flex-direction: column; padding: 0 12px; }
+    .menu-item {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px;
+      color: rgba(255,255,255,0.85); text-decoration: none; font-size: 13px; margin-bottom: 2px;
+    }
+    .menu-item:hover { background: rgba(46,196,182,0.15); color: #ffffff; }
+    .menu-item.is-active { background: rgba(46,196,182,0.22); color: #ffffff; font-weight: 500; }
+    .menu-item.is-active .menu-icon { color: var(--primary); }
+    .menu-icon { font-size: 18px; width: 22px; text-align: center; color: rgba(255,255,255,0.75); }
+    .sidebar-footer { padding: 12px 20px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+    .btn-logout {
+      width: 100%; background: none; border: none; color: rgba(255,255,255,0.75);
+      font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;
+    }
+    .btn-logout:hover { color: var(--primary); }
+
+    .main-content { flex: 1; padding: 32px 40px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+    .page-title { font-size: 22px; font-weight: 700; margin: 0; }
+    .page-subtitle { font-size: 13px; color: var(--text-secondary); margin: 3px 0 0; }
+
+
+    .layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
+    .card { background: var(--card); border-radius: 16px; padding: 22px; border: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+    .card-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; margin: 0 0 16px; }
+    .card-title .material-icons { color: var(--primary); font-size: 17px; }
+
+    .method-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+    .method-card { border: 1.5px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; }
+    .method-card.selected { border-color: var(--primary); background: var(--primary-soft); }
+    .method-card .material-icons { color: var(--text-secondary); font-size: 20px; }
+    .method-card.selected .material-icons { color: var(--primary); }
+    .method-name { font-size: 13px; font-weight: 700; margin: 4px 0 0; }
+    .method-desc { font-size: 11px; color: var(--text-secondary); margin: 0; }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .form-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    .form-input { padding: 11px 14px; border-radius: 10px; border: 1px solid var(--border); font-size: 13px; font-family: inherit; color: var(--text-muted); background: var(--bg); }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .secure-note { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+    .secure-note .material-icons { color: var(--primary); font-size: 16px; }
+
+    .summary-row { display: flex; justify-content: space-between; font-size: 13px; padding: 7px 0; color: var(--text-secondary); }
+    .summary-row .value { color: var(--text); font-weight: 600; }
+    .summary-divider { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+    .summary-total { display: flex; justify-content: space-between; font-size: 15px; font-weight: 700; margin: 6px 0 16px; }
+    .summary-total .value { color: var(--primary); }
+    .btn-pay { width: 100%; background: var(--primary); color: #fff; border: none; padding: 13px; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; }
+    .cancel-note { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 10px; }
+
+    .history-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .total-paid-pill { background: var(--item-bg); color: var(--text-secondary); font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 999px; }
+    .payment-history-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .payment-history-item:last-child { border-bottom: none; }
+    .payment-item-title { font-size: 13px; font-weight: 700; margin: 0; }
+    .payment-item-meta { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary); margin: 3px 0 0; }
+    .payment-item-meta .material-icons { font-size: 13px; }
+    .payment-item-right { display: flex; align-items: center; gap: 14px; }
+    .payment-amount { font-size: 14px; font-weight: 700; }
+    .pay-badge { background: var(--primary-soft); color: var(--primary); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+    .btn-download { background: none; border: none; color: var(--text-muted); cursor: pointer; }
+
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <svg class="logo-img" width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9.33333 21.7333C12.2667 21.7333 14.6667 19.2933 14.6667 16.3333C14.6667 14.7867 13.9067 13.32 12.3867 12.08C10.8667 10.84 9.72 8.99998 9.33333 7.06665C8.94667 8.99998 7.81333 10.8533 6.28 12.08C4.74667 13.3067 4 14.8 4 16.3333C4 19.2933 6.4 21.7333 9.33333 21.7333Z" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M16.7467 8.79994C17.6637 7.33478 18.3137 5.71867 18.6667 4.02661C19.3333 7.35994 21.3333 10.5599 24 12.6933C26.6667 14.8266 28 17.3599 28 20.0266C28.0076 21.8697 27.4678 23.6735 26.4491 25.2094C25.4303 26.7453 23.9784 27.9441 22.2775 28.6539C20.5766 29.3637 18.7032 29.5525 16.8949 29.1963C15.0866 28.8401 13.4247 27.9551 12.12 26.6533" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Lavado Vehicular</span>
+      </div>
+      <div class="sidebar-user">
+        <div class="avatar">JD</div>
+        <div class="user-info">
+          <p class="name">Juan Díaz</p>
+          <p class="email">juan@email.com</p>
+        </div>
+      </div>
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">space_dashboard</span>
+          <span class="menu-label">Dashboard</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">person</span>
+          <span class="menu-label">Perfil</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">directions_car</span>
+          <span class="menu-label">Mis vehículos</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">garage</span>
+          <span class="menu-label">Reservar lavado</span>
+        </a>
+        <a href="#" class="menu-item is-active">
+          <span class="material-icons menu-icon">credit_card</span>
+          <span class="menu-label">Pagar servicio</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">notifications</span>
+          <span class="menu-label">Notificaciones</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">history</span>
+          <span class="menu-label">Historial</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">settings</span>
+          <span class="menu-label">Configuración</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-logout">
+          <span class="material-icons">logout</span>
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+    </aside>
+    <main class="main-content">
+      <h1 class="page-title">Pasarela de Pagos</h1>
+      <p class="page-subtitle" style="margin-top:-14px;">Paga tu servicio de forma segura y consulta tu historial.</p>
+
+      <div class="layout">
+        <div class="card">
+          <p class="card-title"><span class="material-icons">lock</span> Método de pago</p>
+          <div class="method-options">
+            <div class="method-card selected">
+              <span class="material-icons">credit_card</span>
+              <p class="method-name">Tarjeta</p>
+              <p class="method-desc">Débito / Crédito</p>
+            </div>
+            <div class="method-card">
+              <span class="material-icons">account_balance_wallet</span>
+              <p class="method-name">PayPal</p>
+              <p class="method-desc">Cuenta vinculada</p>
+            </div>
+            <div class="method-card">
+              <span class="material-icons">account_balance</span>
+              <p class="method-name">Transferencia</p>
+              <p class="method-desc">PSE / Bancos</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nombre en la tarjeta</label>
+            <input class="form-input" type="text" placeholder="Juan Díaz" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Número de tarjeta</label>
+            <input class="form-input" type="text" placeholder="4821 0000 0000 0000" />
+          </div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label class="form-label">Vencimiento</label>
+              <input class="form-input" type="text" placeholder="MM/AA" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">CVV</label>
+              <input class="form-input" type="text" placeholder="123" />
+            </div>
+          </div>
+          <div class="secure-note"><span class="material-icons">verified_user</span> Transacción cifrada. No almacenamos los datos de tu tarjeta.</div>
+        </div>
+
+        <div class="card">
+          <p class="card-title">Resumen del servicio</p>
+          <div class="summary-row"><span>Servicio</span><span class="value">Premium</span></div>
+          <div class="summary-row"><span>Vehículo</span><span class="value">Automóvil — ABC123</span></div>
+          <div class="summary-row"><span>Base</span><span class="value">$45,000</span></div>
+          <div class="summary-row"><span>Domicilio</span><span class="value">$6,000</span></div>
+          <hr class="summary-divider" />
+          <div class="summary-total"><span>Total a pagar</span><span class="value">$51,000</span></div>
+          <button class="btn-pay">Pagar $51,000</button>
+          <p class="cancel-note">Puedes cancelar sin costo hasta 2 horas antes.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="history-title-row">
+          <p class="card-title" style="margin:0;"><span class="material-icons">description</span> Historial de pagos</p>
+          <span class="total-paid-pill">Total pagado $85,000</span>
+        </div>
+
+        <div class="payment-history-item">
+          <div>
+            <p class="payment-item-title">PG-5012 · Premium — Automóvil</p>
+            <p class="payment-item-meta"><span class="material-icons">schedule</span> 12 Ago 2026 · Tarjeta ••4821</p>
+          </div>
+          <div class="payment-item-right">
+            <span class="payment-amount">$45,000</span>
+            <span class="pay-badge">Pagado</span>
+            <button class="btn-download"><span class="material-icons">download</span></button>
+          </div>
+        </div>
+
+        <div class="payment-history-item">
+          <div>
+            <p class="payment-item-title">PG-5008 · Básico — Moto</p>
+            <p class="payment-item-meta"><span class="material-icons">schedule</span> 05 Ago 2026 · PayPal</p>
+          </div>
+          <div class="payment-item-right">
+            <span class="payment-amount">$18,000</span>
+            <span class="pay-badge">Pagado</span>
+            <button class="btn-download"><span class="material-icons">download</span></button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</body>
+</html>
