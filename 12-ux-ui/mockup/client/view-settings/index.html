@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client Settings Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+
+    body {
+      --primary: #2ec4b6;
+      --primary-rgb: 46, 196, 182;
+      --primary-hover: #229990;
+      --primary-soft: rgba(46, 196, 182, 0.13);
+
+      --sidebar: #0d3830;
+
+      --bg: #f5f6f8;
+      --card: #ffffff;
+      --item-bg: #f0f3f3;
+
+      --text: #1a1a2e;
+      --text-secondary: #5f6f75;
+      --text-muted: #9aa5ab;
+
+      --border: #e6eaea;
+
+      --success: #29aea0;
+      --success-soft: rgba(41, 174, 160, 0.13);
+      --error: #e53935;
+      --error-soft: rgba(229, 57, 53, 0.1);
+      --warning: #f59e0b;
+      --neutral-badge: #67777e;
+      --neutral-badge-soft: #edf2f2;
+
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--text);
+      background-color: var(--bg);
+    }
+
+    * { box-sizing: border-box; }
+
+    .material-icons { font-size: 20px; vertical-align: middle; }
+
+    .page-container { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 260px; flex-shrink: 0; background-color: var(--sidebar);
+      display: flex; flex-direction: column; padding: 20px 0; position: relative;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px; padding: 0 20px 18px;
+      color: #ffffff; font-weight: 600; font-size: 16px;
+    }
+    .sidebar-logo .logo-img { width: 28px; height: 28px; flex-shrink: 0; }
+    .sidebar-user {
+      display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+      border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 8px;
+    }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%; background-color: rgba(0,0,0,0.2);
+      border: 2px solid var(--primary); color: #ffffff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600;
+    }
+    .user-info .name { font-size: 13px; font-weight: 600; color: #ffffff; margin: 0; }
+    .user-info .email { font-size: 11px; color: rgba(255,255,255,0.65); margin: 0; }
+    .sidebar-menu { flex: 1; display: flex; flex-direction: column; padding: 0 12px; }
+    .menu-item {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px;
+      color: rgba(255,255,255,0.85); text-decoration: none; font-size: 13px; margin-bottom: 2px;
+    }
+    .menu-item:hover { background: rgba(46,196,182,0.15); color: #ffffff; }
+    .menu-item.is-active { background: rgba(46,196,182,0.22); color: #ffffff; font-weight: 500; }
+    .menu-item.is-active .menu-icon { color: var(--primary); }
+    .menu-icon { font-size: 18px; width: 22px; text-align: center; color: rgba(255,255,255,0.75); }
+    .sidebar-footer { padding: 12px 20px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+    .btn-logout {
+      width: 100%; background: none; border: none; color: rgba(255,255,255,0.75);
+      font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;
+    }
+    .btn-logout:hover { color: var(--primary); }
+
+    .main-content { flex: 1; padding: 32px 40px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+    .page-title { font-size: 22px; font-weight: 700; margin: 0; }
+    .page-subtitle { font-size: 13px; color: var(--text-secondary); margin: 3px 0 0; }
+
+
+    .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+    .col { display: flex; flex-direction: column; gap: 20px; }
+    .card { background: var(--card); border-radius: 16px; padding: 22px; border: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+    .card-title { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; margin: 0 0 18px; }
+    .card-icon { width: 32px; height: 32px; border-radius: 9px; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; }
+
+    .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row-label { font-size: 14px; font-weight: 600; margin: 0; }
+    .settings-row-desc { font-size: 12px; color: var(--text-secondary); margin: 2px 0 0; }
+
+    .toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+    .toggle input { display: none; }
+    .toggle-track { position: absolute; inset: 0; background: var(--border); border-radius: 999px; cursor: pointer; }
+    .toggle input:checked + .toggle-track { background: var(--primary); }
+    .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; background: #fff; border-radius: 50%; display:flex; align-items:center; justify-content:center; }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(18px); }
+    .toggle-thumb .material-icons { font-size: 11px; color: var(--primary); }
+
+    .help-row { display: flex; align-items: center; justify-content: space-between; }
+    .btn-open { background: var(--item-bg); color: var(--text); border: none; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+
+    .theme-section-title { font-size: 13px; font-weight: 700; margin: 0 0 4px; }
+    .theme-section-desc { font-size: 12px; color: var(--text-secondary); margin: 0 0 14px; }
+    .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .theme-swatch { border-radius: 12px; padding: 12px; position: relative; height: 60px; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; cursor: pointer; }
+    .theme-swatch.teal-light { background: linear-gradient(135deg, #2ec4b6, #1a9c90); }
+    .theme-swatch.teal-dark { background: linear-gradient(135deg, #2ec4b6 0%, #2ec4b6 40%, #1a1a2e 40%); }
+    .theme-swatch.pink-light { background: linear-gradient(135deg, #ec4899, #d6336c); }
+    .theme-swatch.pink-dark { background: linear-gradient(135deg, #ec4899 0%, #ec4899 40%, #1a1a2e 40%); }
+    .theme-check { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; }
+    .theme-check .material-icons { font-size: 13px; color: var(--primary); }
+    .theme-bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.5); width: 70%; }
+    .theme-bar.small { width: 40%; }
+
+    .lang-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .lang-card { border: 1.5px solid var(--border); border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; position: relative; }
+    .lang-card.selected { border-color: var(--primary); background: var(--primary-soft); }
+    .lang-flag { font-size: 22px; }
+    .lang-name { font-size: 13px; font-weight: 700; margin: 0; }
+    .lang-desc { font-size: 11px; color: var(--text-secondary); margin: 0; }
+    .lang-check { position: absolute; top: 10px; right: 10px; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; }
+    .lang-card.selected .lang-check { border-color: var(--primary); background: var(--primary); }
+    .lang-check .material-icons { font-size: 12px; color: #fff; }
+
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <svg class="logo-img" width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9.33333 21.7333C12.2667 21.7333 14.6667 19.2933 14.6667 16.3333C14.6667 14.7867 13.9067 13.32 12.3867 12.08C10.8667 10.84 9.72 8.99998 9.33333 7.06665C8.94667 8.99998 7.81333 10.8533 6.28 12.08C4.74667 13.3067 4 14.8 4 16.3333C4 19.2933 6.4 21.7333 9.33333 21.7333Z" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M16.7467 8.79994C17.6637 7.33478 18.3137 5.71867 18.6667 4.02661C19.3333 7.35994 21.3333 10.5599 24 12.6933C26.6667 14.8266 28 17.3599 28 20.0266C28.0076 21.8697 27.4678 23.6735 26.4491 25.2094C25.4303 26.7453 23.9784 27.9441 22.2775 28.6539C20.5766 29.3637 18.7032 29.5525 16.8949 29.1963C15.0866 28.8401 13.4247 27.9551 12.12 26.6533" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Lavado Vehicular</span>
+      </div>
+      <div class="sidebar-user">
+        <div class="avatar">JD</div>
+        <div class="user-info">
+          <p class="name">Juan Díaz</p>
+          <p class="email">juan@email.com</p>
+        </div>
+      </div>
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">space_dashboard</span>
+          <span class="menu-label">Dashboard</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">person</span>
+          <span class="menu-label">Perfil</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">directions_car</span>
+          <span class="menu-label">Mis vehículos</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">garage</span>
+          <span class="menu-label">Reservar lavado</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">credit_card</span>
+          <span class="menu-label">Pagar servicio</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">notifications</span>
+          <span class="menu-label">Notificaciones</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">history</span>
+          <span class="menu-label">Historial</span>
+        </a>
+        <a href="#" class="menu-item is-active">
+          <span class="material-icons menu-icon">settings</span>
+          <span class="menu-label">Configuración</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-logout">
+          <span class="material-icons">logout</span>
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+    </aside>
+    <main class="main-content">
+      <div class="title-row" style="display:flex; align-items:center; gap:10px;">
+        <span class="material-icons" style="color:var(--primary); font-size:24px;">settings</span>
+        <h1 class="page-title">Configuración</h1>
+      </div>
+
+      <div class="layout">
+        <div class="col">
+
+          <div class="card">
+            <p class="card-title"><span class="card-icon"><span class="material-icons" style="font-size:17px;">notifications</span></span> Notificaciones</p>
+            <div class="settings-row">
+              <div><p class="settings-row-label">Notificaciones Push</p><p class="settings-row-desc">Recibe alertas de reservas y promociones</p></div>
+              <label class="toggle"><input type="checkbox" checked /><span class="toggle-track"></span><span class="toggle-thumb"><span class="material-icons">check</span></span></label>
+            </div>
+            <div class="settings-row">
+              <div><p class="settings-row-label">Recordatorios por Email</p><p class="settings-row-desc">Un día antes de tu lavado programado</p></div>
+              <label class="toggle"><input type="checkbox" checked /><span class="toggle-track"></span><span class="toggle-thumb"><span class="material-icons">check</span></span></label>
+            </div>
+            <div class="settings-row">
+              <div><p class="settings-row-label">Promociones y Ofertas</p><p class="settings-row-desc">Recibe descuentos exclusivos</p></div>
+              <label class="toggle"><input type="checkbox" /><span class="toggle-track"></span><span class="toggle-thumb"></span></label>
+            </div>
+          </div>
+
+          <div class="card">
+            <p class="card-title"><span class="card-icon"><span class="material-icons" style="font-size:17px;">place</span></span> Ubicación</p>
+            <div class="settings-row">
+              <div><p class="settings-row-label">Compartir Ubicación</p><p class="settings-row-desc">Permitir que accedan a tu ubicación actual</p></div>
+              <label class="toggle"><input type="checkbox" checked /><span class="toggle-track"></span><span class="toggle-thumb"><span class="material-icons">check</span></span></label>
+            </div>
+          </div>
+
+          <div class="card">
+            <p class="card-title"><span class="card-icon"><span class="material-icons" style="font-size:17px;">help_outline</span></span> Ayuda</p>
+            <div class="help-row">
+              <div><p class="settings-row-label">Centro de ayuda</p></div>
+              <button class="btn-open">Abrir <span class="material-icons" style="font-size:14px;">chevron_right</span></button>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="col">
+          <div class="card">
+            <p class="card-title"><span class="card-icon"><span class="material-icons" style="font-size:17px;">language</span></span> Apariencia</p>
+
+            <p class="theme-section-title">Elegir tema</p>
+            <p class="theme-section-desc">Cambiar interfaz (Personaliza los colores de la aplicación)</p>
+            <div class="theme-grid">
+              <div class="theme-swatch teal-light"><span class="theme-check"><span class="material-icons">check</span></span><div class="theme-bar"></div><div class="theme-bar small"></div></div>
+              <div class="theme-swatch teal-dark"><div class="theme-bar"></div><div class="theme-bar small"></div></div>
+              <div class="theme-swatch pink-light"><div class="theme-bar"></div><div class="theme-bar small"></div></div>
+              <div class="theme-swatch pink-dark"><div class="theme-bar"></div><div class="theme-bar small"></div></div>
+            </div>
+
+            <p class="theme-section-title">Idiomas</p>
+            <p class="theme-section-desc">Cambiar idioma</p>
+            <div class="lang-grid">
+              <div class="lang-card selected">
+                <span class="lang-flag">🇪🇸</span>
+                <div><p class="lang-name">Español</p><p class="lang-desc">Interfaz en español</p></div>
+                <span class="lang-check"><span class="material-icons">check</span></span>
+              </div>
+              <div class="lang-card">
+                <span class="lang-flag">🇬🇧</span>
+                <div><p class="lang-name">English</p><p class="lang-desc">Interface in english</p></div>
+                <span class="lang-check"></span>
+              </div>
+              <div class="lang-card">
+                <span class="lang-flag">🇫🇷</span>
+                <div><p class="lang-name">Français</p><p class="lang-desc">Interface en français</p></div>
+                <span class="lang-check"></span>
+              </div>
+              <div class="lang-card">
+                <span class="lang-flag">🇵🇹</span>
+                <div><p class="lang-name">Português</p><p class="lang-desc">Interface em português</p></div>
+                <span class="lang-check"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</body>
+</html>
