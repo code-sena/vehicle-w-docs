@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client Profile Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+
+    body {
+      --primary: #2ec4b6;
+      --primary-rgb: 46, 196, 182;
+      --primary-hover: #229990;
+      --primary-soft: rgba(46, 196, 182, 0.13);
+
+      --sidebar: #0d3830;
+
+      --bg: #f5f6f8;
+      --card: #ffffff;
+      --item-bg: #f0f3f3;
+
+      --text: #1a1a2e;
+      --text-secondary: #5f6f75;
+      --text-muted: #9aa5ab;
+
+      --border: #e6eaea;
+
+      --success: #29aea0;
+      --success-soft: rgba(41, 174, 160, 0.13);
+      --error: #e53935;
+      --error-soft: rgba(229, 57, 53, 0.1);
+      --warning: #f59e0b;
+      --neutral-badge: #67777e;
+      --neutral-badge-soft: #edf2f2;
+
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--text);
+      background-color: var(--bg);
+    }
+
+    * { box-sizing: border-box; }
+
+    .material-icons { font-size: 20px; vertical-align: middle; }
+
+    .page-container { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 260px; flex-shrink: 0; background-color: var(--sidebar);
+      display: flex; flex-direction: column; padding: 20px 0; position: relative;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px; padding: 0 20px 18px;
+      color: #ffffff; font-weight: 600; font-size: 16px;
+    }
+    .sidebar-logo .logo-img { width: 28px; height: 28px; flex-shrink: 0; }
+    .sidebar-user {
+      display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+      border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 8px;
+    }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%; background-color: rgba(0,0,0,0.2);
+      border: 2px solid var(--primary); color: #ffffff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600;
+    }
+    .user-info .name { font-size: 13px; font-weight: 600; color: #ffffff; margin: 0; }
+    .user-info .email { font-size: 11px; color: rgba(255,255,255,0.65); margin: 0; }
+    .sidebar-menu { flex: 1; display: flex; flex-direction: column; padding: 0 12px; }
+    .menu-item {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px;
+      color: rgba(255,255,255,0.85); text-decoration: none; font-size: 13px; margin-bottom: 2px;
+    }
+    .menu-item:hover { background: rgba(46,196,182,0.15); color: #ffffff; }
+    .menu-item.is-active { background: rgba(46,196,182,0.22); color: #ffffff; font-weight: 500; }
+    .menu-item.is-active .menu-icon { color: var(--primary); }
+    .menu-icon { font-size: 18px; width: 22px; text-align: center; color: rgba(255,255,255,0.75); }
+    .sidebar-footer { padding: 12px 20px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+    .btn-logout {
+      width: 100%; background: none; border: none; color: rgba(255,255,255,0.75);
+      font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;
+    }
+    .btn-logout:hover { color: var(--primary); }
+
+    .main-content { flex: 1; padding: 32px 40px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+    .page-title { font-size: 22px; font-weight: 700; margin: 0; }
+    .page-subtitle { font-size: 13px; color: var(--text-secondary); margin: 3px 0 0; }
+
+
+    .profile-top { background: var(--card); border-radius: 16px; padding: 22px 26px; border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+    .profile-top-left { display: flex; align-items: center; gap: 16px; }
+    .profile-avatar-lg {
+      width: 60px; height: 60px; border-radius: 50%; background: var(--primary-soft); color: var(--primary);
+      display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700;
+    }
+    .profile-name { font-size: 17px; font-weight: 700; margin: 0; }
+    .profile-since { font-size: 13px; color: var(--text-secondary); margin: 2px 0 0; }
+    .badge-view-mode {
+      background: var(--primary-soft); color: var(--primary); border: none;
+      padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;
+      display: flex; align-items: center; gap: 6px; cursor: pointer;
+    }
+
+    .fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .field-box {
+      background: var(--card); border-radius: 14px; padding: 16px 18px; border: 1px solid var(--border);
+      display: flex; align-items: center; gap: 14px;
+    }
+    .field-icon {
+      width: 38px; height: 38px; border-radius: 10px; background: var(--primary-soft); color: var(--primary);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .field-content { flex: 1; }
+    .field-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .03em; margin: 0 0 6px; }
+    .field-input-row { display: flex; gap: 8px; }
+    .field-input {
+      flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);
+      font-size: 13px; font-family: inherit; color: var(--text); background: var(--bg);
+    }
+    .flag-select { padding: 9px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); font-size: 13px; }
+
+    .btn-edit {
+      background: transparent; border: 1.5px solid var(--primary); color: var(--primary);
+      padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 13px; cursor: pointer;
+      display: flex; align-items: center; gap: 8px; width: fit-content;
+    }
+
+    .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .action-card { background: var(--card); border-radius: 14px; padding: 18px 20px; border: 1px solid var(--border); }
+    .action-card-title { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; margin: 0 0 14px; }
+    .action-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; }
+    .action-icon.teal { background: var(--primary-soft); color: var(--primary); }
+    .action-icon.danger { background: var(--error-soft); color: var(--error); }
+    .action-row { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--border); }
+    .action-row-title { font-size: 13px; font-weight: 700; margin: 0; }
+    .action-row-desc { font-size: 12px; color: var(--text-secondary); margin: 2px 0 0; }
+    .btn-change { background: var(--primary); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-delete { background: var(--error); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <svg class="logo-img" width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9.33333 21.7333C12.2667 21.7333 14.6667 19.2933 14.6667 16.3333C14.6667 14.7867 13.9067 13.32 12.3867 12.08C10.8667 10.84 9.72 8.99998 9.33333 7.06665C8.94667 8.99998 7.81333 10.8533 6.28 12.08C4.74667 13.3067 4 14.8 4 16.3333C4 19.2933 6.4 21.7333 9.33333 21.7333Z" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M16.7467 8.79994C17.6637 7.33478 18.3137 5.71867 18.6667 4.02661C19.3333 7.35994 21.3333 10.5599 24 12.6933C26.6667 14.8266 28 17.3599 28 20.0266C28.0076 21.8697 27.4678 23.6735 26.4491 25.2094C25.4303 26.7453 23.9784 27.9441 22.2775 28.6539C20.5766 29.3637 18.7032 29.5525 16.8949 29.1963C15.0866 28.8401 13.4247 27.9551 12.12 26.6533" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Lavado Vehicular</span>
+      </div>
+      <div class="sidebar-user">
+        <div class="avatar">JD</div>
+        <div class="user-info">
+          <p class="name">Juan Díaz</p>
+          <p class="email">juan@email.com</p>
+        </div>
+      </div>
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">space_dashboard</span>
+          <span class="menu-label">Dashboard</span>
+        </a>
+        <a href="#" class="menu-item is-active">
+          <span class="material-icons menu-icon">person</span>
+          <span class="menu-label">Perfil</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">directions_car</span>
+          <span class="menu-label">Mis vehículos</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">garage</span>
+          <span class="menu-label">Reservar lavado</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">credit_card</span>
+          <span class="menu-label">Pagar servicio</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">notifications</span>
+          <span class="menu-label">Notificaciones</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">history</span>
+          <span class="menu-label">Historial</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icon">settings</span>
+          <span class="menu-label">Configuración</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-logout">
+          <span class="material-icons">logout</span>
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+    </aside>
+    <main class="main-content">
+      <h1 class="page-title">Mi Perfil</h1>
+
+      <div class="profile-top">
+        <div class="profile-top-left">
+          <div class="profile-avatar-lg">JD</div>
+          <div>
+            <p class="profile-name">Juan Díaz</p>
+            <p class="profile-since">Cliente desde Enero 2026</p>
+          </div>
+        </div>
+        <button class="badge-view-mode"><span class="material-icons" style="font-size:16px;">check_circle</span> Modo visualización</button>
+      </div>
+
+      <div class="fields-grid">
+        <div class="field-box">
+          <div class="field-icon"><span class="material-icons">person</span></div>
+          <div class="field-content">
+            <p class="field-label">Nombre</p>
+            <input class="field-input" type="text" value="Juan Díaz" />
+          </div>
+        </div>
+        <div class="field-box">
+          <div class="field-icon"><span class="material-icons">mail</span></div>
+          <div class="field-content">
+            <p class="field-label">Correo electrónico</p>
+            <input class="field-input" type="email" value="juan@email.com" />
+          </div>
+        </div>
+        <div class="field-box">
+          <div class="field-icon"><span class="material-icons">call</span></div>
+          <div class="field-content">
+            <p class="field-label">Teléfono</p>
+            <div class="field-input-row">
+              <select class="flag-select"><option>🇨🇴 +57</option></select>
+              <input class="field-input" type="text" value="1234567890" />
+            </div>
+          </div>
+        </div>
+        <div class="field-box">
+          <div class="field-icon"><span class="material-icons">home</span></div>
+          <div class="field-content">
+            <p class="field-label">Dirección</p>
+            <input class="field-input" type="text" value="Calle Principal #123" />
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-edit"><span class="material-icons" style="font-size:16px;">edit</span> Editar perfil</button>
+
+      <div class="bottom-grid">
+        <div class="action-card">
+          <p class="action-card-title"><span class="action-icon teal"><span class="material-icons">key</span></span> Contraseña</p>
+          <div class="action-row">
+            <div>
+              <p class="action-row-title">Cambiar contraseña</p>
+              <p class="action-row-desc">Se recomienda una contraseña segura</p>
+            </div>
+            <button class="btn-change">Cambiar</button>
+          </div>
+        </div>
+        <div class="action-card">
+          <p class="action-card-title"><span class="action-icon danger"><span class="material-icons">person</span></span> Cuenta</p>
+          <div class="action-row">
+            <div>
+              <p class="action-row-title">Eliminar cuenta</p>
+              <p class="action-row-desc">Eliminar permanentemente tu cuenta y todos tus datos</p>
+            </div>
+            <button class="btn-delete">Eliminar cuenta</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</body>
+</html>
