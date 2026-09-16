@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<!--
+  Mockup: Operator dashboard (home) screen.
+  Code (tags, classes, ids, comments) in English.
+  Visible copy in Spanish, matching the real app's i18n strings (OPERATOR_HOME / SIDEBAR keys)
+  and the real CSS custom properties from Web/src/styles.scss so this mockup stays visually
+  aligned with the actual implementation.
+  Source of truth: Web/src/app/features/operator/pages/home/*
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Operator Dashboard Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+    /* Same custom properties as Web/src/styles.scss (light theme) */
+    body {
+      --primary: #2ec4b6;
+      --primary-rgb: 46, 196, 182;
+      --primary-hover: #229990;
+      --primary-soft: rgba(46, 196, 182, 0.15);
+
+      --sidebar: #104039;
+
+      --bg: #f5f6f8;
+      --card: #ffffff;
+
+      --text: #1a1a2e;
+      --text-secondary: #5f6f75;
+      --text-muted: #9aa5ab;
+
+      --border: #e6eaea;
+
+      --success: #29aea0;
+      --error: #e53935;
+      --neutral-badge: #67777e;
+      --neutral-badge-soft: #edf2f2;
+
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--text);
+      background-color: var(--bg);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    .material-icons {
+      font-size: 20px;
+      vertical-align: middle;
+    }
+
+    /* Layout */
+    .page-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar (mirrors shared/components/sidebar) */
+    .sidebar {
+      width: 270px;
+      flex-shrink: 0;
+      background-color: var(--sidebar);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 0;
+      position: relative;
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px 18px;
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .sidebar-logo .logo-img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .sidebar-usuario {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 8px;
+    }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background-color: rgba(0, 0, 0, 0.2);
+      border: 2px solid var(--primary);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .usuario-info .nombre {
+      font-size: 13px;
+      font-weight: 500;
+      color: #ffffff;
+      margin: 0;
+    }
+
+    .usuario-info .correo {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.7);
+      margin: 0;
+    }
+
+    .sidebar-menu {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 0 12px;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      color: rgba(255, 255, 255, 0.9);
+      text-decoration: none;
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+
+    .menu-item:hover {
+      background: rgba(46, 196, 182, 0.15);
+      color: #ffffff;
+    }
+
+    .menu-item.is-active {
+      background: rgba(46, 196, 182, 0.25);
+      color: #ffffff;
+      font-weight: 500;
+      border-left: 4px solid var(--primary);
+      padding-left: 10px;
+    }
+
+    .menu-item.is-active .menu-icono {
+      color: var(--primary);
+    }
+
+    .menu-icono {
+      font-size: 18px;
+      width: 22px;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .sidebar-footer {
+      padding: 12px 20px 0;
+      border-top: 2px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .btn-cerrar {
+      width: 100%;
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: inherit;
+    }
+
+    .btn-cerrar:hover {
+      color: var(--primary);
+    }
+
+    /* Main content (mirrors features/operator/pages/home/home.scss) */
+    .main-content {
+      flex: 1;
+      padding: 40px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      min-width: 0;
+    }
+
+    .top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .welcome-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .page-title {
+      font-size: 26px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .page-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .btn-ver-servicios {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background-color: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.25);
+    }
+
+    .btn-ver-servicios:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-ver-servicios .material-icons {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .stats-card {
+      background-color: var(--card);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+      width: 100%;
+    }
+
+    .stats-card:hover {
+      border-color: var(--primary);
+    }
+
+    .icon-wrapper {
+      position: relative;
+      width: fit-content;
+    }
+
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background-color: var(--primary-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+    }
+
+    .stat-icon .material-icons {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .notification-badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background-color: var(--error);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .progress-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    .progress-card,
+    .counter-card,
+    .reservas-section {
+      background-color: var(--card);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+      border: 1px solid var(--border);
+    }
+
+    .progress-card {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .progress-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .progress-icon,
+    .counter-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background-color: var(--primary-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+    }
+
+    .progress-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .progress-numbers,
+    .counter-value {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background-color: var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background-color: var(--primary);
+      border-radius: 4px;
+    }
+
+    .counter-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .counter-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .reservas-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-icon {
+      color: var(--primary);
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .reservas-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .service-card {
+      background-color: var(--card);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1.5px solid var(--border);
+    }
+
+    .service-card:hover {
+      border-color: var(--primary);
+    }
+
+    .card-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .service-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .service-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .service-date,
+    .service-detail {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .detail-separator {
+      color: var(--text-muted);
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .estado-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .estado-badge.is-in-progress {
+      background-color: var(--primary-soft);
+      color: var(--primary);
+    }
+
+    .estado-badge.is-pending {
+      background-color: var(--neutral-badge-soft);
+      color: var(--neutral-badge);
+    }
+
+    .estado-badge.is-finished {
+      background-color: var(--success);
+      color: #ffffff;
+    }
+
+    .badge-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+
+    .btn-iniciar {
+      padding: 8px 20px;
+      background-color: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .btn-iniciar:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-ver {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+
+    .btn-ver .material-icons {
+      font-size: 18px;
+    }
+
+    .btn-ver:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+
+    <!-- Sidebar: mirrors shared/components/sidebar with rol="OPERARIO" -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <svg class="logo-img" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9.33333 21.7333C12.2667 21.7333 14.6667 19.2933 14.6667 16.3333C14.6667 14.7867 13.9067 13.32 12.3867 12.08C10.8667 10.84 9.72 8.99998 9.33333 7.06665C8.94667 8.99998 7.81333 10.8533 6.28 12.08C4.74667 13.3067 4 14.8 4 16.3333C4 19.2933 6.4 21.7333 9.33333 21.7333Z" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M16.7467 8.79994C17.6637 7.33478 18.3137 5.71867 18.6667 4.02661C19.3333 7.35994 21.3333 10.5599 24 12.6933C26.6667 14.8266 28 17.3599 28 20.0266C28.0076 21.8697 27.4678 23.6735 26.4491 25.2094C25.4303 26.7453 23.9784 27.9441 22.2775 28.6539C20.5766 29.3637 18.7032 29.5525 16.8949 29.1963C15.0866 28.8401 13.4247 27.9551 12.12 26.6533" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Lavado Vehicular</span>
+      </div>
+
+      <div class="sidebar-usuario">
+        <div class="avatar">C</div>
+        <div class="usuario-info">
+          <p class="nombre">Camilo</p>
+          <p class="correo">camilo.operario@lavadovehicular.com</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item is-active">
+          <span class="material-icons menu-icono">space_dashboard</span>
+          <span class="menu-label">Dashboard</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icono">person</span>
+          <span class="menu-label">Perfil</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icono">calendar_month</span>
+          <span class="menu-label">Mi Agenda</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icono">assignment</span>
+          <span class="menu-label">Servicios asignados</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icono">notifications</span>
+          <span class="menu-label">Notificaciones</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icono">history</span>
+          <span class="menu-label">Historial</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icono">star_outline</span>
+          <span class="menu-label">Calificaciones</span>
+        </a>
+        <a href="#" class="menu-item">
+          <span class="material-icons menu-icono">settings</span>
+          <span class="menu-label">Configuración</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="btn-cerrar">
+          <span class="material-icons">logout</span>
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main content: mirrors features/operator/pages/home/home.html -->
+    <main class="main-content">
+
+      <div class="top-row">
+        <div class="welcome-text">
+          <h1 class="page-title">¡Hola, Camilo! ¡Bienvenido!</h1>
+          <p class="page-subtitle">Tienes 1 servicios pendientes para hoy</p>
+        </div>
+        <button class="btn-ver-servicios">
+          <span class="material-icons">visibility</span>
+          Ver servicios asignados
+        </button>
+      </div>
+
+      <div class="stats-grid">
+        <button class="stats-card">
+          <div class="icon-wrapper">
+            <div class="stat-icon"><span class="material-icons">calendar_today</span></div>
+          </div>
+          <p class="stat-value">2</p>
+          <p class="stat-label">Reservas Asignadas</p>
+        </button>
+
+        <button class="stats-card">
+          <div class="icon-wrapper">
+            <div class="stat-icon"><span class="material-icons">sync</span></div>
+          </div>
+          <p class="stat-value">1</p>
+          <p class="stat-label">En progreso</p>
+        </button>
+
+        <button class="stats-card">
+          <div class="icon-wrapper">
+            <div class="stat-icon"><span class="material-icons">notifications</span></div>
+            <span class="notification-badge">2</span>
+          </div>
+          <p class="stat-value">2</p>
+          <p class="stat-label">Notificaciones</p>
+        </button>
+
+        <button class="stats-card">
+          <div class="icon-wrapper">
+            <div class="stat-icon"><span class="material-icons">star_outline</span></div>
+          </div>
+          <p class="stat-value">4.3</p>
+          <p class="stat-label">Calificación</p>
+        </button>
+      </div>
+
+      <div class="progress-row">
+        <div class="progress-card">
+          <div class="progress-header">
+            <div class="progress-icon"><span class="material-icons">check_circle_outline</span></div>
+            <span class="progress-label">Servicios completados hoy</span>
+          </div>
+          <p class="progress-numbers">0 / 2</p>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="counter-card">
+          <div class="counter-icon"><span class="material-icons">sync</span></div>
+          <p class="counter-value">1</p>
+          <p class="counter-label">En Progreso</p>
+        </div>
+
+        <div class="counter-card">
+          <div class="counter-icon"><span class="material-icons">calendar_month</span></div>
+          <p class="counter-value">1</p>
+          <p class="counter-label">Pendientes</p>
+        </div>
+      </div>
+
+      <div class="reservas-section">
+        <div class="section-header">
+          <span class="material-icons section-icon">trending_up</span>
+          <h2 class="section-title">Servicios de hoy</h2>
+        </div>
+
+        <div class="reservas-list">
+          <div class="service-card">
+            <div class="card-content">
+              <div class="service-info">
+                <p class="service-title">Premium — Automóvil</p>
+                <p class="service-date">03/09/2026 · 14:00</p>
+                <p class="service-detail">
+                  Calle Sur 123, Los Rosales
+                  <span class="detail-separator"> — </span>
+                  Juan Felipe González
+                </p>
+              </div>
+              <div class="card-actions">
+                <span class="estado-badge is-in-progress">
+                  <span class="material-icons badge-icon">sync</span>
+                  En progreso
+                </span>
+                <button class="btn-ver">
+                  <span class="material-icons">visibility</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="service-card">
+            <div class="card-content">
+              <div class="service-info">
+                <p class="service-title">Básico — Camioneta</p>
+                <p class="service-date">03/09/2026 · 16:30</p>
+                <p class="service-detail">
+                  Calle Norte 7-06, Miraflores
+                  <span class="detail-separator"> — </span>
+                  Esneider Sánchez
+                </p>
+              </div>
+              <div class="card-actions">
+                <span class="estado-badge is-pending">
+                  <span class="material-icons badge-icon">schedule</span>
+                  Pendiente
+                </span>
+                <button class="btn-iniciar">Iniciar</button>
+                <button class="btn-ver">
+                  <span class="material-icons">visibility</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</body>
+</html>
