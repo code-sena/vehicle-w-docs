@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<!--
+  Mockup: Operator "notifications" screen.
+  Tags/structure/comments in English. CSS class names intentionally mirror the real
+  Angular templates verbatim (e.g. "unread-pill", "icon-bubble", "tipo-primary")
+  for 1:1 traceability with the actual app.
+  Visible copy in Spanish, taken verbatim from the real i18n file (assets/i18n/es.json,
+  NOTIFICATIONS.* block, resolved for rol="OPERARIO").
+  Source of truth: Web/src/app/features/operator/pages/notifications/*
+  and the shared Web/src/app/shared/components/notifications/* it renders.
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Operator Notifications Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+    body {
+      --primary: #2ec4b6;
+      --primary-rgb: 46, 196, 182;
+      --primary-hover: #229990;
+      --primary-soft: rgba(46, 196, 182, 0.15);
+
+      --sidebar: #104039;
+
+      --bg: #f5f6f8;
+      --card: #ffffff;
+
+      --text: #1a1a2e;
+      --text-secondary: #5f6f75;
+      --text-muted: #9aa5ab;
+
+      --border: #e6eaea;
+
+      --item-bg: rgba(0, 0, 0, 0.04);
+
+      --success: #29aea0;
+      --error: #e53935;
+      --error-soft: #ffebee;
+      --neutral-badge: #67777e;
+      --neutral-badge-soft: #edf2f2;
+
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--text);
+      background-color: var(--bg);
+    }
+
+    * { box-sizing: border-box; }
+
+    .material-icons { font-size: 20px; vertical-align: middle; }
+
+    /* ===== Sidebar — mirrors shared/components/sidebar ===== */
+    .notifications-container { display: flex; min-height: 100vh; background: var(--bg); }
+
+    .sidebar {
+      box-sizing: border-box;
+      width: 270px; flex-shrink: 0; height: 100vh; background-color: var(--sidebar);
+      display: flex; flex-direction: column; padding: 20px 0; position: relative;
+    }
+    .sidebar-logo { display: flex; align-items: center; gap: 12px; padding: 0 20px 18px; color: #ffffff; font-weight: 600; font-size: 16px; }
+    .sidebar-logo .logo-img { width: 32px; height: 32px; object-fit: contain; }
+    .sidebar-usuario {
+      display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 8px;
+    }
+    .avatar {
+      width: 38px; height: 38px; border-radius: 50%; background-color: rgba(0, 0, 0, 0.2);
+      border: 2px solid var(--primary); color: #ffffff; display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600;
+    }
+    .usuario-info { display: flex; flex-direction: column; }
+    .usuario-info .nombre { font-size: 13px; font-weight: 500; color: #ffffff; margin: 0; }
+    .usuario-info .correo { font-size: 11px; color: rgba(255, 255, 255, 0.7); margin: 0; }
+    .sidebar-menu { flex: 1; display: flex; flex-direction: column; padding: 0 12px; }
+    .menu-item {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px;
+      color: rgba(255, 255, 255, 0.9); text-decoration: none; font-size: 13px; margin-bottom: 2px;
+    }
+    .menu-item:hover { background: rgba(var(--primary-rgb), 0.15); color: #ffffff; }
+    .menu-item.activo { background: rgba(var(--primary-rgb), 0.25); color: #ffffff; font-weight: 500; border-left: 4px solid var(--primary); padding-left: 10px; }
+    .menu-item.activo .menu-icono { color: var(--primary); }
+    .menu-icono { font-size: 18px; width: 22px; text-align: center; color: rgba(255, 255, 255, 0.8); }
+    .sidebar-footer { padding: 12px 20px 0; border-top: 2px solid rgba(255, 255, 255, 0.08); margin-top: auto; }
+    .btn-cerrar { width: 100%; background: none; border: none; color: rgba(255, 255, 255, 0.8); font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit; }
+    .btn-cerrar:hover { color: var(--primary); }
+
+    /* ===== shared/components/notifications/notifications.html+scss ===== */
+    .content { flex: 1; padding: 40px 48px; display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+    .header { display: flex; flex-direction: column; gap: 6px; }
+    .header p { font-size: 14px; color: var(--text-secondary); margin: 0; max-width: 600px; line-height: 1.5; }
+    .header-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .header-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .header-title h1 { font-size: 26px; font-weight: 700; color: var(--text); margin: 0; }
+    .unread-pill { background: var(--primary); color: #ffffff; font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 20px; white-space: nowrap; }
+    .btn-mark-all {
+      display: flex; align-items: center; gap: 8px; padding: 10px 18px; background: var(--card); color: var(--text);
+      border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .btn-mark-all .material-icons { color: var(--text-secondary); }
+    .btn-mark-all:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-mark-all:hover .material-icons { color: var(--primary); }
+
+    .tabs { display: flex; align-items: center; gap: 4px; background: var(--item-bg); padding: 6px; border-radius: 14px; overflow-x: auto; }
+    .tab {
+      display: flex; align-items: center; gap: 8px; padding: 10px 16px; border: none; background: transparent; color: var(--text-secondary);
+      font-size: 14px; font-weight: 600; border-radius: 10px; cursor: pointer; white-space: nowrap; flex-shrink: 0; font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { background: var(--card); color: var(--text); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
+    .tab-count { background: var(--primary-soft); color: var(--primary); font-size: 12px; font-weight: 700; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; }
+
+    .filters-card { background-color: var(--card); border-radius: 16px; padding: 24px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 16px; }
+    .filters-title { font-size: 15px; font-weight: 600; color: var(--text); margin: 0; }
+    .filters-row { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+    .filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .filter-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+    .date-range { display: flex; align-items: center; gap: 8px; }
+    .date-sep { color: var(--text-muted); }
+    .filter-input {
+      padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; color: var(--text);
+      background: var(--card); outline: none; width: 150px; font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .filter-input:focus { border-color: var(--primary); }
+    .select-wrapper { position: relative; display: flex; align-items: center; }
+    .filter-select {
+      padding: 10px 36px 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; color: var(--text);
+      background: var(--card); outline: none; cursor: pointer; width: 160px; font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .filter-select:focus { border-color: var(--primary); }
+    .filter-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+    .btn-reset { width: 40px; height: 40px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--card); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .btn-reset .material-icons { color: var(--text-muted); }
+    .btn-reset:hover { border-color: var(--primary); }
+    .btn-reset:hover .material-icons { color: var(--primary); }
+    .btn-filter {
+      display: flex; align-items: center; gap: 6px; padding: 10px 20px; background: var(--primary); color: #ffffff; border: none;
+      border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(var(--primary-rgb), .25);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .btn-filter:hover { background: var(--primary-hover); }
+
+    .list { display: flex; flex-direction: column; gap: 12px; }
+    .item { display: flex; justify-content: space-between; align-items: center; padding: 22px; background: var(--card); border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04); gap: 16px; }
+    .item:hover { border-color: var(--primary); }
+    .item.unread { background: var(--primary-soft); border-color: rgba(var(--primary-rgb), .35); }
+    .left { display: flex; gap: 15px; align-items: flex-start; min-width: 0; }
+    .icon-bubble { padding: 10px; border-radius: 10px; flex-shrink: 0; }
+    .texts { min-width: 0; }
+    .title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex-shrink: 0; }
+    .title { font-weight: 600; margin: 0; color: var(--text); font-size: 14px; }
+    .desc { font-size: 13px; color: var(--text-secondary); margin: 4px 0 0; }
+    .icon-bubble.tipo-primary, .type-badge.tipo-primary { background: var(--primary-soft); color: var(--primary); }
+    .icon-bubble.tipo-error, .type-badge.tipo-error { background: var(--error-soft); color: var(--error); }
+    .icon-bubble.tipo-neutral, .type-badge.tipo-neutral { background: var(--neutral-badge-soft); color: var(--neutral-badge); }
+    .type-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+    .right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+    .date { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+    .btn-toggle {
+      border: 1.5px solid var(--border); background: var(--card); color: var(--text); padding: 6px 14px; border-radius: 10px;
+      font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .btn-toggle .material-icons { font-size: 16px; }
+    .btn-toggle:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-toggle.unread-action { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+    .btn-toggle.unread-action:hover { background: var(--primary-hover); color: #ffffff; }
+    .btn-detail {
+      border: 1.5px solid var(--border); background: var(--card); color: var(--text); padding: 6px 12px; border-radius: 10px;
+      font-size: 12px; display: flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .btn-detail .material-icons { font-size: 16px; color: var(--text-muted); }
+    .btn-detail:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-detail:hover .material-icons { color: var(--primary); }
+    .delete { cursor: pointer; color: var(--text-muted); }
+    .delete:hover { color: var(--error); }
+  </style>
+</head>
+<body>
+  <div class="notifications-container">
+
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <svg class="logo-img" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9.33333 21.7333C12.2667 21.7333 14.6667 19.2933 14.6667 16.3333C14.6667 14.7867 13.9067 13.32 12.3867 12.08C10.8667 10.84 9.72 8.99998 9.33333 7.06665C8.94667 8.99998 7.81333 10.8533 6.28 12.08C4.74667 13.3067 4 14.8 4 16.3333C4 19.2933 6.4 21.7333 9.33333 21.7333Z" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M16.7467 8.79994C17.6637 7.33478 18.3137 5.71867 18.6667 4.02661C19.3333 7.35994 21.3333 10.5599 24 12.6933C26.6667 14.8266 28 17.3599 28 20.0266C28.0076 21.8697 27.4678 23.6735 26.4491 25.2094C25.4303 26.7453 23.9784 27.9441 22.2775 28.6539C20.5766 29.3637 18.7032 29.5525 16.8949 29.1963C15.0866 28.8401 13.4247 27.9551 12.12 26.6533" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Lavado Vehicular</span>
+      </div>
+      <div class="sidebar-usuario">
+        <div class="avatar">C</div>
+        <div class="usuario-info">
+          <p class="nombre">Camilo</p>
+          <p class="correo">camilo.operario@lavadovehicular.com</p>
+        </div>
+      </div>
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">space_dashboard</span><span class="menu-label">Dashboard</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">person</span><span class="menu-label">Perfil</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">calendar_month</span><span class="menu-label">Mi Agenda</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">assignment</span><span class="menu-label">servicios asignados</span></a>
+        <a href="#" class="menu-item activo"><span class="material-icons menu-icono">notifications</span><span class="menu-label">Notificaciones</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">history</span><span class="menu-label">Historial</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">star_outline</span><span class="menu-label">Calificaciones</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">settings</span><span class="menu-label">Configuración</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-cerrar"><span class="material-icons">logout</span><span>Cerrar sesión</span></button>
+      </div>
+    </aside>
+
+    <div class="content">
+
+      <div class="header">
+        <div class="header-top">
+          <div class="header-title">
+            <h1>Notificaciones</h1>
+            <span class="unread-pill">3 sin leer</span>
+          </div>
+          <button class="btn-mark-all"><span class="material-icons">done_all</span> Marcar todo como leído</button>
+        </div>
+        <p>Aquí puedes ver las notificaciones importantes relacionadas con tus servicios asignados, cambios de estado y comunicaciones del sistema.</p>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active"><span class="material-icons">mail</span> Todas <span class="tab-count">3</span></button>
+        <button class="tab"><span class="material-icons">schedule</span> Recordatorios <span class="tab-count">1</span></button>
+        <button class="tab"><span class="material-icons">sell</span> Promociones</button>
+        <button class="tab"><span class="material-icons">check_circle</span> Confirmaciones <span class="tab-count">1</span></button>
+        <button class="tab"><span class="material-icons">notifications</span> Otras <span class="tab-count">1</span></button>
+      </div>
+
+      <div class="filters-card">
+        <p class="filters-title">Filtros de búsqueda</p>
+        <div class="filters-row">
+          <div class="filter-group">
+            <label class="filter-label">Estado de lectura</label>
+            <div class="select-wrapper">
+              <select class="filter-select">
+                <option>Todas</option>
+                <option>Leído</option>
+                <option>No leído</option>
+              </select>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Filtrar por fecha</label>
+            <div class="date-range">
+              <input type="date" class="filter-input" />
+              <span class="date-sep">-</span>
+              <input type="date" class="filter-input" />
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button class="btn-reset"><span class="material-icons">refresh</span></button>
+            <button class="btn-filter"><span class="material-icons">search</span> Filtrar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="list">
+
+        <div class="item unread">
+          <div class="left">
+            <span class="material-icons icon-bubble tipo-primary">assignment</span>
+            <div class="texts">
+              <div class="title-row">
+                <span class="dot"></span>
+                <p class="title">Nuevo servicio asignado</p>
+                <span class="type-badge tipo-primary">Confirmación</span>
+              </div>
+              <p class="desc">SV-2034 te ha sido asignado para las 3:00 p.m.</p>
+            </div>
+          </div>
+          <div class="right">
+            <span class="date">03/09/2026 - 08:10</span>
+            <button class="btn-toggle unread-action"><span class="material-icons">done_all</span> Marcar leído</button>
+            <button class="btn-detail"><span class="material-icons">visibility</span> Ver detalle</button>
+            <span class="material-icons delete">delete</span>
+          </div>
+        </div>
+
+        <div class="item unread">
+          <div class="left">
+            <span class="material-icons icon-bubble tipo-primary">schedule</span>
+            <div class="texts">
+              <div class="title-row">
+                <span class="dot"></span>
+                <p class="title">Actualización de estado</p>
+                <span class="type-badge tipo-primary">Recordatorio</span>
+              </div>
+              <p class="desc">El cliente confirmó la dirección para el servicio SV-1783.</p>
+            </div>
+          </div>
+          <div class="right">
+            <span class="date">03/09/2026 - 07:45</span>
+            <button class="btn-toggle unread-action"><span class="material-icons">done_all</span> Marcar leído</button>
+            <button class="btn-detail"><span class="material-icons">visibility</span> Ver detalle</button>
+            <span class="material-icons delete">delete</span>
+          </div>
+        </div>
+
+        <div class="item unread">
+          <div class="left">
+            <span class="material-icons icon-bubble tipo-error">cancel</span>
+            <div class="texts">
+              <div class="title-row">
+                <span class="dot"></span>
+                <p class="title">Cancelación</p>
+                <span class="type-badge tipo-error">Cancelación</span>
+              </div>
+              <p class="desc">El cliente canceló el servicio SV-1690.</p>
+            </div>
+          </div>
+          <div class="right">
+            <span class="date">02/09/2026 - 19:20</span>
+            <button class="btn-toggle unread-action"><span class="material-icons">done_all</span> Marcar leído</button>
+            <button class="btn-detail"><span class="material-icons">visibility</span> Ver detalle</button>
+            <span class="material-icons delete">delete</span>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="left">
+            <span class="material-icons icon-bubble tipo-neutral">chat</span>
+            <div class="texts">
+              <div class="title-row">
+                <p class="title">Mensaje del cliente</p>
+                <span class="type-badge tipo-neutral">Mensaje</span>
+              </div>
+              <p class="desc">"Voy a estar 5 minutos tarde, por favor espérame."</p>
+            </div>
+          </div>
+          <div class="right">
+            <span class="date">01/09/2026 - 11:05</span>
+            <button class="btn-toggle"><span class="material-icons">mail</span> Marcar no leído</button>
+            <button class="btn-detail"><span class="material-icons">visibility</span> Ver detalle</button>
+            <span class="material-icons delete">delete</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
