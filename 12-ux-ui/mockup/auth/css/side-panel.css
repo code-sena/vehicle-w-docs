@@ -1,0 +1,174 @@
+/* ============================================
+   SIDE PANEL — copiado de auth-side-panel.scss
+   ============================================ */
+
+.side-panel {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 45px;
+  position: relative;
+  overflow: hidden;
+  background-image: var(--panel-image);
+  background-size: cover;
+  background-position: center;
+}
+
+.side-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.22) 0%,
+    rgba(0, 0, 0, 0.62) 100%
+  );
+}
+
+body:not(.green-dark):not(.pink-dark) .side-panel::before {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+body.green-dark .side-panel::before {
+  background: linear-gradient(
+    180deg,
+    rgba(4, 20, 22, 0.42) 0%,
+    rgba(4, 20, 22, 0.92) 100%
+  );
+}
+
+body.pink-dark .side-panel::before {
+  background: linear-gradient(
+    180deg,
+    rgba(18, 4, 14, 0.42) 0%,
+    rgba(18, 4, 14, 0.92) 100%
+  );
+}
+
+.panel-content {
+  width: 100%;
+  max-width: 380px;
+  position: relative;
+  z-index: 2;
+}
+
+/* BRAND */
+.panel-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: -78px;
+}
+
+.brand-logo {
+  width: 64px;
+  height: 64px;
+  margin-top: -95px;
+  border-radius: 16px;
+  background: var(--primary);
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 8px 24px rgba(var(--primary-rgb), .40);
+}
+
+.brand-logo svg path {
+  stroke: #ffffff;
+}
+
+.brand-text h3 {
+  margin: 0;
+  margin-top: -50px;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--text);
+}
+
+body.green-dark .brand-text h3,
+body.pink-dark .brand-text h3 {
+  color: #ffffff;
+}
+
+/* HERO TEXT */
+.hero-text h1 {
+  margin: 0;
+  font-size: 46px;
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -1.5px;
+  color: var(--text);
+}
+
+body.green-dark .hero-text h1,
+body.pink-dark .hero-text h1 {
+  color: #ffffff;
+}
+
+.hero-text p {
+  margin-top: 16px;
+  margin-bottom: 26px;
+  line-height: 1.7;
+  max-width: 330px;
+  font-size: 16px;
+  color: var(--text);
+}
+
+body.green-dark .hero-text p,
+body.pink-dark .hero-text p {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+/* BENEFIT CARDS */
+.benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.benefit-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+body.green-dark .benefit-card,
+body.pink-dark .benefit-card {
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .12);
+  box-shadow: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.benefit-card .material-icons {
+  color: var(--primary);
+  font-size: 19px;
+  flex-shrink: 0;
+}
+
+.benefit-card span:last-child {
+  font-weight: 600;
+  font-size: 14.5px;
+  color: var(--text);
+}
+
+body.green-dark .benefit-card span:last-child,
+body.pink-dark .benefit-card span:last-child {
+  color: #ffffff;
+}
+
+@media (max-width: 1100px) {
+  .side-panel {
+    display: none;
+  }
+}

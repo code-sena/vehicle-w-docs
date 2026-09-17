@@ -1,0 +1,35 @@
+/* ============================================
+   BACK BUTTON — copiado de back-button.scss
+   ============================================ */
+
+.back-btn {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .25s ease;
+  z-index: 5;
+}
+
+.back-btn .material-icons {
+  font-size: 24px;
+  color: var(--text-muted);
+  transition: all .25s ease;
+}
+
+.back-btn:hover {
+  background: rgba(var(--primary-rgb), .08);
+}
+
+.back-btn:hover .material-icons {
+  color: var(--primary);
+  transform: translateX(-2px);
+}

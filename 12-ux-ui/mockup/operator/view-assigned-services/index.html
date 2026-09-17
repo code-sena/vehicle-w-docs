@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<!--
+  Mockup: Operator "assigned services" screen (RF-011, RF-012b).
+  Tags/structure/comments in English. CSS class names intentionally mirror the real
+  Angular templates verbatim (several are Spanish identifiers, e.g. "estado-badge",
+  "detail-value") for 1:1 traceability with the actual app.
+  Visible copy in Spanish, taken verbatim from the real i18n file (assets/i18n/es.json).
+  Source of truth: Web/src/app/features/operator/pages/assigned-services/*
+  (assigned-services.html/.scss, components/service-table/*, components/service-detail/*)
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Operator Assigned Services Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+    /* Light-theme custom properties, copied from Web/src/styles.scss (body selector) */
+    body {
+      --primary: #2ec4b6;
+      --primary-rgb: 46, 196, 182;
+      --primary-hover: #229990;
+      --primary-soft: rgba(46, 196, 182, 0.15);
+
+      --sidebar: #104039;
+
+      --bg: #f5f6f8;
+      --bg-soft: #f9fbfb;
+      --card: #ffffff;
+
+      --text: #1a1a2e;
+      --text-secondary: #5f6f75;
+      --text-muted: #9aa5ab;
+
+      --border: #e6eaea;
+
+      --item-bg: rgba(0, 0, 0, 0.04);
+      --item-hover: rgba(0, 0, 0, 0.07);
+
+      --success: #29aea0;
+      --success-soft: #e0ebea;
+      --error: #e53935;
+      --error-soft: #ffebee;
+      --warning: #f59e0b;
+      --warning-soft: #fef3c7;
+      --neutral-badge: #67777e;
+      --neutral-badge-soft: #edf2f2;
+
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--text);
+      background-color: var(--bg);
+    }
+
+    * { box-sizing: border-box; }
+
+    .material-icons { font-size: 20px; vertical-align: middle; }
+
+    /* ===== Sidebar — mirrors shared/components/sidebar/sidebar.html+scss ===== */
+    .page-container { display: flex; min-height: 100vh; background-color: var(--bg); }
+
+    .sidebar {
+      box-sizing: border-box;
+      width: 270px; flex-shrink: 0; height: 100vh; background-color: var(--sidebar);
+      display: flex; flex-direction: column; padding: 20px 0; position: relative;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 12px; padding: 0 20px 18px;
+      color: #ffffff; font-weight: 600; font-size: 16px;
+    }
+    .sidebar-logo .logo-img { width: 32px; height: 32px; object-fit: contain; }
+    .sidebar-usuario {
+      display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 8px;
+    }
+    .avatar {
+      width: 38px; height: 38px; border-radius: 50%; background-color: rgba(0, 0, 0, 0.2);
+      border: 2px solid var(--primary); color: #ffffff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600;
+    }
+    .usuario-info { display: flex; flex-direction: column; }
+    .usuario-info .nombre { font-size: 13px; font-weight: 500; color: #ffffff; margin: 0; }
+    .usuario-info .correo { font-size: 11px; color: rgba(255, 255, 255, 0.7); margin: 0; }
+    .sidebar-menu { flex: 1; display: flex; flex-direction: column; padding: 0 12px; }
+    .menu-item {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px;
+      color: rgba(255, 255, 255, 0.9); text-decoration: none; font-size: 13px; margin-bottom: 2px;
+    }
+    .menu-item:hover { background: rgba(var(--primary-rgb), 0.15); color: #ffffff; }
+    .menu-item.activo {
+      background: rgba(var(--primary-rgb), 0.25); color: #ffffff; font-weight: 500;
+      border-left: 4px solid var(--primary); padding-left: 10px;
+    }
+    .menu-item.activo .menu-icono { color: var(--primary); }
+    .menu-icono { font-size: 18px; width: 22px; text-align: center; color: rgba(255, 255, 255, 0.8); }
+    .sidebar-footer { padding: 12px 20px 0; border-top: 2px solid rgba(255, 255, 255, 0.08); margin-top: auto; }
+    .btn-cerrar {
+      width: 100%; background: none; border: none; color: rgba(255, 255, 255, 0.8);
+      font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;
+    }
+    .btn-cerrar:hover { color: var(--primary); }
+
+    /* ===== Main content — mirrors assigned-services.html/.scss ===== */
+    .main-content { flex: 1; padding: 40px 48px; display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+
+    .page-header { display: flex; flex-direction: column; gap: 6px; }
+    .page-title { font-size: 26px; font-weight: 700; color: var(--text); margin: 0; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary); margin: 0; max-width: 600px; line-height: 1.5; }
+
+    .stats-badges { display: flex; gap: 12px; flex-wrap: wrap; }
+    .stat-badge { display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 20px; font-size: 14px; }
+    .stat-badge.total { background-color: var(--item-bg); color: var(--text); }
+    .stat-badge.pendiente { background-color: rgba(249, 168, 37, 0.15); color: #f9a825; }
+    .stat-badge.progreso { background-color: rgba(30, 136, 229, 0.12); color: #1e88e5; }
+    .stat-badge.finalizado { background-color: rgba(var(--primary-rgb), 0.15); color: var(--primary); }
+    .stat-value { font-weight: 700; font-size: 15px; }
+    .stat-label { font-weight: 500; }
+
+    .filters-card {
+      background-color: var(--card); border-radius: 16px; padding: 24px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06); border: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .filters-title { font-size: 15px; font-weight: 600; color: var(--text); margin: 0; }
+    .filters-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+    .filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .filter-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+    .date-input-wrapper, .select-wrapper { position: relative; display: flex; align-items: center; }
+    .date-input-wrapper .select-icon, .select-wrapper .select-icon {
+      position: absolute; right: 10px; font-size: 18px; color: var(--text-muted); pointer-events: none;
+    }
+    .filter-input, .filter-select {
+      padding: 10px 36px 10px 12px; border: 1.5px solid var(--border); border-radius: 10px;
+      font-size: 14px; color: var(--text); background-color: var(--card); outline: none;
+      font-family: 'Plus Jakarta Sans', sans-serif; transition: border-color 0.2s ease; width: 200px;
+    }
+    .filter-select { appearance: none; cursor: pointer; }
+    .filter-input:focus, .filter-select:focus { border-color: var(--primary); }
+    .filter-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+    .btn-reset {
+      width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+      background-color: var(--card); border: 1.5px solid var(--border); border-radius: 10px; cursor: pointer;
+    }
+    .btn-reset .material-icons { font-size: 20px; color: var(--text-muted); }
+    .btn-reset:hover { border-color: var(--primary); }
+    .btn-reset:hover .material-icons { color: var(--primary); }
+    .btn-filter {
+      display: flex; align-items: center; gap: 6px; padding: 10px 20px; background-color: var(--primary);
+      color: #ffffff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+      font-family: 'Plus Jakarta Sans', sans-serif; box-shadow: 0 4px 12px rgba(var(--primary-rgb), .25);
+    }
+    .btn-filter .material-icons { font-size: 18px; }
+    .btn-filter:hover { background-color: var(--primary-hover); }
+
+    /* service-table.html/.scss */
+    .table-card { background-color: var(--card); border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06); border: 1px solid var(--border); }
+    .service-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .service-table thead tr { background-color: var(--bg-soft); border-bottom: 1.5px solid var(--border); }
+    .service-table th { padding: 14px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.5px; }
+    .table-row { border-bottom: 1px solid var(--border); cursor: pointer; }
+    .table-row:hover { background-color: var(--item-hover); }
+    .table-row.selected { background-color: var(--primary-soft); }
+    .table-row:last-child { border-bottom: none; }
+    .service-table td { padding: 14px 16px; color: var(--text); vertical-align: middle; }
+    .td-id { font-weight: 700; color: var(--text); }
+    .td-ubicacion { max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-secondary); }
+    .estado-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+    .estado-badge.pendiente { background-color: rgba(249, 168, 37, 0.15); color: #f9a825; }
+    .estado-badge.progreso { background-color: rgba(30, 136, 229, 0.12); color: #1e88e5; }
+    .estado-badge.finalizado { background-color: rgba(var(--primary-rgb), 0.15); color: var(--primary); }
+
+    /* service-detail.html/.scss */
+    .detail-card {
+      background-color: var(--card); border-radius: 16px; padding: 28px; display: flex;
+      flex-direction: column; gap: 20px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06); border: 1px solid var(--border);
+    }
+    .detail-header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .detail-title { font-size: 16px; font-weight: 700; color: var(--text); margin: 0; }
+    .detail-header .estado-badge { padding: 4px 14px; }
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .detail-col { display: flex; flex-direction: column; gap: 12px; }
+    .detail-item { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+    .detail-icon { font-size: 16px; width: 16px; height: 16px; color: var(--text-muted); }
+    .detail-label { color: var(--text-secondary); font-weight: 400; }
+    .detail-value { color: var(--text); }
+    .detail-value.bold { font-weight: 600; }
+    .map-placeholder {
+      background-color: var(--bg-soft); border-radius: 12px; height: 120px; display: flex;
+      flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 1.5px dashed var(--border);
+    }
+    .map-placeholder .map-icon { font-size: 28px; width: 28px; height: 28px; color: var(--text-muted); }
+    .map-placeholder .map-label { font-size: 14px; color: var(--text-muted); }
+    .actions-section, .extra-section { display: flex; flex-direction: column; gap: 12px; }
+    .actions-title { font-size: 14px; font-weight: 600; color: var(--text); margin: 0; }
+    .action-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn-iniciar {
+      display: flex; align-items: center; gap: 6px; padding: 10px 20px; background-color: var(--primary);
+      color: #ffffff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+      font-family: 'Plus Jakarta Sans', sans-serif; box-shadow: 0 4px 12px rgba(var(--primary-rgb), .25);
+    }
+    .btn-iniciar:hover { background-color: var(--primary-hover); }
+    .btn-reportar {
+      display: flex; align-items: center; gap: 6px; padding: 10px 20px; background-color: var(--primary-soft);
+      color: var(--primary); border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .btn-reportar:hover { background-color: var(--primary); color: #ffffff; }
+    .btn-finalizar {
+      display: flex; align-items: center; gap: 6px; padding: 10px 20px; background-color: var(--item-bg);
+      color: var(--text-secondary); border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .btn-finalizar:hover { background-color: var(--item-hover); color: var(--text); }
+    .btn-contactar {
+      display: flex; align-items: center; gap: 8px; padding: 10px 20px; background-color: var(--card);
+      color: var(--text); border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-weight: 500;
+      cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; width: fit-content;
+    }
+    .btn-contactar .material-icons { color: var(--text-muted); }
+    .btn-contactar:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-contactar:hover .material-icons { color: var(--primary); }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <svg class="logo-img" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9.33333 21.7333C12.2667 21.7333 14.6667 19.2933 14.6667 16.3333C14.6667 14.7867 13.9067 13.32 12.3867 12.08C10.8667 10.84 9.72 8.99998 9.33333 7.06665C8.94667 8.99998 7.81333 10.8533 6.28 12.08C4.74667 13.3067 4 14.8 4 16.3333C4 19.2933 6.4 21.7333 9.33333 21.7333Z" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M16.7467 8.79994C17.6637 7.33478 18.3137 5.71867 18.6667 4.02661C19.3333 7.35994 21.3333 10.5599 24 12.6933C26.6667 14.8266 28 17.3599 28 20.0266C28.0076 21.8697 27.4678 23.6735 26.4491 25.2094C25.4303 26.7453 23.9784 27.9441 22.2775 28.6539C20.5766 29.3637 18.7032 29.5525 16.8949 29.1963C15.0866 28.8401 13.4247 27.9551 12.12 26.6533" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Lavado Vehicular</span>
+      </div>
+
+      <div class="sidebar-usuario">
+        <div class="avatar">C</div>
+        <div class="usuario-info">
+          <p class="nombre">Camilo</p>
+          <p class="correo">camilo.operario@lavadovehicular.com</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">space_dashboard</span><span class="menu-label">Dashboard</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">person</span><span class="menu-label">Perfil</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">calendar_month</span><span class="menu-label">Mi Agenda</span></a>
+        <a href="#" class="menu-item activo"><span class="material-icons menu-icono">assignment</span><span class="menu-label">servicios asignados</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">notifications</span><span class="menu-label">Notificaciones</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">history</span><span class="menu-label">Historial</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">star_outline</span><span class="menu-label">Calificaciones</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">settings</span><span class="menu-label">Configuración</span></a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="btn-cerrar"><span class="material-icons">logout</span><span>Cerrar sesión</span></button>
+      </div>
+    </aside>
+
+    <div class="main-content">
+
+      <div class="page-header">
+        <h1 class="page-title">Servicios Asignados</h1>
+        <p class="page-subtitle">Aquí puedes ver todos los servicios que te han sido asignados. Mantén actualizada la información del progreso.</p>
+      </div>
+
+      <div class="stats-badges">
+        <div class="stat-badge total"><span class="stat-value">4</span><span class="stat-label">Servicios Totales</span></div>
+        <div class="stat-badge pendiente"><span class="stat-value">1</span><span class="stat-label">Pendientes</span></div>
+        <div class="stat-badge progreso"><span class="stat-value">1</span><span class="stat-label">En Progreso</span></div>
+        <div class="stat-badge finalizado"><span class="stat-value">2</span><span class="stat-label">Finalizados Hoy</span></div>
+      </div>
+
+      <div class="filters-card">
+        <p class="filters-title">Filtros de búsqueda</p>
+        <div class="filters-row">
+          <div class="filter-group">
+            <label class="filter-label">Filtrar por fecha</label>
+            <div class="date-input-wrapper">
+              <input type="date" class="filter-input" value="2026-09-03" />
+            </div>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Filtrar por tipo de servicio</label>
+            <div class="select-wrapper">
+              <select class="filter-select">
+                <option>Todas</option>
+                <option>Básico</option>
+                <option>Premium</option>
+                <option>Completo</option>
+              </select>
+              <span class="material-icons select-icon">expand_more</span>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Buscar por servicio</label>
+            <div class="select-wrapper">
+              <input type="text" class="filter-select" placeholder="Buscar..." />
+              <span class="material-icons select-icon">search</span>
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button class="btn-reset"><span class="material-icons">refresh</span></button>
+            <button class="btn-filter"><span class="material-icons">search</span> Filtrar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table class="service-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>TIPO DE SERVICIO</th>
+              <th>UBICACIÓN</th>
+              <th>FECHA Y HORA</th>
+              <th>VEHÍCULO</th>
+              <th>CLIENTE</th>
+              <th>ESTADO</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="table-row selected">
+              <td class="td-id">SV-2034</td>
+              <td>Premium</td>
+              <td class="td-ubicacion">Calle Sur 123, Los Rosales</td>
+              <td>03/09/2026 15:00</td>
+              <td>Mazda 3 — ABC123</td>
+              <td>Juan Felipe González</td>
+              <td><span class="estado-badge progreso">En progreso</span></td>
+            </tr>
+            <tr class="table-row">
+              <td class="td-id">SV-2041</td>
+              <td>Básico</td>
+              <td class="td-ubicacion">Calle Norte 7-06, Miraflores</td>
+              <td>03/09/2026 16:30</td>
+              <td>Chevrolet Dmax — XYZ987</td>
+              <td>Esneider Sánchez</td>
+              <td><span class="estado-badge pendiente">Pendiente</span></td>
+            </tr>
+            <tr class="table-row">
+              <td class="td-id">SV-1998</td>
+              <td>Completo</td>
+              <td class="td-ubicacion">Carrera 15 #22-40, El Poblado</td>
+              <td>03/09/2026 09:00</td>
+              <td>Renault Logan — LMN456</td>
+              <td>María Torres</td>
+              <td><span class="estado-badge finalizado">Finalizado</span></td>
+            </tr>
+            <tr class="table-row">
+              <td class="td-id">SV-1987</td>
+              <td>Premium</td>
+              <td class="td-ubicacion">Av. Central 45, Centro</td>
+              <td>02/09/2026 11:00</td>
+              <td>Kia Picanto — QRS741</td>
+              <td>Laura Ramírez</td>
+              <td><span class="estado-badge finalizado">Finalizado</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="detail-card">
+        <div class="detail-header">
+          <h3 class="detail-title">Información del servicio (SV-2034)</h3>
+          <span class="estado-badge progreso">En progreso</span>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-col">
+            <div class="detail-item"><span class="detail-label">ID</span><span class="detail-value">SV-2034</span></div>
+            <div class="detail-item"><span class="detail-label">Client:</span><span class="detail-value">Juan Felipe González</span></div>
+            <div class="detail-item">
+              <span class="material-icons detail-icon">location_on</span>
+              <span class="detail-label">Dirección:</span>
+              <span class="detail-value bold">Calle Sur 123, Los Rosales</span>
+            </div>
+          </div>
+          <div class="detail-col">
+            <div class="detail-item"><span class="detail-label">Tipo de servicio:</span><span class="detail-value bold">Premium</span></div>
+            <div class="detail-item">
+              <span class="material-icons detail-icon">schedule</span>
+              <span class="detail-label">Hora programada:</span>
+              <span class="detail-value bold">03/09/2026 15:00</span>
+            </div>
+            <div class="detail-item">
+              <span class="material-icons detail-icon">calendar_today</span>
+              <span class="detail-label">Método de pago:</span>
+              <span class="detail-value bold">Nequi</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="map-placeholder">
+          <span class="material-icons map-icon">location_on</span>
+          <span class="map-label">Ubicación en mapa</span>
+        </div>
+
+        <div class="actions-section">
+          <p class="actions-title">Estado y progreso</p>
+          <div class="action-buttons">
+            <button class="btn-iniciar"><span class="material-icons">play_circle_outline</span> Iniciar Servicio</button>
+            <button class="btn-reportar"><span class="material-icons">refresh</span> Reportar progreso</button>
+            <button class="btn-finalizar"><span class="material-icons">flag</span> Finalizar Servicio</button>
+          </div>
+        </div>
+
+        <div class="extra-section">
+          <p class="actions-title">Opciones adicionales</p>
+          <button class="btn-contactar"><span class="material-icons">phone</span> Contactar al client</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

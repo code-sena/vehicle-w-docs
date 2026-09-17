@@ -1,0 +1,10 @@
+/* ============================================
+   LANDING CONTAINER — copiado de landing.scss
+   ============================================ */
+
+.landing-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}

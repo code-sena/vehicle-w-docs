@@ -1,0 +1,199 @@
+/* ============================================
+   VARIABLES — copiadas exactamente de src/styles.scss
+   4 temas reales del proyecto, activados con clases en <body>:
+   (sin clase) = verde claro (default) | .green-dark | .pink | .pink-dark
+   ============================================ */
+
+body {
+  color-scheme: light;
+  background-color: var(--bg);
+  color: var(--text);
+
+  /* COLOR PRINCIPAL */
+  --primary: #2ec4b6;
+  --primary-rgb: 46, 196, 182;
+  --primary-hover: #229990;
+
+  /* SIDEBAR */
+  --sidebar: #104039;
+
+  /* BACKGROUNDS */
+  --bg: #f5f6f8;
+  --bg-soft: #F9FBFB;
+  --card: #ffffff;
+
+  /* TEXTOS */
+  --text: #1a1a2e;
+  --text-secondary: #5f6f75;
+  --text-muted: #9aa5ab;
+
+  /* BORDES */
+  --border: #e6eaea;
+
+  /* EFECTOS */
+  --primary-soft: rgba(var(--primary-rgb), 0.15);
+
+  /* ITEMS */
+  --item-bg: rgba(0, 0, 0, 0.04);
+  --item-hover: rgba(0, 0, 0, 0.07);
+
+  /* OVERLAY */
+  --overlay-dark: rgba(19, 28, 32, 0.80);
+  --overlay-light: rgba(0, 0, 0, 0.55);
+  --hero-image: url('../images/hero.png');
+
+  --auth-shell: rgba(255, 255, 255, .75);
+  --auth-card: #ffffff;
+  --auth-panel: #f8fafb;
+  --auth-glow: rgba(var(--primary-rgb), .20);
+
+  --panel-overlay: rgba(255, 255, 255, .50);
+  --panel-image: url('../images/panelLight.png');
+
+  --success: #29AEA0;
+  --success-soft: #E0EBEA;
+  --error: #E53935;
+  --error-soft: #FFEBEE;
+  --warning: #F59E0B;
+  --warning-soft: #FEF3C7;
+  --neutral-badge: #67777E;
+  --neutral-badge-soft: #EDF2F2;
+}
+
+/* VERDE OSCURO */
+body.green-dark {
+  color-scheme: dark;
+
+  --primary: #2ec4b6;
+  --primary-rgb: 46, 196, 182;
+  --primary-hover: #1fa89c;
+
+  --sidebar: #142927;
+
+  --bg: #1a1a1a;
+  --bg-soft: #131C20;
+  --card: #2a2a2a;
+
+  --text: #ffffff;
+  --text-secondary: #c2c2c2;
+  --text-muted: #8a8a8a;
+
+  --border: #2f2f2f;
+  --primary-soft: rgba(var(--primary-rgb), 0.2);
+
+  --item-bg: rgba(255, 255, 255, 0.05);
+  --item-hover: rgba(255, 255, 255, 0.08);
+
+  --overlay-dark: rgba(0, 0, 0, 0.85);
+  --overlay-light: rgba(0, 0, 0, 0.65);
+  --hero-image: url('../images/hero.png');
+
+  --auth-shell: #1f2324;
+  --auth-card: #262b2c;
+  --auth-panel: #202425;
+  --auth-glow: rgba(var(--primary-rgb), .18);
+
+  --panel-overlay: rgba(10, 15, 18, .52);
+  --panel-image: url('../images/panelDark.png');
+
+  --success: #2ec4b6;
+  --success-soft: rgba(46, 196, 182, 0.18);
+  --error: #ff6b6b;
+  --error-soft: rgba(255, 107, 107, 0.15);
+  --warning: #FBBF24;
+  --warning-soft: rgba(251, 191, 36, 0.18);
+  --neutral-badge: #c2c2c2;
+  --neutral-badge-soft: rgba(255, 255, 255, 0.08);
+}
+
+/* ROSADO CLARO */
+body.pink {
+  color-scheme: light;
+
+  --primary: #ff4fa3;
+  --primary-rgb: 255, 79, 163;
+  --primary-hover: #e13b8c;
+
+  --sidebar: #3d1a2a;
+
+  --bg: #f5f6f8;
+  --bg-soft: #ffe4ef;
+  --card: #ffffff;
+
+  --text: #1a1a2e;
+  --text-secondary: #5f6f75;
+  --text-muted: #9aa5ab;
+
+  --border: #e6eaea;
+  --primary-soft: rgba(var(--primary-rgb), 0.15);
+
+  --item-bg: rgba(0, 0, 0, 0.04);
+  --item-hover: rgba(0, 0, 0, 0.07);
+
+  --overlay-dark: rgba(255, 0, 120, 0.45);
+  --overlay-light: rgba(0, 0, 0, 0.45);
+  --hero-image: url('../images/car.png');
+
+  --auth-shell: rgba(255, 255, 255, .80);
+  --auth-card: #ffffff;
+  --auth-panel: #fff7fb;
+  --auth-glow: rgba(var(--primary-rgb), .18);
+
+  --panel-overlay: rgba(255, 255, 255, .50);
+  --panel-image: url('../images/panelLight.png');
+
+  --success: #29AEA0;
+  --success-soft: #E0EBEA;
+  --error: #E53935;
+  --error-soft: #FFEBEE;
+  --warning: #F59E0B;
+  --warning-soft: #FEF3C7;
+  --neutral-badge: #67777E;
+  --neutral-badge-soft: #EDF2F2;
+}
+
+/* ROSADO OSCURO */
+body.pink-dark {
+  color-scheme: dark;
+
+  --primary: #ff4fa3;
+  --primary-rgb: 255, 79, 163;
+  --primary-hover: #e13b8c;
+
+  --sidebar: #2a1020;
+
+  --bg: #1a1a1a;
+  --bg-soft: #1f0f18;
+  --card: #2a2a2a;
+
+  --text: #ffffff;
+  --text-secondary: #c2c2c2;
+  --text-muted: #8a8a8a;
+
+  --border: #2f2f2f;
+  --primary-soft: rgba(var(--primary-rgb), 0.2);
+
+  --item-bg: rgba(255, 255, 255, 0.05);
+  --item-hover: rgba(255, 255, 255, 0.08);
+
+  --overlay-dark: rgba(0, 0, 0, 0.85);
+  --overlay-light: rgba(255, 0, 120, 0.35);
+  --hero-image: url('../images/car.png');
+
+  --auth-shell: #241d22;
+  --auth-card: #2d252a;
+  --auth-panel: #241d22;
+  --auth-glow: rgba(var(--primary-rgb), .18);
+
+  --panel-overlay: rgba(15, 10, 14, .52);
+  --panel-image: url('../images/panelDark.png');
+
+  --success: #2ec4b6;
+  --success-soft: rgba(46, 196, 182, 0.18);
+  --error: #ff6b6b;
+  --error-soft: rgba(255, 107, 107, 0.15);
+  --warning: #FBBF24;
+  --warning-soft: rgba(251, 191, 36, 0.18);
+  --neutral-badge: #c2c2c2;
+  --neutral-badge-soft: rgba(255, 255, 255, 0.08);
+}

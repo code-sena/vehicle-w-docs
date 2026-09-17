@@ -1,0 +1,139 @@
+/* ============================================
+   FOOTER — copiado de footer.scss
+   ============================================ */
+
+.footer {
+  padding: 56px 48px 24px;
+  background-color: var(--card);
+  border-top: 1px solid var(--border);
+
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+
+  scroll-margin-top: 80px;
+}
+
+.footer-top {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 32px;
+
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 860px) {
+  .footer-top { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 560px) {
+  .footer-top { grid-template-columns: 1fr; }
+}
+
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 320px;
+}
+
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.footer-logo .logo-img {
+  width: 26px;
+  height: 26px;
+}
+
+.footer-logo .logo-text {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.footer-description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.footer-social {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+
+  background-color: var(--bg-soft);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.social-btn:hover {
+  background-color: var(--primary);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.footer-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.footer-column-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text);
+  margin: 0 0 4px 0;
+}
+
+.footer-link {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  width: fit-content;
+  transition: color 0.2s ease;
+}
+
+.footer-link:hover {
+  color: var(--primary);
+}
+
+.footer-divider {
+  height: 1px;
+  background-color: var(--border);
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.footer-bottom {
+  display: flex;
+  justify-content: center;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.footer-copyright {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}

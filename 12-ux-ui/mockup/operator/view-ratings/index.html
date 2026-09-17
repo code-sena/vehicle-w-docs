@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<!--
+  Mockup: Operator "qualifications" (ratings received) screen.
+  Tags/structure/comments in English. CSS class names intentionally mirror the real
+  Angular templates verbatim (e.g. "qualification-card", "stars-row", "stat-sublabel")
+  for 1:1 traceability with the actual app.
+  Visible copy in Spanish, taken verbatim from the real i18n file (assets/i18n/es.json,
+  QUALIFICATIONS.* / QUALIFICATION_CARD.* / QUALIFICATION_STATS.* blocks).
+  Source of truth: Web/src/app/features/operator/pages/qualifications/*
+  (qualifications.html/.scss, components/qualification-stats/*, components/qualification-card/*)
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Operator Qualifications Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+    body {
+      --primary: #2ec4b6;
+      --primary-rgb: 46, 196, 182;
+      --primary-hover: #229990;
+      --primary-soft: rgba(46, 196, 182, 0.15);
+
+      --sidebar: #104039;
+
+      --bg: #f5f6f8;
+      --bg-soft: #f9fbfb;
+      --card: #ffffff;
+
+      --text: #1a1a2e;
+      --text-secondary: #5f6f75;
+      --text-muted: #9aa5ab;
+
+      --border: #e6eaea;
+
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--text);
+      background-color: var(--bg-soft);
+    }
+
+    * { box-sizing: border-box; }
+
+    .material-icons { font-size: 20px; vertical-align: middle; }
+
+    /* ===== Sidebar — mirrors shared/components/sidebar ===== */
+    .page-container { display: flex; min-height: 100vh; background-color: var(--bg-soft); }
+
+    .sidebar {
+      box-sizing: border-box;
+      width: 270px; flex-shrink: 0; height: 100vh; background-color: var(--sidebar);
+      display: flex; flex-direction: column; padding: 20px 0; position: relative;
+    }
+    .sidebar-logo { display: flex; align-items: center; gap: 12px; padding: 0 20px 18px; color: #ffffff; font-weight: 600; font-size: 16px; }
+    .sidebar-logo .logo-img { width: 32px; height: 32px; object-fit: contain; }
+    .sidebar-usuario {
+      display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 8px;
+    }
+    .avatar {
+      width: 38px; height: 38px; border-radius: 50%; background-color: rgba(0, 0, 0, 0.2);
+      border: 2px solid var(--primary); color: #ffffff; display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600;
+    }
+    .usuario-info { display: flex; flex-direction: column; }
+    .usuario-info .nombre { font-size: 13px; font-weight: 500; color: #ffffff; margin: 0; }
+    .usuario-info .correo { font-size: 11px; color: rgba(255, 255, 255, 0.7); margin: 0; }
+    .sidebar-menu { flex: 1; display: flex; flex-direction: column; padding: 0 12px; }
+    .menu-item {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px;
+      color: rgba(255, 255, 255, 0.9); text-decoration: none; font-size: 13px; margin-bottom: 2px;
+    }
+    .menu-item:hover { background: rgba(var(--primary-rgb), 0.15); color: #ffffff; }
+    .menu-item.activo { background: rgba(var(--primary-rgb), 0.25); color: #ffffff; font-weight: 500; border-left: 4px solid var(--primary); padding-left: 10px; }
+    .menu-item.activo .menu-icono { color: var(--primary); }
+    .menu-icono { font-size: 18px; width: 22px; text-align: center; color: rgba(255, 255, 255, 0.8); }
+    .sidebar-footer { padding: 12px 20px 0; border-top: 2px solid rgba(255, 255, 255, 0.08); margin-top: auto; }
+    .btn-cerrar { width: 100%; background: none; border: none; color: rgba(255, 255, 255, 0.8); font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit; }
+    .btn-cerrar:hover { color: var(--primary); }
+
+    /* ===== Main content — mirrors qualifications.html/.scss ===== */
+    .main-content { flex: 1; padding: 40px 48px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
+    .page-header { display: flex; flex-direction: column; gap: 6px; }
+    .page-title { font-size: 26px; font-weight: 700; color: var(--text); margin: 0; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary); margin: 0; line-height: 1.5; }
+
+    /* qualification-stats */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .stat-card { background-color: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06); }
+    .stat-header { display: flex; align-items: center; gap: 8px; }
+    .stat-icon { font-size: 18px; color: var(--text-secondary); }
+    .stat-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--text); margin: 0; }
+    .stat-sublabel { font-size: 12px; color: var(--text-secondary); margin: 0; }
+    .stars-row { display: flex; gap: 2px; }
+    .star { font-size: 20px; color: var(--border); }
+    .star.filled { color: var(--primary); }
+    .progress-bar { width: 100%; height: 8px; background-color: var(--border); border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background-color: var(--primary); border-radius: 4px; }
+
+    /* filters */
+    .filters-card { background-color: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06); display: flex; flex-direction: column; gap: 16px; }
+    .filters-title { font-size: 15px; font-weight: 600; color: var(--text); margin: 0; }
+    .filters-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+    .filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .filter-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+    .date-input-wrapper, .select-wrapper { position: relative; display: flex; align-items: center; }
+    .select-icon { position: absolute; right: 10px; font-size: 18px; color: var(--text-secondary); pointer-events: none; }
+    .filter-input, .filter-select {
+      padding: 10px 36px 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; color: var(--text);
+      background-color: var(--card); outline: none; font-family: 'Plus Jakarta Sans', sans-serif; width: 180px;
+    }
+    .filter-select { appearance: none; cursor: pointer; }
+    .filter-input:focus, .filter-select:focus { border-color: var(--primary); }
+    .filter-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+    .btn-reset { width: 40px; height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background-color: var(--card); border: 1.5px solid var(--border); border-radius: 10px; cursor: pointer; }
+    .btn-reset .material-icons { color: var(--text-secondary); }
+    .btn-reset:hover { border-color: var(--primary); }
+    .btn-reset:hover .material-icons { color: var(--primary); }
+    .btn-filter {
+      display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 20px; background-color: var(--primary);
+      color: #ffffff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .btn-filter:hover { background-color: var(--primary-hover); }
+
+    /* qualification-card */
+    .qualifications-list { display: flex; flex-direction: column; gap: 12px; }
+    .qualification-card { background-color: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06); }
+    .qualification-card:hover { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .client-info { display: flex; flex-direction: column; gap: 4px; }
+    .client-name { font-size: 15px; font-weight: 700; color: var(--text); margin: 0; }
+    .service-type { font-size: 13px; color: var(--text-secondary); margin: 0; }
+    .card-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .card-date { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+    .btn-ver { width: 32px; height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background-color: transparent; border: 1.5px solid var(--border); border-radius: 8px; cursor: pointer; }
+    .btn-ver .material-icons { font-size: 16px; color: var(--text-secondary); }
+    .btn-ver:hover { border-color: var(--primary); }
+    .btn-ver:hover .material-icons { color: var(--primary); }
+    .card-comment { font-size: 14px; color: var(--text); margin: 0; line-height: 1.5; font-style: italic; }
+    .card-details { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .detail-item { font-size: 12px; color: var(--text-secondary); }
+    .detail-separator { color: var(--border); font-size: 12px; }
+
+    .empty-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px; color: var(--text-secondary); background-color: var(--card); border: 1px solid var(--border); border-radius: 16px; }
+    .empty-state .material-icons { font-size: 48px; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <svg class="logo-img" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9.33333 21.7333C12.2667 21.7333 14.6667 19.2933 14.6667 16.3333C14.6667 14.7867 13.9067 13.32 12.3867 12.08C10.8667 10.84 9.72 8.99998 9.33333 7.06665C8.94667 8.99998 7.81333 10.8533 6.28 12.08C4.74667 13.3067 4 14.8 4 16.3333C4 19.2933 6.4 21.7333 9.33333 21.7333Z" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M16.7467 8.79994C17.6637 7.33478 18.3137 5.71867 18.6667 4.02661C19.3333 7.35994 21.3333 10.5599 24 12.6933C26.6667 14.8266 28 17.3599 28 20.0266C28.0076 21.8697 27.4678 23.6735 26.4491 25.2094C25.4303 26.7453 23.9784 27.9441 22.2775 28.6539C20.5766 29.3637 18.7032 29.5525 16.8949 29.1963C15.0866 28.8401 13.4247 27.9551 12.12 26.6533" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Lavado Vehicular</span>
+      </div>
+      <div class="sidebar-usuario">
+        <div class="avatar">C</div>
+        <div class="usuario-info">
+          <p class="nombre">Camilo</p>
+          <p class="correo">camilo.operario@lavadovehicular.com</p>
+        </div>
+      </div>
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">space_dashboard</span><span class="menu-label">Dashboard</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">person</span><span class="menu-label">Perfil</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">calendar_month</span><span class="menu-label">Mi Agenda</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">assignment</span><span class="menu-label">servicios asignados</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">notifications</span><span class="menu-label">Notificaciones</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">history</span><span class="menu-label">Historial</span></a>
+        <a href="#" class="menu-item activo"><span class="material-icons menu-icono">star_outline</span><span class="menu-label">Calificaciones</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">settings</span><span class="menu-label">Configuración</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-cerrar"><span class="material-icons">logout</span><span>Cerrar sesión</span></button>
+      </div>
+    </aside>
+
+    <div class="main-content">
+
+      <div class="page-header">
+        <h1 class="page-title">Calificaciones recibidas</h1>
+        <p class="page-subtitle">Consulta las valoraciones que han dejado los clientes sobre tu trabajo.</p>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-header"><span class="material-icons stat-icon">star_outline</span><span class="stat-label">Calificación promedio</span></div>
+          <p class="stat-value">4.3</p>
+          <div class="stars-row">
+            <span class="material-icons star filled">star</span>
+            <span class="material-icons star filled">star</span>
+            <span class="material-icons star filled">star</span>
+            <span class="material-icons star filled">star</span>
+            <span class="material-icons star">star_border</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header"><span class="material-icons stat-icon">trending_up</span><span class="stat-label">Nivel de satisfacción</span></div>
+          <p class="stat-value">Muy alto</p>
+          <div class="progress-bar"><div class="progress-fill" style="width: 88%;"></div></div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header"><span class="material-icons stat-icon">chat_bubble_outline</span><span class="stat-label">Total de calificaciones recibidas</span></div>
+          <p class="stat-value">48</p>
+          <p class="stat-sublabel">En los últimos 12 meses</p>
+        </div>
+      </div>
+
+      <div class="filters-card">
+        <p class="filters-title">Filtros de búsqueda</p>
+        <div class="filters-row">
+          <div class="filter-group">
+            <label class="filter-label">Filtrar por fecha</label>
+            <div class="date-input-wrapper">
+              <input type="date" class="filter-input" />
+            </div>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Filtrar por tipo de servicio</label>
+            <div class="select-wrapper">
+              <select class="filter-select">
+                <option>Todas</option>
+                <option>Lavado Básico</option>
+                <option>Lavado Premium</option>
+                <option>Lavado Completo</option>
+              </select>
+              <span class="material-icons select-icon">expand_more</span>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">&nbsp;</label>
+            <div class="select-wrapper">
+              <select class="filter-select">
+                <option>Todos</option>
+                <option>5 estrellas</option>
+                <option>4 estrellas</option>
+                <option>3 estrellas</option>
+                <option>2 estrellas</option>
+                <option>1 estrella</option>
+              </select>
+              <span class="material-icons select-icon">expand_more</span>
+            </div>
+          </div>
+          <div class="filter-actions">
+            <button class="btn-reset"><span class="material-icons">refresh</span></button>
+            <button class="btn-filter"><span class="material-icons">search</span> Filtrar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="qualifications-list">
+
+        <div class="qualification-card">
+          <div class="card-header">
+            <div class="client-info">
+              <p class="client-name">María Torres</p>
+              <p class="service-type">Completo</p>
+              <div class="stars-row">
+                <span class="material-icons star filled">star</span>
+                <span class="material-icons star filled">star</span>
+                <span class="material-icons star filled">star</span>
+                <span class="material-icons star filled">star</span>
+                <span class="material-icons star filled">star</span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <span class="card-date">04/09/2026</span>
+              <button class="btn-ver"><span class="material-icons">visibility</span></button>
+            </div>
+          </div>
+          <p class="card-comment">"Excelente atención, muy puntual y dejó el carro impecable. Totalmente recomendado."</p>
+          <div class="card-details">
+            <span class="detail-item">Duración: 120 minutos</span>
+            <span class="detail-separator">·</span>
+            <span class="detail-item">Ubicación: Carrera 15 #22-40, El Poblado</span>
+            <span class="detail-separator">·</span>
+            <span class="detail-item">ID: SV-1998</span>
+          </div>
+        </div>
+
+        <div class="qualification-card">
+          <div class="card-header">
+            <div class="client-info">
+              <p class="client-name">Juan Felipe González</p>
+              <p class="service-type">Premium</p>
+              <div class="stars-row">
+                <span class="material-icons star filled">star</span>
+                <span class="material-icons star filled">star</span>
+                <span class="material-icons star filled">star</span>
+                <span class="material-icons star filled">star</span>
+                <span class="material-icons star">star_border</span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <span class="card-date">02/09/2026</span>
+              <button class="btn-ver"><span class="material-icons">visibility</span></button>
+            </div>
+          </div>
+          <p class="card-comment">"Buen trabajo en general, aunque llegó unos minutos tarde."</p>
+          <div class="card-details">
+            <span class="detail-item">Duración: 75 minutos</span>
+            <span class="detail-separator">·</span>
+            <span class="detail-item">Ubicación: Calle Sur 123, Los Rosales</span>
+            <span class="detail-separator">·</span>
+            <span class="detail-item">ID: SV-2034</span>
+          </div>
+        </div>
+
+        <div class="qualification-card">
+          <div class="card-header">
+            <div class="client-info">
+              <p class="client-name">Esneider Sánchez</p>
+              <p class="service-type">Básico</p>
+              <div class="stars-row">
+                <span class="material-icons star filled">star</span>
+                <span class="material-icons star filled">star</span>
+                <span class="material-icons star filled">star</span>
+                <span class="material-icons star filled">star</span>
+                <span class="material-icons star filled">star</span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <span class="card-date">28/08/2026</span>
+              <button class="btn-ver"><span class="material-icons">visibility</span></button>
+            </div>
+          </div>
+          <p class="card-comment">"Camilo siempre hace un trabajo muy prolijo, es mi operario de confianza."</p>
+          <div class="card-details">
+            <span class="detail-item">Duración: 45 minutos</span>
+            <span class="detail-separator">·</span>
+            <span class="detail-item">Ubicación: Calle Norte 7-06, Miraflores</span>
+            <span class="detail-separator">·</span>
+            <span class="detail-item">ID: SV-1987</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

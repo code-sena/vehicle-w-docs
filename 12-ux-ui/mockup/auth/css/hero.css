@@ -1,0 +1,134 @@
+/* ============================================
+   HERO — copiado de hero.scss
+   ============================================ */
+
+.hero-section {
+  position: relative;
+  min-height: 80vh;
+
+  background-image: var(--hero-image);
+  background-size: cover;
+  background-position: center;
+  background-color: var(--bg);
+
+  display: flex;
+  align-items: flex-end;
+
+  padding: 80px 48px 60px;
+  scroll-margin-top: 80px;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--overlay-dark) 0%, var(--overlay-light) 100%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 500px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+
+  margin-bottom: 120px;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 16px;
+
+  background-color: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.hero-badge .material-icons {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.hero-title {
+  font-size: 42px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.hero-description {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+  line-height: 1.6;
+  max-width: 420px;
+}
+
+.hero-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.hero-buttons .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 12px 24px;
+
+  background-color: #ffffff;
+  color: #131C20;
+
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.hero-buttons .btn-primary .material-icons {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.hero-buttons .btn-primary:hover {
+  background-color: var(--primary);
+  color: #ffffff;
+}
+
+.hero-buttons .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+
+  padding: 12px 24px;
+
+  background-color: transparent;
+  color: #ffffff;
+
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+
+  transition: all 0.2s ease;
+}
+
+.hero-buttons .btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: #ffffff;
+}

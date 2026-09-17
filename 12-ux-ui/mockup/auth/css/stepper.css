@@ -1,0 +1,53 @@
+/* ============================================
+   STEPPER — copiado de stepper.scss
+   ============================================ */
+
+.stepper-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.step-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg-soft);
+  border: 2px solid var(--border);
+  color: var(--text-muted);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .25s ease;
+}
+
+body.green-dark .step-circle,
+body.pink-dark .step-circle {
+  border-color: rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .06);
+}
+
+.step-circle.active,
+.step-circle.completed {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.step-line {
+  width: 56px;
+  height: 2px;
+  background: var(--border);
+  transition: all .25s ease;
+}
+
+body.green-dark .step-line,
+body.pink-dark .step-line {
+  background: rgba(255, 255, 255, .12);
+}
+
+.step-line.line-active {
+  background: var(--primary);
+}
