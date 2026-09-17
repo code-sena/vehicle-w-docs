@@ -1,0 +1,202 @@
+/* ============================================
+   SERVICES — copiado de services.scss
+   ============================================ */
+
+.services-section {
+  padding: 80px 48px;
+  background-color: var(--bg);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+
+  scroll-margin-top: 80px;
+}
+
+.services-eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.services-title {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+  text-align: center;
+}
+
+.services-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 36px 0;
+  text-align: center;
+  max-width: 480px;
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  width: 100%;
+  max-width: 1000px;
+}
+
+@media (max-width: 900px) {
+  .services-grid {
+    grid-template-columns: 1fr;
+    max-width: 440px;
+  }
+}
+
+.service-card {
+  position: relative;
+
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px 26px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  transition: all 0.3s ease;
+}
+
+.service-card.popular {
+  border-color: var(--primary);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  transform: scale(1.03);
+}
+
+.service-card:target {
+  animation: highlightCard 1.6s ease;
+}
+
+@keyframes highlightCard {
+  0% { box-shadow: 0 0 0 4px var(--primary); }
+  100% { box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06); }
+}
+
+.popular-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  background-color: var(--primary);
+  color: #ffffff;
+
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+
+  padding: 5px 14px;
+  border-radius: 999px;
+}
+
+.service-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background-color: var(--primary-soft);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.service-icon .material-icons {
+  color: var(--primary);
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+}
+
+.service-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 6px 0 0 0;
+}
+
+.service-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.service-price {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--primary);
+  margin: 8px 0 4px 0;
+}
+
+.service-time {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.service-items {
+  list-style: none;
+  margin: 8px 0 16px 0;
+  padding: 0;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.service-items li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.service-items li .material-icons {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--primary);
+}
+
+.service-cta {
+  margin-top: auto;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  padding: 12px 20px;
+  border-radius: 10px;
+
+  background-color: var(--primary);
+  color: #ffffff;
+
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+
+  transition: all 0.2s ease;
+}
+
+.service-cta .material-icons {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.service-cta:hover {
+  background-color: var(--primary-hover);
+}

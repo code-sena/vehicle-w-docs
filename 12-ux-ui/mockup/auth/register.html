@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crear Cuenta · Lavado Vehicular</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/side-panel.css">
+<link rel="stylesheet" href="css/back-button.css">
+<link rel="stylesheet" href="css/register.css">
+<link rel="stylesheet" href="css/theme-switcher.css">
+</head>
+<body>
+
+<div class="theme-switcher">
+  <button type="button" data-theme="" class="active" title="Verde claro (default)"></button>
+  <button type="button" data-theme="green-dark" title="Verde oscuro"></button>
+  <button type="button" data-theme="pink" title="Rosado claro"></button>
+  <button type="button" data-theme="pink-dark" title="Rosado oscuro"></button>
+</div>
+
+<div class="register-container">
+  <div class="auth-shell">
+
+    <div class="auth-side-panel-wrap">
+      <div class="side-panel">
+        <div class="panel-content">
+
+          <div class="panel-brand">
+            <div class="brand-logo">
+              <svg width="34" height="34" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9.33333 21.7333C12.2667 21.7333 14.6667 19.2933 14.6667 16.3333C14.6667 14.7867 13.9067 13.32 12.3867 12.08C10.8667 10.84 9.72 8.99998 9.33333 7.06665C8.94667 8.99998 7.81333 10.8533 6.28 12.08C4.74667 13.3067 4 14.8 4 16.3333C4 19.2933 6.4 21.7333 9.33333 21.7333Z" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M16.7467 8.79994C17.6637 7.33478 18.3137 5.71867 18.6667 4.02661C19.3333 7.35994 21.3333 10.5599 24 12.6933C26.6667 14.8266 28 17.3599 28 20.0266C28.0076 21.8697 27.4678 23.6735 26.4491 25.2094C25.4303 26.7453 23.9784 27.9441 22.2775 28.6539C20.5766 29.3637 18.7032 29.5525 16.8949 29.1963C15.0866 28.8401 13.4247 27.9551 12.12 26.6533" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="brand-text">
+              <h3>Lavado Vehicular</h3>
+            </div>
+          </div>
+
+          <div class="hero-text">
+            <h1>Tu vehículo merece el mejor cuidado</h1>
+            <p>Administra tus servicios de lavado, agenda citas y mantén el control total de tu vehículo desde una sola plataforma.</p>
+          </div>
+
+          <div class="benefits">
+            <div class="benefit-card">
+              <span class="material-icons">verified_user</span>
+              <span>Información segura</span>
+            </div>
+            <div class="benefit-card">
+              <span class="material-icons">auto_awesome</span>
+              <span>Servicio Premium</span>
+            </div>
+            <div class="benefit-card">
+              <span class="material-icons">schedule</span>
+              <span>Reservas rápidas</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="register-form-section">
+      <div class="register-card">
+
+        <button class="back-btn" type="button" aria-label="Volver">
+          <span class="material-icons">arrow_back</span>
+        </button>
+
+        <div class="register-scroll">
+
+          <div class="register-header">
+            <h2>Crear Cuenta</h2>
+            <p>Regístrate para empezar a reservar</p>
+          </div>
+
+          <form id="registerForm" novalidate>
+
+            <!-- NOMBRE -->
+            <div class="form-group">
+              <label for="nombre">Nombre Completo</label>
+              <div class="input-wrapper">
+                <span class="input-icon material-icons">person</span>
+                <input id="nombre" type="text" placeholder="Juan Pérez">
+              </div>
+              <span class="error-msg" id="nombreError" hidden></span>
+            </div>
+
+            <!-- CORREO -->
+            <div class="form-group">
+              <label for="reg-correo">Correo Electrónico</label>
+              <div class="input-wrapper">
+                <span class="input-icon material-icons">mail</span>
+                <input id="reg-correo" type="email" placeholder="usuario@gmail.com" autocomplete="email">
+              </div>
+              <span class="error-msg" id="reg-correoError" hidden></span>
+            </div>
+
+            <!-- TELÉFONO -->
+            <div class="form-group">
+              <label for="telefono">Teléfono</label>
+              <div class="input-wrapper">
+                <span class="input-icon material-icons">call</span>
+                <input id="telefono" type="text" placeholder="3001234567" maxlength="10" inputmode="numeric" autocomplete="off">
+              </div>
+              <span class="error-msg" id="telefonoError" hidden></span>
+            </div>
+
+            <!-- CONTRASEÑA -->
+            <div class="form-group">
+              <label for="reg-contrasena">Contraseña</label>
+              <div class="input-wrapper">
+                <span class="input-icon material-icons">lock</span>
+                <input id="reg-contrasena" type="password" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+                <button type="button" class="toggle-btn" id="toggleRegPass">
+                  <span class="material-icons">visibility</span>
+                </button>
+              </div>
+
+              <div class="requirements" id="passwordRequirements">
+                <div class="requirement" data-req="minLength"><span class="req-dot"></span>Mínimo 8 caracteres</div>
+                <div class="requirement" data-req="uppercase"><span class="req-dot"></span>Al menos una mayúscula</div>
+                <div class="requirement" data-req="number"><span class="req-dot"></span>Al menos un número</div>
+                <div class="requirement" data-req="specialChar"><span class="req-dot"></span>Al menos un carácter especial</div>
+              </div>
+
+              <span class="error-msg" id="reg-contrasenaError" hidden></span>
+            </div>
+
+            <!-- CONFIRMAR -->
+            <div class="form-group">
+              <label for="confirmar">Confirmar Contraseña</label>
+              <div class="input-wrapper">
+                <span class="input-icon material-icons">lock</span>
+                <input id="confirmar" type="password" placeholder="Repite tu contraseña" autocomplete="new-password">
+                <button type="button" class="toggle-btn" id="toggleConfirm">
+                  <span class="material-icons">visibility</span>
+                </button>
+              </div>
+              <span class="error-msg" id="confirmarError" hidden></span>
+            </div>
+
+            <button type="submit" class="btn-register" id="registerSubmit" disabled>
+              <span id="registerBtnLabel">Registrarse</span>
+            </button>
+
+          </form>
+
+          <p class="login-link">
+            ¿Ya tienes cuenta?
+            <a href="login.html">Inicia sesión</a>
+          </p>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/theme-switcher.js"></script>
+<script src="js/register.js"></script>
+</body>
+</html>

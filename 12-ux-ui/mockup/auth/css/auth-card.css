@@ -1,0 +1,48 @@
+/* ============================================
+   AUTH CARD — copiado de auth-card.scss
+   Usado por forgot-password.html (envuelve los 3 pasos)
+   ============================================ */
+
+.card-wrapper {
+  width: 100%;
+  max-width: 480px;
+  margin: auto;
+  padding: 38px;
+  box-sizing: border-box;
+  position: relative;
+
+  background: var(--auth-card);
+  border-radius: 26px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, .06);
+
+  display: flex;
+  flex-direction: column;
+
+  animation: fadeUp .5s ease;
+}
+
+body.green-dark .card-wrapper,
+body.pink-dark .card-wrapper {
+  border: 1px solid rgba(255, 255, 255, .09);
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, .30),
+    0 0 0 1px rgba(255, 255, 255, .04) inset;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 600px) {
+  .card-wrapper {
+    padding: 28px 22px;
+  }
+}

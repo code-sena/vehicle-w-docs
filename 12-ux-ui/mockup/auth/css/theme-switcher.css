@@ -1,0 +1,47 @@
+/* ============================================
+   THEME SWITCHER — control de demo (no existe en tu app real).
+   Lo agregué solo para que puedas alternar entre los 4 temas
+   reales definidos en styles.scss sin tener que editar código.
+   ============================================ */
+
+.theme-switcher {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 50;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.theme-switcher button {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.theme-switcher button[data-theme=""] {
+  background: #2ec4b6;
+}
+
+.theme-switcher button[data-theme="green-dark"] {
+  background: #131C20;
+}
+
+.theme-switcher button[data-theme="pink"] {
+  background: #ff4fa3;
+}
+
+.theme-switcher button[data-theme="pink-dark"] {
+  background: #1f0f18;
+}
+
+.theme-switcher button.active {
+  border-color: #1a1a2e;
+}

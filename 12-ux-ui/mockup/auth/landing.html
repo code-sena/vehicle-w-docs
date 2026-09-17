@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lavado Vehicular · Tu auto impecable, donde estés</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.0.0/css/flag-icons.min.css">
+
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/landing.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/hero.css">
+<link rel="stylesheet" href="css/features.css">
+<link rel="stylesheet" href="css/services.css">
+<link rel="stylesheet" href="css/contact.css">
+<link rel="stylesheet" href="css/footer.css">
+<link rel="stylesheet" href="css/theme-switcher.css">
+</head>
+<body>
+
+<div class="theme-switcher">
+  <button type="button" data-theme="" class="active" title="Verde claro (default)"></button>
+  <button type="button" data-theme="green-dark" title="Verde oscuro"></button>
+  <button type="button" data-theme="pink" title="Rosado claro"></button>
+  <button type="button" data-theme="pink-dark" title="Rosado oscuro"></button>
+</div>
+
+<div class="landing-container">
+
+  <!-- ===================== NAVBAR ===================== -->
+  <nav class="navbar">
+    <div class="navbar-logo">
+      <svg class="logo-img" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9.33333 21.7333C12.2667 21.7333 14.6667 19.2933 14.6667 16.3333C14.6667 14.7867 13.9067 13.32 12.3867 12.08C10.8667 10.84 9.72 8.99998 9.33333 7.06665C8.94667 8.99998 7.81333 10.8533 6.28 12.08C4.74667 13.3067 4 14.8 4 16.3333C4 19.2933 6.4 21.7333 9.33333 21.7333Z" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M16.7467 8.79994C17.6637 7.33478 18.3137 5.71867 18.6667 4.02661C19.3333 7.35994 21.3333 10.5599 24 12.6933C26.6667 14.8266 28 17.3599 28 20.0266C28.0076 21.8697 27.4678 23.6735 26.4491 25.2094C25.4303 26.7453 23.9784 27.9441 22.2775 28.6539C20.5766 29.3637 18.7032 29.5525 16.8949 29.1963C15.0866 28.8401 13.4247 27.9551 12.12 26.6533" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="logo-text">Lavado Vehicular</span>
+    </div>
+
+    <div class="navbar-links">
+      <a href="#inicio" class="nav-link">Inicio</a>
+      <a href="#nosotros" class="nav-link">Nosotros</a>
+      <a href="#servicios" class="nav-link">Servicios</a>
+    </div>
+
+    <div class="navbar-actions">
+      <div class="language-dropdown" id="languageDropdown">
+        <button class="lang-btn" id="langBtn" type="button">
+          <span class="fi fi-es" id="langFlag"></span>
+          <span id="langCode">ES</span>
+        </button>
+
+        <div class="lang-menu" id="langMenu" hidden>
+          <div class="lang-option" data-lang="es" data-flag="es">
+            <div class="lang-top">
+              <div class="lang-left"><span class="fi fi-es"></span><strong>Español</strong></div>
+              <span class="material-icons lang-check selected" data-check="es">check_circle</span>
+            </div>
+            <span class="lang-sub">Cambiar idioma</span>
+          </div>
+          <div class="lang-option" data-lang="en" data-flag="gb">
+            <div class="lang-top">
+              <div class="lang-left"><span class="fi fi-gb"></span><strong>English</strong></div>
+              <span class="material-icons lang-check" data-check="en">check_circle</span>
+            </div>
+            <span class="lang-sub">Cambiar idioma</span>
+          </div>
+          <div class="lang-option" data-lang="pt" data-flag="pt">
+            <div class="lang-top">
+              <div class="lang-left"><span class="fi fi-pt"></span><strong>Português</strong></div>
+              <span class="material-icons lang-check" data-check="pt">check_circle</span>
+            </div>
+            <span class="lang-sub">Cambiar idioma</span>
+          </div>
+          <div class="lang-option" data-lang="fr" data-flag="fr">
+            <div class="lang-top">
+              <div class="lang-left"><span class="fi fi-fr"></span><strong>Français</strong></div>
+              <span class="material-icons lang-check" data-check="fr">check_circle</span>
+            </div>
+            <span class="lang-sub">Cambiar idioma</span>
+          </div>
+        </div>
+      </div>
+
+      <a href="login.html" class="btn-login">Iniciar sesión</a>
+      <a href="register.html" class="btn-register">Registrarse</a>
+    </div>
+  </nav>
+
+  <!-- ===================== HERO ===================== -->
+  <section id="inicio" class="hero-section">
+    <div class="hero-overlay"></div>
+
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="material-icons">settings</span>
+        Servicio móvil de lavado #1
+      </div>
+
+      <h1 class="hero-title">
+        Tu auto impecable,<br>
+        donde estés
+      </h1>
+
+      <p class="hero-description">
+        Reserva tu lavado en minutos. Trabajamos con todo el equipo profesional para que puedas reservar sin filas, sin esperas y sin problemas.
+      </p>
+
+      <div class="hero-buttons">
+        <a href="register.html" class="btn-primary">
+          Comenzar ahora
+          <span class="material-icons">arrow_forward</span>
+        </a>
+        <a href="login.html" class="btn-secondary">Ya tengo cuenta</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FEATURES / ABOUT ===================== -->
+  <section id="nosotros" class="features-section">
+
+    <div class="about-block">
+      <div class="about-text">
+        <span class="about-eyebrow">Quiénes somos</span>
+        <h2 class="about-title">Cuidamos tu vehículo como si fuera nuestro</h2>
+        <p class="about-description">
+          Somos un equipo de lavadores profesionales certificados, comprometidos con la excelencia y el cuidado del medio ambiente. Llevamos el servicio hasta la puerta de tu casa u oficina, sin filas ni esperas.
+        </p>
+
+        <div class="about-stats">
+          <div class="stat-item">
+            <span class="material-icons">directions_car</span>
+            <div class="stat-info">
+              <span class="stat-value">15K+</span>
+              <span class="stat-label">Vehículos lavados</span>
+            </div>
+          </div>
+          <div class="stat-item">
+            <span class="material-icons">sentiment_satisfied</span>
+            <div class="stat-info">
+              <span class="stat-value">8K+</span>
+              <span class="stat-label">Clientes satisfechos</span>
+            </div>
+          </div>
+          <div class="stat-item">
+            <span class="material-icons">location_city</span>
+            <div class="stat-info">
+              <span class="stat-value">12+</span>
+              <span class="stat-label">Ciudades</span>
+            </div>
+          </div>
+          <div class="stat-item">
+            <span class="material-icons">military_tech</span>
+            <div class="stat-info">
+              <span class="stat-value">5+</span>
+              <span class="stat-label">Años de experiencia</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="about-visual">
+        <div class="visual-blob"></div>
+        <div class="visual-bubble bubble-1"><span class="material-icons">water_drop</span></div>
+        <div class="visual-bubble bubble-2"><span class="material-icons">local_car_wash</span></div>
+        <div class="visual-bubble bubble-3"><span class="material-icons">eco</span></div>
+        <div class="visual-bubble bubble-4"><span class="material-icons">verified</span></div>
+        <div class="visual-center">
+          <span class="material-icons">directions_car</span>
+        </div>
+      </div>
+    </div>
+
+    <span class="features-eyebrow">Lavado Vehicular</span>
+    <h2 class="features-title">¿Por qué elegirnos?</h2>
+    <p class="features-subtitle">Brindamos el mejor servicio de lavado móvil con calidad profesional.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon"><span class="material-icons">water_drop</span></div>
+        <p class="feature-titulo">Lavado ecológico</p>
+        <p class="feature-descripcion">Usamos productos biodegradables</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><span class="material-icons">shield</span></div>
+        <p class="feature-titulo">Protección total</p>
+        <p class="feature-descripcion">Cuidamos cada detalle de tu auto</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon"><span class="material-icons">star</span></div>
+        <p class="feature-titulo">5 estrellas</p>
+        <p class="feature-descripcion">Calidad garantizada siempre</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SERVICES ===================== -->
+  <section id="servicios" class="services-section">
+    <span class="services-eyebrow">Servicios</span>
+    <h2 class="services-title">Tipo de servicio</h2>
+    <p class="services-subtitle">Escoge el nivel de limpieza que prefieres</p>
+
+    <div class="services-grid">
+
+      <div id="servicio-basico" class="service-card">
+        <div class="service-icon"><span class="material-icons">local_car_wash</span></div>
+        <h3 class="service-name">Básico</h3>
+        <p class="service-desc">Lavado exterior del vehículo</p>
+        <div class="service-price">$20.000 <span class="service-time">· 45 minutos</span></div>
+        <ul class="service-items">
+          <li><span class="material-icons">check_circle</span>Lavado exterior completo</li>
+          <li><span class="material-icons">check_circle</span>Aspirado básico</li>
+          <li><span class="material-icons">check_circle</span>Limpieza de vidrios</li>
+        </ul>
+        <a href="register.html" class="service-cta">Comenzar ahora <span class="material-icons">arrow_forward</span></a>
+      </div>
+
+      <div id="servicio-premium" class="service-card popular">
+        <span class="popular-badge">Más popular</span>
+        <div class="service-icon"><span class="material-icons">workspace_premium</span></div>
+        <h3 class="service-name">Premium</h3>
+        <p class="service-desc">Lavado completo con encerado</p>
+        <div class="service-price">$35.000 <span class="service-time">· 75 minutos</span></div>
+        <ul class="service-items">
+          <li><span class="material-icons">check_circle</span>Todo lo del Básico</li>
+          <li><span class="material-icons">check_circle</span>Lavado de motor</li>
+          <li><span class="material-icons">check_circle</span>Cera líquida protectora</li>
+        </ul>
+        <a href="register.html" class="service-cta">Comenzar ahora <span class="material-icons">arrow_forward</span></a>
+      </div>
+
+      <div id="servicio-completo" class="service-card">
+        <div class="service-icon"><span class="material-icons">auto_awesome</span></div>
+        <h3 class="service-name">Completo</h3>
+        <p class="service-desc">Lavado exterior e interior</p>
+        <div class="service-price">$50.000 <span class="service-time">· 120 minutos</span></div>
+        <ul class="service-items">
+          <li><span class="material-icons">check_circle</span>Todo lo del Premium</li>
+          <li><span class="material-icons">check_circle</span>Encerado a mano</li>
+          <li><span class="material-icons">check_circle</span>Detallado de interiores</li>
+        </ul>
+        <a href="register.html" class="service-cta">Comenzar ahora <span class="material-icons">arrow_forward</span></a>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================== CONTACT ===================== -->
+  <section id="contacto" class="contact-section">
+    <span class="contact-eyebrow">Contacto</span>
+    <h2 class="contact-title">¿Hablamos?</h2>
+    <p class="contact-subtitle">Escríbenos y te respondemos en menos de 24 horas</p>
+
+    <div class="contact-grid">
+      <div class="contact-card">
+        <div class="contact-icon"><span class="material-icons">mail</span></div>
+        <span class="contact-label">Correo</span>
+        <span class="contact-value">hola@aquawash.com</span>
+      </div>
+      <div class="contact-card">
+        <div class="contact-icon"><span class="material-icons">call</span></div>
+        <span class="contact-label">Teléfono</span>
+        <span class="contact-value">+57 300 123 4567</span>
+      </div>
+      <div class="contact-card">
+        <div class="contact-icon"><span class="material-icons">public</span></div>
+        <span class="contact-label">Cobertura</span>
+        <span class="contact-value">Principales ciudades de Colombia</span>
+      </div>
+    </div>
+
+    <a href="register.html" class="contact-cta">
+      Agenda tu primer lavado
+      <span class="material-icons">arrow_forward</span>
+    </a>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="footer">
+    <div class="footer-top">
+
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <svg class="logo-img" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9.33333 21.7333C12.2667 21.7333 14.6667 19.2933 14.6667 16.3333C14.6667 14.7867 13.9067 13.32 12.3867 12.08C10.8667 10.84 9.72 8.99998 9.33333 7.06665C8.94667 8.99998 7.81333 10.8533 6.28 12.08C4.74667 13.3067 4 14.8 4 16.3333C4 19.2933 6.4 21.7333 9.33333 21.7333Z" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M16.7467 8.79994C17.6637 7.33478 18.3137 5.71867 18.6667 4.02661C19.3333 7.35994 21.3333 10.5599 24 12.6933C26.6667 14.8266 28 17.3599 28 20.0266C28.0076 21.8697 27.4678 23.6735 26.4491 25.2094C25.4303 26.7453 23.9784 27.9441 22.2775 28.6539C20.5766 29.3637 18.7032 29.5525 16.8949 29.1963C15.0866 28.8401 13.4247 27.9551 12.12 26.6533" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="logo-text">Lavado Vehicular</span>
+        </div>
+
+        <p class="footer-description">Servicio profesional de lavado móvil que lleva la mejor limpieza directamente a tu vehículo.</p>
+
+        <div class="footer-social">
+          <a href="#" class="social-btn" aria-label="Facebook">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13.5 21v-7.5h2.5l.5-3h-3V8.5c0-.9.25-1.5 1.5-1.5H16.5V4.3C16.2 4.25 15.2 4.16 14.05 4.16 11.65 4.16 10 5.6 10 8.2v2.3H7.5v3H10V21h3.5z" fill="currentColor"/>
+            </svg>
+          </a>
+          <a href="#" class="social-btn" aria-label="Instagram">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3.5" y="3.5" width="17" height="17" rx="5" stroke="currentColor" stroke-width="1.6"/>
+              <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.6"/>
+              <circle cx="17.2" cy="6.8" r="1.1" fill="currentColor"/>
+            </svg>
+          </a>
+          <a href="#" class="social-btn" aria-label="X / Twitter">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 4l16 16M20 4L4 20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+
+      <div class="footer-column">
+        <h4 class="footer-column-title">Compañía</h4>
+        <a href="#nosotros" class="footer-link">Sobre nosotros</a>
+        <a href="#contacto" class="footer-link">Trabaja con nosotros</a>
+        <a href="#contacto" class="footer-link">Contacto</a>
+      </div>
+
+      <div class="footer-column">
+        <h4 class="footer-column-title">Servicios</h4>
+        <a href="#servicio-basico" class="footer-link">Básico</a>
+        <a href="#servicio-premium" class="footer-link">Premium</a>
+        <a href="#servicio-completo" class="footer-link">Completo</a>
+      </div>
+
+      <div class="footer-column">
+        <h4 class="footer-column-title">Soporte</h4>
+        <a href="#" class="footer-link">Centro de ayuda</a>
+        <a href="#" class="footer-link">Preguntas frecuentes</a>
+        <a href="#" class="footer-link">Términos de servicio</a>
+        <a href="#" class="footer-link">Política de privacidad</a>
+      </div>
+
+    </div>
+
+    <div class="footer-divider"></div>
+
+    <div class="footer-bottom">
+      <span class="footer-copyright" id="footerCopyright"></span>
+    </div>
+  </footer>
+
+</div>
+
+<script src="js/theme-switcher.js"></script>
+<script src="js/landing.js"></script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iniciar Sesión · Lavado Vehicular</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/side-panel.css">
+<link rel="stylesheet" href="css/back-button.css">
+<link rel="stylesheet" href="css/login.css">
+<link rel="stylesheet" href="css/theme-switcher.css">
+</head>
+<body>
+
+<!-- Selector de tema: NO existe en tu app tal cual, lo agregué solo para
+     que puedas ver los 4 temas reales de tu styles.scss en esta demo -->
+<div class="theme-switcher">
+  <button type="button" data-theme="" class="active" title="Verde claro (default)"></button>
+  <button type="button" data-theme="green-dark" title="Verde oscuro"></button>
+  <button type="button" data-theme="pink" title="Rosado claro"></button>
+  <button type="button" data-theme="pink-dark" title="Rosado oscuro"></button>
+</div>
+
+<div class="login-container">
+  <div class="auth-shell">
+
+    <div class="auth-side-panel-wrap">
+      <div class="side-panel">
+        <div class="panel-content">
+
+          <div class="panel-brand">
+            <div class="brand-logo">
+              <svg width="34" height="34" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9.33333 21.7333C12.2667 21.7333 14.6667 19.2933 14.6667 16.3333C14.6667 14.7867 13.9067 13.32 12.3867 12.08C10.8667 10.84 9.72 8.99998 9.33333 7.06665C8.94667 8.99998 7.81333 10.8533 6.28 12.08C4.74667 13.3067 4 14.8 4 16.3333C4 19.2933 6.4 21.7333 9.33333 21.7333Z" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M16.7467 8.79994C17.6637 7.33478 18.3137 5.71867 18.6667 4.02661C19.3333 7.35994 21.3333 10.5599 24 12.6933C26.6667 14.8266 28 17.3599 28 20.0266C28.0076 21.8697 27.4678 23.6735 26.4491 25.2094C25.4303 26.7453 23.9784 27.9441 22.2775 28.6539C20.5766 29.3637 18.7032 29.5525 16.8949 29.1963C15.0866 28.8401 13.4247 27.9551 12.12 26.6533" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="brand-text">
+              <h3>Lavado Vehicular</h3>
+            </div>
+          </div>
+
+          <div class="hero-text">
+            <h1>Tu vehículo merece el mejor cuidado</h1>
+            <p>Administra tus servicios de lavado, agenda citas y mantén el control total de tu vehículo desde una sola plataforma.</p>
+          </div>
+
+          <div class="benefits">
+            <div class="benefit-card">
+              <span class="material-icons">verified_user</span>
+              <span>Información segura</span>
+            </div>
+            <div class="benefit-card">
+              <span class="material-icons">auto_awesome</span>
+              <span>Servicio Premium</span>
+            </div>
+            <div class="benefit-card">
+              <span class="material-icons">schedule</span>
+              <span>Reservas rápidas</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="login-form-section">
+      <div class="login-card">
+
+        <button class="back-btn" type="button" aria-label="Volver">
+          <span class="material-icons">arrow_back</span>
+        </button>
+
+        <h3>Iniciar Sesión</h3>
+        <p class="subtitle">Ingresa a tu cuenta para reservar</p>
+
+        <form id="loginForm" novalidate>
+
+          <label for="correo">Correo Electrónico</label>
+          <input
+            id="correo"
+            name="correo"
+            type="email"
+            placeholder="usuario@gmail.com"
+            autocomplete="email"
+          >
+          <span class="error-msg" id="correoError" hidden></span>
+
+          <label for="contrasena">Contraseña</label>
+          <input
+            id="contrasena"
+            name="contrasena"
+            type="password"
+            placeholder="********"
+            autocomplete="current-password"
+          >
+          <span class="error-msg" id="contrasenaError" hidden></span>
+
+          <a class="forgot" href="forgot-password.html">¿Olvidaste tu contraseña?</a>
+
+          <button type="submit" id="loginSubmit" disabled>Iniciar Sesión</button>
+
+        </form>
+
+        <p class="register">
+          ¿No tienes cuenta?
+          <span onclick="location.href='register.html'">Regístrate</span>
+        </p>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/theme-switcher.js"></script>
+<script src="js/login.js"></script>
+</body>
+</html>

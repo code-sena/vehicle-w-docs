@@ -1,0 +1,365 @@
+/* ============================================
+   REGISTER — copiado de register.component.scss
+   ============================================ */
+
+.register-container {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 16px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(var(--primary-rgb), .55),
+      rgba(var(--primary-rgb), .18) 35%,
+      transparent 65%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(var(--primary-rgb), .55),
+      transparent 60%
+    ),
+    var(--bg);
+}
+
+.register-container .auth-shell {
+  width: 100%;
+  max-width: 1400px;
+  height: min(90vh, 850px);
+  display: flex;
+  overflow: hidden;
+  border-radius: 32px;
+  background: var(--auth-shell);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 30px 70px rgba(0, 0, 0, .10),
+    0 0 0 1px rgba(255, 255, 255, .05) inset;
+}
+
+body.green-dark .register-container .auth-shell,
+body.pink-dark .register-container .auth-shell {
+  border: 1px solid rgba(255, 255, 255, .10);
+  box-shadow:
+    0 30px 70px rgba(0, 0, 0, .40),
+    0 0 0 1px rgba(255, 255, 255, .06) inset;
+}
+
+.register-container .auth-side-panel-wrap {
+  width: 45%;
+  display: block;
+}
+
+.register-form-section {
+  width: 55%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--auth-panel);
+  padding: 40px;
+  border-left: 1px solid var(--border);
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+body.green-dark .register-form-section,
+body.pink-dark .register-form-section {
+  border-left: 1px solid rgba(255, 255, 255, .07);
+}
+
+.register-card {
+  width: 100%;
+  max-width: 500px;
+  height: 100%;
+  background: var(--auth-card);
+  border-radius: 26px;
+  padding: 32px 0 32px 38px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, .06);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+body.green-dark .register-card,
+body.pink-dark .register-card {
+  border: 1px solid rgba(255, 255, 255, .09);
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, .30),
+    0 0 0 1px rgba(255, 255, 255, .04) inset;
+}
+
+.register-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 30px;
+  padding-top: 6px;
+  margin-top: 4px;
+}
+
+.register-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.register-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--primary);
+  border-radius: 10px;
+}
+
+.register-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.register-header {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.register-header h2 {
+  margin: 0 0 8px;
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.register-header p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.register-card form {
+  width: 100%;
+}
+
+.register-card .form-group {
+  margin-bottom: 16px;
+}
+
+.register-card label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.register-card .input-wrapper {
+  position: relative;
+}
+
+.register-card .input-wrapper input {
+  width: 100%;
+  height: 50px;
+  padding: 0 45px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text);
+  font-size: 14px;
+  transition: all .25s ease;
+  box-sizing: border-box;
+}
+
+body.green-dark .register-card .input-wrapper input,
+body.pink-dark .register-card .input-wrapper input {
+  border-color: rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .06);
+}
+
+.register-card .input-wrapper input::placeholder {
+  color: var(--text-muted);
+}
+
+.register-card .input-wrapper input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(var(--primary-rgb), .18);
+}
+
+.register-card .input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-family: 'Material Icons';
+  font-size: 19px;
+}
+
+.register-card .toggle-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.register-card .toggle-btn .material-icons {
+  color: var(--text-muted);
+  font-size: 21px;
+}
+
+.register-card .toggle-btn:hover .material-icons {
+  color: var(--text);
+}
+
+.register-card .error-msg {
+  display: block;
+  margin-top: 6px;
+  color: #ef5350;
+  font-size: 12px;
+}
+
+.register-card .input-error {
+  border-color: #ef5350 !important;
+}
+
+.register-card .requirements {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+}
+
+.register-card .requirement {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: all .25s ease;
+}
+
+.register-card .req-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(var(--primary-rgb), .20);
+  transition: all .25s ease;
+  flex-shrink: 0;
+}
+
+.register-card .requirement.met {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.register-card .requirement.met .req-dot {
+  background: var(--primary);
+  box-shadow: 0 0 8px rgba(var(--primary-rgb), .35);
+}
+
+.btn-register {
+  width: 100%;
+  height: 52px;
+  margin-top: 22px;
+  border: none;
+  border-radius: 12px;
+  background: var(--primary);
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  box-shadow: 0 8px 20px rgba(var(--primary-rgb), .30);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.btn-register:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(var(--primary-rgb), .40);
+}
+
+.btn-register:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), .25);
+}
+
+.btn-register:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.login-link {
+  text-align: center;
+  margin-top: 22px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.login-link a {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.login-link a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 1100px) {
+  .register-container .auth-side-panel-wrap {
+    display: none;
+  }
+
+  .register-form-section {
+    width: 100%;
+    padding: 30px;
+    border-left: none;
+  }
+
+  .register-container .auth-shell {
+    height: min(92vh, 750px);
+    max-width: 550px;
+  }
+
+  .register-card {
+    padding: 28px 0 28px 30px;
+  }
+
+  .register-scroll {
+    padding-right: 22px;
+  }
+}
+
+@media (max-width: 600px) {
+  .register-container {
+    padding: 12px;
+  }
+
+  .register-container .auth-shell {
+    height: min(94vh, 700px);
+  }
+
+  .register-card {
+    padding: 24px 0 24px 22px;
+  }
+
+  .register-scroll {
+    padding-right: 16px;
+  }
+
+  .register-header h2 {
+    font-size: 26px;
+  }
+
+  .register-card .requirements {
+    grid-template-columns: 1fr;
+  }
+}
