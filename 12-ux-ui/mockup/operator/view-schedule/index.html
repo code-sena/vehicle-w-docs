@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<!--
+  Mockup: Operator "schedule" screen ("Mi Agenda" — mini calendar + reservations of the day/week).
+  Tags/structure/comments in English. CSS class names intentionally mirror the real
+  Angular templates verbatim (e.g. "reserva-item", "estado-badge", "proximo-card")
+  for 1:1 traceability with the actual app.
+  NOTE: the real app's i18n files (assets/i18n/es.json and en.json) currently have NO
+  "SCHEDULE.*" keys at all — the live page renders raw translation keys for this screen's
+  copy (a real gap in the source, not something introduced here). Since a mockup showing
+  literal "SCHEDULE.TITLE" strings would misrepresent the intended UI, the labels below
+  were written to match the tone/structure of the sibling ASSIGNED_SERVICES/QUALIFICATIONS
+  translations. Everything else (layout, classes, data shape) mirrors the real code exactly.
+  Source of truth: Web/src/app/features/operator/pages/schedule/*
+  (schedule.html/.scss, mini-calendar/*, shared reservation.model.ts for status icons/labels)
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Operator Schedule Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+    body {
+      --primary: #2ec4b6;
+      --primary-rgb: 46, 196, 182;
+      --primary-hover: #229990;
+      --primary-soft: rgba(46, 196, 182, 0.15);
+
+      --sidebar: #104039;
+
+      --bg: #f5f6f8;
+      --card: #ffffff;
+
+      --text: #1a1a2e;
+      --text-secondary: #5f6f75;
+      --text-muted: #9aa5ab;
+
+      --border: #e6eaea;
+
+      --item-bg: rgba(0, 0, 0, 0.04);
+
+      --success: #29aea0;
+      --success-soft: #e0ebea;
+      --neutral-badge: #67777e;
+      --neutral-badge-soft: #edf2f2;
+
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--text);
+      background-color: var(--bg);
+    }
+
+    * { box-sizing: border-box; }
+
+    .material-icons { font-size: 20px; vertical-align: middle; }
+
+    /* ===== Sidebar — mirrors shared/components/sidebar ===== */
+    .page-container { display: flex; min-height: 100vh; background-color: var(--bg); }
+
+    .sidebar {
+      box-sizing: border-box;
+      width: 270px; flex-shrink: 0; height: 100vh; background-color: var(--sidebar);
+      display: flex; flex-direction: column; padding: 20px 0; position: relative;
+    }
+    .sidebar-logo { display: flex; align-items: center; gap: 12px; padding: 0 20px 18px; color: #ffffff; font-weight: 600; font-size: 16px; }
+    .sidebar-logo .logo-img { width: 32px; height: 32px; object-fit: contain; }
+    .sidebar-usuario {
+      display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 8px;
+    }
+    .avatar {
+      width: 38px; height: 38px; border-radius: 50%; background-color: rgba(0, 0, 0, 0.2);
+      border: 2px solid var(--primary); color: #ffffff; display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600;
+    }
+    .usuario-info { display: flex; flex-direction: column; }
+    .usuario-info .nombre { font-size: 13px; font-weight: 500; color: #ffffff; margin: 0; }
+    .usuario-info .correo { font-size: 11px; color: rgba(255, 255, 255, 0.7); margin: 0; }
+    .sidebar-menu { flex: 1; display: flex; flex-direction: column; padding: 0 12px; }
+    .menu-item {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px;
+      color: rgba(255, 255, 255, 0.9); text-decoration: none; font-size: 13px; margin-bottom: 2px;
+    }
+    .menu-item:hover { background: rgba(var(--primary-rgb), 0.15); color: #ffffff; }
+    .menu-item.activo { background: rgba(var(--primary-rgb), 0.25); color: #ffffff; font-weight: 500; border-left: 4px solid var(--primary); padding-left: 10px; }
+    .menu-item.activo .menu-icono { color: var(--primary); }
+    .menu-icono { font-size: 18px; width: 22px; text-align: center; color: rgba(255, 255, 255, 0.8); }
+    .sidebar-footer { padding: 12px 20px 0; border-top: 2px solid rgba(255, 255, 255, 0.08); margin-top: auto; }
+    .btn-cerrar { width: 100%; background: none; border: none; color: rgba(255, 255, 255, 0.8); font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit; }
+    .btn-cerrar:hover { color: var(--primary); }
+
+    /* ===== Main content — mirrors schedule.html/.scss ===== */
+    .main-content { flex: 1; padding: 40px 48px; display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+
+    .page-header { display: flex; align-items: center; gap: 16px; }
+    .header-icon { width: 48px; height: 48px; border-radius: 14px; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .header-icon .material-icons { font-size: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: var(--text); margin: 0; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary); margin: 2px 0 0; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .stat-card { background: var(--item-bg); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+    .stat-label { font-size: 12px; color: var(--text-secondary); }
+    .stat-valor { font-size: 22px; font-weight: 700; color: var(--text); }
+    .stat-pendiente { background: var(--neutral-badge-soft); }
+    .stat-pendiente .stat-label, .stat-pendiente .stat-valor { color: var(--neutral-badge); }
+    .stat-progreso { background: var(--primary-soft); }
+    .stat-progreso .stat-label, .stat-progreso .stat-valor { color: var(--primary); }
+    .stat-finalizado { background: var(--success-soft); }
+    .stat-finalizado .stat-label, .stat-finalizado .stat-valor { color: var(--success); }
+
+    .agenda-layout { display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start; }
+    .agenda-derecha { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+    /* mini-calendar.html/.scss */
+    .calendar-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; gap: 18px; }
+    .calendar-header { display: flex; align-items: center; justify-content: space-between; }
+    .mes-titulo { font-size: 18px; font-weight: 700; color: var(--text); margin: 0; text-transform: capitalize; }
+    .btn-nav { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-secondary); }
+    .btn-nav:hover { border-color: var(--primary); color: var(--primary); }
+    .dias-semana { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
+    .dias-semana span { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: capitalize; }
+    .semanas { display: flex; flex-direction: column; gap: 4px; }
+    .semana { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .dia-celda { aspect-ratio: 1; border: none; background: transparent; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; }
+    .dia-celda .dia-numero { font-size: 13px; font-weight: 600; color: var(--text); }
+    .dia-celda:hover:not(.fuera-de-mes) { background: var(--item-bg); }
+    .dia-celda.fuera-de-mes { cursor: default; }
+    .dia-celda.fuera-de-mes .dia-numero { color: var(--text-muted); opacity: 0.4; }
+    .dia-celda.es-hoy { border: 1.5px solid var(--primary); }
+    .dia-celda.seleccionado { background: var(--primary); }
+    .dia-celda.seleccionado .dia-numero { color: #ffffff; }
+    .dia-celda.seleccionado .punto { background: #ffffff; }
+    .dia-puntos { display: flex; gap: 2px; height: 4px; }
+    .punto { width: 4px; height: 4px; border-radius: 50%; background: var(--primary); }
+    .calendar-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; border-top: 1px solid var(--border); font-size: 13px; }
+    .calendar-footer span { color: var(--text-secondary); }
+    .calendar-footer strong { color: var(--text); font-size: 16px; }
+
+    /* tabs */
+    .tabs { display: inline-flex; align-items: center; gap: 4px; background: var(--item-bg); padding: 6px; border-radius: 14px; width: fit-content; }
+    .tab { padding: 10px 20px; border: none; background: transparent; color: var(--text-secondary); font-size: 14px; font-weight: 600; border-radius: 10px; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .tab:hover { color: var(--text); }
+    .tab.active { background: var(--card); color: var(--text); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
+
+    /* próximo servicio */
+    .proximo-card { background: var(--primary-soft); border: 1px solid rgba(var(--primary-rgb), .3); border-radius: 16px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .proximo-info { display: flex; align-items: center; gap: 14px; }
+    .proximo-info .material-icons { color: var(--primary); font-size: 24px; }
+    .proximo-label { font-size: 12px; font-weight: 600; color: var(--primary); margin: 0; }
+    .proximo-titulo { font-size: 15px; font-weight: 700; color: var(--text); margin: 2px 0 0; }
+    .btn-proximo { background: var(--primary); color: #ffffff; border: none; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .btn-proximo:hover { background: var(--primary-hover); }
+
+    /* lista de reservas */
+    .lista-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05); }
+    .lista-titulo { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 18px; }
+    .lista { display: flex; flex-direction: column; gap: 12px; }
+    .reserva-item { display: flex; align-items: center; gap: 18px; padding: 18px; border: 1px solid var(--border); border-radius: 16px; flex-wrap: wrap; }
+    .reserva-item:hover { border-color: var(--primary); }
+    .reserva-hora { display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--text); font-size: 15px; flex-shrink: 0; }
+    .reserva-hora .material-icons { color: var(--primary); font-size: 18px; }
+    .reserva-info { flex: 1; min-width: 200px; }
+    .reserva-titulo { font-weight: 600; color: var(--text); margin: 0; font-size: 14px; }
+    .reserva-detalle { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; color: var(--text-muted); font-size: 12px; margin: 6px 0 0; }
+    .reserva-detalle .material-icons { font-size: 15px; }
+    .reserva-duracion, .reserva-codigo { margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--border); }
+
+    .estado-badge { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+    .estado-badge .material-icons { font-size: 15px; }
+    .estado-finalizado { background: var(--success); color: #ffffff; }
+    .estado-progreso { background: var(--primary-soft); color: var(--primary); border: 1px solid rgba(var(--primary-rgb), .3); }
+    .estado-pendiente { background: var(--neutral-badge-soft); color: var(--neutral-badge); border: 1px solid var(--border); }
+
+    .reserva-acciones { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .btn-accion { display: flex; align-items: center; gap: 4px; background: var(--primary); color: #ffffff; border: none; padding: 7px 14px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .btn-accion .material-icons { font-size: 15px; }
+    .btn-accion:hover { background: var(--primary-hover); }
+    .btn-detalle { background: var(--card); color: var(--text-secondary); border: 1px solid var(--border); padding: 7px 14px; border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .btn-detalle:hover { border-color: var(--primary); color: var(--primary); }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <svg class="logo-img" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9.33333 21.7333C12.2667 21.7333 14.6667 19.2933 14.6667 16.3333C14.6667 14.7867 13.9067 13.32 12.3867 12.08C10.8667 10.84 9.72 8.99998 9.33333 7.06665C8.94667 8.99998 7.81333 10.8533 6.28 12.08C4.74667 13.3067 4 14.8 4 16.3333C4 19.2933 6.4 21.7333 9.33333 21.7333Z" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M16.7467 8.79994C17.6637 7.33478 18.3137 5.71867 18.6667 4.02661C19.3333 7.35994 21.3333 10.5599 24 12.6933C26.6667 14.8266 28 17.3599 28 20.0266C28.0076 21.8697 27.4678 23.6735 26.4491 25.2094C25.4303 26.7453 23.9784 27.9441 22.2775 28.6539C20.5766 29.3637 18.7032 29.5525 16.8949 29.1963C15.0866 28.8401 13.4247 27.9551 12.12 26.6533" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Lavado Vehicular</span>
+      </div>
+      <div class="sidebar-usuario">
+        <div class="avatar">C</div>
+        <div class="usuario-info">
+          <p class="nombre">Camilo</p>
+          <p class="correo">camilo.operario@lavadovehicular.com</p>
+        </div>
+      </div>
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">space_dashboard</span><span class="menu-label">Dashboard</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">person</span><span class="menu-label">Perfil</span></a>
+        <a href="#" class="menu-item activo"><span class="material-icons menu-icono">calendar_month</span><span class="menu-label">Mi Agenda</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">assignment</span><span class="menu-label">servicios asignados</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">notifications</span><span class="menu-label">Notificaciones</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">history</span><span class="menu-label">Historial</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">star_outline</span><span class="menu-label">Calificaciones</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">settings</span><span class="menu-label">Configuración</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-cerrar"><span class="material-icons">logout</span><span>Cerrar sesión</span></button>
+      </div>
+    </aside>
+
+    <div class="main-content">
+
+      <div class="page-header">
+        <div class="header-icon"><span class="material-icons">calendar_month</span></div>
+        <div>
+          <h1 class="page-title">Mi Agenda</h1>
+          <p class="page-subtitle">Consulta tus servicios por día o semana y actualiza su estado a medida que avanzas.</p>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card"><span class="stat-label">Total del día</span><span class="stat-valor">2</span></div>
+        <div class="stat-card stat-pendiente"><span class="stat-label">Pendientes</span><span class="stat-valor">1</span></div>
+        <div class="stat-card stat-progreso"><span class="stat-label">En progreso</span><span class="stat-valor">1</span></div>
+        <div class="stat-card stat-finalizado"><span class="stat-label">Finalizados</span><span class="stat-valor">0</span></div>
+      </div>
+
+      <div class="agenda-layout">
+
+        <div class="calendar-card">
+          <div class="calendar-header">
+            <button class="btn-nav"><span class="material-icons">chevron_left</span></button>
+            <h2 class="mes-titulo">Septiembre 2026</h2>
+            <button class="btn-nav"><span class="material-icons">chevron_right</span></button>
+          </div>
+          <div class="dias-semana">
+            <span>lun</span><span>mar</span><span>mié</span><span>jue</span><span>vie</span><span>sáb</span><span>dom</span>
+          </div>
+          <div class="semanas">
+            <div class="semana">
+              <button class="dia-celda fuera-de-mes" disabled><span class="dia-numero">31</span></button>
+              <button class="dia-celda"><span class="dia-numero">1</span></button>
+              <button class="dia-celda"><span class="dia-numero">2</span><span class="dia-puntos"><span class="punto"></span></span></button>
+              <button class="dia-celda seleccionado"><span class="dia-numero">3</span><span class="dia-puntos"><span class="punto"></span><span class="punto"></span></span></button>
+              <button class="dia-celda"><span class="dia-numero">4</span><span class="dia-puntos"><span class="punto"></span></span></button>
+              <button class="dia-celda"><span class="dia-numero">5</span></button>
+              <button class="dia-celda"><span class="dia-numero">6</span></button>
+            </div>
+            <div class="semana">
+              <button class="dia-celda"><span class="dia-numero">7</span></button>
+              <button class="dia-celda"><span class="dia-numero">8</span><span class="dia-puntos"><span class="punto"></span></span></button>
+              <button class="dia-celda"><span class="dia-numero">9</span></button>
+              <button class="dia-celda"><span class="dia-numero">10</span></button>
+              <button class="dia-celda"><span class="dia-numero">11</span><span class="dia-puntos"><span class="punto"></span></span></button>
+              <button class="dia-celda"><span class="dia-numero">12</span></button>
+              <button class="dia-celda"><span class="dia-numero">13</span></button>
+            </div>
+          </div>
+          <div class="calendar-footer">
+            <span>Servicios del día</span>
+            <strong>2</strong>
+          </div>
+        </div>
+
+        <div class="agenda-derecha">
+
+          <div class="tabs">
+            <button class="tab active">Día</button>
+            <button class="tab">Semana</button>
+            <button class="tab">Realizados</button>
+          </div>
+
+          <div class="proximo-card">
+            <div class="proximo-info">
+              <span class="material-icons">schedule</span>
+              <div>
+                <p class="proximo-label">Próximo servicio · en 45 min</p>
+                <p class="proximo-titulo">Premium — Juan Felipe González</p>
+              </div>
+            </div>
+            <button class="btn-proximo">Finalizar servicio</button>
+          </div>
+
+          <div class="lista-card">
+            <h2 class="lista-titulo">Reservas del 3 de septiembre</h2>
+            <div class="lista">
+
+              <div class="reserva-item">
+                <div class="reserva-hora"><span class="material-icons">schedule</span> 15:00</div>
+                <div class="reserva-info">
+                  <p class="reserva-titulo">Premium — Juan Felipe González</p>
+                  <p class="reserva-detalle">
+                    <span class="material-icons">directions_car</span> Automóvil
+                    <span class="material-icons">location_on</span> Calle Sur 123, Los Rosales
+                    <span class="reserva-duracion">75 min</span>
+                    <span class="reserva-codigo">SV-2034</span>
+                  </p>
+                </div>
+                <span class="estado-badge estado-progreso"><span class="material-icons">play_circle</span> En progreso</span>
+                <div class="reserva-acciones">
+                  <button class="btn-accion"><span class="material-icons">check</span> Finalizar</button>
+                  <button class="btn-detalle">Ver detalle</button>
+                </div>
+              </div>
+
+              <div class="reserva-item">
+                <div class="reserva-hora"><span class="material-icons">schedule</span> 16:30</div>
+                <div class="reserva-info">
+                  <p class="reserva-titulo">Básico — Esneider Sánchez</p>
+                  <p class="reserva-detalle">
+                    <span class="material-icons">local_shipping</span> Camioneta
+                    <span class="material-icons">location_on</span> Calle Norte 7-06, Miraflores
+                    <span class="reserva-duracion">45 min</span>
+                    <span class="reserva-codigo">SV-2041</span>
+                  </p>
+                </div>
+                <span class="estado-badge estado-pendiente"><span class="material-icons">schedule</span> Pendiente</span>
+                <div class="reserva-acciones">
+                  <button class="btn-accion"><span class="material-icons">play_arrow</span> Iniciar</button>
+                  <button class="btn-detalle">Ver detalle</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
