@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<!--
+  Mockup: Operator "service history" screen.
+  Tags/structure/comments in English. CSS class names intentionally mirror the real
+  Angular templates verbatim (e.g. "estado-badge", "celda-vehiculo", "badge-servicio")
+  for 1:1 traceability with the actual app.
+  Visible copy in Spanish, taken verbatim from the real i18n file (assets/i18n/es.json,
+  SERVICE_HISTORY.* / HISTORY_STATS.* / HISTORY_TABLE.* blocks).
+  Source of truth: Web/src/app/features/operator/pages/service-history/*
+  (service-history.html/.scss, components/history-stats/*, components/history-table/*)
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Operator Service History Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <style>
+    body {
+      --primary: #2ec4b6;
+      --primary-rgb: 46, 196, 182;
+      --primary-hover: #229990;
+      --primary-soft: rgba(46, 196, 182, 0.15);
+
+      --sidebar: #104039;
+
+      --bg: #f5f6f8;
+      --card: #ffffff;
+
+      --text: #1a1a2e;
+      --text-secondary: #5f6f75;
+      --text-muted: #9aa5ab;
+
+      --border: #e6eaea;
+
+      --item-bg: rgba(0, 0, 0, 0.04);
+
+      --success: #29aea0;
+      --error: #e53935;
+      --error-soft: #ffebee;
+      --neutral-badge: #67777e;
+      --neutral-badge-soft: #edf2f2;
+
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--text);
+      background-color: var(--bg);
+    }
+
+    * { box-sizing: border-box; }
+
+    .material-icons { font-size: 20px; vertical-align: middle; }
+
+    /* ===== Sidebar — mirrors shared/components/sidebar ===== */
+    .page-container { display: flex; min-height: 100vh; background-color: var(--bg); }
+
+    .sidebar {
+      box-sizing: border-box;
+      width: 270px; flex-shrink: 0; height: 100vh; background-color: var(--sidebar);
+      display: flex; flex-direction: column; padding: 20px 0; position: relative;
+    }
+    .sidebar-logo { display: flex; align-items: center; gap: 12px; padding: 0 20px 18px; color: #ffffff; font-weight: 600; font-size: 16px; }
+    .sidebar-logo .logo-img { width: 32px; height: 32px; object-fit: contain; }
+    .sidebar-usuario {
+      display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 8px;
+    }
+    .avatar {
+      width: 38px; height: 38px; border-radius: 50%; background-color: rgba(0, 0, 0, 0.2);
+      border: 2px solid var(--primary); color: #ffffff; display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600;
+    }
+    .usuario-info { display: flex; flex-direction: column; }
+    .usuario-info .nombre { font-size: 13px; font-weight: 500; color: #ffffff; margin: 0; }
+    .usuario-info .correo { font-size: 11px; color: rgba(255, 255, 255, 0.7); margin: 0; }
+    .sidebar-menu { flex: 1; display: flex; flex-direction: column; padding: 0 12px; }
+    .menu-item {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px;
+      color: rgba(255, 255, 255, 0.9); text-decoration: none; font-size: 13px; margin-bottom: 2px;
+    }
+    .menu-item:hover { background: rgba(var(--primary-rgb), 0.15); color: #ffffff; }
+    .menu-item.activo { background: rgba(var(--primary-rgb), 0.25); color: #ffffff; font-weight: 500; border-left: 4px solid var(--primary); padding-left: 10px; }
+    .menu-item.activo .menu-icono { color: var(--primary); }
+    .menu-icono { font-size: 18px; width: 22px; text-align: center; color: rgba(255, 255, 255, 0.8); }
+    .sidebar-footer { padding: 12px 20px 0; border-top: 2px solid rgba(255, 255, 255, 0.08); margin-top: auto; }
+    .btn-cerrar { width: 100%; background: none; border: none; color: rgba(255, 255, 255, 0.8); font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit; }
+    .btn-cerrar:hover { color: var(--primary); }
+
+    /* ===== Main content — mirrors service-history.html/.scss ===== */
+    .main-content { flex: 1; padding: 40px 48px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+    .page-title { font-size: 24px; font-weight: 700; color: var(--text); margin: 0; }
+    .page-subtitle { font-size: 14px; color: var(--text-secondary); margin: 4px 0 0; }
+
+    /* history-stats */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05); }
+    .stat-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+    .icon-success { background: var(--primary-soft); color: var(--primary); }
+    .icon-neutral { background: var(--neutral-badge-soft); color: var(--neutral-badge); }
+    .icon-rating { background: rgba(245, 165, 36, 0.15); color: #f5a524; }
+    .stat-value { font-size: 26px; font-weight: 700; color: var(--text); margin: 0; }
+    .stat-label { font-size: 13px; color: var(--text-secondary); margin: 0; }
+
+    .progress-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05); }
+    .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 14px; }
+    .progress-header span { color: var(--text-secondary); }
+    .progress-header strong { color: var(--primary); font-size: 16px; }
+    .progress-bar { height: 10px; border-radius: 999px; background: var(--item-bg); overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--primary); border-radius: 999px; }
+
+    .filters-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; gap: 16px; }
+    .filters-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .search-group { flex: 1; min-width: 220px; }
+    .search-wrapper { display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--border); border-radius: 10px; padding: 0 12px; background: var(--card); }
+    .search-wrapper .material-icons { color: var(--text-muted); }
+    .search-input { border: none; outline: none; background: transparent; padding: 10px 0; font-size: 14px; color: var(--text); width: 100%; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .filter-input { padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; color: var(--text); background: var(--card); outline: none; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .select-wrapper { position: relative; display: flex; align-items: center; }
+    .filter-select { padding: 10px 36px 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; color: var(--text); background: var(--card); outline: none; cursor: pointer; min-width: 160px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .select-icon { position: absolute; right: 10px; color: var(--text-muted); pointer-events: none; font-size: 18px; }
+    .btn-reset { display: flex; align-items: center; gap: 6px; padding: 10px 16px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--card); color: var(--text-secondary); font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .btn-reset:hover { border-color: var(--primary); color: var(--primary); }
+
+    .tabs { display: inline-flex; align-items: center; gap: 4px; background: var(--item-bg); padding: 6px; border-radius: 12px; width: fit-content; flex-wrap: wrap; }
+    .tab { padding: 8px 16px; border: none; background: transparent; color: var(--text-secondary); font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; white-space: nowrap; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .tab:hover { color: var(--text); }
+    .tab.active { background: var(--card); color: var(--text); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
+
+    /* history-table */
+    .table-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05); overflow-x: auto; }
+    .history-table { width: 100%; border-collapse: collapse; }
+    .history-table th { text-align: left; padding: 16px 20px; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .history-table td { padding: 16px 20px; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .history-table .table-row:last-child td { border-bottom: none; }
+    .history-table .table-row:hover { background: var(--item-bg); }
+    .badge-servicio { background: var(--primary-soft); color: var(--primary); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+    .celda-vehiculo { display: flex; flex-direction: column; gap: 2px; }
+    .celda-vehiculo .placa { font-size: 11px; color: var(--text-muted); }
+    .estrellas { display: flex; gap: 1px; }
+    .estrellas .material-icons { font-size: 15px; color: #f5a524; }
+    .sin-calificar { color: var(--text-muted); }
+    .estado-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .estado-badge .material-icons { font-size: 14px; }
+    .estado-finalizado { background: var(--success); color: #ffffff; }
+    .estado-cancelado { background: var(--error-soft); color: var(--error); }
+    .estado-reasignado { background: var(--neutral-badge-soft); color: var(--neutral-badge); }
+    .btn-ver { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .btn-ver:hover { border-color: var(--primary); color: var(--primary); }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <svg class="logo-img" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9.33333 21.7333C12.2667 21.7333 14.6667 19.2933 14.6667 16.3333C14.6667 14.7867 13.9067 13.32 12.3867 12.08C10.8667 10.84 9.72 8.99998 9.33333 7.06665C8.94667 8.99998 7.81333 10.8533 6.28 12.08C4.74667 13.3067 4 14.8 4 16.3333C4 19.2933 6.4 21.7333 9.33333 21.7333Z" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M16.7467 8.79994C17.6637 7.33478 18.3137 5.71867 18.6667 4.02661C19.3333 7.35994 21.3333 10.5599 24 12.6933C26.6667 14.8266 28 17.3599 28 20.0266C28.0076 21.8697 27.4678 23.6735 26.4491 25.2094C25.4303 26.7453 23.9784 27.9441 22.2775 28.6539C20.5766 29.3637 18.7032 29.5525 16.8949 29.1963C15.0866 28.8401 13.4247 27.9551 12.12 26.6533" stroke="var(--primary)" stroke-width="2.66667" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Lavado Vehicular</span>
+      </div>
+      <div class="sidebar-usuario">
+        <div class="avatar">C</div>
+        <div class="usuario-info">
+          <p class="nombre">Camilo</p>
+          <p class="correo">camilo.operario@lavadovehicular.com</p>
+        </div>
+      </div>
+      <nav class="sidebar-menu">
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">space_dashboard</span><span class="menu-label">Dashboard</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">person</span><span class="menu-label">Perfil</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">calendar_month</span><span class="menu-label">Mi Agenda</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">assignment</span><span class="menu-label">servicios asignados</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">notifications</span><span class="menu-label">Notificaciones</span></a>
+        <a href="#" class="menu-item activo"><span class="material-icons menu-icono">history</span><span class="menu-label">Historial</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">star_outline</span><span class="menu-label">Calificaciones</span></a>
+        <a href="#" class="menu-item"><span class="material-icons menu-icono">settings</span><span class="menu-label">Configuración</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-cerrar"><span class="material-icons">logout</span><span>Cerrar sesión</span></button>
+      </div>
+    </aside>
+
+    <div class="main-content">
+
+      <div>
+        <h1 class="page-title">Historial de Servicios</h1>
+        <p class="page-subtitle">Consulta todos tus servicios: fecha, vehículo, pago, estado final y calificación.</p>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon icon-success"><span class="material-icons">water_drop</span></div>
+          <p class="stat-value">48</p>
+          <p class="stat-label">Servicios finalizados</p>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon icon-neutral"><span class="material-icons">cancel</span></div>
+          <p class="stat-value">2</p>
+          <p class="stat-label">Cancelados / reasignados</p>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon icon-success"><span class="material-icons">payments</span></div>
+          <p class="stat-value">$1.680.000</p>
+          <p class="stat-label">Total generado</p>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon icon-rating"><span class="material-icons">star</span></div>
+          <p class="stat-value">4.3</p>
+          <p class="stat-label">Calificación promedio</p>
+        </div>
+      </div>
+
+      <div class="progress-card">
+        <div class="progress-header">
+          <span>Tasa de servicios completados</span>
+          <strong>96%</strong>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width: 96%;"></div></div>
+      </div>
+
+      <div class="filters-card">
+        <div class="filters-row">
+          <div class="filter-group search-group">
+            <div class="search-wrapper">
+              <span class="material-icons">search</span>
+              <input type="text" class="search-input" placeholder="Buscar por código, placa, cliente o vehículo..." />
+            </div>
+          </div>
+          <div class="filter-group"><input type="date" class="filter-input" /></div>
+          <div class="filter-group">
+            <div class="select-wrapper">
+              <select class="filter-select">
+                <option>Todos los servicios</option>
+                <option>Básico</option>
+                <option>Premium</option>
+                <option>Completo</option>
+              </select>
+              <span class="material-icons select-icon">expand_more</span>
+            </div>
+          </div>
+          <button class="btn-reset"><span class="material-icons">refresh</span> Limpiar</button>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active">Todos (50)</button>
+          <button class="tab">Finalizados (48)</button>
+          <button class="tab">Cancelados (1)</button>
+          <button class="tab">Reasignados (1)</button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Fecha completada</th>
+              <th>Servicio</th>
+              <th>Vehículo</th>
+              <th>Pago</th>
+              <th>Monto</th>
+              <th>Calificación</th>
+              <th>Estado final</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="table-row">
+              <td>04/09/2026 - 09:00</td>
+              <td><span class="badge-servicio">Completo</span></td>
+              <td><div class="celda-vehiculo"><span>Sedán</span><span class="placa">LMN456</span></div></td>
+              <td>Nequi</td>
+              <td><strong>$50.000</strong></td>
+              <td><span class="estrellas"><span class="material-icons">star</span><span class="material-icons">star</span><span class="material-icons">star</span><span class="material-icons">star</span><span class="material-icons">star</span></span></td>
+              <td><span class="estado-badge estado-finalizado"><span class="material-icons">check_circle</span> Finalizado</span></td>
+              <td><button class="btn-ver"><span class="material-icons">visibility</span></button></td>
+            </tr>
+            <tr class="table-row">
+              <td>02/09/2026 - 15:30</td>
+              <td><span class="badge-servicio">Premium</span></td>
+              <td><div class="celda-vehiculo"><span>Automóvil</span><span class="placa">ABC123</span></div></td>
+              <td>Tarjeta</td>
+              <td><strong>$35.000</strong></td>
+              <td><span class="estrellas"><span class="material-icons">star</span><span class="material-icons">star</span><span class="material-icons">star</span><span class="material-icons">star</span></span></td>
+              <td><span class="estado-badge estado-finalizado"><span class="material-icons">check_circle</span> Finalizado</span></td>
+              <td><button class="btn-ver"><span class="material-icons">visibility</span></button></td>
+            </tr>
+            <tr class="table-row">
+              <td>30/08/2026 - 11:00</td>
+              <td><span class="badge-servicio">Básico</span></td>
+              <td><div class="celda-vehiculo"><span>Camioneta</span><span class="placa">XYZ987</span></div></td>
+              <td>Efectivo</td>
+              <td><strong>$20.000</strong></td>
+              <td><span class="sin-calificar">—</span></td>
+              <td><span class="estado-badge estado-cancelado"><span class="material-icons">cancel</span> Cancelado</span></td>
+              <td><button class="btn-ver"><span class="material-icons">visibility</span></button></td>
+            </tr>
+            <tr class="table-row">
+              <td>28/08/2026 - 10:15</td>
+              <td><span class="badge-servicio">Premium</span></td>
+              <td><div class="celda-vehiculo"><span>Pickup</span><span class="placa">QRS741</span></div></td>
+              <td>PSE</td>
+              <td><strong>$35.000</strong></td>
+              <td><span class="sin-calificar">—</span></td>
+              <td><span class="estado-badge estado-reasignado"><span class="material-icons">sync_alt</span> Reasignado</span></td>
+              <td><button class="btn-ver"><span class="material-icons">visibility</span></button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
