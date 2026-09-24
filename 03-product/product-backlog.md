@@ -39,7 +39,7 @@ This is the product-level, prioritized backlog. It uses the terms and MVP bounda
 
 | ID | User story | Acceptance criteria |
 |---|---|---|
-| US-07 | As a customer, I want to create a booking for my vehicle so that I have a confirmed wash slot. | The customer is authenticated; the vehicle belongs to that customer; one service and time slot are selected; availability is revalidated before confirmation; the agreed price is frozen at creation; the booking starts `PENDING` and is confirmed only through the valid availability transition. |
+| US-07 | As a customer, I want to create a booking for my vehicle with one or more wash services so that I have a confirmed wash slot. | The customer is authenticated; the vehicle belongs to that customer; one or more wash services are selected for a single time slot; availability is revalidated before confirmation; each selected service is added as its own line with its price frozen at creation; the booking starts `PENDING` and is confirmed only through the valid availability transition. |
 | US-08 | As a customer, I want to pay for my booking by scanning the shop's QR code and uploading a receipt so that the payment is traceable. | The customer picks a payment method (cash, Nequi, Daviplata or bank transfer) and sees the corresponding QR/account details; card data is never collected or stored; one booking can have several payment attempts but at most one `APPROVED` payment; the payment moves through `PENDING → IN_REVIEW → APPROVED/REJECTED`; the reported receipt amount is checked against the booking amount; a reused receipt reference is flagged. The payment-before-service policy is resolved before release. |
 
 ## M3 — Service execution and changes
@@ -80,7 +80,7 @@ This is the product-level, prioritized backlog. It uses the terms and MVP bounda
 
 | ID | User story | Acceptance criteria |
 |---|---|---|
-| US-19 | As a customer, I want to rate and comment on a completed service so that I can share my experience. | Only the customer linked to a completed booking can submit one rating; score is from 1 to 5 and comment is optional; incomplete or cancelled services cannot be rated; the rating is linked to the correct booking and is visible only to authorized roles. |
+| US-19 | As a customer, I want to rate and comment on each completed wash-service line so that I can share my experience with that specific service and operator. | Only the customer who owns the booking can rate; at most one rating per completed service line (a booking with several services can receive several independent ratings); score is from 1 to 5 and comment is optional but requires a score; incomplete or cancelled service lines cannot be rated; each rating is linked to the correct service line and is visible only to authorized roles. |
 
 ## Cross-cutting Definition of Done
 
