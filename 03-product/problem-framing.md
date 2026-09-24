@@ -35,14 +35,14 @@ We will know the hypothesis is promising when pilot evidence shows that users ca
 ## Product rules that shape the solution
 
 - A customer registers one or more vehicles and books a slot for a selected vehicle.
-- A booking identifies exactly one customer, vehicle, wash service and time slot. The vehicle must belong to that customer, and the agreed price is frozen when the booking is created.
+- A booking identifies exactly one customer, vehicle and time slot, and includes one or more wash services, each its own line with its own frozen price. The vehicle must belong to that customer.
 - Booking, assignment and payment each have an independent lifecycle. A confirmed booking is a validated slot; it does not make a pending or rejected payment appear approved.
 - An operator can be selected from available operators, assigned automatically, or assigned manually by an administrator.
 - Automatic assignment considers only operator availability at the shop. Workload, proximity, specialization and ratings are not assignment criteria unless a requirement adds them.
 - A reassignment cancels the pending assignment and creates a new assignment, preserving who was previously responsible; it does not cancel the booking.
 - A payment belongs to one booking and moves through `PENDING → IN_REVIEW → APPROVED / REJECTED`, with `REFUNDED` as a later terminal state. The customer scans the shop's QR code for their chosen method (cash, Nequi, Daviplata or bank transfer) and uploads a payment receipt; an administrator compares the reported amount against the booking and approves or rejects it. At most one payment per booking can be `APPROVED`. No card data is ever collected or stored by the platform.
 - Only the assigned operator can progress assigned work. A booking moves `PENDING → CONFIRMED → IN_PROGRESS → COMPLETED`; its assignment moves `PENDING → IN_PROGRESS → COMPLETED`. Completed or cancelled bookings cannot be changed.
-- Only one rating (score 1–5, optionally with comment) is allowed for a completed booking.
+- Only one rating (score 1–5, optionally with comment) is allowed per completed wash-service line within a booking — a booking with two services can receive two independent ratings, one per operator/line.
 - Notifications have a recipient and a read/unread state; the delivery channel remains a technical/open decision. Email notifications remain out of scope.
 
 ## Initial success measures

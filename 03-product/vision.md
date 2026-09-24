@@ -30,7 +30,7 @@ Make the car-wash experience easier to plan, execute and follow up: customers sh
 
 ## Definition of product success
 
-The MVP is successful when a customer can authenticate, register a vehicle, select a wash service and available slot, receive a recorded booking and payment result, and follow relevant notifications; an operator can see and update their assigned work; and an administrator can maintain operating data, reassign pending work, review and approve payments, apply approved promotions and consult the resulting records.
+The MVP is successful when a customer can authenticate, register a vehicle, select one or more wash services and an available slot, receive a recorded booking and payment result, and follow relevant notifications; an operator can see and update their assigned work; and an administrator can maintain operating data, reassign pending work, review and approve payments, apply approved promotions and consult the resulting records.
 
 There is no live baseline yet. The team will establish pilot baselines and targets for the measures in `problem-framing.md` before claiming product outcomes.
 

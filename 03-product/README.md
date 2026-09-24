@@ -4,7 +4,7 @@ This folder defines **what** Vehicle Washing will deliver and **why**. It is gro
 
 ## Product at a glance
 
-Vehicle Washing is a web and Android platform for a single-location car-wash business. A customer registers a vehicle, selects a service, date and time, chooses an available operator or requests automatic assignment, pays by scanning the shop's QR code and uploading a payment receipt, and later rates the completed service. Administrators manage services, operators, schedules, promotions, payment review and operational reporting; operators manage availability and the execution status of their assigned services.
+Vehicle Washing is a web and Android platform for a single-location car-wash business. A customer registers a vehicle, selects one or more wash services for a single date and time, chooses an available operator or requests automatic assignment, pays by scanning the shop's QR code and uploading a payment receipt, and later rates each completed service line. Administrators manage services, operators, schedules, promotions, payment review and operational reporting; operators manage availability and the execution status of their assigned services.
 
 ## Documents
 
@@ -21,7 +21,7 @@ Vehicle Washing is a web and Android platform for a single-location car-wash bus
 
 - Product terms use the glossary: **booking**, **wash service**, **operator**, **availability**, **assignment**, **promotion**, **payment** and **rating**.
 - The MVP boundary is `01-context/scope.md`. A roadmap or backlog item cannot silently expand it.
-- Product requirements must respect the existing business model: a booking is for one vehicle, wash service and time slot at the shop; assignment can be customer-selected, automatic or administrator-set; payment is a manual QR transfer verified against an uploaded receipt, traceable to that booking; ratings are submitted only after completion.
+- Product requirements must respect the existing business model: a booking is for one vehicle and one time slot at the shop, and includes one or more wash services, each its own priced line; assignment can be customer-selected, automatic or administrator-set; payment is a manual QR transfer verified against an uploaded receipt, traceable to that booking; ratings are submitted per completed wash-service line, only after that line is completed.
 - `02-domain/domain-map.md` is the source of truth for the product's domain boundaries: Booking and Operations & Assignment are core; identity, vehicle, catalog, payment, feedback, notification, promotions and loyalty support that core flow.
 - Booking status, assignment status and payment status are distinct. Product screens and stories must not collapse them into one ambiguous “status”.
 - Discovery assumptions and planning targets are not validated research results. They must be replaced with evidence when the team conducts research or pilots the product.
