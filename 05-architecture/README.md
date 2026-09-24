@@ -1,113 +1,56 @@
 # 05 — Architecture
 
-> **What is this?** The system's design decisions: how it is organized, why,
-> what alternatives were evaluated, and how it is deployed. ADRs are the treasure of this section.
+This section documents the main architectural decisions of Express car wash: how the system is divided, how services communicate, how the shared SQL Server database is organised, how services are deployed, and which cross-cutting rules apply to all backend services.
 
-## Why this section exists
+## What is here
 
-A system's architecture is the set of decisions that are hard to change later.
-Documenting them has three benefits:
-1. **New team members** understand the system without having to ask everything from scratch
-2. **The team** does not repeat already-resolved discussions
-3. **Years later**, everyone remembers why each decision was made
+| File | Purpose |
+|---|---|
+| `overview.md` | Current system architecture, services, schemas and communication |
+| `deployment.md` | Local Docker deployment and environment boundaries |
+| `cross-cutting.md` | Rules shared by the backend services |
+| `pattern-guide.md` | Patterns actually used, proposed or explicitly not adopted |
+| `hexagonal-architecture.md` | Internal structure of a Java/Spring Boot service |
+| `security-threat-model.md` | STRIDE-based security risks and current mitigations |
+| `decisions/` | Architecture Decision Records (ADRs) |
 
----
+## Current architecture in one view
 
-## What is here and how to fill it in
+The backend uses six domain services plus one API Gateway:
 
-### `overview.md` ⭐ (Start here)
-High-level view of the complete system.
-**Fill in:** C4 Level 1 (System) and Level 2 (Container) diagram, list of microservices with
-each one's responsibility, how they communicate (sync/async), technologies per layer.
+| Service | Owned schemas | Main responsibility |
+|---|---|---|
+| `security-service` | `security`, `audit` | Identity, roles, sessions, preferences and audit data |
+| `customer-service` | `customer` | Customers, vehicles and the display copy of loyalty points |
+| `booking-service` | `catalog`, `booking` | Services, prices, shop hours, bays and bookings |
+| `operations-service` | `execution` | Operators, availability, assignment, execution and ratings |
+| `payment-service` | `promotion`, `payment` | Promotions, payments, receipts and loyalty ledger |
+| `notification-service` | `notification` | In-app notifications and read state |
 
-**Recommended format:**
-```markdown
-## Architecture diagram
-[ASCII diagram, Mermaid, or reference to image in assets/]
+All six services use the same physical SQL Server database in the current academic environment. Schemas provide logical ownership boundaries. A service may own more than one schema, but every schema has exactly one owning service.
 
-## Microservices
-| Service | Responsibility | Technology | DB |
-|---------|--------------|------------|-----|
-| [name] | [what it does] | [stack] | [engine] |
+## Architecture rules
 
-## Communication patterns
-- Sync: [what uses REST between which services]
-- Async: [what uses events/messages between which services]
-- Gateway: [how external requests arrive]
-```
+- The system has one physical SQL Server database, logically separated into nine schemas.
+- Cross-service foreign keys are not used. References to another service are indexed identifiers validated by the application.
+- Foreign keys may exist between schemas owned by the same service.
+- `booking-service` owns both `catalog` and `booking` because a booking freezes a price from the catalog.
+- `payment-service` owns both `promotion` and `payment`; the loyalty ledger follows the same ownership as payment.
+- Payment is manual QR/transfer verification. There is no payment gateway and no card data is collected.
+- The API Gateway is infrastructure, not a domain microservice.
+- REST is used for synchronous validation and RabbitMQ for asynchronous consequences.
+- Authentication uses JWT issued by `security-service`; each service performs its own authorization and ownership checks.
+- Services use Java 21 and Spring Boot with hexagonal architecture.
 
-### `deployment.md` ⭐
-How the system is deployed in each environment.
-**Fill in:** infrastructure diagram, what goes in Docker/K8s, network configuration, hardware requirements.
+## Sources of truth
 
-### `cross-cutting.md`
-Concerns that apply to all microservices.
-**Fill in:** standard logging, distributed tracing, centralized configuration, feature flags,
-error handling, retry policies.
+The architecture is checked against `01-context`, `03-product`, `04-requirements` and especially the current `06-data` model. ADRs record why important decisions were made. If an old ADR conflicts with a later accepted ADR, the later decision wins while the historical ADR is kept for traceability.
 
-### `pattern-guide.md`
-Catalog of design patterns used in the project.
-**Fill in:** for each pattern: name, when to use it, when NOT to use it, concrete example from the project.
+## Related sections
 
-### `security-threat-model.md`
-Security threat analysis of the system.
-**Fill in:** using the STRIDE methodology: Spoofing, Tampering, Repudiation, Information Disclosure,
-Denial of Service, Elevation of Privilege. For each threat: implemented mitigation.
-
-### `decisions/` ⭐⭐ — Architecture Decision Records (ADRs)
-
-#### What is an ADR?
-A record of ONE important architectural decision: what was decided, why, what alternatives
-were evaluated, and what the consequences are. They are **short documents** (1-2 pages).
-
-**When to create an ADR:**
-- When choosing a message broker (RabbitMQ vs Kafka vs Redis Streams)
-- When deciding the database strategy (one per service vs shared)
-- When choosing a communication pattern (REST vs gRPC vs events)
-- When choosing an authentication library
-- Any decision that, if changed, requires significant refactoring
-
-**When NOT to create an ADR:**
-- Day-to-day operational decisions
-- Things that can be changed easily without systemic impact
-
-**Use `decisions/_template-adr.md`**
-
-**Typical ADR examples:**
-```
-ADR-001-documentation-language.md  → Why English for all documentation
-ADR-002-auth-strategy.md           → Why JWT and not sessions
-ADR-003-database-per-service.md    → Why separate DB per service
-ADR-004-api-gateway.md             → Why Kong and not custom NGINX
-```
-
----
-
-## Correlations with other sections
-
-| This section is fed by... | And feeds... |
-|--------------------------|-------------|
-| `02-domain/domain-map.md` → bounded contexts | `09-microservices/` → one service per context |
-| `04-requirements/non-functional.md` → NFRs | Decisions about technology and scale |
-| ADRs chosen here | `09-microservices/` implements the decided patterns |
-| `deployment.md` | `10-devops/environments.md` |
-
----
-
-## The 5 most common architecture mistakes
-
-1. **Microservices too small** — If a "service" cannot exist independently, it is not a microservice.
-2. **Shared database** — Destroys service independence. Each service, its own DB.
-3. **Only synchronous communication** — For non-urgent operations, async events scale better.
-4. **No API Gateway** — Exposing microservices directly to the frontend creates coupling.
-5. **No documented decisions** — In 6 months nobody remembers why X was chosen.
-
----
-
-## Questions this section must answer
-
-- How is the system organized into large blocks?
-- Why was each key technology chosen?
-- What alternatives were evaluated and why were they discarded?
-- How is the system deployed?
-- What patterns does the team apply and how?
+- `02-domain/` — domain concepts, entities, rules and events
+- `04-requirements/` — functional and non-functional requirements
+- `06-data/` — SQL Server schemas, tables, constraints and migrations
+- `07-api/` — API contracts
+- `09-microservices/` — service implementation documentation
+- `10-devops/` — CI/CD and local environment procedures
