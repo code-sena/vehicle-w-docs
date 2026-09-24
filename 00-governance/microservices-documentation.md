@@ -55,7 +55,7 @@ Minimum content (use `_template/service/README.md`):
 Minimum content:
 - ER diagram (Mermaid) of the service's tables
 - Description of each table with its columns, types, constraints, and purpose
-- All 10 services share the same engine, SQL Server, and the same database (one schema per service, ADR-003) — no per-service engine choice to justify here, only how this service's schema maps to `06-data/models.md`
+- All six services share the same engine, SQL Server, and the same database. Every schema has exactly one owning service, and a service may own more than one (ADR-003 as amended by ADR-009) — no per-service engine choice to justify here, only how this service's schemas map to `06-data/models.md`
 - Migration strategy: one ordered Liquibase changelog for the whole database, not per service (ADR-003, `06-data/migration-strategy.md`)
 
 **Rule:** A field whose reason for existing is not obvious MUST have a comment in the diagram.
