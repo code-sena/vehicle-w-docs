@@ -1,586 +1,105 @@
-# Design Patterns and Microservices Guide
+# Pattern Guide
 
-> This document is the project's pattern catalog.
-> For each pattern: when to use it, when NOT to, and an implementation example.
-> Patterns are not recipes — they are tools. Use them when the problem requires it.
+**Last updated:** 2026-09-24
 
-> **Stack note:** Descriptions and diagrams are technology-agnostic.
-> Illustrative code snippets use pseudo-TypeScript as a reference language
-> for its proximity to pseudocode syntax. To see the concrete implementation in your stack:
-> [`_stacks/node-typescript.md`](../_stacks/node-typescript.md) ·
-> [`_stacks/java-spring.md`](../_stacks/java-spring.md) ·
-> [`_stacks/python-fastapi.md`](../_stacks/python-fastapi.md) ·
-> [`_stacks/go.md`](../_stacks/go.md)
+This document distinguishes patterns that are part of the current architecture from patterns that are only proposals or alternatives. A pattern listed here is not automatically an implementation requirement.
 
----
+## 1. Patterns currently used or adopted
 
-## Index
+| Pattern | Where | Status | Reason |
+|---|---|---|---|
+| Microservices | Backend | Adopted | Separates six business areas into independently owned services |
+| API Gateway | External access | Adopted | Gives web/mobile clients one entry point |
+| Hexagonal architecture | Backend services | Adopted | Keeps domain rules independent from Spring and infrastructure |
+| Repository / ports | Service persistence | Adopted | Isolates domain/application from SQL Server access |
+| Publish/Subscribe | RabbitMQ | Adopted | Decouples asynchronous reactions such as notifications |
+| Soft delete | Domain data | Adopted | Keeps operational history |
+| Optimistic locking | Domain data | Adopted | Protects concurrent updates with `row_version` |
 
-**Design patterns (GoF and SOLID)**
-1. [Creational patterns](#creational)
-2. [Structural patterns](#structural)
-3. [Behavioral patterns](#behavioral)
+## 2. API Gateway
 
-**Microservices patterns**
-4. [System decomposition](#decomposition)
-5. [Inter-service communication](#communication)
-6. [Resilience](#resilience)
-7. [Data and consistency](#data)
-8. [Observability](#observability)
+Clients call the gateway instead of addressing backend services directly.
 
----
-
-## Design patterns (GoF) {#creational}
-
-### 1. Factory Method
-
-**Problem:** You want to create objects without exposing the creation logic or coupling code to the concrete type.
-
-**When to use it:**
-- When the exact type of object to create is not known until runtime
-- When creation has complex logic (validations, configuration)
-
-**Domain example:**
-
-```typescript
-// Factory Method — inside the Aggregate Root
-class Order {
-  // Instead of new Order(...), we use a factory method
-  static create(customerId: CustomerId, items: OrderItem[]): Order {
-    if (items.length === 0) throw new DomainException('INV-001');
-    return new Order(OrderId.new(), customerId, items, OrderStatus.PENDING);
-  }
-
-  static reconstitute(data: OrderData): Order {
-    // To reconstruct from the database
-    return new Order(new OrderId(data.id), new CustomerId(data.customerId), ...);
-  }
-}
+```text
+Client → API Gateway → service
 ```
 
----
+The gateway handles routing and edge authentication checks. Service-level authorization remains inside each service.
 
-### 2. Builder
+## 3. Hexagonal architecture
 
-**Problem:** An object has many optional parameters and construction becomes unreadable.
+Each service has domain, application and infrastructure responsibilities. See `hexagonal-architecture.md` for the package structure and Java examples.
 
-**When to use it:** Complex configuration objects, test data builders.
+## 4. Repository pattern
 
-```typescript
-// Builder — especially useful for tests
-const order = new OrderBuilder()
-  .withCustomer('customer-id-123')
-  .withItem(product1, quantity: 2)
-  .withItem(product2, quantity: 1)
-  .withAddress('5th Street #10-20, Neiva')
-  .inStatus(OrderStatus.CONFIRMED)
-  .build();
+Persistence access is represented by ports. The application/domain side does not know whether the adapter uses Spring Data JPA, JDBC or another persistence technology.
+
+This pattern is used to protect the domain boundary, not to create an abstraction for every table.
+
+## 5. Publish/Subscribe with RabbitMQ
+
+Services publish events when another service may react asynchronously.
+
+Example:
+
+```text
+booking-service
+      │
+      │ booking.confirmed
+      ▼
+  RabbitMQ
+      │
+      ├── operations-service
+      └── notification-service
 ```
 
----
+Consumers must be prepared for duplicate delivery because the current design does not yet include a processed-event table or Outbox implementation.
 
-### 3. Singleton (with caution)
+## 6. Soft delete
 
-**Problem:** A class must have exactly one instance.
+Business data uses `deleted_at` instead of physical deletion. Queries exclude deleted rows unless history is explicitly requested.
 
-**When to use it:** DB connections, configuration registries.
+## 7. Optimistic locking
 
-**WARNING:** Singleton makes testing difficult. Prefer dependency injection.
+`row_version` prevents an update based on stale data from silently overwriting another update.
 
-```typescript
-// ✓ Better: Singleton managed by the DI container, not by the class itself
-// In the container (NestJS, tsyringe, etc.):
-container.registerSingleton(DatabaseConnection, DatabaseConnectionImpl);
+```text
+Admin A reads version 4
+Admin B reads version 4
+Admin A saves → version 5
+Admin B saves with version 4 → conflict
 ```
 
----
-
-### 4. Adapter (Structural pattern) {#structural}
-
-**Problem:** You want to use an existing class but its interface does not match the one you need.
-
-**When to use it:** Integration with external APIs, third-party libraries.
-
-```typescript
-// The domain defines the interface it needs
-interface PaymentGatewayPort {
-  charge(amount: Money, card: TokenData): Promise<ChargeResult>;
-}
-
-// The adapter translates to the external API
-class StripePaymentAdapter implements PaymentGatewayPort {
-  constructor(private stripe: Stripe) {}
-
-  async charge(amount: Money, card: TokenData): Promise<ChargeResult> {
-    // Translate domain model → Stripe model
-    const charge = await this.stripe.charges.create({
-      amount: amount.toCents(),
-      currency: amount.currency,
-      source: card.token,
-    });
-    // Translate Stripe result → domain model
-    return new ChargeResult(charge.id, charge.status === 'succeeded');
-  }
-}
-```
-
----
-
-### 5. Decorator
-
-**Problem:** You want to add behavior to an object without modifying it or inheriting from it.
-
-**When to use it:** Logging, caching, validation, rate limiting around use cases.
-
-```typescript
-// Cache decorator around the repository
-class CachedOrderRepository implements OrderRepositoryPort {
-  constructor(
-    private readonly repo: OrderRepositoryPort,
-    private readonly cache: CachePort,
-  ) {}
-
-  async findById(id: OrderId): Promise<Order | null> {
-    const cached = await this.cache.get(`order:${id.value}`);
-    if (cached) return OrderMapper.toDomain(cached);
-
-    const order = await this.repo.findById(id);
-    if (order) await this.cache.set(`order:${id.value}`, order, TTL_5_MINUTES);
-    return order;
-  }
-}
-```
-
----
-
-### 6. Observer / Internal Event Bus {#behavioral}
-
-**Problem:** An object needs to notify others without knowing them directly.
-
-**When to use it:** To publish domain events after persisting the aggregate.
-
-```typescript
-// The Aggregate accumulates events — the UseCase publishes them
-class Order {
-  private readonly _events: DomainEvent[] = [];
-
-  confirm(): void {
-    // ... business logic ...
-    this._events.push(new OrderConfirmed(this.id));
-  }
-
-  get domainEvents(): DomainEvent[] {
-    return [...this._events];
-  }
-
-  clearEvents(): void {
-    this._events.length = 0;
-  }
-}
-```
-
----
-
-### 7. Strategy
-
-**Problem:** You want to swap algorithms at runtime.
-
-**When to use it:** Discount strategies, calculation algorithms, payment methods.
-
-```typescript
-interface DiscountStrategy {
-  calculate(subtotal: Money, user: User): Money;
-}
-
-class StudentDiscount implements DiscountStrategy {
-  calculate(subtotal: Money, user: User): Money {
-    return subtotal.multiply(0.15); // 15% discount
-  }
-}
-
-class CorporateDiscount implements DiscountStrategy {
-  calculate(subtotal: Money, user: User): Money {
-    return subtotal.multiply(0.20); // 20% discount
-  }
-}
-```
-
----
-
-### 8. Template Method
-
-**Problem:** An algorithm has a fixed structure but some steps vary.
-
-**When to use it:** Process flows with variations (export to CSV, Excel, PDF).
-
-```typescript
-abstract class ReportExporter {
-  // Template Method — fixed structure
-  async export(data: ReportData): Promise<Buffer> {
-    const validated = await this.validate(data);
-    const transformed = await this.transform(validated);
-    const buffer = await this.generate(transformed);
-    await this.recordExport(data.userId);
-    return buffer;
-  }
-
-  protected abstract transform(data: ReportData): Promise<TransformedData>;
-  protected abstract generate(data: TransformedData): Promise<Buffer>;
-  
-  // Steps with default implementation (can be overridden)
-  protected async validate(data: ReportData): Promise<ReportData> { return data; }
-  protected async recordExport(userId: UserId): Promise<void> {}
-}
-```
-
----
-
-## Microservices Patterns
-
-### Decomposition {#decomposition}
-
-#### API Gateway
-
-**Problem:** Clients need to call multiple services to get a response.
-
-```
-                    ┌─────────────────┐
-Mobile ──────────▶  │                 │ ──▶ [Service A]
-Web ────────────▶  │   API Gateway   │ ──▶ [Service B]
-IoT ────────────▶  │                 │ ──▶ [Service C]
-                    └─────────────────┘
-                         Does:
-                    - Routing
-                    - Auth/AuthZ
-                    - Rate limiting
-                    - SSL termination
-                    - Request aggregation
-```
-
-**When to use it:** Always, in microservices architectures it is essential.
-
-**Tools:** Kong, AWS API Gateway, NGINX, Traefik, Spring Cloud Gateway.
-
----
-
-#### Backend for Frontend (BFF)
-
-**Problem:** Mobile and web need data in very different formats but share the same API.
-
-```
-Mobile ──▶ [BFF Mobile]  ──▶ Internal services
-Web    ──▶ [BFF Web]     ──▶ Internal services
-Alexa  ──▶ [BFF Voice]   ──▶ Internal services
-```
-
-**When to use it:** When clients have very different needs. Use sparingly — each BFF is an API to maintain.
-
----
-
-#### Strangler Fig (Incremental migration)
-
-**Problem:** You need to migrate a monolith to microservices without rewriting it all at once.
-
-```
-Phase 1:  Client → Monolith (100% traffic)
-Phase 2:  Client → API Gateway → Monolith (70%) + New Service (30%)
-Phase 3:  Client → API Gateway → New Service (100%) — monolith retired
-```
-
-**How:** The API Gateway gradually routes traffic to the new service while the monolith keeps running.
-
----
-
-### Inter-service communication {#communication}
-
-#### Synchronous: REST / gRPC
-
-| Aspect | REST | gRPC |
-|--------|------|------|
-| Protocol | HTTP/1.1 or HTTP/2 | HTTP/2 |
-| Serialization | JSON (human-readable) | Protocol Buffers (efficient) |
-| Typing | Manual with OpenAPI | Automatic with .proto |
-| Streaming | Not native | Yes (unidirectional and bidirectional) |
-| Recommended use | Public APIs, external communication | Internal service-to-service communication |
-
-**When to use synchronous communication:**
-- When you need the response immediately (queries, UI)
-- Low-latency operations the user is waiting for
-
----
-
-#### Asynchronous: Message Broker (Kafka / RabbitMQ)
-
-```
-[Service A] ──publishes──▶ [Topic/Queue] ──consumes──▶ [Service B]
-                                                        [Service C]
-```
-
-**When to use asynchronous communication:**
-- When the operation does not require an immediate response
-- When you want to decouple producers from consumers
-- For background processing (emails, notifications, reports)
-- To guarantee delivery (the broker's DB is durable)
-
----
-
-### Resilience {#resilience}
-
-#### Circuit Breaker
-
-**Problem:** A slow or failing service causes yours to fail too (failure cascade).
-
-```
-CLOSED state (normal):
-  Calls pass through → if N consecutive failures → switch to OPEN
-
-OPEN state (circuit breaker):
-  Calls blocked immediately (fail fast) → after T seconds → HALF-OPEN
-
-HALF-OPEN state (testing):
-  Allows 1 call → if it fails: back to OPEN | if it passes: back to CLOSED
-```
-
-```typescript
-// With opossum or resilience4j
-const circuit = new CircuitBreaker(externalService.call, {
-  timeout: 3000,                    // Timeout per call
-  errorThresholdPercentage: 50,     // % of errors to open
-  resetTimeout: 30000,              // Time in OPEN before trying HALF-OPEN
-});
-
-circuit.fallback(() => ({ cached: true, data: lastReliableCache }));
-```
-
----
-
-#### Retry with Exponential Backoff
-
-**Problem:** Transient failures (unstable network, service restarting).
-
-```typescript
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  options = { attempts: 3, backoffBase: 1000 }
-): Promise<T> {
-  for (let attempt = 1; attempt <= options.attempts; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      if (attempt === options.attempts) throw err;
-      const delay = options.backoffBase * Math.pow(2, attempt - 1); // 1s, 2s, 4s
-      await sleep(delay + Math.random() * 100); // Jitter to avoid thundering herd
-    }
-  }
-}
-```
-
----
-
-### Data and consistency {#data}
-
-#### Database per Service
-
-**Rule:** Each microservice has its own database. No service directly accesses another service's database.
-
-```
-✓ Correct:
-  Service A → Database A
-  Service B → Database B
-
-✗ Incorrect:
-  Service A → Database B (direct JOIN)
-```
-
-**How do I share data then?** With APIs or events, never with direct SQL.
-
-> **In this project:** we did **not** adopt Database per Service. Express car wash uses a
-> single SQL Server database with **one schema per service**, and the ownership rule above
-> is enforced with a database user per service instead of with separate databases. The
-> alternative was evaluated and discarded in
-> [ADR-003](decisions/records/ADR-003-database-strategy.md); the reasons are that the
-> `security` and `audit` schemas come from the instructor's shared core and are used by
-> every other schema, that reporting needs to read across schemas, and that ten SQL Server
-> instances on a laptop is not realistic. The rule that does hold for us is the one this
-> section ends with, and the model enforces it hard: **there is not a single foreign key
-> crossing between schemas**, and the eighteen cross-schema references are validated by the
-> application before writing.
-
----
-
-#### Saga (Distributed transactions)
-
-**Problem:** A business transaction spans multiple services and you cannot use a distributed ACID transaction.
-
-```
-Choreographed Saga (via events):
-
-  [Orders]                  [Inventory]            [Payments]
-     │ OrderCreated              │                     │
-     │ ─────────────────────▶   │                     │
-     │                     StockReserved              │
-     │ ◀─────────────────────   │                     │
-     │ OrderStockConfirmed                            │
-     │ ─────────────────────────────────────────▶    │
-     │                                          PaymentApproved
-     │ ◀─────────────────────────────────────────    │
-```
-
-**Compensations:** If a step fails, execute compensating transactions in reverse order.
-
-```
-Step 1: Reserve stock         → Compensation: Release stock
-Step 2: Debit payment         → Compensation: Refund
-Step 3: Confirm order         → Compensation: Cancel order
-```
-
----
-
-#### CQRS (Command Query Responsibility Segregation)
-
-**Problem:** The logic for writing data is very different from the logic for reading it.
-A single model forces suboptimal compromises for both.
-
-```
-Write (Commands):                        Read (Queries):
-  POST /orders                             GET /orders?customerId=X
-       │                                         │
-       ▼                                         ▼
-  [Command Handler]                       [Query Handler]
-       │                                         │
-       ▼                                         ▼
-  [Aggregate]                            [Read Model / Projection]
-       │                                 (denormalized, optimized for reading)
-       ▼
-  [Event Store / Write DB]
-       │
-       ▼ (updates the read side via events)
-  [Read DB]
-```
-
-**When to use it:** When read volume is much higher than write volume, or when queries are very complex to perform on the write model.
-
-**Caution:** Increases complexity. Not always worth it.
-
----
-
-#### Outbox Pattern (Transactional)
-
-**Problem:** You need to guarantee that when you save to the database, you also publish the event — without risk of publishing it twice or not publishing it if there is a failure.
-
-```
-❌ Without Outbox (may lose events):
-  BEGIN TRANSACTION
-    INSERT INTO orders ...
-  COMMIT
-  // If the system crashes here, the event is lost
-  publishEvent(OrderCreated)
-
-✓ With Outbox (atomic):
-  BEGIN TRANSACTION
-    INSERT INTO orders ...
-    INSERT INTO outbox (event_type, payload, published) VALUES ('OrderCreated', '...', false)
-  COMMIT
-  // Separate process reads outbox and publishes
-  // If publishing fails, the outbox still has the event
-```
-
-```sql
--- Outbox table
-CREATE TABLE outbox (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_type  VARCHAR(100) NOT NULL,
-  payload     JSONB NOT NULL,
-  created_at  TIMESTAMPTZ DEFAULT NOW(),
-  published_at TIMESTAMPTZ,
-  published   BOOLEAN DEFAULT false
-);
-
--- Index for the Relay (process that publishes pending events)
-CREATE INDEX idx_outbox_unpublished ON outbox (created_at) WHERE published = false;
-```
-
----
-
-#### Event Sourcing
-
-**Problem:** You need full audit, reproducing system state at any point in time, or rebuilding projections.
-
-```
-Traditional:    DB stores current state → "An order is worth $150"
-Event Sourcing: DB stores events        → "OrderCreated($100) + DiscountApplied($-30) + ItemAdded($80)"
-
-To know the current state: you replay all events in order.
-```
-
-**When to use it:** Financial auditing, advanced debugging, systems where history matters.
-
-**When NOT to use it:** Most cases. It adds significant complexity. It is not the default solution.
-
----
-
-### Observability {#observability}
-
-#### Sidecar Pattern
-
-**Problem:** You want to add observability, configuration, or network capabilities to a service without modifying its code.
-
-```
-Kubernetes Pod:
-  ┌──────────────────────────────┐
-  │  [Service A]                │
-  │  [Sidecar: Envoy/Istio]    │  ← Handles TLS, metrics, service mesh
-  │  [Sidecar: Filebeat]       │  ← Collects logs
-  └──────────────────────────────┘
-```
-
----
-
-## When NOT to use each pattern
-
-| Pattern | Do not use it when... |
-|---------|----------------------|
-| CQRS | The read and write models are similar. It only adds complexity. |
-| Event Sourcing | You do not need complete history. It is hard to implement and maintain. |
-| Saga | The transaction fits in a single service. Use a simple ACID transaction. |
-| Circuit Breaker | The call is internal to the same service. The overhead is not worth it. |
-| BFF | Clients have similar needs. A standard API Gateway is sufficient. |
-
----
-
-## Patterns adopted in this project
-
-These are the decisions taken for Express car wash. Each one is argued in the ADR listed in
-the last column; this table is only the summary.
-
-| Pattern | Adopted? | Justification / ADR |
-|---------|----------|---------------------|
-| API Gateway | Yes | Single entry point for the web and mobile clients, with Spring Cloud Gateway — ADR-005 |
-| Hexagonal architecture | Yes | Gives the domain model from `02-domain` a place to live, and lets business rules be tested without Spring — ADR-007 |
-| Publish/Subscribe (topic exchange) | Yes | The event catalog and its routing keys were already defined in `02-domain/domain-events.md` — ADR-004 |
-| Idempotent Consumer | **Pending** | Required by at-least-once delivery, but the data model has no table to record processed events — ADR-004 |
-| Dead Letter Queue | Yes | A message that cannot be processed is kept for review instead of being lost — ADR-004 |
-| Retry with backoff | Yes | Limited attempts before the dead letter queue — ADR-004 |
-| Database per Service | No | One SQL Server database with a schema per service; the alternative was evaluated and discarded — ADR-003 |
-| Saga (choreographed) | No | No distributed transaction is attempted: a reference that crosses services is validated before writing, not compensated afterwards — ADR-004 |
-| Outbox Pattern | No | Evaluated and postponed: events are published after the commit. It becomes necessary if we start losing events — ADR-004 |
-| Circuit Breaker | No | Only three internal synchronous calls and no external traffic; the overhead is not justified — ADR-004 |
-| CQRS | No | The read and write models are practically the same, which is exactly the case the table above warns about |
-| Event Sourcing | No | No requirement asks for the complete history of changes |
-| BFF | No | The web and mobile clients consume the same API; the gateway is enough — ADR-005 |
-| Optimistic locking (`row_version`) | Yes | Two administrators editing the same row do not overwrite each other — ADR-003 |
-| Logical deletion | Yes | Nothing is physically deleted; `deleted_at` is filled instead — ADR-003 |
-| Audit log written by triggers | Yes | One `audit.audit_log` instead of a history table per entity — ADR-003 |
-| External payment gateway | No | Payment is verified in-house with a QR and an uploaded receipt — ADR-008 |
-| Service Discovery | No | Fixed service addresses inside the Docker environment — `deployment.md` |
-
----
-
-## Correlations
-
-- Hexagonal architecture → `05-architecture/hexagonal-architecture.md`
-- Decisions behind each adopted pattern → `05-architecture/decisions/records/`
-- Event catalog, routing keys and consumers → `02-domain/domain-events.md`
-- Broker topology and dead letter queues → `05-architecture/decisions/records/ADR-004-service-communication.md`
-- Cross-cutting rules (logging, errors, transactions) → `05-architecture/cross-cutting.md`
-- Data model, constraints and triggers → `06-data/MODELO-DE-DATOS.md`
+## 8. Patterns considered but not adopted
+
+| Pattern | Status | Reason |
+|---|---|---|
+| Database per Service | Not adopted | The academic environment uses one physical SQL Server database with schema ownership |
+| Saga | Not adopted as an implementation | No concrete distributed transaction implementation has been defined |
+| Outbox | Not adopted | Current messaging publishes after commit and accepts the crash window |
+| CQRS | Not adopted | Read/write models do not justify the added complexity |
+| Event Sourcing | Not adopted | SQL Server state plus audit history is sufficient |
+| Eventual-consistency framework | Not adopted | RabbitMQ events are enough for current flows |
+| BFF | Not adopted | One gateway is sufficient for the current web/mobile clients |
+| Service mesh | Not adopted | Local academic deployment does not require it |
+| Redis cache | Not adopted | No concrete caching requirement exists |
+| Circuit Breaker | Not formally adopted | Retry/error behaviour is still being implemented and measured |
+| Sidecar | Not adopted | No operational need exists |
+
+## 9. Do not use a pattern just because it exists here
+
+Before adding a pattern, answer:
+
+1. What concrete problem does it solve?
+2. Which current requirement needs it?
+3. What complexity does it add?
+4. Can the team operate it in the current local Docker environment?
+
+If there is no clear answer, keep the simpler architecture.
+
+## References
+
+- Architecture overview → `overview.md`
+- Internal structure → `hexagonal-architecture.md`
+- Messaging → `decisions/records/ADR-004-service-communication.md`
+- Database ownership → `decisions/records/ADR-003-database-strategy.md`
