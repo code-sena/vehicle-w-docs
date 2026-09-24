@@ -23,7 +23,10 @@
 | Operator | Shop employee who performs the wash; has their own working availability | |
 | Availability | Time window in which an operator can take bookings | |
 | Assignment | Linking an operator to a booking. It can be automatic, chosen by the customer, or set by the administrator | |
-| Rating | Score and comment the customer submits once the service is completed | |
+| Rating | Optional score (1–5) and comment the customer submits for a service line once it is completed | At most one per line |
+| Booking line | One service inside a booking (e.g. wash + polish = two lines); each line is executed by one operator | Table `booking.booking_service` |
+| Wash bay | A physical washing position of the shop; two bookings can't hold the same bay at the same time | Table `booking.service_bay` |
+| Loyalty ledger | The record of every loyalty-point movement; the source of truth for a customer's balance | `payment.loyalty_transaction` (ADR-009) |
 | Promotion | Discount applicable to a booking under conditions defined by the administrator | |
 | Customer | Person who registers one or more vehicles and books time slots | Distinct from "user", which covers all three roles |
 | Administrator | Role that manages operators, schedules and services | Single role |
@@ -32,24 +35,25 @@
 
 ## Domains (schemas)
 
-> One domain per data schema, as modelled in `06-data/models.md` / `MODELO-DE-DATOS.md`.
-> Each schema is an independent microservice: no foreign key crosses a schema boundary.
+> One domain per data schema, as modelled in `06-data/models.md`. Every schema has exactly
+> one owning service, and a service may own more than one (ADR-009). No foreign key crosses
+> from one service's schemas into another's.
 
-| # | Domain | What it answers |
-|---|--------|------------------|
-| 1 | Security | Who is the person, and what are they allowed to do? (people, credentials, roles, permissions, sessions) |
-| 2 | Audit | What changed, when, and who changed it? |
-| 3 | Settings | What's the business called, and what does each user prefer? (shop info, user preferences) |
-| 4 | Customer | Who is the customer, what vehicles do they have, and how many loyalty points? |
-| 5 | Catalog | What services are offered, and at what price per vehicle type? |
-| 6 | Booking  | When is the shop attended, and what slots are booked? |
-| 7 | Execution | Who washes the vehicle, and how is the job going? |
-| 8 | Promotion | What discounts exist, and who do they apply to? |
-| 9 | Payment | How is a booking charged, and how is the payment verified? (QR, receipt, review) |
-| 10 | Notification | What gets communicated to the user, and about what? |
+| # | Domain (schema) | What it answers | Owning service |
+|---|-----------------|-----------------|----------------|
+| 1 | Security | Who is the person, and what are they allowed to do? (people, credentials, roles, permissions, sessions, preferences) | `security-service` |
+| 2 | Audit | What changed, when, and who changed it? | `security-service` (read-only; written by triggers) |
+| 3 | Customer | Who is the customer, and what vehicles do they have? (plus a display copy of their loyalty points) | `customer-service` |
+| 4 | Catalog | What services are offered, and at what price per vehicle type? | `booking-service` |
+| 5 | Booking | When is the shop open, which bays exist, and what slots are booked? (includes the shop's own data) | `booking-service` |
+| 6 | Execution | Who washes the vehicle, and how is the job going? | `operations-service` |
+| 7 | Promotion | What discounts exist, and who do they apply to? | `payment-service` |
+| 8 | Payment | How is a booking charged and verified (QR, receipt, review), and how many loyalty points does each customer have? | `payment-service` |
+| 9 | Notification | What gets communicated to the user, and about what? | `notification-service` |
 
 **Security** and **Audit** are the shared core, common across every service in the project
-family — they aren't specific to this car wash domain.
+family — they aren't specific to this car wash domain. The former `Settings` schema no longer
+exists: the shop's data moved to `booking` and user preferences to `security` (ADR-009).
 
 ---
 
