@@ -1,124 +1,68 @@
 # 02 — Problem Domain
 
-> **What is this?** The mental model of the business. It is not technology — it is understanding
-> the problem the system solves before writing code. This section comes from Domain-Driven Design (DDD).
+This section defines the business domain of the Vehicle Washing project. It describes the concepts, bounded contexts, relationships, business rules and domain events that explain how the car-wash operation works.
 
-## Why this section exists
+The documents in this folder are intentionally focused on the business model. Technical implementation details such as microservice deployment, SQL Server structure, API contracts and infrastructure belong in the corresponding project sections.
 
-The most costly mistakes in software are not bugs — they are domain misunderstandings.
-When developers do not deeply understand the business:
-- They create incorrect abstractions that have to be rewritten
-- Names in the code do not match the business's names → permanent confusion
-- Microservice boundaries are drawn incorrectly
+## Files
 
-This section captures domain knowledge **before** designing the architecture.
+| File | Purpose |
+|---|---|
+| `domain-map.md` | Defines the bounded contexts, their responsibilities and the main relationships between them. |
+| `entities-and-rules.md` | Defines the main entities, value objects, aggregates and business rules. |
+| `domain-events.md` | Defines the main facts that occur in the business domain and their meaning. |
 
----
+## Domain boundary
 
-## Key concepts you must know
+The current MVP represents a **single physical wash shop**. The domain does not model branches, zones or multiple establishments.
 
-**Entity:** Domain object with a unique identity (e.g.: a `Student` identified by their code).
+The main roles are:
 
-**Value Object:** Object with no identity of its own, defined by its attributes (e.g.: `Address`, `Price`).
+- Customer
+- Operator
+- Administrator
 
-**Aggregate:** Group of entities treated as a unit. Only the aggregate root
-can be referenced from outside.
+The main business areas are:
 
-**Domain Event:** Something that occurred in the business that other parts of the system must know
-(e.g.: `StudentEnrolled`, `PaymentApproved`). They are facts, stated in past tense.
+```text
+Customer
+   │
+   ├── vehicle and service selection
+   ├── booking and availability
+   └── payment / feedback
+             │
+             ▼
+        Booking & Operations
+             │
+             ├── operator assignment
+             ├── service execution
+             └── optional rating per service line
 
-**Bounded Context:** Area of the system where a particular model applies.
-Each microservice generally corresponds to a bounded context.
-
----
-
-## What is here and how to fill it in
-
-### `domain-map.md` ⭐
-Map of all bounded contexts and how they relate.
-**Fill in:** draw the contexts as rectangles and the relationships between them
-(upstream/downstream, shared kernel, anti-corruption layer).
-
-**Format:**
-```markdown
-## Bounded Contexts
-
-### [Context Name]
-**Responsibility:** [what this context manages]
-**Main entities:** [list]
-**Owning team:** [team]
-
-## Relationship map
-[ASCII diagram or description of how the contexts relate]
-
-| Context A | Relationship | Context B | Description |
-|-----------|-------------|-----------|-------------|
-| [A] | downstream-of | [B] | [A] consumes events from [B] |
+Payment, Promotions & Loyalty, and Notification support the flow through
+business rules and events.
 ```
 
-### `entities-and-rules.md` ⭐
-Catalog of entities, value objects, and business rules.
-**Fill in:** for each entity: name, attributes, invariants (rules that MUST ALWAYS hold),
-behaviors.
+A booking can contain **one or more wash-service lines** for the customer's vehicle and the selected time slot. Each line can have its own service execution and optional rating after completion.
 
-**Format:**
-```markdown
-## Entity: [EntityName]
-**Belongs to:** [Bounded Context]
-**Identifier:** [field that makes it unique]
+## Important domain decisions
 
-### Attributes
-| Attribute | Type | Description | Required | Rules |
-|-----------|------|-------------|---------|-------|
+- Booking is the central business process.
+- A booking can contain one or more selected wash services.
+- A selected service is represented by a booking line with its applicable price and quantity.
+- Operator assignment requires availability. The exact automatic-selection or tie-break rule is not defined in this folder when the current requirements contain conflicting wording.
+- A service execution belongs to one booking service line and has its own operational lifecycle.
+- Customer rating is optional and is given per completed service line.
+- Rating is not a separate physical entity in the current data model; it is represented by fields on service execution.
+- Loyalty decisions use the loyalty transaction ledger as the source of truth. The customer loyalty balance is only a display copy.
+- The establishment is part of the booking context because the MVP has one shop.
+- Payment uses manual methods and receipt verification; there is no external card payment gateway in the current scope.
 
-### Business rules (invariants)
-- [ ] [A rule that must always hold]
+## Relationship with other folders
 
-### Behaviors (domain methods)
-- `[name()]`: [what it does]
-```
+- `01-context` defines the project context, scope and vocabulary.
+- `03-product` defines product priorities and user stories.
+- `04-requirements` defines the functional and non-functional requirements.
+- `05-architecture` defines how the domain boundaries are implemented as services and how those services communicate.
+- `06-data` defines the SQL Server schemas, tables, constraints and migrations.
 
-### `domain-events.md` ⭐
-List of all events that occur in the domain.
-**Fill in:** event name (past tense), what triggers it, what data it carries, who consumes it.
-
-**Format:**
-```markdown
-| Event | Triggered by | Data | Consumers | Bounded Context |
-|-------|-------------|------|-----------|----------------|
-| [NameInPastTense] | [action that causes it] | [event fields] | [what listens to this] | [context] |
-```
-
----
-
-## Correlations with other sections
-
-| This section feeds... | Why |
-|-----------------------|-----|
-| `05-architecture/overview.md` | Bounded contexts → microservices |
-| `06-data/models.md` | Entities → data tables/collections |
-| `07-api/contracts/` | Domain events → events in async APIs |
-| `09-microservices/event-catalog.md` | All domain events are registered there |
-| `04-requirements/user-stories.md` | Business rules → acceptance criteria |
-
----
-
-## Recommended tool: Event Storming
-
-**Event Storming** is a domain discovery workshop with sticky notes:
-1. 🟠 Orange: Domain events (past tense)
-2. 🔵 Blue: Commands (what triggers the event)
-3. 🟡 Yellow: Actors (who executes the command)
-4. 🟣 Purple: Policies (automatic reactions)
-5. 🟦 Light blue: External systems
-
-Running an Event Storming session with the team before filling in this section saves weeks of redesign.
-
----
-
-## Questions this section must answer
-
-- What are the main business entities?
-- What rules can NEVER be violated in the system?
-- What important events occur in the domain?
-- Where are the natural boundaries of the system (for defining microservices)?
+If a later document changes a business rule or domain concept, this folder must be reviewed so that the same change is reflected consistently in the rest of the documentation.
