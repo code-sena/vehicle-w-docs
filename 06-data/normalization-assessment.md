@@ -27,6 +27,15 @@ An earlier version repeated `concurrent_bays` on every one of the seven weekday 
 the same number — a textbook 3NF violation, since bay capacity has nothing to do with which
 day of the week it is. Capacity is now obtained by counting active `booking.service_bay` rows.
 
+**`execution.service_execution` has no separate `rating` table.**
+`02-domain` models `Rating` as its own aggregate, but a rating cannot exist without the
+service line it rates — it's a 1:0..1 relationship, not a many-to-one. `quality_rating`,
+`quality_comment` and `rated_at` depend on the whole key of `service_execution` and nothing
+else, so nullable columns on that row don't create a partial or transitive dependency; this
+isn't a normalization trade-off, just choosing not to pay a join for data that's always
+optional and always 1:1 with its row. See `models.md`'s `service_execution` decisions for the
+full reasoning (rating per line, not per booking, and why `AVG` never uses `COALESCE`).
+
 **Catalog/lookup values are 11 separate tables, not 1 generic `status` table.**
 This isn't a normalization rule in the strict sense, but the same instinct applies: a shared
 `status` table would let a foreign key from `booking` accept a payment status by accident,
