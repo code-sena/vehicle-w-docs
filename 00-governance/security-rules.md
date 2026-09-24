@@ -10,16 +10,16 @@
 
 ### A01 — Broken Access Control
 
-```typescript
+```java
 // ❌ BAD — trusting frontend data
-const userId = req.body.userId;
+long userId = request.userId();
 
-// ✅ GOOD — extract from verified JWT token
-const userId = req.user.sub; // req.user comes from the authentication middleware
+// ✅ GOOD — extract it from the verified JWT (platform-commons)
+long userId = CurrentUser.get().userId();
 ```
 
 **Rules:**
-- Every protected endpoint MUST have the authentication middleware applied
+- Every endpoint is authenticated by default (`PlatformSecurityConfig`); public paths are listed explicitly per service, and the role is declared with `@PreAuthorize`
 - Permissions are verified in the application layer, not the controller (hexagonal architecture, ADR-007)
 - A resource is only returned to the role allowed to read it — see `security-policy.md` for the three seeded roles
 - On top of the role, ownership is checked in the service: an `OPERATOR` only reaches their own `service_execution` rows, a `CLIENT` only their own bookings/vehicles/payments (ADR-006)
@@ -35,21 +35,21 @@ const userId = req.user.sub; // req.user comes from the authentication middlewar
 ### A03 — Injection
 
 **SQL:**
-```typescript
+```java
 // ❌ BAD — direct concatenation
-const user = await db.query(`SELECT * FROM users WHERE id = ${userId}`);
+jdbc.queryForList("SELECT * FROM customer.customer WHERE customer_id = " + id);
 
-// ✅ GOOD — parameterized query
-const user = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
+// ✅ GOOD — named parameter
+jdbc.query("SELECT ... FROM customer.customer WHERE customer_id = :id", new MapSqlParameterSource("id", id), mapper);
 
-// ✅ GOOD — ORM with typed parameters
-const user = await userRepository.findOne({ where: { id: userId } });
+// ✅ GOOD — Spring Data JPA with typed parameters (booking-service)
+bookingJpaRepository.findWithLinesById(id);
 ```
 
 **Rules:**
 - Parameterized queries ALWAYS. Zero concatenated strings in SQL
-- Validate and sanitize all inputs with a validation library (Zod, Joi, class-validator)
-- In GraphQL: limit query depth with `graphql-depth-limit`
+- Validate every request body with Bean Validation (`jakarta.validation`) in the REST adapter; the Angular forms validate too, but only as a convenience
+- There is no GraphQL in this stack
 
 ### A04 — Insecure Design
 
@@ -62,7 +62,7 @@ const user = await userRepository.findOne({ where: { id: userId } });
 ```
 # Verification checklist per environment
 □ Stack traces NOT visible in production
-□ Security headers configured (Helmet.js or equivalent):
+□ Security headers configured (Spring Security defaults):
   - X-Content-Type-Options: nosniff
   - X-Frame-Options: DENY
   - Content-Security-Policy defined
@@ -82,7 +82,7 @@ const user = await userRepository.findOne({ where: { id: userId } });
 
 - JWT with maximum expiration of **1 hour** for access tokens (RNF-004.2)
 - **No refresh tokens in this version.** The user logs in again once the token expires — deferred by ADR-006, not implemented as a stopgap
-- Account lockout after **5 consecutive failed attempts, for 15 minutes** — this is the definition RF-004b was missing (`05-architecture/overview.md`, closes AT-004). Confirm this in `04-requirements/functional.md` before building the feature
+- Account lockout after **5 failed attempts within 15 minutes, for 15 minutes** — the definition of RF-004b (`05-architecture/overview.md`, closes AT-004), now stated in `04-requirements/functional.md`. The counters live in memory (the shared `security` core has no columns for them), so a restart of `security-service` clears them
 - No rate limiting at the gateway: there is no public exposure to rate-limit against (ADR-005, Pending decisions) — the account lockout above is the actual defense against brute-forcing a single account
 
 ### A08 — Software and Data Integrity Failures
@@ -93,7 +93,7 @@ const user = await userRepository.findOne({ where: { id: userId } });
 
 ### A09 — Security Logging and Monitoring Failures
 
-- Every failed authentication must be logged with the account and timestamp (no IP/user-agent capture is planned — the environment is local Docker, not a public-facing service)
+- Every failed authentication must be logged with the account and timestamp; successful logins also record IP and user agent in `security.user_session`
 - Log delete operations with who, when, and what was deleted — covered by the audit block on every domain table (`deleted_at`/`deleted_by`) and `audit.audit_log` (`06-data`, ADR-003)
 - Security logs are plain output, readable with `docker logs` — there is no log retention policy or alerting stack: `04-requirements/non-functional.md` explicitly drops metrics and alerting from this academic delivery's scope
 
@@ -106,16 +106,17 @@ const user = await userRepository.findOne({ where: { id: userId } });
 
 ## User input handling
 
-```typescript
-// Example with Zod — always validate in the Controller/Adapter layer
-const CreateUserSchema = z.object({
-  email: z.string().email().max(255),
-  name: z.string().min(1).max(100).trim(),
-  role: z.enum(['ADMIN', 'USER', 'VIEWER']),
-});
+```java
+// Bean Validation in the REST adapter (security-service)
+public record RegisterRequest(@NotBlank @Size(max = 20) String documentNumber,
+                              @NotBlank @Size(max = 60) String firstName,
+                              @NotBlank @Size(max = 60) String lastName,
+                              @Size(max = 20) String phone,
+                              @NotBlank @Email @Size(max = 120) String email,
+                              @NotBlank String password) { }
 
-// The result is typed and sanitized
-const parsed = CreateUserSchema.parse(req.body);
+// @Valid on the controller parameter rejects a bad shape with 400 before the use case runs
+public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest body) { ... }
 ```
 
 **Rule:** All external inputs (HTTP body, query params, path params, broker messages)
@@ -125,23 +126,20 @@ pass through a validation schema before reaching the domain.
 
 ## Secure error handling
 
-```typescript
+```java
 // ❌ BAD — exposes internal details
-res.status(500).json({ error: error.message, stack: error.stack });
+return ResponseEntity.status(500).body(e.getMessage() + Arrays.toString(e.getStackTrace()));
 
-// ✅ GOOD — generic message + traceId for internal correlation
-res.status(500).json({
-  error: 'INTERNAL_SERVER_ERROR',
-  message: 'Internal server error',
-  traceId: req.headers['x-trace-id'],
-});
+// ✅ GOOD — RFC 7807 body, same in every service (PlatformExceptionHandler)
+//   { "status": 422, "detail": "INV-003: no wash bay is free at that time", "correlationId": "3b9e..." }
+// Business-rule messages are safe to show; unexpected errors return a generic 500 with the correlationId.
 ```
 
 ---
 
 ## Correlations
 
-- Security policy (management, access, vault) → `00-governance/security-policy.md`
+- Security policy (roles, JWT, secrets) → `00-governance/security-policy.md`
 - System threat model → `05-architecture/security-threat-model.md`
 - Authentication and JWT → `07-api/authentication.md`
 - Observability and security logs → `13-operations/observability.md`

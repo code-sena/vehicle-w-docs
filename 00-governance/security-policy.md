@@ -25,18 +25,18 @@
 | Signing algorithm | HS256, shared secret delivered to every service as an environment variable (ADR-006) |
 | Access token expiration | 1 hour (`exp`) — RNF-004.2 |
 | Refresh token | **Not used in this version.** When the token expires, the user logs in again (ADR-006, evaluated and deferred — see "Planned evolution" in `05-architecture/overview.md`) |
-| Required claims | User id and role codes only — no personal data beyond what authorization needs (RNF-004.9) |
+| Required claims | Identifiers and role codes only — `sub` (user id), `pid` (person id, links the user to their customer data), `roles`, `sid` (session id, used on logout). No personal data beyond what authorization needs (RNF-004.9) |
 | Client storage | Whatever Angular/React Native storage the client implementation chooses; the token is never logged |
 
 **Prohibited in the payload:**
 - Passwords
 - Card data — moot in this project, since no card data is ever collected (ADR-008)
-- Full PII (only the user ID and role codes)
+- Full PII (only identifiers and role codes: no name, e-mail, phone or document number)
 
 ### Session tracking and token revocation
 
 - `security.user_session` records who logged in, when, and whether the session was closed — it answers "who was connected and when," it is **not** checked on every request (ADR-006)
-- **A JWT cannot be revoked before it expires.** Logging out or locking an account closes the session row, but a token issued before that moment stays valid until its hour runs out. This is an accepted trade-off (`05-architecture/overview.md`, AT-007), not an oversight — checking `user_session` on every request would turn `security-service` into a bottleneck all ten services depend on
+- **A JWT cannot be revoked before it expires.** Logging out closes the session row, and a lockout (RF-004b) blocks new logins, but a token issued before that moment stays valid until its hour runs out. This is an accepted trade-off (`05-architecture/overview.md`, AT-007), not an oversight — checking `user_session` on every request would turn `security-service` into a bottleneck all six services depend on
 
 ---
 
@@ -48,13 +48,13 @@ Only three roles are seeded, exactly as defined in `security.role` (`06-data`, s
 
 | Role | Description | Permissions |
 |------|-------------|------------|
-| `ADMINISTRATOR` | Business owner or manager | Configures the establishment, services and promotions; assigns/reassigns operators; reviews and approves payments; consults operational reports (RF-021 to RF-023) |
+| `ADMIN` | Business owner or manager (the *Administrator*) | Configures the establishment, services and promotions; assigns/reassigns operators; reviews and approves payments; consults operational reports (RF-021 to RF-023) |
 | `OPERATOR` | Performs the wash | Records their own availability; views and updates only the `service_execution` rows assigned to them (RF-008 to RF-012b, RF-022) |
 | `CLIENT` | Registers vehicles and books | Manages their own vehicles and bookings, pays by QR, rates completed services, views only their own records (RF-005 to RF-016) |
 
 **Permission model:**
 
-The `security` schema also defines granular `permission` and `role_permission` tables (resource + action, e.g. `reserva:cancel`), inherited from the instructor's shared core. **This project's requirements only ask for role-level control** — whether services check fine-grained permissions or only the role is confirmed when the endpoints are designed in `07-api` (ADR-006, Pending decisions). Until then, treat the role as the unit of authorization.
+The `security` schema also defines granular `permission` and `role_permission` tables (resource + action, e.g. `booking:cancel`), inherited from the instructor's shared core. **This project's requirements only ask for role-level control** — whether services check fine-grained permissions or only the role is confirmed when the endpoints are designed in `07-api` (ADR-006, Pending decisions). Until then, treat the role as the unit of authorization.
 
 **Validation:**
 - The API Gateway rejects a request with a missing, invalid or expired JWT before it reaches any service (ADR-005)
@@ -74,8 +74,9 @@ The `security` schema also defines granular `permission` and `role_permission` t
 
 ### Internal service-to-service communication
 
-- mTLS for service-to-service communication in production (if possible with service mesh)
-- Bearer token or internal API key for services that do not support mTLS
+- Services talk over the internal Docker network and are not published outside it; only the API Gateway is exposed
+- A service calling another forwards the **caller's JWT** and correlation id (`05-architecture/cross-cutting.md`), so the called service authorises the original user, not the calling service
+- mTLS is not used in this version (no service mesh); it is the evolution if the services ever run on separate hosts
 
 ---
 
@@ -86,15 +87,15 @@ The `security` schema also defines granular `permission` and `role_permission` t
 ✗ NEVER in committed .env
 ✗ NEVER in logs
 ✗ NEVER in client error messages
-✓ Environment variables (injected by the orchestrator)
-✓ Vault (HashiCorp Vault, AWS Secrets Manager, etc.)
-✓ Kubernetes Secrets (encrypted with KMS)
+✓ Environment variables, read from a local .env file that is git-ignored (Docker Compose)
+✓ .env.example in the repository, with placeholder values only
+✓ One database login per service, with rights only on its own schemas (ADR-003 / ADR-009)
 ```
 
 **Secret rotation:**
-- API keys: every 90 days
-- TLS certificates: 60 days before expiration
-- DB passwords: every 6 months or immediately if compromise is suspected
+- The JWT secret (at least 32 characters, HS256) and the database passwords are changed before any shared or public deployment, and immediately if a compromise is suspected
+- Demo credentials from the seed data never reach a public deployment
+- TLS certificates: renewed before expiration (Let's Encrypt)
 
 ---
 
@@ -108,40 +109,40 @@ The `security` schema also defines granular `permission` and `role_permission` t
 
 ### SQL Injection — Prevention
 
-```typescript
-// ✗ VULNERABLE
-const result = await db.query(`SELECT * FROM users WHERE email = '${userInput}'`);
+```java
+// ✗ VULNERABLE — concatenating user input into SQL
+jdbc.queryForList("SELECT user_id FROM security.app_user WHERE username = '" + email + "'");
 
-// ✓ SAFE — always use prepared parameters
-const result = await db.query('SELECT * FROM users WHERE email = $1', [userInput]);
+// ✓ SAFE — named parameters (NamedParameterJdbcTemplate), as every adapter in the project does
+jdbc.queryForList("SELECT user_id FROM security.app_user WHERE username = :email",
+        new MapSqlParameterSource("email", email), Long.class);
 ```
 
 ### XSS — Prevention
 
 ```typescript
-// ✗ VULNERABLE — rendering HTML without escaping
+// Angular (web client). ✗ VULNERABLE — bypassing Angular's sanitizer
+this.sanitizer.bypassSecurityTrustHtml(userProvidedContent);
 element.innerHTML = userProvidedContent;
 
-// ✓ SAFE — use textContent or sanitize
+// ✓ SAFE — interpolation {{ value }} escapes by default; never bypass the sanitizer for user data
 element.textContent = userProvidedContent;
-// or with library: DOMPurify.sanitize(userProvidedContent)
 ```
 
-### Validation with Zod / Joi
+### Validation with Bean Validation
 
-```typescript
-// Explicit validation schema in the controller
-const CreateOrderSchema = z.object({
-  clientId: z.string().uuid(),
-  items: z.array(z.object({
-    productId: z.string().uuid(),
-    quantity: z.number().int().positive().max(1000),
-    price: z.object({
-      amount: z.number().positive(),
-      currency: z.enum(['COP', 'USD']),
-    }),
-  })).min(1).max(50),
-});
+```java
+// Explicit validation of the request shape in the REST adapter (booking-service).
+// Ids are numbers (IDENTITY keys, ADR-003); prices and the end time are never accepted from the client.
+public record CreateBookingRequest(
+        @NotNull Long customerVehicleId,
+        @NotNull @Future OffsetDateTime scheduledStart,
+        @NotEmpty List<@Valid Item> services,
+        @Size(max = 300) String notes) {
+
+    public record Item(@NotNull Integer serviceId, @Min(1) int quantity) { }
+}
+// The shape is checked here (400); the business rules are checked by the domain (422).
 ```
 
 ---
@@ -150,15 +151,15 @@ const CreateOrderSchema = z.object({
 
 | Vulnerability | Implemented control |
 |---------------|-------------------|
-| A01: Broken Access Control | RBAC + permission validation in each service |
-| A02: Cryptographic Failures | TLS 1.2+, bcrypt for passwords, secrets in vault |
-| A03: Injection | Prepared parameters in SQL, schema validation |
+| A01: Broken Access Control | Role check (`@PreAuthorize`) + ownership check in each service |
+| A02: Cryptographic Failures | TLS 1.2+ outside local, BCrypt for passwords, secrets in environment variables |
+| A03: Injection | Named parameters in every SQL statement, Bean Validation on every request |
 | A04: Insecure Design | Threat modeling in design, Security review |
-| A05: Security Misconfiguration | IaC for configuration, review of defaults |
-| A06: Vulnerable Components | Dependabot / Snyk for automatic updates |
-| A07: Authentication Failures | JWT with rotation, brute-force protection |
-| A08: Software Integrity Failures | Verify dependency checksums, SBOM |
-| A09: Logging Failures | Logs without PII, centralized, with alerts |
+| A05: Security Misconfiguration | Docker Compose as the single definition of every environment; review of defaults |
+| A06: Vulnerable Components | Dependency review before each delivery (`security-rules.md`, A06) |
+| A07: Authentication Failures | 1-hour JWT, no refresh token (ADR-006), lockout after 5 failed attempts (RF-004b) |
+| A08: Software Integrity Failures | Pinned dependency versions, RabbitMQ messages validated before processing |
+| A09: Logging Failures | Logs without PII, with a correlation id per request; changes recorded in `audit.audit_log` |
 | A10: SSRF | Whitelist of external URLs, do not follow redirects automatically |
 
 ---
@@ -167,20 +168,14 @@ const CreateOrderSchema = z.object({
 
 ### Events that are ALWAYS recorded
 
-```typescript
-// Security events — store in a separate log, with retention > 1 year
-const SECURITY_EVENTS = [
-  'auth.login.success',
-  'auth.login.failure',
-  'auth.login.brute_force_detected',
-  'auth.password.changed',
-  'auth.token.revoked',
-  'auth.unauthorized_access_attempt',
-  'data.pii.accessed',
-  'admin.role.changed',
-  'admin.user.deleted',
-];
-```
+| Event | Where it is recorded |
+|-------|---------------------|
+| Successful login | `security.user_session` (user, start, expiry, IP, user agent) + `app_user.last_login` |
+| Failed login and lockout (RF-004b) | `security-service` log |
+| Logout | `security.user_session.revoked_at` |
+| Password change (RF-004) | `security-service` log + `audit.audit_log` |
+| Access denied (403) | Log of the service that denied it |
+| Any change to a domain table | `audit.audit_log`, written by the `tr_touch_<table>` triggers, with `changed_by` taken from `SESSION_CONTEXT('user_id')` |
 
 **Required fields in security logs:**
 - `userId` (or `ANONYMOUS` if not authenticated)
@@ -218,4 +213,4 @@ const SECURITY_EVENTS = [
 - Security non-functional requirements → `04-requirements/non-functional.md`
 - ADR on authentication → `05-architecture/decisions/`
 - Security event observability → `13-operations/observability.md`
-- RBAC implemented in → `09-microservices/services/XX-auth-service/`
+- RBAC implemented in → `security-service` (roles and JWT) and in every service (`@PreAuthorize` + ownership checks)
