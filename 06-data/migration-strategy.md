@@ -14,6 +14,9 @@ Liquibase tracks what ran in `DATABASECHANGELOG` (and coordinates concurrent dep
 way Flyway is, but we still name files in the order they must run, for humans reading the
 folder.
 
+The table definitions follow the six-service layout of ADR-009 (`models.md`); grants go in
+`001` because `GRANT ... ON SCHEMA` covers every table created in that schema afterwards.
+
 `schema_sqlserver.sql`, as it stands today, is a single script meant to be run once against a
 fresh database. Turning it into a changelog history means splitting it along the same section
 breaks it already has, with one SQL file per changeset group:
@@ -21,32 +24,32 @@ breaks it already has, with one SQL file per changeset group:
 ```
 db/changelog/
   db.changelog-master.xml                        (root — includes every file below, in order)
-  001-create-schemas.sql                          (section 1)
-  002-create-security-and-audit-core.sql          (section 2 — person, app_user, role,
-                                                    permission, role_permission, user_role,
-                                                    user_session, password_reset_token,
-                                                    audit_log)
-  003-create-settings-schema.sql                  (section 3)
-  004-create-customer-schema.sql                  (section 4)
-  005-create-catalog-schema.sql                   (section 5)
-  006-create-reserva-schema.sql                   (section 6)
-  007-create-execution-schema.sql                 (section 7)
-  008-create-promotion-schema.sql                 (section 8)
-  009-create-payment-schema.sql                   (section 9)
-  010-create-notification-schema.sql              (section 10)
+  001-create-schemas.sql                          (the 9 schemas, plus one database role per
+                                                    service with rights on its own schemas)
+  002-create-security-and-audit-core.sql          (person, app_user, role, permission,
+                                                    role_permission, user_role, user_session,
+                                                    password_reset_token, audit_log)
+  003-create-security-user-preference.sql         (user_preference — moved from `settings`)
+  004-create-customer-schema.sql
+  005-create-catalog-schema.sql
+  006-create-booking-schema.sql                   (includes establishment — moved from `settings`)
+  007-create-execution-schema.sql
+  008-create-promotion-schema.sql
+  009-create-payment-schema.sql                   (includes the loyalty ledger — moved from `customer`)
+  010-create-notification-schema.sql
   011-create-overlap-triggers.sql                 (section 12)
   012-create-service-price-immutability-trigger.sql (section 13)
   013-create-audit-triggers.sql                   (section 14 — see note below)
   seed/
     101-seed-security-role.sql                    (section 15)
-    102-seed-customer-catalogs.sql
+    102-seed-customer-catalogs.sql              (vehicle_type)
     103-seed-catalog-service-category.sql
-    104-seed-reserva-catalogs.sql
+    104-seed-booking-catalogs.sql
     105-seed-execution-status.sql
     106-seed-promotion-discount-type.sql
-    107-seed-payment-catalogs.sql
+    107-seed-payment-catalogs.sql               (payment catalogs + loyalty_movement_type)
     108-seed-notification-type.sql
-    109-seed-reserva-bays-and-hours.sql
+    109-seed-booking-bays-and-hours.sql
 ```
 
 `db.changelog-master.xml` just lists `<include file="..."/>` in this exact order — Liquibase runs
@@ -103,9 +106,9 @@ generates, instead of relying on the one-time bulk generation.
 ## Two seed-data details that are easy to break by mistake
 
 - `101` through `109` use `SET IDENTITY_INSERT … ON` to seed specific IDs. Two of those IDs are
-  load-bearing: `reserva_status.reserva_status_id = 5` (`CANCELADA`) is hard-coded inside
-  `ck_reserva_cancel` and `tr_reserva_bay_overlap`; `payment_status.payment_status_id = 3`
-  (`APPROVED`) is hard-coded inside `ux_payment_one_approved_per_reserva`. Re-running a seed
+  load-bearing: `booking_status.booking_status_id = 5` (`CANCELLED`) is hard-coded inside
+  `ck_booking_cancel` and `tr_booking_bay_overlap`; `payment_status.payment_status_id = 3`
+  (`APPROVED`) is hard-coded inside `ux_payment_one_approved_per_booking`. Re-running a seed
   changeset with a different row order, or re-seeding from scratch without `IDENTITY_INSERT`,
   would silently break both constraints.
 - Seed changesets are the one place a `preConditions` block matters: add
@@ -118,16 +121,16 @@ generates, instead of relying on the one-time bulk generation.
 ```sql
 --liquibase formatted sql
 
---changeset merari:014-add-reserva-customer-note
-ALTER TABLE reserva.reserva ADD customer_note NVARCHAR(300) NULL;
+--changeset merari:014-add-booking-customer-note
+ALTER TABLE booking.booking ADD customer_note NVARCHAR(300) NULL;
 GO
 
 --changeset merari:015-add-payment-currency-code
 ALTER TABLE payment.payment ADD currency_code CHAR(3) NOT NULL CONSTRAINT df_payment_currency DEFAULT 'COP';
 GO
 
---changeset merari:016-add-reserva-scheduled-end-index
-CREATE INDEX ix_reserva_scheduled_end ON reserva.reserva (scheduled_end);
+--changeset merari:016-add-booking-scheduled-end-index
+CREATE INDEX ix_booking_scheduled_end ON booking.booking (scheduled_end);
 GO
 ```
 
