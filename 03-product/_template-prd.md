@@ -1,4 +1,4 @@
-# Product Requirements Document Template — Express Car Wash
+# Product Requirements Document Template — Vehicle Washing
 
 Use this document when a release, milestone or stakeholder needs a formal product specification. It describes product behavior; architecture, persistence and service boundaries are referenced rather than duplicated.
 
@@ -6,7 +6,7 @@ Use this document when a release, milestone or stakeholder needs a formal produc
 
 | Field | Value |
 |---|---|
-| Product / milestone | [Express Car Wash / M#] |
+| Product / milestone | [Vehicle Washing / M#] |
 | Owner | [Name] |
 | Date / version | [YYYY-MM-DD / v#] |
 | Status | [Draft/Approved] |

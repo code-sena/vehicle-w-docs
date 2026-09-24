@@ -1,8 +1,8 @@
-# Product Vision — Express Car Wash
+# Product Vision — Vehicle Washing
 
 ## Vision statement
 
-**For** vehicle owners who need to arrange a wash without uncertain availability, and for car-wash staff who need an organized daily operation, **Express Car Wash** is a web and Android booking-management platform **that** connects vehicle, service, operator availability, QR-based payment, notifications and service execution in one traceable flow. **Unlike** calls, walk-ins and handwritten registers, it gives customers a confirmed booking and gives the business a current, role-appropriate view of the work.
+**For** vehicle owners who need to arrange a wash without uncertain availability, and for car-wash staff who need an organized daily operation, **Vehicle Washing** is a web and Android booking-management platform **that** connects vehicle, service, operator availability, QR-based payment, notifications and service execution in one traceable flow. **Unlike** calls, walk-ins and handwritten registers, it gives customers a confirmed booking and gives the business a current, role-appropriate view of the work.
 
 ## Mission
 

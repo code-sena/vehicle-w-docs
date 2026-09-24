@@ -1,4 +1,4 @@
-# Problem Framing — Express Car Wash
+# Problem Framing — Vehicle Washing
 
 ## Problem in one sentence
 

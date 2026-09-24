@@ -1,4 +1,4 @@
-# Product Roadmap — Express Car Wash
+# Product Roadmap — Vehicle Washing
 
 This roadmap sequences the approved scope; it is not a promise of calendar dates. Reprioritization requires evidence and must preserve the boundary in `01-context/scope.md`.
 

@@ -1,10 +1,10 @@
 # 03 — Product Definition
 
-This folder defines **what** Express Car Wash will deliver and **why**. It is grounded in the project context and scope in `01-context/`; it uses the domain language defined in `01-context/glossary.md`. Technical architecture is documented elsewhere and must not redefine product scope.
+This folder defines **what** Vehicle Washing will deliver and **why**. It is grounded in the project context and scope in `01-context/`; it uses the domain language defined in `01-context/glossary.md`. Technical architecture is documented elsewhere and must not redefine product scope.
 
 ## Product at a glance
 
-Express Car Wash is a web and Android platform for a single-location car-wash business. A customer registers a vehicle, selects a service, date and time, chooses an available operator or requests automatic assignment, pays by scanning the shop's QR code and uploading a payment receipt, and later rates the completed service. Administrators manage services, operators, schedules, promotions, payment review and operational reporting; operators manage availability and the execution status of their assigned services.
+Vehicle Washing is a web and Android platform for a single-location car-wash business. A customer registers a vehicle, selects a service, date and time, chooses an available operator or requests automatic assignment, pays by scanning the shop's QR code and uploading a payment receipt, and later rates the completed service. Administrators manage services, operators, schedules, promotions, payment review and operational reporting; operators manage availability and the execution status of their assigned services.
 
 ## Documents
 

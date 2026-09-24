@@ -1,4 +1,4 @@
-# Product Backlog Item Template — Express Car Wash
+# Product Backlog Item Template — Vehicle Washing
 
 ## Epic
 

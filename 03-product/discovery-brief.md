@@ -1,4 +1,4 @@
-# Discovery Brief — Express Car Wash
+# Discovery Brief — Vehicle Washing
 
 ## Objective
 

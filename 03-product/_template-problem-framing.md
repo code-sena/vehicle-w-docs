@@ -1,4 +1,4 @@
-# Problem Framing Template — Express Car Wash
+# Problem Framing Template — Vehicle Washing
 
 Use this template for a newly discovered problem. Use the terms in `01-context/glossary.md`; do not introduce architectural ownership here.
 

@@ -1,4 +1,4 @@
-# Discovery Brief Template — Express Car Wash
+# Discovery Brief Template — Vehicle Washing
 
 ## Objective
 

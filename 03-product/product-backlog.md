@@ -1,4 +1,4 @@
-# Product Backlog — Express Car Wash
+# Product Backlog — Vehicle Washing
 
 This is the product-level, prioritized backlog. It uses the terms and MVP boundary in `01-context/`. IDs provide traceability; they do not prescribe a technical service boundary.
 
