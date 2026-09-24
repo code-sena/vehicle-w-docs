@@ -1,49 +1,27 @@
-# ADRs — Architecture Decision Records
+# Architecture Decision Records
 
-ADRs document important architectural decisions. Each file = one decision.
+This folder contains the decisions that define the architecture of Express car wash.
 
-## How to create an ADR
+## Decision index
 
-1. Copy `_template-adr.md`
-2. Name it `ADR-NNN-short-title.md` (e.g.: `ADR-001-message-broker.md`)
-3. Fill it in completely — especially the evaluated alternatives
-4. Once accepted, the status is **permanent** (it is not deleted, it is "Superseded" by another ADR)
+| ADR | Decision | Status |
+|---|---|---|
+| ADR-001 | Documentation language | Accepted |
+| ADR-002 | Original architectural style and service decomposition | Superseded by ADR-009 |
+| ADR-003 | Shared SQL Server database and schema ownership | Accepted |
+| ADR-004 | REST and RabbitMQ communication | Accepted |
+| ADR-005 | API Gateway | Accepted |
+| ADR-006 | JWT authentication and service authorization | Accepted |
+| ADR-007 | Internal hexagonal architecture | Accepted |
+| ADR-008 | Manual QR/receipt payment verification | Accepted |
+| ADR-009 | Revised six-service decomposition | Current proposed decomposition |
 
-## Possible statuses
+## How to read the ADRs
 
-- `Proposed` — under discussion
-- `Accepted` — approved by the team
-- `Rejected` — evaluated and discarded (document why)
-- `Superseded` — superseded by ADR-NNN (indicate which one)
+Start with ADR-009 for the current service boundaries. Then read ADR-003 for data ownership, ADR-004 for communication, ADR-005 and ADR-006 for the edge/security model, ADR-007 for internal service structure, and ADR-008 for payment verification.
 
-## ADR register
+ADR-002 is kept because it records the previous decomposition and why it was changed. It must not be used as the current service list.
 
-| # | Title | Status | Date |
-|---|-------|--------|------|
-| 001 | [Documentation language](records/ADR-001-documentation-language.md) | Accepted | [date] |
-| 002 | [Architectural style and service decomposition](records/ADR-002-architectural-style-and-service-decomposition.md) | Accepted | 2026-09-10 |
-| 003 | [Database strategy](records/ADR-003-database-strategy.md) | Accepted | 2026-09-10 |
-| 004 | [Communication between services](records/ADR-004-service-communication.md) | Accepted | 2026-09-10 |
-| 005 | [API Gateway](records/ADR-005-api-gateway.md) | Accepted | 2026-09-10 |
-| 006 | [Authentication and authorization](records/ADR-006-authentication-and-authorization.md) | Accepted | 2026-09-10 |
-| 007 | [Internal architecture of the services](records/ADR-007-internal-service-architecture.md) | Accepted | 2026-09-10 |
-| 008 | [Payment verification by QR and receipt](records/ADR-008-payment-verification.md) | Accepted | 2026-09-10 |
+## ADR rules
 
-> Add rows here as you create ADRs in `records/`
-
-## Reading order
-
-ADR-002 and ADR-003 are the ones the rest depend on: they define how many services there
-are and how the data is separated. Both follow the data model in `06-data`, which the whole
-team built.
-
-Four decisions are worth knowing before reading the architecture, because they are where
-this project departs from the usual microservices description:
-
-- **One service per schema**, ten in total (ADR-002).
-- **The services share one SQL Server database**, with no foreign keys crossing between
-  schemas (ADR-003).
-- **The eighteen cross-schema references are validated by the application** before writing
-  (ADR-004).
-- **There is no payment gateway.** The customer pays outside the system and the
-  administrator verifies the receipt (ADR-008).
+Each ADR records one architectural decision, its context, alternatives and consequences. A later ADR may supersede an earlier one; the earlier file remains for traceability.
