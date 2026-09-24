@@ -50,10 +50,10 @@ the risks to validate before trusting this hypothesis, in
 
 ## Current status
 
-- **Phase:** Design complete, implementation not started. Domain (`02-domain`), product definition (`03-product`), requirements (`04-requirements`), architecture (`05-architecture`, 8 ADRs) and the data model (`06-data`, `MODELO-DE-DATOS.md`) are all written and cross-checked against each other
-- **Current version:** N/A — the project does not use release versioning yet; no code has been written
+- **Phase:** Implementation. The design (`02-domain` to `06-data`, 9 ADRs) is complete; the backend is regrouped into **six services plus the API Gateway** (ADR-009). The services' business rules are written and unit-tested; the first full run of the system (Docker Compose) and the connection of the web client to the API are in progress. The Android app has not started
+- **Current version:** N/A — the project does not use release versioning yet
 - **Last release:** N/A
-- **Next milestone:** `security-service` first, following the build order in ADR-002 (`security` → `customer` → `catalog` → `reserva` → `execution`, then the rest) — working login and role-based access with JWT (RF-001 to RF-004b), which every other service depends on
+- **Next milestone:** the complete booking flow running end to end — sign-up, booking, automatic assignment, execution, rating, QR payment and approval — following the build order in ADR-009 (`security` → `customer` → `booking` → `operations` → `payment` → `notification`)
 
 ## Project contacts
 
