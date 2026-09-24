@@ -19,7 +19,7 @@ The DoD requires it.
 | Artifact | Language |
 |----------|----------|
 | Source code (variables, functions, classes) | English |
-| Code comments | English |
+| Code comments | Spanish |
 | Commits | English (Conventional Commits) |
 | Branch names | English |
 | Markdown documentation | English |
