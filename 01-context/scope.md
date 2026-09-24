@@ -12,23 +12,27 @@ What the system **DOES build and maintain**:
 
 ### MVP Features
 
-| # | Feature | Description | Responsible service |
+| # | Feature | Description | Responsible service (ADR-009) |
 |---|---------|-------------|--------------------|
-| 1 | User management | Sign-up, login, password recovery and change, and profiles with different roles and permissions | security |
-| 2 | Wash service management | Service request with selection of date, time and service type; changes and cancellation before execution | reserve |
-| 3 | Operator assignment | Automatic by availability, direct selection by the customer, or manual override by the Administrator when needed | execution |
-| 4 | Payment management | QR-based payment (cash, Nequi, Daviplata, bank transfer) with an uploaded receipt reviewed by an administrator; transaction recording and payment history | payment |
-| 5 | Ratings and reviews | Customers rate and comment on the service once it is completed | execution |
-| 6 | Role-based dashboard and user preferences | Dashboard and notifications tailored to each user role, theme customisation, and interface available in four languages (Spanish, English, French, Portuguese) | settings, notification (dashboard itself is frontend-only) |
-| 7 | Administrative management | Management of the shop's settings and business hours, wash bays, operator schedules and availability, plus operational reports and statistics | settings, reserve, execution |
-| 8 | Promotions and loyalty | Administrator-created discounts/promotions, customer-applied promo codes at payment time, and a loyalty points program (accumulate on completed services, redeem for discounts) | promotion, customer |
+| 1 | User management | Sign-up, login, password recovery and change, and profiles with different roles and permissions | `security-service` |
+| 2 | Wash service management | Service request with selection of date, time and service type; changes and cancellation before execution | `booking-service` |
+| 3 | Operator assignment | Automatic by availability, direct selection by the customer, or manual override by the Administrator when needed | `operations-service` |
+| 4 | Payment management | QR-based payment (cash, Nequi, Daviplata, bank transfer) with an uploaded receipt reviewed by an administrator; transaction recording and payment history | `payment-service` |
+| 5 | Ratings and reviews | Customers rate and comment on the service once it is completed | `operations-service` |
+| 6 | Role-based dashboard and user preferences | Dashboard and notifications tailored to each user role, theme customisation, and interface available in four languages (Spanish, English, French, Portuguese) | `security-service` (preferences), `notification-service` (dashboard itself is frontend-only) |
+| 7 | Administrative management | Management of the shop's settings and business hours, wash bays, operator schedules and availability, plus operational reports and statistics | `booking-service` (shop data, hours, bays), `operations-service` (schedules, operator reports), `payment-service` (revenue) |
+| 8 | Promotions and loyalty | Administrator-created discounts/promotions, customer-applied promo codes at payment time, and a loyalty points program (accumulate on completed services, redeem for discounts) | `payment-service` |
 
 ### Included integrations
 
-No external systems are integrated in this version. Payment is a manual QR
-transfer verified by an administrator against a customer-uploaded receipt —
-there is no payment gateway in the loop, and no card data is ever collected
-or transmitted.
+The only external system is an **SMTP mail server**, used for a single purpose: sending the
+6-digit password-recovery code (RF-003). Locally it is Mailpit, a mail catcher that runs in
+Docker Compose; for a real delivery it is any SMTP account (for example, Gmail with an app
+password). No other e-mail is sent.
+
+Payment is a manual QR transfer verified by an administrator against a customer-uploaded
+receipt — there is no payment gateway in the loop, and no card data is ever collected or
+transmitted.
 
 ### Environments being built
 
@@ -37,6 +41,10 @@ or transmitted.
 | Local | Development and testing on each team member's machine, with Docker for the database and services |
 ---
 
+## Out of Scope
+
+What the system **does NOT build** in this version:
+
 | # | What is out of scope | Reason | Future version? |
 |---|---------------------|--------|----------------|
 | 1 | iOS mobile app | Current scope covers Android only | Yes — the React Native codebase allows it |
@@ -44,7 +52,7 @@ or transmitted.
 | 3 | Electronic invoicing (DIAN) | Requires the business to be legally registered with the tax authority | No |
 | 4 | Supplies and inventory management | Outside the booking domain | No |
 | 5 | Staging and production deployment | Academic project, not deployed for real users | Yes — if the project continues |
-| 6 | Email notifications and password recovery by email | No mail provider integrated in this version | Yes |
+| 6 | Email notifications (booking, assignment, payment) | Notifications are in-app only (RF-018); the mail server is used just for the password-recovery code | Yes |
 
 ### What another system / team handles (and why not us)
 
@@ -85,6 +93,7 @@ verification is done manually by an administrator, inside the platform.
 |-----------|--------------------|--------------|--------|
 | Development equipment | Team members | Project start | 🟢 Available |
 | Technical guidance and delivery reviews | Technical instructors | Each review cycle | 🟢 Available |
+| SMTP account for the password-recovery e-mail (RF-003) | Team (Mailpit locally; e.g. Gmail app password for the delivery) | Before the final delivery | 🟡 Local ready, real account pending |
 ---
 
 ## How to update the scope
