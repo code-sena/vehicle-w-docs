@@ -1,76 +1,87 @@
 # Domain Map — Bounded Contexts
 
-> Express car wash — vehicle washing management platform.
->
-> This document maps the domain: the Bounded Contexts, what each one is
-> responsible for, and how they relate to each other. It doesn't fix database
-> tables, frameworks, or API endpoints on purpose — that lives in `06-data`,
-> `05-architecture`, and `07-api`. Mixing those in here would make this doc go
-> stale every time an implementation detail changes, and the whole point is
-> that it shouldn't.
-
----
-
 ## 1. Domain overview
 
-Express car wash manages on-demand vehicle washing at a single shop
-location. A customer registers, adds their vehicle(s), and books a wash for
-a date and time. The customer drives the vehicle to the shop — this isn't a
-mobile or at-home service, the business model requires the visit.
+The system manages the complete process of scheduling and carrying out vehicle washing services at a single physical shop.
 
-The **booking** is the center of everything else in this document. Once a
-customer picks a vehicle, a service, and a time slot, the system checks
-that the slot is actually available and confirms it. From there, an
-operator needs to be assigned to carry out the wash — either automatically
-based on who's free, chosen directly by the customer from the operators
-available, or assigned/reassigned by an administrator if something
-needs to change. The customer pays by scanning the shop's QR code for
-their chosen method and uploading a payment receipt, which an
-administrator reviews and approves or rejects; once the wash is done the
-customer can rate it and leave a comment.
+The domain starts when a customer chooses a vehicle, one or more wash services and a time slot. It continues through availability validation, booking confirmation, operator assignment, service execution, payment verification and optional customer feedback.
 
-Operator availability, the service catalog (what washes exist and what
-they cost), promotions/loyalty points, and things like language and theme
-preferences all exist to support that one core flow.
+The domain is divided into bounded contexts so that each business responsibility has a clear vocabulary and boundary.
 
 ### Main actors
 
 | Actor | Domain responsibility |
 |---|---|
-| **Customer** | Registers, manages vehicles, creates and manages bookings, optionally picks an operator, pays, gets notified, rates completed services. |
-| **Operator** | Keeps their availability up to date and works the services assigned to them, updating status as they go. |
-| **Administrator** | Manages operator availability, assignments/reassignments, promotions, payment review, and pulls operational reports. |
+| **Customer** | Manages their vehicles, creates bookings, chooses an available operator when allowed, makes or reports payment, and rates completed service lines. |
+| **Operator** | Maintains availability and performs assigned service executions. |
+| **Administrator** | Manages catalog and shop configuration, assigns or reassigns operators, reviews payments and manages operational information. |
+
+### Core business concepts
+
+| Term | Meaning |
+|---|---|
+| **Booking** | A scheduled request for one or more wash services for a customer's vehicle. |
+| **Booking service** | One selected wash service inside a booking, with its applicable price and quantity. |
+| **Time slot** | The start and end time requested for a booking. |
+| **Service bay** | A physical washing position in the shop. |
+| **Availability** | Whether a requested time can be confirmed considering shop hours, exceptions and occupied bays. |
+| **Service execution** | The operational work performed for one booking service line. |
+| **Operator assignment** | The responsibility of an operator for carrying out a service execution. |
+| **Payment attempt** | A payment record associated with one booking and its review status. |
+| **Rating** | Optional customer feedback for one completed service execution. |
+| **Loyalty ledger** | The history of loyalty-point movements; it is the source of truth for the balance. |
 
 ---
 
-## 2. Identified Bounded Contexts
-
-These contexts come straight from the current functional requirements — each
-one covers a part of the system where the vocabulary and responsibilities
-are different enough from the rest that it deserves its own boundary.
+## 2. Bounded Contexts
 
 ### Bounded Context: Identity & Access
 
 | Field | Value |
 |---|---|
-| **Name** | IdentityAccess |
-| **Responsibility** | Registration, login, password recovery/change, and role-based access. |
-| **Type** | Generic |
+| **Name** | Identity & Access |
+| **Responsibility** | User identity, authentication, roles, permissions, sessions, password recovery and user preferences. |
+| **Type** | Generic / supporting |
 
-Nothing here is specific to washing cars — it's the same authentication
-problem any platform has. That's exactly why it's classified as Generic
-instead of Core.
+This context defines who can use the system and what they are allowed to do.
 
-**Context-specific terms (Ubiquitous Language):**
+The current role vocabulary is:
 
-| Term | Meaning in this context |
+- Customer
+- Operator
+- Administrator
+
+Theme and language preferences belong here as user preferences. They are not part of Booking.
+
+---
+
+### Bounded Context: Vehicle Management
+
+| Field | Value |
 |---|---|
-| **User** | Anyone with an account on the platform. |
-| **Role** | Customer, Operator, or Administrator — nothing else. |
-| **Authentication** | Confirming a user is who they say they are before letting them in. |
-| **Password reset token** | A single-use, time-limited token issued to recover a forgotten password. |
+| **Name** | Vehicle Management |
+| **Responsibility** | Customer-owned vehicles and vehicle types used to determine applicable service prices. |
+| **Type** | Supporting |
 
-**Requirements covered:** RF-001, RF-002, RF-003, RF-004, RF-004b.
+A vehicle belongs to one customer. A customer can register more than one vehicle and can select one of their vehicles when creating a booking.
+
+Vehicle type is also used by the service catalog to determine the applicable price.
+
+---
+
+### Bounded Context: Service Catalog
+
+| Field | Value |
+|---|---|
+| **Name** | Service Catalog |
+| **Responsibility** | Wash services, categories, prices by vehicle type and service duration. |
+| **Type** | Supporting |
+
+A **Wash Service** describes what the shop offers.
+
+A **Service Price** represents the tariff for a particular service and vehicle type during a validity period.
+
+The catalog is separate from a booking because changing a current catalog price must not rewrite the price that an existing booking was made with.
 
 ---
 
@@ -79,78 +90,21 @@ instead of Core.
 | Field | Value |
 |---|---|
 | **Name** | Booking |
-| **Responsibility** | Owns a booking from creation through availability checks, changes, cancellation, and completion. |
+| **Responsibility** | Shop availability, booking creation and lifecycle, selected services, time slots, service bays and booking changes. |
 | **Type** | **Core** |
 
-This is the reason the platform exists. Everything else in this map either
-feeds into a booking or reacts to one.
+Booking is the central business process.
 
-**Context-specific terms (Ubiquitous Language):**
+A booking:
 
-| Term | Meaning in this context |
-|---|---|
-| **Booking / Reserva** | A scheduled wash: one vehicle, one service, one date/time. |
-| **Booking status** | Where the booking is in its lifecycle — see section 5. |
-| **Time slot** | The date and time reserved. |
-| **Wash bay** | The physical bay assigned to a booking once confirmed; two bookings can share a time slot as long as they're in different bays. |
-| **Availability** | Whether that slot can actually be booked given the current rules. |
-| **Cancellation** | Backing out of a booking before the service starts, when the rules allow it. |
+- belongs to a customer's vehicle;
+- contains one or more selected services;
+- has a scheduled start and end;
+- can be assigned a service bay when confirmed;
+- has its own lifecycle;
+- can include a promotion and/or loyalty-point redemption when the applicable rules allow it.
 
-**Requirements covered:** RF-005, RF-006, RF-007, RF-012b.
-
----
-
-### Bounded Context: Vehicle Management
-
-| Field | Value |
-|---|---|
-| **Name** | VehicleManagement |
-| **Responsibility** | Keeps each customer's registered vehicles so one can be picked when booking. |
-| **Type** | Supporting |
-
-A vehicle belongs to a customer and matters *for* a booking, but it isn't
-the booking itself — a customer can register a vehicle without ever booking
-anything with it.
-
-**Context-specific terms (Ubiquitous Language):**
-
-| Term | Meaning in this context |
-|---|---|
-| **Vehicle** | A vehicle a customer registered, available to pick when booking. |
-| **Vehicle owner** | The customer the vehicle belongs to. |
-
-> The current requirements just say customers register and use vehicles when
-> booking. The exact fields (plate, brand, type, etc.) get defined in the data
-> model, not here.
-
-**Requirements covered:** RF-005.
-
----
-
-### Bounded Context: Service Catalog
-
-| Field | Value |
-|---|---|
-| **Name** | ServiceCatalog |
-| **Responsibility** | The list of wash services the business offers, with their price and duration. |
-| **Type** | Supporting |
-
-Don't confuse a *service* with a *booking*. The service is what's on the
-menu (Basic Wash, Premium Wash, and whatever else gets added later); the
-booking is a specific customer picking one at a specific time. The catalog
-needs to grow past what exists today without anyone having to touch the
-domain model to do it — so a wash type is its own entity with its own id,
-never a hardcoded list.
-
-**Context-specific terms (Ubiquitous Language):**
-
-| Term | Meaning in this context |
-|---|---|
-| **Wash service** | A type of wash the business offers. |
-| **Duration** | How long the service is expected to take. |
-| **Price** | What the service currently costs. |
-
-**Requirements covered:** RF-005 and the service-selection part of booking.
+The MVP represents one physical shop, so there is no Branch or Zone concept in the domain.
 
 ---
 
@@ -158,37 +112,21 @@ never a hardcoded list.
 
 | Field | Value |
 |---|---|
-| **Name** | OperationsAssignment |
-| **Responsibility** | Operator availability, assigning operators to bookings, tracking the service as it's carried out, and admin reassignment. |
+| **Name** | Operations & Assignment |
+| **Responsibility** | Operator availability, operator assignment, service execution and post-service rating data. |
 | **Type** | **Core** |
 
-A booking on its own doesn't wash anything — someone has to actually be
-assigned to do it, and that person needs a way to say "I started" and "I
-finished." That's what this context is for.
+This context turns a confirmed booking into actual work.
 
-There are three ways an operator ends up assigned:
+A booking can contain several service lines. Each service line can have its own execution record and operator.
 
-1. **Automatically**, based on who's available.
-2. **The customer picks one directly** from whoever's available.
-3. **An administrator assigns or reassigns** one when needed.
+There are three assignment paths:
 
-Worth being honest about a gap here: the current requirements only confirm
-availability (RF-008) as the automatic-assignment rule. Older
-project drafts mentioned things like proximity or workload, but those never
-made it into the current RF-008, so we're not treating them as real rules
-until someone actually writes them down as one.
+1. **Automatic:** the system chooses from available operators.
+2. **Customer selected:** the customer chooses an available operator.
+3. **Administrator assigned/reassigned:** an administrator chooses or changes the operator.
 
-**Context-specific terms (Ubiquitous Language):**
-
-| Term | Meaning in this context |
-|---|---|
-| **Operator** | A user with the Operator role who performs the washes. |
-| **Availability** | The windows of time an operator can work. |
-| **Assignment** | The link between a booking and the operator doing it. |
-| **Assignment status** | Where that operator's task is — see section 5. |
-| **Reassignment** | An administrator swapping out the assigned operator. |
-
-**Requirements covered:** RF-008, RF-009, RF-010, RF-011, RF-012b, RF-022.
+For automatic assignment, operator **availability is required**. The current product documentation says that workload, proximity, specialization and rating are not assignment criteria, while a note in the latest requirements traceability documentation mentions a workload-based tie-break. Because these statements conflict, this domain document does not define a final automatic-selection or tie-break rule.
 
 ---
 
@@ -197,30 +135,39 @@ until someone actually writes them down as one.
 | Field | Value |
 |---|---|
 | **Name** | Payment |
-| **Responsibility** | Tracks payment attempts, uploaded receipts, review status, and history for a booking. |
+| **Responsibility** | Payment attempts, payment methods, shop payment accounts, uploaded receipts, manual review, payment history and loyalty transactions. |
 | **Type** | Supporting |
 
-There is no payment gateway integration — this platform never collects or
-transmits card data at all. The customer scans the shop's QR code for their
-chosen method and pays outside the platform (bank transfer, Nequi,
-Daviplata, or in person for cash), then uploads a receipt as proof. An
-administrator compares the receipt against the booking and approves or
-rejects it.
+The current payment flow is manual.
 
-Cash, Nequi, Daviplata, and bank transfer are the methods the current
-requirements name.
+Supported methods are:
 
-**Context-specific terms (Ubiquitous Language):**
+- Cash
+- Nequi
+- Daviplata
+- Bank transfer
 
-| Term | Meaning in this context |
+Digital methods use the shop's QR/account information and an uploaded receipt. The administrator reviews the reported amount and transaction reference.
+
+The system does not collect or store card data and does not currently depend on an external payment gateway.
+
+The loyalty transaction ledger also belongs to this context. It is the source of truth for loyalty-point balance and redemption validation.
+
+---
+
+### Bounded Context: Promotions & Loyalty
+
+| Field | Value |
 |---|---|
-| **Payment** | A payment attempt tied to one booking. |
-| **Payment account** | The shop's QR code and account details shown to the customer for a given method. |
-| **Payment receipt** | The proof of payment the customer uploads — file, transaction reference, reported amount. |
-| **Payment status** | Where the payment is right now — see section 5. |
-| **Payment history** | Past payments the customer can look back at. |
+| **Name** | Promotions & Loyalty |
+| **Responsibility** | Promotion eligibility, discounts and loyalty-point movements. |
+| **Type** | Supporting |
 
-**Requirements covered:** RF-013, RF-014, RF-015, RF-016.
+Promotions can be public or targeted according to the current requirements and data model.
+
+Loyalty points are represented through a transaction ledger. The `loyalty_points` value kept with the customer is a display copy, not the authoritative balance.
+
+The exact promotion formulas and loyalty earning/redemption rules must follow the current requirements and data model. The domain does not invent additional formulas.
 
 ---
 
@@ -228,22 +175,20 @@ requirements name.
 
 | Field | Value |
 |---|---|
-| **Name** | FeedbackRating |
-| **Responsibility** | Customer ratings and comments after a service is done. |
-| **Type** | Supporting |
+| **Name** | Feedback & Rating |
+| **Responsibility** | Optional customer rating and comment after a service line has been completed. |
+| **Type** | Supporting capability |
 
-Can't rate something that hasn't happened yet — a rating only makes sense
-once the booking reaches `COMPLETED`.
+Rating is a business concept, but it is intentionally tied to service execution.
 
-**Context-specific terms (Ubiquitous Language):**
+The current model allows:
 
-| Term | Meaning in this context |
-|---|---|
-| **Rating** | The customer's score for a completed service. |
-| **Comment** | The written feedback that goes with it. |
-| **Completed service** | The status that unlocks rating. |
+- score from 1 to 5;
+- optional comment;
+- rating timestamp;
+- one rating state per service execution.
 
-**Requirements covered:** RF-012.
+There is no independent `rating` table in the current data model.
 
 ---
 
@@ -252,321 +197,291 @@ once the booking reaches `COMPLETED`.
 | Field | Value |
 |---|---|
 | **Name** | Notification |
-| **Responsibility** | Delivers notifications to users and tracks read/unread. |
-| **Type** | Generic / Supporting |
+| **Responsibility** | User notifications generated from relevant business events. |
+| **Type** | Generic / supporting |
 
-This context reacts — a booking gets confirmed, an operator gets assigned, a
-payment goes through, and Notification tells the right person about it. It
-never owns any of those events itself.
+Notification communicates what happened in other contexts. It does not own the booking, payment or execution decision that caused the notification.
 
-**Context-specific terms (Ubiquitous Language):**
-
-| Term | Meaning in this context |
-|---|---|
-| **Notification** | A message sent to a user because something relevant happened. |
-| **Read / Unread** | Whether the user has seen it yet. |
-
-**Requirements covered:** RF-018.
-
----
-
-### Bounded Context: Promotions & Loyalty
-
-| Field | Value |
-|---|---|
-| **Name** | PromotionsLoyalty |
-| **Responsibility** | Promotions, discounts applied at payment, loyalty points, and redeeming them. |
-| **Type** | Supporting |
-
-This one's in the map because RF-024, RF-025, and RF-026 are real
-requirements right now, not because it's built yet — see the open questions
-in section 9.
-
-**Context-specific terms (Ubiquitous Language):**
-
-| Term | Meaning in this context |
-|---|---|
-| **Promotion** | A discount or benefit with its own validity conditions. |
-| **Discount** | The reduction a promotion applies to an eligible booking/payment. |
-| **Loyalty points** | Points a customer earns under the loyalty rules. |
-| **Redemption** | Spending accumulated points on a benefit. |
-
-**Requirements covered:** RF-024, RF-025, RF-026.
+The delivery channel remains an architectural concern and should not be invented in the domain model.
 
 ---
 
 ### Cross-cutting capabilities
 
-A few requirements don't belong to any single context — they cut across all
-of them:
+Some capabilities use information from several contexts without becoming a new bounded context:
 
-- **Role-based dashboards (RF-017):** what you see depends on your role and
-  whichever context owns that data, not a context of its own.
-- **Theme preference (RF-019)** and **language preference (RF-020):** user
-  settings, not business concepts.
-- **Operational reports (RF-023):** reads data from other contexts, doesn't
-  own any of it.
+- operational reports;
+- role-based presentation;
+- audit;
+- user interface preferences.
+
+Audit is a cross-cutting capability associated with Identity & Access in the current architecture. It is not a separate business context or microservice.
 
 ---
 
-## 3. Context Map
+## 3. Context relationships
 
-Arrows here describe domain dependency — who needs to know about whom — not
-a final REST/messaging/microservice design.
+The relationships below describe business dependencies, not physical database relationships.
 
 ```text
-                         ┌──────────────────────┐
-                         │   Identity & Access  │
-                         │       Generic        │
-                         └──────────┬───────────┘
-                                    │
-                         authentication / roles
-                                    │
-        ┌───────────────────────────┼───────────────────────────┐
-        │                           │                           │
-        ▼                           ▼                           ▼
-┌─────────────────┐       ┌──────────────────┐       ┌────────────────────┐
-│ Vehicle         │──────▶│     Booking      │◀─────▶│ Operations &       │
-│ Management      │       │      Core        │       │ Assignment Core    │
-│ Supporting      │       └───────┬──────────┘       └─────────┬──────────┘
-└─────────────────┘               │                            │
-                                  │                            │
-                    ┌─────────────┴─────────────┐              │
-                    │                           │              │
-                    ▼                           ▼              ▼
-             ┌────────────┐              ┌────────────┐ ┌────────────┐
-             │  Service   │              │  Payment   │ │Notification│
-             │  Catalog   │              │ Supporting │ │  Generic   │
-             │ Supporting │              └────────────┘ │ /Supporting│
-             └────────────┘                             └────────────┘
+                     Identity & Access
+                            │
+                  identity / permissions
+                            │
+          ┌─────────────────┼──────────────────┐
+          ▼                 ▼                  ▼
+ Vehicle Management ────▶ Booking ◀──── Service Catalog
+                              │
+                              │ confirmed booking
+                              ▼
+                    Operations & Assignment
+                         │            │
+                         │            └────▶ Feedback & Rating
+                         │
+                         ▼
+                     Notification
 
-                 Booking ───────────────▶ Feedback & Rating
-                 (completed service)
-
-                 Booking / Payment ────▶ Promotions & Loyalty
-
-       Relevant business events from several contexts ───▶ Notification
+ Booking ───────────────────────────────▶ Payment
+ Payment ───────────────────────────────▶ Promotions & Loyalty
+ Booking ───────────────────────────────▶ Promotions & Loyalty
+ Relevant business events ──────────────▶ Notification
 ```
 
-### Relationships table
+### Relationship table
 
-| Context A | Relationship | Context B | Business meaning |
+| Context | Relationship | Context | Meaning |
 |---|---|---|---|
-| Booking | depends on | Vehicle Management | A booking references a vehicle the customer registered. |
-| Booking | depends on | Service Catalog | A booking picks a service from the catalog. |
-| Booking | collaborates with | Operations & Assignment | A confirmed booking needs an operator and a way to track execution. |
-| Booking | enables | Payment | A payment always belongs to a booking. |
-| Booking | enables | Feedback & Rating | Completing a service unlocks rating it. |
-| Booking / Payment | collaborates with | Promotions & Loyalty | Promotions and loyalty rules can affect a payment when eligible. |
-| Identity & Access | provides identity information to | All contexts | Every protected operation checks who you are and what role you have. |
-| Relevant contexts | publish business information/events to | Notification | Notifications tell users what happened without owning the event itself. |
+| Vehicle Management | provides | Booking | Booking uses a vehicle that belongs to the customer. |
+| Service Catalog | provides | Booking | Booking selects one or more catalog services and their applicable prices. |
+| Booking | collaborates with | Operations & Assignment | Confirmed bookings become service work that must be assigned and executed. |
+| Booking | enables | Payment | A payment attempt belongs to a booking. |
+| Operations & Assignment | enables | Feedback & Rating | Rating is available after the related service execution is completed. |
+| Booking / Payment | collaborates with | Promotions & Loyalty | Promotions and loyalty rules can affect the booking/payment amount when applicable. |
+| Identity & Access | provides identity | All protected contexts | Operations depend on the user's identity and role. |
+| Relevant contexts | publish business information | Notification | Notification informs users without owning the underlying business state. |
 
-### Important relationship rules
+### Important boundary rules
 
-1. Booking owns the booking's lifecycle — Operations doesn't touch
-   `BookingStatus`, it manages assignment and execution status instead.
-2. An assignment isn't a booking. The booking is the customer's request; the
-   assignment is who's responsible for carrying it out.
-3. A service isn't a booking either — the catalog defines what's offered,
-   Booking represents one specific occurrence of it actually happening.
-4. Payment doesn't own the booking, just the payment attempt tied to it.
-5. Notification doesn't own whatever triggered it — it just tells people.
-6. There is no external payment gateway to model — Payment owns the whole
-   attempt-to-review lifecycle itself, end to end.
+1. **Booking owns booking lifecycle.** Operations manages execution; it does not redefine booking concepts.
+2. **A booking is not an execution.** A booking represents the scheduled customer request; an execution represents work performed for one selected service.
+3. **A booking can contain multiple service lines.** Each line can have its own execution and rating.
+4. **A service is not a booking.** Catalog services are reusable offerings; booking lines are concrete selections made for a booking.
+5. **Payment does not own the booking.** It records and reviews the financial attempt associated with it.
+6. **Notification does not own business changes.** It communicates changes decided elsewhere.
+7. **The domain has one shop in the MVP.** Branch and Zone are not domain concepts.
+8. **Automatic operator assignment uses availability only.** Other criteria require an explicit future requirement.
+9. **Loyalty validation uses the transaction ledger.** The customer's displayed points value is not the source of truth.
 
 ---
 
-## 4. Core Domain, Supporting, and Generic
+## 4. Core, supporting and generic contexts
 
-| Bounded Context | Type | Justification |
+| Bounded Context | Type | Reason |
 |---|---|---|
-| **Booking** | **Core** | The actual transaction the business runs on. |
-| **Operations & Assignment** | **Core** | Getting an operator to the booking is just as essential as the booking existing in the first place. |
-| **Identity & Access** | Generic | Standard auth — nothing about it is specific to car washes. |
-| **Vehicle Management** | Supporting | Needed for a booking, but not the transaction itself. |
-| **Service Catalog** | Supporting | Reference data — what's on offer and at what price. |
-| **Payment** | Supporting | Critical for traceability, but a manual QR-and-receipt review, not a real-time transaction engine. |
-| **Feedback & Rating** | Supporting | Adds value after the fact, doesn't drive the transaction. |
-| **Notification** | Generic / Supporting | Communicates what other contexts already decided. |
-| **Promotions & Loyalty** | Supporting | Retention feature, not the core exchange. |
+| **Booking** | **Core** | The central customer transaction: availability, scheduling and booking lifecycle. |
+| **Operations & Assignment** | **Core** | Converts confirmed bookings into real service work and tracks execution. |
+| **Identity & Access** | Generic / supporting | Required across the system but not specific to vehicle washing. |
+| **Vehicle Management** | Supporting | Enables booking but is not the central transaction. |
+| **Service Catalog** | Supporting | Defines what can be booked and at what applicable price. |
+| **Payment** | Supporting | Handles payment attempts and verification for bookings. |
+| **Promotions & Loyalty** | Supporting | Adds discounts and retention capabilities. |
+| **Feedback & Rating** | Supporting | Captures post-service customer feedback. |
+| **Notification** | Generic / supporting | Communicates business events generated by other contexts. |
 
 ---
 
 ## 5. Domain lifecycle and status vocabularies
 
-A booking's lifecycle and an assignment's lifecycle aren't the same thing,
-and we're keeping them as two separate status fields on purpose instead of
-one shared "status" that means different things depending on who's reading
-it.
+The project keeps separate lifecycles for booking, execution and payment. They must not be collapsed into one generic status.
 
-### BookingStatus
+### Booking status
 
-```text
-PENDING ─────▶ CONFIRMED ─────▶ IN_PROGRESS ─────▶ COMPLETED
-   │                 │
-   └─────────────────┴──────────────▶ CANCELLED
-```
+The current data model uses:
 
-- **PENDING:** just created, not confirmed yet.
-- **CONFIRMED:** validated and scheduled.
-- **IN_PROGRESS:** the wash has started.
-- **COMPLETED:** done.
-- **CANCELLED:** called off under the applicable rules.
+| Status | Meaning |
+|---|---|
+| `AGENDADA` | Booking exists and is scheduled but is not yet confirmed for execution. |
+| `CONFIRMADA` | Booking has been validated and confirmed. |
+| `EN_EJECUCION` | Work for the booking is underway. |
+| `FINALIZADA` | The booking has finished. |
+| `CANCELLED` | Booking was cancelled. |
+| `NO_ASISTIO` | The customer did not attend the scheduled service. |
 
-### AssignmentStatus
+The exact transition guards must follow the current requirements and booking workflow.
 
-```text
-PENDING ─────▶ IN_PROGRESS ─────▶ COMPLETED
-   │
-   └──────────▶ CANCELLED
-```
+### Service execution status
 
-An assignment can also get replaced through reassignment — swapping the
-operator doesn't cancel the customer's booking.
+Each selected service line has its own execution status:
 
-### Domain distinction
+| Status | Meaning |
+|---|---|
+| `PENDIENTE` | The service line has not started. |
+| `EN_PROCESO` | The operator is currently performing the service. |
+| `PAUSADA` | Execution has been temporarily paused. |
+| `FINALIZADA` | The service line has been completed. |
+| `CON_NOVEDAD` | The execution ended or was marked with an operational issue. |
 
-| Concept | Represents | Main owner |
-|---|---|---|
-| **BookingStatus** | The customer's reservation/service lifecycle | Booking |
-| **AssignmentStatus** | The operator's assigned task | Operations & Assignment |
-| **PaymentStatus** | The financial transaction | Payment |
+### Payment status
 
-The exact transition rules and guards belong in `entities-and-rules.md`.
+| Status | Meaning |
+|---|---|
+| `PENDING` | Payment attempt exists but has not entered review. |
+| `IN_REVIEW` | Administrator is reviewing the payment. |
+| `APPROVED` | Payment was approved. |
+| `REJECTED` | Payment was rejected. |
+| `REFUNDED` | An approved payment was later refunded. |
+
+### Why the lifecycles stay separate
+
+| Concept | Represents |
+|---|---|
+| Booking status | Customer's scheduled wash lifecycle |
+| Execution status | Operational work for one service line |
+| Payment status | Financial verification lifecycle |
+
+A change in one lifecycle does not automatically mean that every other lifecycle has the same status.
 
 ---
 
-## 6. Key domain rules derived from current requirements
+## 6. Key domain rules
 
-1. A customer has to be authenticated to do anything that requires being one.
-2. A booking always identifies a customer, a vehicle, a wash service, and a scheduled date/time.
-3. The requested time slot gets validated before the booking is confirmed.
-4. A customer can only modify or cancel a booking when the rules allow it — mainly, before the service starts.
-5. Automatic assignment goes by operator availability (RF-008).
-6. A customer can pick an operator from whoever's available (RF-010).
-7. An administrator can assign or reassign an operator (RF-009).
-8. An operator only sees and updates the bookings assigned to them, nothing else.
-9. A rating can only happen after the service is completed.
-10. Every payment belongs to exactly one booking.
-11. No card data is ever collected or stored on our side — payment is a manual QR transfer verified against an uploaded receipt, reviewed by an administrator.
-12. Customers can pull up their payment history.
-13. Promotions only apply when their validity and eligibility conditions hold.
-14. Loyalty points only get earned or redeemed under the defined loyalty rules.
-15. A notification always has a recipient and a read/unread state.
-16. What an admin or operator can do depends on their role.
-17. Operator availability lives in the operational domain and feeds directly into whether they can be assigned.
-18. Theme and language are user preferences — they don't touch the booking domain at all.
-19. Reports read from the business contexts; they don't own any of the concepts they report on.
+1. A protected operation requires an authenticated user with the required role.
+2. A customer can only use vehicles that belong to that customer.
+3. A booking must identify a customer vehicle and a valid scheduled time.
+4. A booking contains one or more selected service lines.
+5. Each selected service line stores the applicable service-price reference used when the booking was created, so later catalog price changes do not rewrite the historical booking price.
+6. A booking's scheduled end must be later than its scheduled start.
+7. A booking can only use a service bay when the requested time is compatible with shop availability and existing active bookings.
+8. Two active bookings cannot occupy the same service bay during overlapping times.
+9. A customer can modify or cancel a booking only while the current requirements allow it; once execution has started, cancellation is blocked.
+10. Automatic operator assignment uses operator availability only.
+11. Customer-selected assignment must use an operator who is available for the requested work.
+12. Administrator assignment/reassignment must not assign an unavailable operator.
+13. Each service execution belongs to one booking service line.
+14. An operator cannot execute two overlapping services at the same time.
+15. Only the operator assigned to a service execution can start or complete that execution.
+16. A service line can be rated only after its execution is completed.
+17. A rating is optional and has a score from 1 to 5.
+18. A rating comment cannot exist without a rating score.
+19. Payment attempts belong to one booking.
+20. A digital payment receipt includes a reported amount and transaction reference and is reviewed by an administrator.
+21. The reported receipt amount is compared with the amount due; a mismatch is a review condition, not an automatic payment approval.
+22. A transaction reference already used by another approved payment cannot be reused.
+23. The system does not collect or store card data.
+24. Cash does not require a digital receipt; the administrator confirms the cash payment directly.
+25. Promotions apply only when their validity and eligibility rules are satisfied.
+26. Loyalty redemption is validated against the loyalty transaction ledger, not against the customer's display copy.
+27. A notification has a recipient and a read/unread state.
+28. Roles limit the operations that a user can perform.
+29. Reports consume information from the business contexts; they do not become owners of the concepts they report.
 
 ---
 
 ## 7. Modeling decisions
 
-| Decision | Alternative considered | Reason |
+| Decision | Alternative | Reason |
 |---|---|---|
-| Keep **Booking** as the central Core Context | Treat booking as a secondary function of operations | Everything in the current requirements revolves around requesting, validating, changing, cancelling, and completing a reservation. |
-| Split **BookingStatus** from **AssignmentStatus** | One shared status field | A reservation and an operator's task don't move through the same states for the same reasons. |
-| Keep **Service** in its own catalog | Hardcode service types as an enum | The catalog needs to grow without anyone touching the domain model to add a wash type. |
-| Keep **Vehicle Management** separate from Booking | Treat vehicle as part of the booking itself | A customer manages vehicles on their own, independent of whether they're booking anything right now. |
-| Drop **Branch** (and the earlier **Zone** grouping) as a domain concept | Model a multi-location business | The approved MVP scope is a single shop location — RF-008 resolves availability directly against operator schedules, with no location layer above it, and `01-context/glossary.md` doesn't define either term. Reintroducing multi-location later wouldn't require touching Booking's internal shape, since it never depended on a location for anything but a reference. |
-| Keep **Payment** separate from Booking | Store payment details inside the booking | Payment has its own lifecycle, history, and review workflow — bundling it in would make Booking own things it shouldn't. |
-| Keep **Feedback & Rating** separate | Put rating rules directly into Booking | Rating is a separate, post-service capability with its own rule (can't rate before completion). |
-| Treat **Notification** as generic/supporting | Let Notification own business changes | It communicates what happened elsewhere; it shouldn't decide what happens. |
-| Keep **Promotions & Loyalty** in the map | Leave it out since it's not built yet | RF-024 through RF-026 are current requirements — leaving it out would make it too easy to forget before delivery. |
-| Don't fix microservice boundaries here | One microservice per Bounded Context | A Bounded Context is a domain boundary, not a deployment decision — that belongs to architecture. |
-| Don't model SQL Server tables here | Model persistence directly in the domain map | Keeping this independent of the database is the whole point of a domain map. |
-| Don't assume proximity, workload, specialization, or rating for automatic assignment | Copy the criteria from older documentation | RF-008 only confirms availability — the rest was never carried over from the old drafts. |
-| Use the current role vocabulary (Customer, Operator, Administrator) | Bring back roles from the old database scripts (Supervisor, Cajero) | Those roles were dropped; the current context only defines three. |
+| Keep Booking as a Core context | Treat operations as the central transaction | The customer transaction starts with scheduling and booking. |
+| Allow one booking to contain multiple service lines | Force one service per booking | Current requirements and `booking.booking_service` allow one or more services in a single booking. |
+| Keep service prices separate from services | Store one mutable price directly on Service | Prices depend on vehicle type and validity period and must preserve historical booking amounts. |
+| Keep service execution per booking line | Track one execution for the whole booking | Different service lines can have their own operator, timing and rating. |
+| Keep rating tied to service execution | Create an independent Rating table | The current data model stores rating fields directly on `execution.service_execution`. |
+| Keep Payment separate from Booking | Store payment lifecycle inside Booking | Payment has its own attempts, review states and history. |
+| Keep the loyalty ledger in the Payment context | Treat customer.loyalty_points as the source of truth | The ledger is the authoritative record of point movements; the customer field is only a display copy. |
+| Keep one establishment in the MVP | Introduce Branch and Zone | The current scope is a single shop. |
+| Require operator availability for automatic assignment | Define a workload, proximity, specialization or rating rule here | The current product and requirements documents are not fully aligned on the automatic-selection tie-break, so the domain should not invent a final criterion. |
+| Keep domain boundaries independent from deployment boundaries | Force one microservice per bounded context | Microservice decomposition is an architecture decision, not a DDD rule. |
+| Keep persistence details outside the domain model | Model SQL Server tables as domain entities | The domain should describe business concepts; the data model describes physical persistence. |
 
 ---
 
 ## 8. Domain events — initial catalog
 
-These are the main event candidates from the business flow described above.
-They're all past tense, since an event is something that already happened.
+The following events describe meaningful changes in the business domain. Their transport, serialization and infrastructure belong to architecture/API documentation.
 
-| Event | Originating context | Trigger / meaning |
+| Event | Origin context | Meaning |
 |---|---|---|
-| `UserRegistered` | Identity & Access | A customer's account was created. |
-| `UserAuthenticated` | Identity & Access | A user logged in successfully. |
+| `UserRegistered` | Identity & Access | A new user account was created. |
+| `UserAuthenticated` | Identity & Access | A user successfully authenticated. |
 | `BookingCreated` | Booking | A booking was created. |
-| `BookingConfirmed` | Booking | A booking passed validation and is confirmed. |
-| `BookingModified` | Booking | An allowed change to a booking went through. |
-| `BookingCancelled` | Booking | A booking was cancelled under the rules. |
-| `OperatorAssigned` | Operations & Assignment | An operator got assigned to a booking. |
-| `OperatorReassigned` | Operations & Assignment | The assigned operator was swapped out. |
-| `ServiceStarted` | Operations & Assignment | The operator started the wash. |
-| `ServiceCompleted` | Operations & Assignment | The wash is done. |
-| `PaymentInitiated` | Payment | A payment attempt started. |
-| `PaymentConfirmed` | Payment | An administrator approved the payment after reviewing the uploaded receipt. |
-| `PaymentRejected` | Payment | The payment was rejected on review, or the attempt failed. |
-| `RatingSubmitted` | Feedback & Rating | A customer left a rating/comment after completion. |
-| `NotificationCreated` | Notification | A notification went out to someone. |
-| `PromotionApplied` | Promotions & Loyalty | An eligible promotion got applied. |
-| `LoyaltyPointsEarned` | Promotions & Loyalty | Loyalty points were credited. |
-| `LoyaltyPointsRedeemed` | Promotions & Loyalty | Loyalty points were spent. |
+| `BookingConfirmed` | Booking | A booking passed the required availability/confirmation checks. |
+| `BookingModified` | Booking | An allowed booking change was completed. |
+| `BookingCancelled` | Booking | A booking was cancelled. |
+| `OperatorAssigned` | Operations & Assignment | An operator was assigned to service work. |
+| `OperatorReassigned` | Operations & Assignment | Responsibility for service work changed to another operator. |
+| `ServiceStarted` | Operations & Assignment | A service execution started. |
+| `ServiceCompleted` | Operations & Assignment | A service execution was completed. |
+| `PaymentInitiated` | Payment | A payment attempt was registered. |
+| `PaymentConfirmed` | Payment | An administrator approved a payment. |
+| `PaymentRejected` | Payment | An administrator rejected a payment. |
+| `RatingSubmitted` | Feedback & Rating | A customer submitted feedback for a completed service line. |
+| `PromotionApplied` | Promotions & Loyalty | An eligible promotion was applied. |
+| `LoyaltyPointsEarned` | Promotions & Loyalty | A loyalty-point movement credited points. |
+| `LoyaltyPointsRedeemed` | Promotions & Loyalty | A loyalty-point movement deducted points. |
+| `NotificationCreated` | Notification | A notification record was created for a user. |
 
-Full payloads, who consumes each event, and idempotency go in
-`02-domain/domain-events.md`, with the rest (integration contracts) in
-architecture and API docs.
+Some loyalty and promotion events are dependent on the corresponding product rules being finalized. They must not be presented as implemented functionality if the related requirement is still pending.
 
 ---
 
-## 9. Open questions and boundaries
+## 9. Boundaries and pending decisions
 
-These are left for later on purpose, instead of guessing at an answer now.
+The domain model intentionally does not decide implementation details that belong elsewhere.
 
-| # | Question | Where it gets resolved |
+| Topic | Current position | Owner |
 |---|---|---|
-| 1 | Does Vehicle Management get its own microservice, or fold into a bigger one? | `05-architecture` / `09-microservices` |
-| 2 | Exact SQL Server tables, keys, indexes, constraints. | `06-data` |
-| 3 | Exact API endpoints, DTOs, integration contracts. | `07-api` |
-| 4 | Assignment algorithm beyond operator availability. | Requirements / domain rules / architecture |
-| 5 | Promotion eligibility rules, discount math, loyalty point formulas. | `04-requirements` / `02-domain/entities-and-rules.md` |
-| 6 | How notifications actually get delivered (channels, mechanism). | `05-architecture` / `09-microservices` |
-| 7 | Exact report calculations. | `04-requirements` / reporting docs |
+| Microservice decomposition | Six services are defined by the current architecture decision | `05-architecture` / ADR-009 |
+| Physical database | One SQL Server database with nine owned schemas | `05-architecture` / `06-data` |
+| Cross-service foreign keys | Not used across service ownership boundaries | `06-data` |
+| API endpoints and DTOs | Not defined here | `07-api` |
+| Exact event transport and broker configuration | Not defined here | `05-architecture` |
+| Notification delivery channels | Not defined here | `05-architecture` / requirements |
+| Promotion formulas | Must follow current requirements; no additional formula is invented here | `04-requirements` |
+| Loyalty earning/redemption formula | Must follow current requirements and data model | `04-requirements` / `06-data` |
+| Payment-before-service policy | Current product backlog identifies it as a decision before release | Product/requirements |
 
 ---
 
 ## 10. Consistency and traceability
 
-This map needs to stay in sync with the rest of the documentation — if a
-requirement changes in a way that touches a responsibility, an actor, a rule,
-or a concept here, this file gets updated first, before architecture, data,
-API, UML, or microservice docs catch up to it.
+### Context alignment
 
-### Current context alignment
+The current domain model uses:
 
-- **Actors:** Customer, Operator, Administrator.
-- **Core process:** booking and delivering a vehicle wash.
-- **Main business objects:** User, Vehicle, Booking, Wash Service,
-  Operator, Assignment, Payment, Rating, Promotion, Loyalty Points, Notification.
-- **Payment verification:** manual QR transfer with an uploaded receipt, reviewed by an administrator — no external payment gateway.
-- **Persistence technology:** SQL Server, documented outside the domain model.
+- Customer, Operator and Administrator as roles.
+- One physical shop for the MVP.
+- Booking as the central business process.
+- Multiple service lines per booking.
+- Operator availability is required for automatic assignment; the final tie-break rule remains to be resolved from the conflicting requirements notes.
+- Manual QR/receipt payment verification.
+- Rating per completed service line.
+- Loyalty ledger as the source of truth.
+- No Branch or Zone domain concept.
 
 ### Requirements alignment
 
-| Requirement area | Domain Context |
+| Requirement area | Domain context |
 |---|---|
-| RF-001 to RF-004b — account access and security | Identity & Access |
-| RF-005 to RF-007 — booking | Booking + Vehicle Management + Service Catalog |
-| RF-008 to RF-012b — operator assignment and service execution | Operations & Assignment |
-| RF-013 to RF-016 — payments | Payment |
-| RF-017 — role dashboards | Cross-cutting presentation capability |
-| RF-018 — notifications | Notification |
-| RF-019 to RF-020 — theme/language | Cross-cutting user preferences |
-| RF-021 to RF-022 — operator schedules and availability | Operations & Assignment |
-| RF-023 — operational reports | Cross-cutting reporting capability |
-| RF-024 to RF-026 — promotions and loyalty | Promotions & Loyalty |
+| RF-001 to RF-004b | Identity & Access |
+| RF-005 to RF-007 | Booking + Vehicle Management + Service Catalog |
+| RF-008 to RF-012b | Operations & Assignment |
+| RF-013 to RF-016 | Payment |
+| RF-017 | Presentation / UI capability |
+| RF-018 | Notification |
+| RF-019 to RF-020 | Identity & Access / user preferences |
+| RF-021 to RF-022 | Booking / Operations & Assignment |
+| RF-023 | Cross-context reporting |
+| RF-024 to RF-026 | Promotions & Loyalty |
 
-### Relationship with the rest of the documentation
+### Relationship with other documentation
 
-- `01-context/` — project context, actors, scope, terminology.
-- `04-requirements/` — functional and non-functional requirements.
-- `02-domain/entities-and-rules.md` — entities, aggregates, value objects, invariants, and domain services built from this map.
-- `02-domain/domain-events.md` — full detail on the events listed here.
-- `05-architecture/` — how these boundaries actually get implemented.
-- `06-data/` — the SQL Server persistence model.
-- `07-api/` — external and inter-service contracts.
-- `08-uml/` — diagrams using this same vocabulary.
-- `09-microservices/` — final service decomposition, once decided.
+- `01-context/` provides scope and project vocabulary.
+- `03-product/` provides product vision, backlog and user stories.
+- `04-requirements/` provides the functional and non-functional requirements.
+- `05-architecture/` maps the domain boundaries to services and technical architecture.
+- `06-data/` maps the domain concepts to SQL Server schemas and tables.
+- `07-api/` defines API contracts.
+- `08-uml/` should use the same domain vocabulary.
+- `09-microservices/` describes the implementation of the service boundaries.
+
+If a later document changes a business rule or domain concept, this folder must be reviewed before allowing the inconsistency to spread to architecture and data documentation.

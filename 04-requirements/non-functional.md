@@ -67,7 +67,7 @@
 | 4.1 | Private endpoints require a valid JWT in the `Authorization: Bearer` header | A request without a token returns 401 |
 | 4.2 | JWT tokens expire after 1 hour | An expired token returns 401 |
 | 4.3 | Passwords are stored hashed with BCrypt, never in plain text | Database inspection |
-| 4.4 | Accounts lock temporarily after repeated failed login attempts (RF-004b) | Manual test |
+| 4.4 | An account locks for 15 minutes after 5 failed login attempts within 15 minutes (RF-004b) | Unit test `LoginLockoutTest` + manual test |
 | 4.5 | Each role (Administrator, Operator, Customer) can only reach its own endpoints | A cross-role request returns 403 |
 | 4.6 | No card data is ever collected or stored by this system — digital payments are manual QR transfers verified against an uploaded receipt, and cash is confirmed directly by the Administrator (RF-013 to RF-016) | Code and schema review |
 | 4.7 | Credentials and API keys live in environment variables, never in the repository | Code review before each PR |

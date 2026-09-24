@@ -1,127 +1,150 @@
-# Entities, Value Objects, and Business Rules
+# Entities, Value Objects, Aggregates, and Business Rules
 
-> Express car wash — this document translates the domain knowledge from
-> `domain-map.md` into the concrete building blocks of the DDD tactical
-> model: entities, value objects, aggregates, and the business rules that
-> hold them together.
+This document translates the concepts from `domain-map.md` into the tactical domain model.
 
-> **Stack note:** the code examples below are written in plain Java, with no
-> Spring or JPA annotations. That's on purpose — under the hexagonal
-> architecture this project follows (`05-architecture/hexagonal-architecture.md`),
-> the domain layer can't depend on a framework. Persistence mapping (JPA
-> entities, repositories) lives in the infrastructure layer and is covered in
-> `06-data`, not here.
+The examples are intentionally conceptual. The domain model does not prescribe SQL Server table names, framework annotations or deployment details. Those concerns belong to `05-architecture` and `06-data`.
 
 ---
 
-## Tactical DDD concepts
+## 1. Tactical DDD concepts
 
 ### Entity
 
-An **Entity** is an object defined by its identity, not its attributes. Two
-entities are equal if they have the same id, even if everything else about
-them differs.
+An **Entity** is a domain object whose identity distinguishes it from other objects of the same kind.
 
-```
-✓ Entity: Booking — two bookings made at the exact same time, for the
-  same service, are still two different bookings, distinguished
-  by their id.
-✓ Entity: User — changes email, password, even role over time, but stays
-  the same user.
-✗ Not an entity: Money — $20,000 COP is $20,000 COP, it doesn't matter
-  which "instance" of it you're holding.
-```
+Examples:
 
-### Value Object (VO)
+- User
+- Customer Vehicle
+- Booking
+- Booking Service
+- Service
+- Operator
+- Service Execution
+- Payment
+- Promotion
+- Notification
 
-A **Value Object** is defined by its attributes; it has no identity of its
-own, and it's immutable — if something changes, it's a new VO, not the same
-one mutated.
+Two bookings can have the same customer, vehicle, services and time and still be different bookings because they have different identities.
 
-```
-✓ Value Object: Money (20000, COP)
-✓ Value Object: TimeSlot (2026-09-10, 14:00)
-```
+### Value Object
+
+A **Value Object** is defined by its values rather than by an independent identity.
+
+Examples:
+
+- Money
+- TimeSlot
+- Date range
+- Payment amount
+
+Value objects should be treated as immutable: changing their value means creating a new value.
 
 ### Aggregate
 
-An **Aggregate** is a cluster of entities and VOs treated as a single unit,
-with an **Aggregate Root** as the only entry point — nothing outside the
-aggregate touches an internal object directly, it goes through the root.
+An **Aggregate** groups domain objects that must remain consistent together and has one aggregate root.
 
-```
-Booking (Aggregate Root)
-  ├── scheduledAt: TimeSlot (Value Object)
-  └── priceAtBooking: Money (Value Object)
-```
+The most important aggregate in this domain is `Booking`, which contains the booking's selected service lines and booking-level rules.
 
-**Golden rule:** a transaction never crosses aggregate boundaries. If an
-operation needs to change two aggregates at once (say, a `Booking` and an
-`Assignment`), it happens through a domain event, not a shared transaction —
-see `domain-events.md`.
+A service execution is managed independently because it belongs to one booking line and has its own operational lifecycle.
 
-### Business Rules
+### Business Rule
 
-**Business Rules** (invariants) are constraints the domain must always
-satisfy. They live in the Aggregate Root and get checked on every operation
-that could break them — never left to whoever happens to call the code
-correctly.
+A business rule is a condition that must be true for the domain to remain valid.
+
+Rules should be expressed independently of a particular database or UI implementation.
 
 ---
 
-## System entities
+## 2. Domain entities
 
 ### Entity: User
 
 **Context:** Identity & Access
 
-**Description:** Anyone with an account on the platform — customer,
-operator, or administrator.
+A user is an account that can act as a Customer, Operator or Administrator according to the roles assigned to the account.
 
-**Attributes:**
+Important concepts:
 
-| Attribute | Type | Description | Required | Rules |
-|---|---|---|---|---|
-| id | UUID | Identity | Yes | Auto-generated |
-| name | String | | Yes | |
-| email | String | | Yes | Unique across the platform |
-| passwordHash | String | | Yes | Never the raw password — INV-013 |
-| role | Role (enum) | `CUSTOMER`, `OPERATOR`, `ADMINISTRATOR` | Yes | Set once at registration, immutable afterward |
-| createdAt | DateTime | | Yes | Immutable |
+- identity;
+- credentials;
+- roles and permissions;
+- password recovery;
+- sessions;
+- user preferences.
 
-**Invariants:**
+**Rules**
 
-```
-INV-013: Passwords are never stored in plain text
-  - Rule: only passwordHash exists on this entity
-  - Violation: a raw password field would be a data breach waiting to happen
-  - Implementation: enforced by never adding such a field, checked in code review
-```
+- Passwords are never stored as plain text.
+- A user can only perform actions allowed by their assigned role.
+- Authentication and authorization are separate concerns: authentication establishes identity, while authorization checks permissions.
 
-**Code example:**
+---
 
-```java
-public final class User {
+### Entity: Customer Vehicle
 
-    private final UserId id;
-    private String name;
-    private final Email email;
-    private String passwordHash;
-    private final Role role;
+**Context:** Vehicle Management
 
-    private User(UserId id, String name, Email email, String passwordHash, Role role) {
-        this.id = id;
-        this.name = name;
-        this.email = email;
-        this.passwordHash = passwordHash;
-        this.role = role;
-    }
+A customer vehicle is a vehicle registered by a customer and available for selection in a booking.
 
-    public static User register(String name, Email email, String passwordHash, Role role) {
-        return new User(UserId.newId(), name, email, passwordHash, role);
-    }
-}
-```
+Important concepts:
+
+- owner;
+- vehicle type;
+- registration/plate;
+- active state.
+
+**Rules**
+
+1. A vehicle belongs to one customer.
+2. Only its owner can manage it through the customer-facing functionality.
+3. A vehicle used in a booking must belong to the customer creating that booking.
+4. Deactivating a vehicle must not erase historical bookings.
+
+---
+
+### Entity: Wash Service
+
+**Context:** Service Catalog
+
+A wash service represents an offering provided by the shop.
+
+It is not the same as a booking.
+
+Examples may include different types of vehicle washing, but the domain does not hardcode a fixed list of service names.
+
+Important concepts:
+
+- service name;
+- category;
+- description;
+- active state.
+
+A service can have different prices depending on vehicle type and validity period.
+
+---
+
+### Entity: Service Price
+
+**Context:** Service Catalog
+
+A service price represents the applicable tariff for one service and one vehicle type during a validity period.
+
+Important concepts:
+
+- service;
+- vehicle type;
+- price;
+- estimated duration;
+- validity period.
+
+**Rules**
+
+1. A booking uses the price that was applicable when its service line was created.
+2. Changing a future/current catalog price must not rewrite the historical price of an existing booking.
+3. Overlapping active tariff periods for the same service and vehicle type are not allowed.
+
+The exact persistence strategy is defined in `06-data`.
 
 ---
 
@@ -129,189 +152,132 @@ public final class User {
 
 **Context:** Booking
 
-**Description:** A scheduled wash — one vehicle, one service,
-one time slot. The central transaction of the whole platform.
+A booking is the central customer transaction.
 
-**Attributes:**
+A booking identifies:
 
-| Attribute | Type | Description | Required | Rules |
-|---|---|---|---|---|
-| id | UUID | Identity | Yes | Auto-generated |
-| customerId | UUID | References a `User` | Yes | |
-| vehicleId | UUID | References a `Vehicle` | Yes | Must belong to `customerId` — INV-002 |
-| serviceId | UUID | References a `Service` | Yes | One service per booking — confirmed with the team, 2026-09-08 |
-| scheduledAt | TimeSlot | Value Object | Yes | |
-| assignedBayId | UUID | The wash bay assigned to this booking | No | Null while `PENDING`; set by `confirm()` — INV-014 |
-| status | BookingStatus | | Yes | See lifecycle below |
-| priceAtBooking | Money | Value Object | Yes | Frozen at creation — INV-006 |
-| createdAt / updatedAt | DateTime | | Yes | |
+- the customer's vehicle;
+- scheduled start and end;
+- the selected service lines;
+- the booking lifecycle;
+- the service bay when confirmed;
+- booking-level promotion/loyalty information when applicable.
 
-**Lifecycle / States:**
+A booking can contain **one or more `BookingService` lines**.
 
-```
-PENDING ──(confirm)──▶ CONFIRMED ──(operator starts)──▶ IN_PROGRESS ──(operator finishes)──▶ COMPLETED
-   │                        │
-   └────────(cancel)────────┴──────────────────────────────────────────▶ CANCELLED
-```
+### Booking lifecycle
 
-| State | Description | Allowed transitions |
-|---|---|---|
-| PENDING | Just created, slot not validated yet | → CONFIRMED, → CANCELLED |
-| CONFIRMED | Slot validated, waiting for the wash to start | → IN_PROGRESS, → CANCELLED |
-| IN_PROGRESS | Operator is doing the wash | → COMPLETED |
-| COMPLETED | Wash finished | Terminal state |
-| CANCELLED | Called off before completion | Terminal state |
+The current persistence model uses these states:
 
-**Invariants:**
-
-```
-INV-001: A booking always has all four core references
-  - Rule: customerId, vehicleId, serviceId and scheduledAt must
-    all be present
-  - Violation: a booking missing any of these was never actually created
-  - Implementation: validated in the static factory method, not in a setter
-
-INV-002: A booking's vehicle must belong to its customer
-  - Rule: vehicleId must reference a Vehicle whose ownerId == customerId
-  - Violation: a customer could book using someone else's registered vehicle
-  - Implementation: checked in booking-service before Booking.create() is called,
-    since it needs to look up the Vehicle in another aggregate
-
-INV-003: No two confirmed bookings share the same time slot at the same
-wash bay
-  - Rule: this is what "availability" means in RF-006/RF-007
-  - Violation: two customers get double-booked for the same bay at the
-    same time
-  - Implementation: AvailabilityChecker domain service, checked before confirm()
-
-INV-004: A booking only moves forward through valid BookingStatus transitions
-  - Rule: see the lifecycle table above — no skipping states, no going backward
-  - Violation: a booking marked COMPLETED without ever being IN_PROGRESS
-  - Implementation: guarded inside each state-changing method (confirm(),
-    start(), complete(), cancel())
-
-INV-005: A COMPLETED or CANCELLED booking is immutable
-  - Rule: no further changes once a booking reaches either terminal state
-  - Violation: editing a booking after the customer already paid and rated it
-  - Implementation: every mutating method checks the current status first
-
-INV-006: priceAtBooking is frozen at creation time
-  - Rule: changing a Service's price later never affects a booking already made
-  - Violation: a customer gets charged a different price than what they agreed to
-  - Implementation: priceAtBooking is read once, in Booking.create(), and
-    never recalculated from Service.price afterward
-
-INV-014: assignedBayId is only ever set by confirm(), never by create()
-  - Rule: a booking has no bay while PENDING; confirm() looks up a free bay
-    for the requested TimeSlot and assigns it, which is also what makes
-    INV-003 checkable
-  - Violation: a booking confirmed without an assigned bay, or a bay
-    assigned before the slot was validated
-  - Implementation: confirm() delegates to AvailabilityChecker, which
-    returns the bay to assign or rejects the confirmation
+```text
+AGENDADA
+   │
+   ├── confirm ──▶ CONFIRMADA
+   │                  │
+   │                  └── start ──▶ EN_EJECUCION
+   │                                   │
+   │                                   └── finish ──▶ FINALIZADA
+   │
+   ├── cancel ──▶ CANCELLED
+   │
+   └── no-show ─▶ NO_ASISTIO
 ```
 
-**Code example:**
+The exact transition guards must follow the current functional requirements and operational flow.
 
-```java
-public final class Booking {
+### Booking rules
 
-    private final BookingId id;
-    private final CustomerId customerId;
-    private final VehicleId vehicleId;
-    private final ServiceId serviceId;
-    private final TimeSlot scheduledAt;
-    private final Money priceAtBooking;
-    private ServiceBayId assignedBayId;
-    private BookingStatus status;
+**INV-BOOK-001 — A booking requires a customer vehicle**
 
-    private Booking(BookingId id, CustomerId customerId, VehicleId vehicleId,
-                     ServiceId serviceId, TimeSlot scheduledAt,
-                     Money priceAtBooking) {
-        this.id = id;
-        this.customerId = customerId;
-        this.vehicleId = vehicleId;
-        this.serviceId = serviceId;
-        this.scheduledAt = scheduledAt;
-        this.priceAtBooking = priceAtBooking;
-        this.status = BookingStatus.PENDING;
-    }
+The booking cannot be created without a valid customer vehicle.
 
-    public static Booking create(CustomerId customerId, VehicleId vehicleId,
-                                  ServiceId serviceId,
-                                  TimeSlot scheduledAt, Money priceAtBooking) {
-        if (customerId == null || vehicleId == null || serviceId == null
-                || scheduledAt == null) {
-            throw new DomainException("INV-001: a booking needs customer, vehicle, service and time slot");
-        }
-        return new Booking(BookingId.newId(), customerId, vehicleId, serviceId,
-                scheduledAt, priceAtBooking);
-    }
+**INV-BOOK-002 — The vehicle belongs to the customer**
 
-    public void confirm(ServiceBayId bayId) {
-        if (this.status != BookingStatus.PENDING) {
-            throw new DomainException("INV-004: only a PENDING booking can be confirmed");
-        }
-        this.assignedBayId = bayId;
-        this.status = BookingStatus.CONFIRMED;
-    }
+The selected vehicle must belong to the customer creating the booking.
 
-    public void start() {
-        if (this.status != BookingStatus.CONFIRMED) {
-            throw new DomainException("INV-004: only a CONFIRMED booking can start");
-        }
-        this.status = BookingStatus.IN_PROGRESS;
-    }
+**INV-BOOK-003 — At least one service line is required**
 
-    public void complete() {
-        if (this.status != BookingStatus.IN_PROGRESS) {
-            throw new DomainException("INV-004: only an IN_PROGRESS booking can be completed");
-        }
-        this.status = BookingStatus.COMPLETED;
-    }
+A booking without a selected wash service is not a valid booking.
 
-    public void cancel() {
-        if (this.status == BookingStatus.COMPLETED || this.status == BookingStatus.CANCELLED) {
-            throw new DomainException("INV-005: a COMPLETED or CANCELLED booking can't change");
-        }
-        this.status = BookingStatus.CANCELLED;
-    }
-}
-```
+**INV-BOOK-004 — The scheduled range is valid**
+
+The scheduled end must be later than the scheduled start.
+
+**INV-BOOK-005 — Availability must be validated**
+
+A booking cannot be confirmed if the requested time cannot be accommodated by the shop's operating rules and available service bays.
+
+**INV-BOOK-006 — A bay cannot be double-booked**
+
+Two active bookings cannot occupy the same service bay during overlapping time ranges.
+
+**INV-BOOK-007 — Booking changes are restricted by lifecycle**
+
+Modification and cancellation are allowed only while the current requirements permit them. Once execution has started, cancellation is blocked.
+
+**INV-BOOK-008 — Historical service prices remain stable**
+
+The price used for each booking service line comes from the applicable service-price record at booking time. Later catalog changes do not rewrite the booking's historical charge.
+
+**INV-BOOK-009 — Points redemption must be represented consistently**
+
+If loyalty points are redeemed, both the redeemed-point amount and its monetary discount must represent the same redemption. A booking cannot have one without the other.
 
 ---
 
-### Entity: Vehicle
+### Entity: Booking Service
 
-**Context:** Vehicle Management
+**Context:** Booking
 
-| Attribute | Type | Description | Required | Rules |
-|---|---|---|---|---|
-| id | UUID | Identity | Yes | |
-| ownerId | UUID | References the `User` who registered it | Yes | |
-| plate | String | | Yes | |
-| brand / model | String | | Yes | |
-| type | VehicleType (enum) | Car, motorcycle, truck, etc. | Yes | |
-| active | boolean | | Yes | Deactivating keeps booking history intact |
+`BookingService` is a line inside a booking representing one selected wash service.
+
+Important concepts:
+
+- booking;
+- service price;
+- quantity.
+
+**Rules**
+
+1. Quantity must be greater than zero.
+2. The same service-price row cannot be duplicated inside the same booking.
+3. The selected service price remains the historical reference for the line.
+4. A booking can contain several different service lines.
+
+This entity is important because a booking is not limited to one wash service.
 
 ---
 
-### Entity: Service (WashService)
+### Entity: Service Bay
 
-**Context:** Service Catalog
+**Context:** Booking
 
-| Attribute | Type | Description | Required | Rules |
-|---|---|---|---|---|
-| id | UUID | Identity | Yes | |
-| name | String | e.g. "Basic Wash" | Yes | |
-| description | String | | No | |
-| price | Money | Value Object | Yes | Can change without affecting past bookings — INV-006 |
-| durationMinutes | int | | Yes | |
-| active | boolean | | Yes | |
+A service bay is a physical washing position in the single shop.
 
-This is modeled as a real entity with its own table, not an enum, on
-purpose — the catalog has 5 services today and needs to grow past that
-without a code change.
+**Rules**
+
+1. Only active bays can be used for new confirmations.
+2. A bay cannot be assigned to overlapping active bookings.
+3. A cancelled booking releases the bay for later availability.
+4. The domain does not model Branch or Zone above the bay because the MVP contains one shop.
+
+---
+
+### Entity: Business Hours and Exceptions
+
+**Context:** Booking
+
+The shop's availability is defined by normal business hours and exceptional dates.
+
+Important concepts:
+
+- day of week;
+- opening/closing time;
+- active/inactive schedule;
+- exception date;
+- exceptional opening or closure.
+
+Availability must consider both normal hours and exceptions before confirming a booking.
 
 ---
 
@@ -319,124 +285,92 @@ without a code change.
 
 **Context:** Operations & Assignment
 
-| Attribute | Type | Description | Required | Rules |
-|---|---|---|---|---|
-| id | UUID | Identity | Yes | |
-| userId | UUID | References the underlying `User` (role `OPERATOR`) | Yes | |
-| available | boolean | | Yes | |
+An operator is a user who performs vehicle washing services.
+
+Important concepts:
+
+- operator identity;
+- availability;
+- absences;
+- assigned service executions.
+
+**Rules**
+
+1. An operator must have the Operator role.
+2. An operator can only be assigned when available for the requested work.
+3. An operator cannot execute overlapping services.
+4. Operator availability is required for automatic assignment. The final selection/tie-break rule is not defined here because the current requirements contain conflicting wording.
 
 ---
 
-### Entity: Assignment
+### Entity: Service Execution
 
 **Context:** Operations & Assignment
 
-**Description:** Links a `Booking` to the `Operator` doing it. Tracked
-separately from the booking so an operator can update their own progress
-without touching the Booking aggregate.
+A service execution represents the actual work performed for one `BookingService` line.
 
-| Attribute | Type | Description | Required | Rules |
-|---|---|---|---|---|
-| id | UUID | Identity | Yes | |
-| bookingId | UUID | References the `Booking` | Yes | |
-| operatorId | UUID | References the `Operator` | Yes | |
-| status | AssignmentStatus | | Yes | See lifecycle below |
-| assignmentMethod | AssignmentMethod (enum) | `AUTOMATIC`, `CUSTOMER_SELECTED`, `ADMIN_ASSIGNED` | Yes | Tracks which of RF-008/009/010 created it |
-| assignedAt / startedAt / completedAt | DateTime | | No | Set as the assignment progresses |
+Important concepts:
 
-**Lifecycle / States:**
+- booking service line;
+- operator;
+- execution status;
+- start time;
+- finish time;
+- optional rating and comment.
 
+### Execution lifecycle
+
+```text
+PENDIENTE
+    │
+    ├── start ──▶ EN_PROCESO ──▶ FINALIZADA
+    │
+    ├── pause ──▶ PAUSADA ──▶ EN_PROCESO
+    │
+    └────────────────────────▶ CON_NOVEDAD
 ```
-PENDING ──(operator starts)──▶ IN_PROGRESS ──(operator finishes)──▶ COMPLETED
-   │
-   └──(reassigned)──▶ CANCELLED
-```
 
-| State | Description | Allowed transitions |
+The exact transitions are subject to the operational requirements.
+
+### Execution rules
+
+**INV-EXEC-001 — One execution per booking service line**
+
+A service line has at most one current execution record.
+
+**INV-EXEC-002 — An execution has one responsible operator**
+
+The execution identifies the operator performing the service.
+
+**INV-EXEC-003 — Operator overlap is not allowed**
+
+The same operator cannot appear to execute two overlapping services.
+
+**INV-EXEC-004 — Only the assigned operator can update execution progress**
+
+An operator cannot start or complete another operator's work.
+
+**INV-EXEC-005 — Rating belongs to the completed execution**
+
+Rating is optional and is only available after the service execution has been completed.
+
+---
+
+### Entity: Operator Assignment
+
+Assignment is a domain concept representing the responsibility of an operator for a service execution.
+
+The current data model represents this responsibility through `execution.service_execution.operator_id`; it does **not** define a separate `assignment` table.
+
+There are three assignment paths:
+
+| Method | Who selects the operator | Rule |
 |---|---|---|
-| PENDING | Operator assigned, hasn't started | → IN_PROGRESS, → CANCELLED |
-| IN_PROGRESS | Operator working on it | → COMPLETED |
-| COMPLETED | Done | Terminal state |
-| CANCELLED | Replaced through reassignment | Terminal state |
+| Automatic | System | Uses operator availability only. |
+| Customer selected | Customer | The selected operator must be available. |
+| Administrator assigned/reassigned | Administrator | The selected operator must be available. |
 
-**Invariants:**
-
-```
-INV-008: Automatic assignment only considers currently available operators
-  - Rule: RF-008 confirms availability as the only automatic
-    criterion. Proximity, workload, specialization and rating are NOT
-    applied unless a future requirement defines them.
-  - Violation: assigning based on undocumented criteria the team never agreed on
-  - Implementation: OperatorAssigner domain service
-
-INV-009: An operator can only update assignments they hold
-  - Rule: operatorId on the Assignment must match the authenticated operator
-    calling start()/complete()
-  - Violation: one operator marking another operator's job as done
-  - Implementation: checked in operations-service before calling the entity method
-```
-
-**Design decision — reassignment creates a new Assignment.** Confirmed with
-the team (2026-09-08): when an administrator reassigns a booking, the
-current `Assignment` is cancelled and a brand-new one is created for the new
-operator, instead of overwriting `operatorId` in place. This keeps a full
-history of who was assigned and when.
-
-**Code example:**
-
-```java
-public final class Assignment {
-
-    private final AssignmentId id;
-    private final BookingId bookingId;
-    private final OperatorId operatorId;
-    private final AssignmentMethod method;
-    private AssignmentStatus status;
-
-    private Assignment(AssignmentId id, BookingId bookingId, OperatorId operatorId,
-                        AssignmentMethod method) {
-        this.id = id;
-        this.bookingId = bookingId;
-        this.operatorId = operatorId;
-        this.method = method;
-        this.status = AssignmentStatus.PENDING;
-    }
-
-    public static Assignment create(BookingId bookingId, OperatorId operatorId,
-                                     AssignmentMethod method) {
-        return new Assignment(AssignmentId.newId(), bookingId, operatorId, method);
-    }
-
-    public void start(OperatorId requestingOperator) {
-        if (!this.operatorId.equals(requestingOperator)) {
-            throw new DomainException("INV-009: only the assigned operator can start this job");
-        }
-        if (this.status != AssignmentStatus.PENDING) {
-            throw new DomainException("Only a PENDING assignment can start");
-        }
-        this.status = AssignmentStatus.IN_PROGRESS;
-    }
-
-    public void complete(OperatorId requestingOperator) {
-        if (!this.operatorId.equals(requestingOperator)) {
-            throw new DomainException("INV-009: only the assigned operator can complete this job");
-        }
-        if (this.status != AssignmentStatus.IN_PROGRESS) {
-            throw new DomainException("Only an IN_PROGRESS assignment can be completed");
-        }
-        this.status = AssignmentStatus.COMPLETED;
-    }
-
-    // Reassignment cancels this one; a new Assignment gets created separately
-    // by OperatorAssigner instead of mutating operatorId here.
-    public void cancelForReassignment() {
-        if (this.status != AssignmentStatus.PENDING) {
-            throw new DomainException("Can't reassign a job that's already in progress or done");
-        }
-        this.status = AssignmentStatus.CANCELLED;
-    }
-}
-```
+For a reassignment, the operational history must not be silently lost. The implementation should preserve the relevant history according to the architecture/data decisions.
 
 ---
 
@@ -444,40 +378,98 @@ public final class Assignment {
 
 **Context:** Payment
 
-| Attribute | Type | Description | Required | Rules |
-|---|---|---|---|---|
-| id | UUID | Identity | Yes | |
-| bookingId | UUID | References the `Booking` | Yes | Exactly one per payment — INV-010 |
-| amount | Money | Value Object | Yes | |
-| method | PaymentMethod (enum) | `CASH`, `NEQUI`, `DAVIPLATA`, `BANK_TRANSFER` | Yes | |
-| status | PaymentStatus | `PENDING`, `IN_REVIEW`, `APPROVED`, `REJECTED`, `REFUNDED` | Yes | |
-| receiptFileUrl | String | The uploaded proof of payment | Yes, once submitted for review | |
-| receiptReference | String | Transaction reference printed on the receipt | No | Checked for reuse across payments — INV-015 |
-| reportedAmount | Money | What the receipt claims was paid | No | Compared against `amount` on review |
-| reviewedBy | UUID | The administrator who approved/rejected it | Yes, once reviewed | |
-| createdAt | DateTime | | Yes | |
+A payment is an attempt to settle the amount associated with one booking.
 
-**Invariants:**
+Supported methods:
 
+- `CASH`
+- `NEQUI`
+- `DAVIPLATA`
+- `BANK_TRANSFER`
+
+### Payment lifecycle
+
+```text
+PENDING ──▶ IN_REVIEW ──▶ APPROVED
+                  │
+                  └──────▶ REJECTED
+
+APPROVED ──▶ REFUNDED
 ```
-INV-010: A payment always belongs to exactly one booking
-  - Rule: bookingId is required and immutable
-  - Violation: an orphaned payment with no booking to reconcile against
-  - Implementation: constructor requires bookingId, no setter exists to change it
 
-INV-012: Raw payment card data is never stored anywhere in this system
-  - Rule: no field on Payment (or anywhere else) may hold a card number, CVV
-    or expiration date
-  - Violation: a data breach and a direct violation of RF-016
-  - Implementation: enforced by never defining such a field — there is no
-    card-based payment method in the first place; every method is a manual
-    QR transfer verified against an uploaded receipt
+### Payment rules
 
-INV-015: The same receiptReference can't be reused across two payments
-  - Rule: a transaction reference already tied to another payment is rejected
-  - Violation: one bank transfer receipt used to "pay" for two different bookings
-  - Implementation: checked by payment-service before accepting a new receipt upload
-```
+**INV-PAY-001 — Payment belongs to a booking**
+
+Every payment attempt is associated with one booking.
+
+**INV-PAY-002 — Digital payment uses receipt verification**
+
+For digital methods, the customer submits a receipt with the reported amount and transaction reference.
+
+**INV-PAY-003 — Cash does not require a digital receipt**
+
+Cash is confirmed directly by the administrator.
+
+**INV-PAY-004 — Administrator reviews payment**
+
+A payment requiring review is approved or rejected by an authorized administrator.
+
+**INV-PAY-005 — Receipt amount is compared with the amount due**
+
+A mismatch is a reason for review/rejection; it is not silently treated as a successful payment.
+
+**INV-PAY-006 — Transaction references cannot be reused for approved payments**
+
+A receipt reference already used by another approved payment cannot be reused.
+
+**INV-PAY-007 — No card data**
+
+The system does not collect or store card numbers, CVV codes or card expiration dates.
+
+---
+
+### Entity: Promotion
+
+**Context:** Promotions & Loyalty
+
+A promotion defines a discount that can be applied when its eligibility conditions are satisfied.
+
+Current data supports:
+
+- discount type;
+- validity period;
+- active state;
+- public eligibility;
+- minimum completed-booking threshold;
+- customer-specific eligibility.
+
+The exact discount formulas must follow the current product and requirements documentation.
+
+---
+
+### Entity: Loyalty Transaction
+
+**Context:** Promotions & Loyalty / Payment ownership
+
+A loyalty transaction records one movement of points.
+
+A movement can:
+
+- add points;
+- subtract points.
+
+The ledger is the authoritative source for the customer's loyalty balance.
+
+The customer record can contain a display copy of the balance, but that copy must not be used to validate redemption.
+
+**INV-LOY-001 — Ledger is the source of truth**
+
+Redemption validation uses the loyalty transaction history/balance, not the customer's display copy.
+
+**INV-LOY-002 — A redemption has a monetary effect**
+
+When points are redeemed against a booking, the booking records both points redeemed and their monetary discount.
 
 ---
 
@@ -485,26 +477,39 @@ INV-015: The same receiptReference can't be reused across two payments
 
 **Context:** Feedback & Rating
 
-| Attribute | Type | Description | Required | Rules |
-|---|---|---|---|---|
-| id | UUID | Identity | Yes | |
-| bookingId | UUID | The completed `Booking` being rated | Yes | At most one per booking — INV-007 |
-| customerId | UUID | | Yes | |
-| score | int | 1 to 5 | Yes | |
-| comment | String | | No | |
-| createdAt | DateTime | | Yes | |
+Rating is modeled as a domain concept associated with a completed service execution.
 
-**Invariants:**
+It contains:
 
-```
-INV-007: At most one rating per booking, only after it's COMPLETED
-  - Rule: a Rating can only be created for a Booking whose status is COMPLETED,
-    and only once
-  - Violation: rating a wash that hasn't happened, or rating the same one twice
-  - Implementation: checked before Rating.create() is called — needs to read
-    the Booking's status, so it's validated in the calling service, not inside
-    Rating itself
-```
+- score from 1 to 5;
+- optional comment;
+- rating date.
+
+The current physical model stores these values in `execution.service_execution`:
+
+- `quality_rating`
+- `quality_comment`
+- `rated_at`
+
+There is no independent `rating` table.
+
+**INV-RATING-001 — Rating only after completion**
+
+A customer can rate a service line only after its execution has been completed.
+
+**INV-RATING-002 — Score range**
+
+The score must be between 1 and 5.
+
+**INV-RATING-003 — Comment requires a score**
+
+A comment cannot exist without a rating.
+
+**INV-RATING-004 — One rating state per execution**
+
+A service execution can have at most one current rating.
+
+Rating is not an automatic-assignment criterion.
 
 ---
 
@@ -512,292 +517,252 @@ INV-007: At most one rating per booking, only after it's COMPLETED
 
 **Context:** Notification
 
-| Attribute | Type | Description | Required | Rules |
-|---|---|---|---|---|
-| id | UUID | Identity | Yes | |
-| recipientId | UUID | The `User` this is for | Yes | |
-| message | String | | Yes | |
-| type | NotificationType (enum) | | Yes | |
-| read | boolean | | Yes | Defaults to false |
-| createdAt | DateTime | | Yes | |
+A notification represents information prepared for a user because something relevant happened.
+
+Important concepts:
+
+- recipient;
+- notification type;
+- message;
+- read/unread state;
+- creation time.
+
+The notification context does not decide the business event that caused the notification.
 
 ---
 
-### Entity: Promotion *(planned — see open questions)*
+## 3. Value Objects
 
-**Context:** Promotions & Loyalty
+### Money
 
-| Attribute | Type | Description | Required | Rules |
-|---|---|---|---|---|
-| id | UUID | Identity | Yes | |
-| name | String | | Yes | |
-| discountType | DiscountType (enum) | Percentage or fixed amount | Yes | |
-| discountValue | BigDecimal | | Yes | |
-| validFrom / validTo | Date | | Yes | |
-| active | boolean | | Yes | |
+Represents a monetary amount and its currency.
 
-**Invariant:**
+For this project, amounts are expressed in COP.
 
-```
-INV-011: A promotion can only apply while active and within its validity window
-  - Rule: validFrom <= today <= validTo, and active == true
-  - Violation: an expired promotion still granting a discount
-  - Implementation: not built yet — applies once Promotions & Loyalty ships
-```
+Rules:
 
-Loyalty points aren't modeled here in detail — whether they live as a
-balance on `User` or as their own `LoyaltyAccount` with a transaction log is
-still an open question (see the end of this document).
+- amount cannot be negative;
+- currency must be supported;
+- comparisons use monetary values rather than floating-point arithmetic.
 
----
+### TimeSlot
 
-## System Value Objects
+Represents the requested date/time interval for a booking.
 
-### Value Object: Money
+It contains:
 
-**Description:** An amount plus a currency (COP). Two `Money` instances with
-the same amount and currency are the same value.
+- start;
+- end.
 
-| Attribute | Type | Description |
-|---|---|---|
-| amount | BigDecimal | |
-| currency | String | Always "COP" for now |
+Rules:
 
-**Validation rules:**
+- start must be earlier than end;
+- overlap is evaluated using the complete interval, not only the start time.
 
-```
-- amount must be >= 0
-- currency must be a supported ISO code (only COP today)
-```
+### Date Range
 
-**Example:**
+Used conceptually for:
 
-```java
-public final class Money {
+- service-price validity;
+- promotion validity;
+- business-hour exceptions.
 
-    private final BigDecimal amount;
-    private final String currency;
-
-    public Money(BigDecimal amount, String currency) {
-        if (amount.compareTo(BigDecimal.ZERO) < 0) {
-            throw new DomainException("Money can't be negative");
-        }
-        this.amount = amount;
-        this.currency = currency;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof Money)) return false;
-        Money other = (Money) o;
-        return amount.compareTo(other.amount) == 0 && currency.equals(other.currency);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(amount.stripTrailingZeros(), currency);
-    }
-}
-```
-
-### Value Object: TimeSlot
-
-**Description:** The date and time reserved for a wash. Used to check
-availability against the shop's wash bays.
-
-| Attribute | Type | Description |
-|---|---|---|
-| date | LocalDate | |
-| time | LocalTime | |
-
-**Example:**
-
-```java
-public final class TimeSlot {
-
-    private final LocalDate date;
-    private final LocalTime time;
-
-    public TimeSlot(LocalDate date, LocalTime time) {
-        if (date == null || time == null) {
-            throw new DomainException("A time slot needs both a date and a time");
-        }
-        this.date = date;
-        this.time = time;
-    }
-
-    public boolean overlaps(TimeSlot other) {
-        return this.date.equals(other.date) && this.time.equals(other.time);
-    }
-}
-```
+A range must have valid start/end boundaries according to the context using it.
 
 ---
 
-## System Aggregates
+## 4. Aggregates
 
 ### Aggregate: Booking
 
-**Aggregate Root:** `Booking`
+**Aggregate root:** `Booking`
 
-**Internal entities:** none — this is a single-entity aggregate.
+Conceptually contains:
 
-**Value Objects:** `TimeSlot` (scheduledAt), `Money` (priceAtBooking)
+- booking identity and lifecycle;
+- scheduled interval;
+- customer vehicle reference;
+- selected `BookingService` lines;
+- booking-level promotion/loyalty information;
+- service-bay assignment.
 
-**Aggregate invariants:**
+The aggregate protects rules that must remain consistent inside the booking, such as having service lines and keeping booking-level values coherent.
 
-```
-AGGR-INV-001: priceAtBooking never gets recalculated from the current
-Service price after creation — it's part of the aggregate's own state,
-not a live reference to Service Catalog.
+### Aggregate: Service Execution
 
-AGGR-INV-002: scheduledAt (TimeSlot) can only change while status is
-PENDING or CONFIRMED — once IN_PROGRESS, the time slot is locked in.
-```
+**Aggregate root:** `ServiceExecution`
 
-**Why this is an aggregate:** `Booking`, its `scheduledAt`, and its
-`priceAtBooking` have to be consistent with each other at every point in
-the lifecycle — you can't have a booking whose price silently drifts from
-what the customer agreed to, or whose time slot changes after the wash has
-already started. Keeping them in one aggregate means a single save either
-keeps all of that consistent, or none of it happens.
+Conceptually contains:
 
----
+- booking service reference;
+- operator;
+- execution status;
+- start/finish timestamps;
+- optional rating information.
 
-### Aggregate: Assignment
+It is kept separate from Booking because operational progress should not require changing the booking's internal structure.
 
-**Aggregate Root:** `Assignment`
+### Aggregate: Payment
 
-**Internal entities:** none.
+**Aggregate root:** `Payment`
 
-**Value Objects:** none — `assignedAt`/`startedAt`/`completedAt` are plain
-timestamps, not modeled as their own VO.
+The payment lifecycle is independent from booking lifecycle.
 
-**Aggregate invariants:**
+### Aggregate: Promotion
 
-```
-AGGR-INV-003: status and the timestamp fields must stay in sync —
-startedAt is only ever set when the assignment moves to IN_PROGRESS,
-completedAt only when it moves to COMPLETED. There's no scenario where
-completedAt is set but status isn't COMPLETED.
-```
+**Aggregate root:** `Promotion`
 
-**Why this is an aggregate:** the whole point of `Assignment` is tracking
-one operator's progress on one booking as a single, small, consistent unit
-— separate from `Booking` itself so that an operator marking their own
-progress never needs to touch the booking aggregate at all (see the
-relationship rules in `domain-map.md`, section 3).
+Promotion eligibility and validity belong to this business capability.
+
+### Aggregate: Notification
+
+**Aggregate root:** `Notification`
+
+A notification is an independent record for a recipient.
 
 ---
 
-## Summary table of tactical building blocks
-
-| Name | Type | Bounded Context | Aggregate Root? |
-|---|---|---|---|
-| User | Entity | Identity & Access | Yes |
-| Booking | Entity | Booking | Yes |
-| Vehicle | Entity | Vehicle Management | Yes |
-| Service | Entity | Service Catalog | Yes |
-| Operator | Entity | Operations & Assignment | Yes |
-| Assignment | Entity | Operations & Assignment | Yes |
-| Payment | Entity | Payment | Yes |
-| Rating | Entity | Feedback & Rating | Yes |
-| Notification | Entity | Notification | Yes |
-| Promotion | Entity (planned) | Promotions & Loyalty | Yes |
-| Money | Value Object | Shared (Booking, Service, Payment) | N/A |
-| TimeSlot | Value Object | Booking | N/A |
-| AvailabilityChecker | Domain Service | Booking | N/A |
-| OperatorAssigner | Domain Service | Operations & Assignment | N/A |
-
----
-
-## Domain Services
-
-A **Domain Service** is business logic that doesn't naturally belong to any
-single entity — usually because it needs to look across several instances
-of an entity, or several aggregates, to make a decision.
+## 5. Domain services
 
 ### AvailabilityChecker
 
 **Context:** Booking
 
-Decides whether a requested `TimeSlot` can be booked into some wash bay. It
-has to look at every existing `Booking`, which is more than
-any single `Booking` instance could decide about itself.
+Determines whether a requested time can be confirmed considering:
 
-```java
-public class AvailabilityChecker {
+- shop business hours;
+- business-hour exceptions;
+- active service bays;
+- existing active bookings;
+- overlapping time ranges.
 
-    public Optional<ServiceBayId> findAvailableBay(TimeSlot requested,
-            List<ServiceBay> bays, List<Booking> existingBookings) {
-        return bays.stream()
-                .filter(ServiceBay::isActive)
-                .filter(bay -> existingBookings.stream()
-                        .filter(b -> bay.getId().equals(b.getAssignedBayId()))
-                        .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
-                        .noneMatch(b -> b.getScheduledAt().overlaps(requested)))
-                .map(ServiceBay::getId)
-                .findFirst();
-    }
-}
-```
+It does not decide operator assignment.
 
 ### OperatorAssigner
 
 **Context:** Operations & Assignment
 
-Implements the three assignment paths from RF-008/009/010. Automatic
-assignment needs to look across every operator, again more
-than a single `Operator` or `Assignment` can decide alone.
+Provides the assignment rules for:
 
-```java
-public class OperatorAssigner {
+- automatic assignment;
+- customer-selected assignment;
+- administrator assignment/reassignment.
 
-    // RF-008: automatic assignment by current availability
-    public Optional<OperatorId> assignAutomatically(List<Operator> availableOperators) {
-        return availableOperators.stream()
-                .filter(Operator::isAvailable)
-                .findFirst()
-                .map(Operator::getId);
-    }
+For automatic assignment, availability is a required condition. The exact selection/tie-break rule must come from the approved requirements. The current documentation is inconsistent about whether workload is only mentioned historically or is used as a tie-break, so this document does not establish that rule.
 
-    // RF-010: the customer picks directly from who's available
-    public Assignment assignChosenByCustomer(BookingId bookingId, OperatorId chosenOperator) {
-        return Assignment.create(bookingId, chosenOperator, AssignmentMethod.CUSTOMER_SELECTED);
-    }
+The domain must not silently introduce other criteria such as:
 
-    // RF-009: an administrator assigns or reassigns
-    public Assignment assignByAdmin(BookingId bookingId, OperatorId chosenOperator) {
-        return Assignment.create(bookingId, chosenOperator, AssignmentMethod.ADMIN_ASSIGNED);
-    }
-}
-```
+- proximity;
+- specialization;
+- rating;
+- distance;
+- performance score.
 
----
+### PaymentReviewer
 
-## Correlation with code
+**Context:** Payment
 
-| Domain artifact | Package / folder in code | File |
-|---|---|---|
-| Aggregate Root `Booking` | `src/domain/booking/` | `Booking.java` |
-| Aggregate Root `Assignment` | `src/domain/operations/` | `Assignment.java` |
-| Value Object `Money` | `src/domain/shared/valueobjects/` | `Money.java` |
-| Value Object `TimeSlot` | `src/domain/booking/valueobjects/` | `TimeSlot.java` |
-| Domain Service `AvailabilityChecker` | `src/domain/booking/services/` | `AvailabilityChecker.java` |
-| Domain Service `OperatorAssigner` | `src/domain/operations/services/` | `OperatorAssigner.java` |
-| Repository port `BookingRepository` | `src/domain/booking/ports/` | `BookingRepository.java` |
+Conceptually validates a payment attempt using:
 
-> See the full hexagonal folder structure in `05-architecture/hexagonal-architecture.md`.
+- payment method;
+- required receipt;
+- reported amount;
+- transaction reference;
+- existing approved payment references.
+
+The administrator performs the final approve/reject action.
+
+### PromotionEligibilityChecker
+
+**Context:** Promotions & Loyalty
+
+Determines whether a promotion can be applied according to the current promotion rules.
+
+The exact formula is defined outside this domain document when it is not yet finalized.
 
 ---
 
-## Open questions
+## 6. Business rule summary
 
-These came up while writing this document and don't have a confirmed answer
-yet.
-
-| # | Question |
+| ID | Rule |
 |---|---|
-| 1 | Does payment have to be confirmed *before* the wash starts, or can the operator start work while payment is still pending? |
-| 2 | Where does `Rating` actually live as a service — inside booking-service, or its own module? Affects where INV-007 gets enforced. |
-| 3 | Loyalty points: a balance on `User`, or a separate `LoyaltyAccount` with its own transaction history? |
+| INV-BOOK-001 | Booking requires a customer vehicle. |
+| INV-BOOK-002 | Vehicle must belong to the customer. |
+| INV-BOOK-003 | Booking requires at least one service line. |
+| INV-BOOK-004 | Scheduled end must be later than scheduled start. |
+| INV-BOOK-005 | Booking availability must be validated before confirmation. |
+| INV-BOOK-006 | A service bay cannot be double-booked in overlapping active intervals. |
+| INV-BOOK-007 | Booking changes are restricted by lifecycle. |
+| INV-BOOK-008 | Historical booking service prices remain stable. |
+| INV-BOOK-009 | Points redeemed and points discount amount must be consistent. |
+| INV-EXEC-001 | Each booking service line has at most one execution. |
+| INV-EXEC-002 | Each execution has one responsible operator. |
+| INV-EXEC-003 | Operator execution intervals cannot overlap. |
+| INV-EXEC-004 | Only the responsible operator can update execution progress. |
+| INV-EXEC-005 | Rating is available only after completion. |
+| INV-PAY-001 | Every payment belongs to one booking. |
+| INV-PAY-002 | Digital payments require receipt verification. |
+| INV-PAY-003 | Cash does not require a digital receipt. |
+| INV-PAY-004 | Authorized administrator reviews pending payments. |
+| INV-PAY-005 | Reported receipt amount is compared with amount due. |
+| INV-PAY-006 | Approved transaction references cannot be reused. |
+| INV-PAY-007 | No card data is collected or stored. |
+| INV-LOY-001 | Loyalty ledger is the source of truth. |
+| INV-LOY-002 | Loyalty redemption records points and monetary discount together. |
+| INV-RATING-001 | Rating is only allowed after service completion. |
+| INV-RATING-002 | Rating score is 1–5. |
+| INV-RATING-003 | Comment requires a score. |
+| INV-RATING-004 | One current rating exists per execution. |
+
+---
+
+## 7. Domain-to-data alignment
+
+The domain concepts intentionally map to the current data model without making the domain depend on SQL Server.
+
+| Domain concept | Current data representation |
+|---|---|
+| User | `security.person`, `security.app_user`, roles and permissions |
+| User preferences | `security.user_preference` |
+| Customer | `customer.customer` |
+| Customer vehicle | `customer.customer_vehicle` |
+| Vehicle type | `customer.vehicle_type` |
+| Wash service | `catalog.service` |
+| Service price | `catalog.service_price` |
+| Establishment | `booking.establishment` |
+| Business hours | `booking.business_hour` |
+| Exceptions | `booking.business_hour_exception` |
+| Service bay | `booking.service_bay` |
+| Booking status | `booking.booking_status` |
+| Booking | `booking.booking` |
+| Booking service | `booking.booking_service` |
+| Operator | `execution.operator` |
+| Operator availability | `execution.operator_availability` |
+| Operator absence | `execution.operator_absence` |
+| Service execution | `execution.service_execution` |
+| Rating | `execution.service_execution.quality_rating`, `quality_comment`, `rated_at` |
+| Promotion | `promotion.promotion` and related promotion tables |
+| Payment | `payment.payment` |
+| Payment receipt | `payment.payment_receipt` |
+| Payment methods/accounts | `payment.payment_method_type`, `payment.payment_account` |
+| Loyalty ledger | `payment.loyalty_transaction` |
+| Customer loyalty display copy | `customer.customer.loyalty_points` |
+| Notification | `notification.notification` |
+
+This table is a consistency bridge only. The physical ownership and cross-service reference rules are defined by `06-data`.
+
+---
+
+## 8. Open decisions
+
+Only items that are genuinely not settled by the current requirements are kept here.
+
+| Topic | Current state |
+|---|---|
+| Payment-before-service policy | The product backlog identifies this as a decision to resolve before release. |
+| Exact promotion formulas | Must follow the final product/requirements definition. |
+| Exact loyalty earning formula | Must follow the final product/requirements definition. |
+| Notification delivery channels | Not defined in the domain model. |
+| Cross-service implementation of domain events | Defined by architecture/API, not by this document. |
+
+No open question remains about whether Rating should be a separate physical table: the current data model stores rating fields on `service_execution`.

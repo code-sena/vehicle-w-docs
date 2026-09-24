@@ -46,7 +46,7 @@
 **Epic:** EP-001
  
 > **As** a new customer
-> **I want** to create an account with my name, phone, address, email and password
+> **I want** to create an account with my document number, first and last name, phone, email and password
 > **so that** I can book wash services under my own profile
  
 **Acceptance Criteria:**
@@ -69,8 +69,8 @@ Scenario 2: Duplicate email
 |-------|-------|
 | Story Points | 3 |
 | Priority | Must Have |
-| Status | Backlog |
-| Affected service(s) | security |
+| Status | In Progress |
+| Affected service(s) | `security-service` |
 | Covers | RF-001 |
  
 ---
@@ -102,8 +102,8 @@ Scenario 2: Repeated failed attempts
 |-------|-------|
 | Story Points | 3 |
 | Priority | Must Have |
-| Status | Backlog |
-| Affected service(s) | security |
+| Status | In Progress |
+| Affected service(s) | `security-service` |
 | Covers | RF-002, RF-004b |
  
 ---
@@ -113,7 +113,7 @@ Scenario 2: Repeated failed attempts
 **Epic:** EP-001
  
 > **As** a user who forgot their password
-> **I want** to request a reset link by email
+> **I want** to receive a code by email and use it to set a new password
 > **so that** I can regain access to my account
  
 **Acceptance Criteria:**
@@ -122,20 +122,32 @@ Scenario 2: Repeated failed attempts
 Scenario 1: Registered email
   Given I submit an email that is registered in the system
   When  I request a password reset
-  Then  a reset link is sent to that email
- 
+  Then  a 6-digit code valid for 15 minutes is sent to that email
+
 Scenario 2: Unregistered email
   Given I submit an email that is not registered
   When  I request a password reset
-  Then  the system shows an error without revealing whether the email exists
+  Then  the system shows the same message as for a registered email
+  And   no email is sent, so nobody can find out which emails have an account
+
+Scenario 3: Valid code
+  Given I received a code less than 15 minutes ago
+  When  I enter it together with a new password that meets the password rules
+  Then  my password is changed
+  And   the same code can not be used again
+
+Scenario 4: Too many wrong codes
+  Given I enter a wrong code 5 times
+  When  I try again, even with the right code
+  Then  the system asks me to request a new code
 ```
  
 | Field | Value |
 |-------|-------|
 | Story Points | 2 |
 | Priority | Should Have |
-| Status | Backlog |
-| Affected service(s) | security |
+| Status | In Progress |
+| Affected service(s) | `security-service` |
 | Covers | RF-003 |
 | Dependencies | Email provider not yet integrated — see `01-context/scope.md`, Out of Scope #6 |
  
@@ -167,8 +179,8 @@ Scenario 2: Incorrect current password
 |-------|-------|
 | Story Points | 2 |
 | Priority | Should Have |
-| Status | Backlog |
-| Affected service(s) | security |
+| Status | In Progress |
+| Affected service(s) | `security-service` |
 | Covers | RF-004 |
  
 ---
@@ -199,8 +211,8 @@ Scenario 2: Slot already taken
 |-------|-------|
 | Story Points | 5 |
 | Priority | Must Have |
-| Status | Backlog |
-| Affected service(s) | reserve |
+| Status | In Progress |
+| Affected service(s) | `booking-service` |
 | Covers | RF-005, RF-006 |
  
 ---
@@ -231,8 +243,8 @@ Scenario 2: Cancel while in progress
 |-------|-------|
 | Story Points | 3 |
 | Priority | Must Have |
-| Status | Backlog |
-| Affected service(s) | reserve |
+| Status | In Progress |
+| Affected service(s) | `booking-service` |
 | Covers | RF-007 |
  
 ---
@@ -263,8 +275,8 @@ Scenario 2: No operator available
 |-------|-------|
 | Story Points | 5 |
 | Priority | Must Have |
-| Status | Backlog |
-| Affected service(s) | execution |
+| Status | In Progress |
+| Affected service(s) | `operations-service` |
 | Covers | RF-008 |
 | Technical notes | Tie-break rule when multiple operators are equally available is still undefined — see `04-requirements/functional.md`, Notes |
  
@@ -297,7 +309,7 @@ Scenario 2: Operator becomes unavailable
 | Story Points | 3 |
 | Priority | Should Have |
 | Status | Backlog |
-| Affected service(s) | execution |
+| Affected service(s) | `operations-service` |
 | Covers | RF-010 |
  
 ---
@@ -328,8 +340,8 @@ Scenario 2: Operator not available
 |-------|-------|
 | Story Points | 3 |
 | Priority | Should Have |
-| Status | Backlog |
-| Affected service(s) | execution |
+| Status | In Progress |
+| Affected service(s) | `operations-service` |
 | Covers | RF-009 |
  
 ---
@@ -365,8 +377,8 @@ Scenario 3: Booking not assigned to me
 |-------|-------|
 | Story Points | 3 |
 | Priority | Must Have |
-| Status | Backlog |
-| Affected service(s) | execution |
+| Status | In Progress |
+| Affected service(s) | `operations-service` |
 | Covers | RF-011, RF-012b |
  
 ---
@@ -397,8 +409,8 @@ Scenario 2: Service not yet completed
 |-------|-------|
 | Story Points | 2 |
 | Priority | Should Have |
-| Status | Backlog |
-| Affected service(s) | execution |
+| Status | In Progress |
+| Affected service(s) | `operations-service` |
 | Covers | RF-012 |
 | Dependencies | HU-BOOK-007 — the service must be marked as completed first |
  
@@ -435,8 +447,8 @@ Scenario 3: Receipt reused
 |-------|-------|
 | Story Points | 5 |
 | Priority | Must Have |
-| Status | Backlog |
-| Affected service(s) | payment |
+| Status | In Progress |
+| Affected service(s) | `payment-service` |
 | Covers | RF-013, RF-013b, RF-016 |
  
 ---
@@ -467,8 +479,8 @@ Scenario 2: No payments yet
 |-------|-------|
 | Story Points | 2 |
 | Priority | Should Have |
-| Status | Backlog |
-| Affected service(s) | payment |
+| Status | In Progress |
+| Affected service(s) | `payment-service` |
 | Covers | RF-015 |
  
 ---
@@ -504,8 +516,8 @@ Scenario 3: Cash payment
 |-------|-------|
 | Story Points | 3 |
 | Priority | Must Have |
-| Status | Backlog |
-| Affected service(s) | payment |
+| Status | In Progress |
+| Affected service(s) | `payment-service` |
 | Covers | RF-014 |
  
 ---
@@ -537,7 +549,7 @@ Scenario 2: View reports
 | Story Points | 5 |
 | Priority | Should Have |
 | Status | Backlog |
-| Affected service(s) | reserve, execution |
+| Affected service(s) | `booking-service`, `operations-service` |
 | Covers | RF-021, RF-022, RF-023 |
  
 ---
@@ -600,8 +612,8 @@ Scenario 2: Marking as read
 |-------|-------|
 | Story Points | 3 |
 | Priority | Should Have |
-| Status | Backlog |
-| Affected service(s) | notification |
+| Status | In Progress |
+| Affected service(s) | `notification-service` |
 | Covers | RF-018 |
  
 ---
@@ -632,8 +644,8 @@ Scenario 2: Change language
 |-------|-------|
 | Story Points | 3 |
 | Priority | Could Have |
-| Status | Backlog |
-| Affected service(s) | settings |
+| Status | In Progress |
+| Affected service(s) | `security-service` |
 | Covers | RF-019, RF-020 |
  
 ---
@@ -665,7 +677,7 @@ Scenario 2: Deactivate a promotion
 | Story Points | 3 |
 | Priority | Should Have |
 | Status | Backlog |
-| Affected service(s) | promotion |
+| Affected service(s) | `payment-service` |
 | Covers | RF-024 |
  
 ---
@@ -702,7 +714,7 @@ Scenario 3: Earning points
 | Story Points | 5 |
 | Priority | Could Have |
 | Status | Backlog |
-| Affected service(s) | promotion, customer |
+| Affected service(s) | `payment-service`, `payment-service` |
 | Covers | RF-025, RF-026 |
  
 ---

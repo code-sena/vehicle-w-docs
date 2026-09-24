@@ -1,8 +1,9 @@
 # Traceability Matrix
 
 > Connects `04-requirements/functional.md` (RF) → `04-requirements/user-stories.md` (HU) → tests → service.
-> Almost no tests exist yet, so most rows are 🔴 Pending. Update the "Tests that verify it" column
-> as tests are written, and the status as work progresses.
+> Status as of 2026-09-24: the business rules of the six services are implemented and covered by
+> unit tests; the system has not yet run end to end, so no row is ✅ Done (Definition of Done).
+> End-to-end requests for every flow are in `lavarapido-backend/http/flujo-demo.http`.
 
 ---
 
@@ -23,35 +24,35 @@ If there is code without an HU: possible gold-plating, or a change made without 
 
 | RF ID | RF Description | HU(s) | Tests that verify it | Service | Status |
 |-------|-----------------|-------|-----------------------|---------|--------|
-| RF-001 | Customer sign-up | HU-AUTH-001 | — | security | 🔴 Pending |
-| RF-002 | Login with role-based redirect | HU-AUTH-002 | — | security | 🔴 Pending |
-| RF-003 | Password recovery via email | HU-AUTH-003 | — | security | ⏸ Blocked |
-| RF-004 | Change password (authenticated) | HU-AUTH-004 | — | security | 🔴 Pending |
-| RF-004b | Account lockout after failed logins | HU-AUTH-002 | — | security | 🔴 Pending |
-| RF-005 | Request booking (date, time, type) | HU-BOOK-001 | — | reserve | 🔴 Pending |
-| RF-006 | Slot availability validation | HU-BOOK-001 | — | reserve | 🔴 Pending |
-| RF-007 | Modify/cancel booking before start | HU-BOOK-002 | — | reserve | 🔴 Pending |
-| RF-008 | Automatic operator assignment | HU-BOOK-003 | — | execution | 🔴 Pending |
-| RF-009 | Assignment/reassignment by Administrator | HU-BOOK-006 | — | execution | 🔴 Pending |
-| RF-010 | Operator selection by customer | HU-BOOK-004 | — | execution | 🔴 Pending |
-| RF-011 | Operator views assigned bookings | HU-BOOK-007 | — | execution | 🔴 Pending |
-| RF-012 | Rate a completed service | HU-BOOK-005 | — | execution | 🔴 Pending |
-| RF-012b | Operator updates service status | HU-BOOK-007 | — | execution | 🔴 Pending |
-| RF-013 | Show QR (digital methods only) and payment instructions | HU-PAY-001 | — | payment | 🔴 Pending |
-| RF-013b | Upload payment receipt (digital methods only) | HU-PAY-001 | — | payment | 🔴 Pending |
-| RF-014 | Admin reviews digital receipt or confirms cash payment | HU-PAY-003 | — | payment | 🔴 Pending |
-| RF-015 | Payment history by date/service | HU-PAY-002 | — | payment | 🔴 Pending |
-| RF-016 | No card data collected; reject reused transaction reference | HU-PAY-001 | — | payment | 🔴 Pending |
-| RF-017 | Role-based dashboard | HU-UI-001 | — | Frontend only | 🔴 Pending |
-| RF-018 | Notifications with read/unread state | HU-UI-002 | — | notification | 🔴 Pending |
-| RF-019 | Theme customisation | HU-UI-003 | Manual check | settings | 🟡 In progress |
-| RF-020 | Language switch (4 languages) | HU-UI-003 | Manual check | settings | 🟡 In progress |
-| RF-021 | Configure business hours and exceptions | HU-ADMIN-001 | — | reserve | 🔴 Pending |
-| RF-022 | Operator availability registration/adjustment | HU-ADMIN-001 | — | execution | 🔴 Pending |
-| RF-023 | Operational reports | HU-ADMIN-001 | — | reserve, execution, payment | 🔴 Pending |
-| RF-024 | Manage promotions (create/edit/deactivate) | HU-PROMO-001 | — | promotion | 🔴 Pending |
-| RF-025 | Apply promotion at payment | HU-PROMO-002 | — | promotion | 🔴 Pending |
-| RF-026 | Earn/redeem loyalty points | HU-PROMO-002 | — | customer | 🔴 Pending |
+| RF-001 | Customer sign-up | HU-AUTH-001 | `PasswordPolicyTest` | `security-service` | 🟡 In progress |
+| RF-002 | Login with role-based redirect | HU-AUTH-002 | `auth.spec.ts` (web) | `security-service` | 🟡 In progress |
+| RF-003 | Password recovery via email | HU-AUTH-003 | `PasswordResetCodeTest`, `PasswordRecoveryServiceTest`, `auth.spec.ts` (web) | `security-service` | 🟡 In progress |
+| RF-004 | Change password (authenticated) | HU-AUTH-004 | `PasswordPolicyTest` | `security-service` | 🟡 In progress |
+| RF-004b | Account lockout after failed logins | HU-AUTH-002 | `LoginLockoutTest` | `security-service` | 🟡 In progress |
+| RF-005 | Request booking (date, time, type) | HU-BOOK-001 | `BookingTest` | `booking-service` | 🟡 In progress |
+| RF-006 | Slot availability validation | HU-BOOK-001 | `AvailabilityCheckerTest`, `TimeSlotTest` | `booking-service` | 🟡 In progress |
+| RF-007 | Modify/cancel booking before start | HU-BOOK-002 | `BookingTest` (cancel) | `booking-service` | 🟡 In progress (cancel done, modify pending) |
+| RF-008 | Automatic operator assignment | HU-BOOK-003 | `AssignmentPolicyTest` | `operations-service` | 🟡 In progress |
+| RF-009 | Assignment/reassignment by Administrator | HU-BOOK-006 | `ServiceExecutionTest` (reassign) | `operations-service` | 🟡 In progress |
+| RF-010 | Operator selection by customer | HU-BOOK-004 | — | `operations-service` | 🔴 Pending |
+| RF-011 | Operator views assigned bookings | HU-BOOK-007 | — | `operations-service` | 🟡 In progress |
+| RF-012 | Rate a completed service | HU-BOOK-005 | `ServiceExecutionTest` (rating) | `operations-service` | 🟡 In progress |
+| RF-012b | Operator updates service status | HU-BOOK-007 | `ServiceExecutionTest` | `operations-service` | 🟡 In progress |
+| RF-013 | Show QR (digital methods only) and payment instructions | HU-PAY-001 | `PaymentTest` | `payment-service` | 🟡 In progress |
+| RF-013b | Upload payment receipt (digital methods only) | HU-PAY-001 | `PaymentTest` | `payment-service` | 🟡 In progress |
+| RF-014 | Admin reviews digital receipt or confirms cash payment | HU-PAY-003 | `PaymentTest` | `payment-service` | 🟡 In progress |
+| RF-015 | Payment history by date/service | HU-PAY-002 | — | `payment-service` | 🟡 In progress |
+| RF-016 | No card data collected; reject reused transaction reference | HU-PAY-001 | `PaymentTest` (reference) | `payment-service` | 🟡 In progress |
+| RF-017 | Role-based dashboard | HU-UI-001 | — | Frontend only | 🟡 In progress (screens built, not yet fed by the API) |
+| RF-018 | Notifications with read/unread state | HU-UI-002 | `NotificationFactoryTest` | `notification-service` | 🟡 In progress |
+| RF-019 | Theme customisation | HU-UI-003 | Manual check | `security-service` | 🟡 In progress |
+| RF-020 | Language switch (4 languages) | HU-UI-003 | Manual check | `security-service` | 🟡 In progress |
+| RF-021 | Configure business hours and exceptions | HU-ADMIN-001 | — | `booking-service` | 🔴 Pending |
+| RF-022 | Operator availability registration/adjustment | HU-ADMIN-001 | — | `operations-service` | 🟡 In progress (operator side done; admin adjustment pending) |
+| RF-023 | Operational reports | HU-ADMIN-001 | — | `booking-service`, `operations-service`, `payment-service` | 🟡 In progress (per-operator report done; revenue pending) |
+| RF-024 | Manage promotions (create/edit/deactivate) | HU-PROMO-001 | — | `payment-service` | 🔴 Pending |
+| RF-025 | Apply promotion at payment | HU-PROMO-002 | — | `payment-service` | 🔴 Pending |
+| RF-026 | Earn/redeem loyalty points | HU-PROMO-002 | `PaymentTest` (points) | `payment-service` | 🟡 In progress (earn done, redeem pending) |
 
 ---
 
@@ -62,7 +63,7 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RNF-001 | Performance (p95 < 2 s) | Manual measurement with Postman | 🔴 Pending |
 | RNF-002 | Availability during review sessions | Manual check before each session | 🔴 Pending |
 | RNF-003 | Concurrency and data integrity | Integration tests on booking and payment | 🔴 Pending |
-| RNF-004 | Security (JWT, BCrypt, roles, lockout) | Manual tests + code review | 🔴 Pending |
+| RNF-004 | Security (JWT, BCrypt, roles, lockout) | Unit tests (`LoginLockoutTest`, `PasswordPolicyTest`, web guards and interceptors) + manual tests | 🟡 In progress |
 | RNF-005 | Observability (service logs) | Manual check via `docker logs` | 🔴 Pending |
 | RNF-006 | Maintainability (PRs, commits, migrations) | GitHub history + code review | 🟡 In progress |
 | RNF-007 | Portability (Docker, no OS dependency) | Local setup reproduced from scratch | 🟡 In progress |
@@ -115,9 +116,17 @@ If there is code without an HU: possible gold-plating, or a change made without 
 
 | Gap type | Description | Required action | Owner |
 |----------|-------------|------------------|-------|
-| HU without test | None of the 20 HUs has an automated test yet | Write tests before marking any HU as Done | Whole team |
-| Blocked RF | RF-003 needs an email provider, which is out of scope in `01-context/scope.md` (Out of Scope #6) | Integrate SMTP or drop the requirement | Whole team |
-| Undefined rule | No tie-breaker is defined when several operators are equally available for the same slot (RF-008) | Define the rule before implementing automatic assignment | Backend lead |
+| HU without integration test | The business rules have unit tests, but no flow has an automated end-to-end test yet (only `http/flujo-demo.http`, run by hand) | Automate at least the booking and payment flows before marking their HUs as Done | Whole team |
+
+---
+
+## Closed gaps
+
+| Gap | How it was closed |
+|-----|-------------------|
+| No tie-breaker when several operators are equally available (RF-008) | Fewest open jobs, then lowest operator id (`AssignmentPolicy`, `AssignmentPolicyTest`) |
+| RF-003 blocked for lack of an email provider | SMTP added for this single e-mail (Mailpit locally, any SMTP account for the delivery) — `01-context/scope.md` |
+| Lockout thresholds undefined (RF-004b) | 5 failed attempts within 15 minutes lock the account for 15 minutes (`LoginLockoutTest`) |
 
 ---
 

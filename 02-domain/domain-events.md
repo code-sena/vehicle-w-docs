@@ -1,911 +1,647 @@
 # Domain Events
 
-> Express car wash — this catalog details the 18 domain events identified in
-> `domain-map.md` (section 8): what triggers each one, what it carries, who
-> reacts to it, and how the platform stays resilient when a message gets
-> delivered twice or a consumer is briefly down. This is the contract that
-> lets `booking-service`, `operations-service`, `payment-service`, and
-> `auth-service` talk to each other over RabbitMQ without calling each other
-> directly.
+Domain events represent facts that have already happened in the business domain.
+
+This document defines the business meaning of each event. It does not define RabbitMQ routing keys, DTO classes, database triggers or deployment details; those belong to architecture and integration documentation.
 
 ---
 
-## What is a domain event?
+## 1. Event conventions
 
-A **Domain Event** communicates that something important already happened
-in the business. It's an immutable message, always in past tense.
+A domain event should:
 
+- use past tense;
+- describe a fact, not a command;
+- identify the business object involved;
+- contain enough information for an interested consumer to understand what happened;
+- be safe to process more than once when it is transported asynchronously.
+
+Examples:
+
+```text
+BookingCreated
+PaymentConfirmed
+ServiceCompleted
+RatingSubmitted
 ```
-✓ BookingCreated
-✓ PaymentRejected
-✓ OperatorAssigned
 
-✗ CreateBooking (this is a command, not an event — it hasn't happened yet)
-✗ BookingUpdated (too generic — updated how?)
-✗ BookingEvent (doesn't say what occurred)
+Commands are different:
+
+```text
+CreateBooking
+ConfirmPayment
+StartService
+SubmitRating
 ```
 
-### Command vs. Event
-
-| Concept | Intent | Tense | Can fail? |
-|---|---|---|---|
-| **Command** | An instruction to do something | Present | Yes |
-| **Event** | A notification that something occurred | Past | No — it already happened |
-
-```
-Customer → [ConfirmBooking] → booking-service → [BookingConfirmed] → operations-service, notification
-              (Command)                              (Event)
-```
+A command asks for an action. An event states that an action or business change has already happened.
 
 ---
 
-## Standard envelope fields
+## 2. Standard event information
 
-Every event published on RabbitMQ carries this envelope, regardless of
-which context it comes from:
+The implementation may use a common envelope containing information such as:
 
-| Field | Type | Description |
-|---|---|---|
-| `eventId` | UUID | Unique id for this specific event instance — the idempotency key |
-| `eventType` | string | Event name in PascalCase, e.g. `BookingConfirmed` |
-| `aggregateId` | UUID | Id of the aggregate that produced the event |
-| `aggregateType` | string | e.g. `Booking`, `Assignment`, `Payment` |
-| `occurredAt` | ISO 8601 | When the business fact actually happened |
-| `version` | integer | Schema version of this event type |
-| `payload` | object | The event-specific data — different for every event |
-| `metadata.correlationId` | UUID | Ties together every event/command in one business transaction, for tracing |
-| `metadata.causationId` | UUID | Id of whatever event or command directly caused this one |
-| `metadata.userId` | UUID | Who initiated the chain, when there's a human behind it |
-
-The event catalog below only shows the `payload` field for each event —
-the envelope around it is always the same shape from this table.
-
----
-
-## Event catalog
-
-### Event: BookingCreated
-
-| Field | Value |
+| Field | Meaning |
 |---|---|
-| **Name** | `BookingCreated` |
-| **Bounded Context** | Booking |
-| **Aggregate** | Booking |
-| **Trigger** | A customer submits a new booking request (RF-005/006/007) |
-| **Consumers** | Notification |
-| **Channel (routing key)** | `booking.created` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+| `eventId` | Unique identifier for the event occurrence. |
+| `eventType` | Event name. |
+| `aggregateId` | Identifier of the business object that produced the event. |
+| `occurredAt` | Time when the event occurred. |
+| `version` | Version of the event contract. |
+| `payload` | Business information required by consumers. |
 
-**Payload example:**
-
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000001",
-  "eventType": "BookingCreated",
-  "aggregateId": "b1a2c3d4-0000-0000-0000-000000000001",
-  "aggregateType": "Booking",
-  "occurredAt": "2026-09-10T14:03:00Z",
-  "version": 1,
-  "payload": {
-    "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "customerId": "c1a2c3d4-0000-0000-0000-000000000002",
-    "vehicleId": "v1a2c3d4-0000-0000-0000-000000000003",
-    "serviceId": "s1a2c3d4-0000-0000-0000-000000000004",
-    "scheduledAt": "2026-09-11T09:00:00Z",
-    "priceAtBooking": { "amount": 20000, "currency": "COP" }
-  }
-}
-```
-
-**What do consumers do with this event?**
-
-| Consuming service | Action | Idempotent? |
-|---|---|---|
-| Notification | Sends the customer an in-app confirmation that the request came through | Yes — uses `eventId` as the idempotency key |
+The exact serialization format and transport mechanism are architectural concerns.
 
 ---
 
-### Event: BookingConfirmed
+# 3. Event catalog
 
-| Field | Value |
-|---|---|
-| **Name** | `BookingConfirmed` |
-| **Bounded Context** | Booking |
-| **Aggregate** | Booking |
-| **Trigger** | The requested time slot passes availability validation (RF-006/RF-007) |
-| **Consumers** | Operations & Assignment, Notification |
-| **Channel (routing key)** | `booking.confirmed` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+## UserRegistered
 
-**Payload example:**
+**Origin:** Identity & Access
 
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000002",
-  "eventType": "BookingConfirmed",
-  "aggregateId": "b1a2c3d4-0000-0000-0000-000000000001",
-  "aggregateType": "Booking",
-  "occurredAt": "2026-09-10T14:03:05Z",
-  "version": 1,
-  "payload": {
-    "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "assignedBayId": "bay1a2c3-0000-0000-0000-000000000005",
-    "scheduledAt": "2026-09-11T09:00:00Z",
-    "operatorPreselected": false
-  }
-}
-```
+**Meaning:** A new user account was successfully created.
 
-`operatorPreselected` tells operations-service whether the customer already
-picked an operator (RF-010) or whether it needs to run automatic assignment
-(RF-008).
+**Typical reactions:**
 
-**What do consumers do with this event?**
-
-| Consuming service | Action | Idempotent? |
-|---|---|---|
-| Operations & Assignment | If `operatorPreselected` is false, runs `OperatorAssigner.assignAutomatically()` and creates an `Assignment` | Yes — checks whether an `Assignment` already exists for this `bookingId` before creating one |
-| Notification | Tells the customer their booking is confirmed | Yes — uses `eventId` |
+- create or update notification/welcome information if required;
+- record an audit event.
 
 ---
 
-### Event: BookingModified
+## UserAuthenticated
 
-| Field | Value |
-|---|---|
-| **Name** | `BookingModified` |
-| **Bounded Context** | Booking |
-| **Aggregate** | Booking |
-| **Trigger** | A permitted change to a `PENDING` or `CONFIRMED` booking goes through |
-| **Consumers** | Notification |
-| **Channel (routing key)** | `booking.modified` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Identity & Access
 
-**Payload example:**
+**Meaning:** A user successfully authenticated.
 
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000003",
-  "eventType": "BookingModified",
-  "aggregateId": "b1a2c3d4-0000-0000-0000-000000000001",
-  "aggregateType": "Booking",
-  "occurredAt": "2026-09-10T15:10:00Z",
-  "version": 1,
-  "payload": {
-    "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "changedField": "scheduledAt",
-    "previousValue": "2026-09-11T09:00:00Z",
-    "newValue": "2026-09-11T11:00:00Z"
-  }
-}
-```
+**Typical reactions:**
 
-**What do consumers do with this event?**
+- security/audit processing.
 
-| Consuming service | Action | Idempotent? |
-|---|---|---|
-| Notification | Tells the customer what changed | Yes — uses `eventId` |
+No business service should treat a successful login as a booking or payment action.
 
 ---
 
-### Event: BookingCancelled
+## BookingCreated
 
-| Field | Value |
-|---|---|
-| **Name** | `BookingCancelled` |
-| **Bounded Context** | Booking |
-| **Aggregate** | Booking |
-| **Trigger** | A customer or admin cancels a `PENDING` or `CONFIRMED` booking |
-| **Consumers** | Operations & Assignment, Notification |
-| **Channel (routing key)** | `booking.cancelled` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Booking
 
-**Payload example:**
+**Meaning:** A booking was created with its customer vehicle, scheduled interval and selected service lines.
 
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000004",
-  "eventType": "BookingCancelled",
-  "aggregateId": "b1a2c3d4-0000-0000-0000-000000000001",
-  "aggregateType": "Booking",
-  "occurredAt": "2026-09-10T16:00:00Z",
-  "version": 1,
-  "payload": {
-    "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "cancelledBy": "CUSTOMER"
-  }
-}
-```
+**Important information:**
 
-**What do consumers do with this event?**
+- booking identifier;
+- customer identifier;
+- vehicle identifier;
+- scheduled start/end;
+- selected service identifiers;
+- booking status.
 
-| Consuming service | Action | Idempotent? |
-|---|---|---|
-| Operations & Assignment | Cancels the associated `Assignment` if one exists | Yes — checks the `Assignment`'s current status before cancelling |
-| Notification | Tells the customer the cancellation went through | Yes — uses `eventId` |
+**Typical reactions:**
 
-> **Not confirmed yet:** whether a cancellation ever triggers a refund
-> through Payment. Nothing in the current requirements says either way —
-> flagged as an open question, same as in `entities-and-rules.md`.
+- notify the customer;
+- continue availability/confirmation workflow when applicable.
 
 ---
 
-### Event: OperatorAssigned
+## BookingConfirmed
 
-| Field | Value |
-|---|---|
-| **Name** | `OperatorAssigned` |
-| **Bounded Context** | Operations & Assignment |
-| **Aggregate** | Assignment |
-| **Trigger** | An operator gets assigned through any of the 3 paths (RF-008/009/010) |
-| **Consumers** | Notification |
-| **Channel (routing key)** | `operations.operator_assigned` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Booking
 
-**Payload example:**
+**Meaning:** The booking passed the required availability checks and was confirmed.
 
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000005",
-  "eventType": "OperatorAssigned",
-  "aggregateId": "as1a2c3d-0000-0000-0000-000000000006",
-  "aggregateType": "Assignment",
-  "occurredAt": "2026-09-10T14:03:06Z",
-  "version": 1,
-  "payload": {
-    "assignmentId": "as1a2c3d-0000-0000-0000-000000000006",
-    "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "operatorId": "op1a2c3d-0000-0000-0000-000000000007",
-    "assignmentMethod": "AUTOMATIC"
-  }
-}
-```
+**Important information:**
 
-**What do consumers do with this event?**
+- booking identifier;
+- scheduled interval;
+- service bay;
+- customer/vehicle references;
+- selected services.
 
-| Consuming service | Action | Idempotent? |
-|---|---|---|
-| Notification | Tells the customer who's assigned, and tells the operator they have a new job | Yes — uses `eventId` |
+**Typical reactions:**
+
+- start the operator-assignment workflow;
+- notify the customer;
+- notify the selected/assigned operator when applicable.
 
 ---
 
-### Event: OperatorReassigned
+## BookingModified
 
-| Field | Value |
-|---|---|
-| **Name** | `OperatorReassigned` |
-| **Bounded Context** | Operations & Assignment |
-| **Aggregate** | Assignment |
-| **Trigger** | An administrator reassigns a booking to a different operator (RF-009) |
-| **Consumers** | Notification |
-| **Channel (routing key)** | `operations.operator_reassigned` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Booking
 
-**Payload example:**
+**Meaning:** An allowed change to a booking was completed.
 
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000006",
-  "eventType": "OperatorReassigned",
-  "aggregateId": "as1a2c3d-0000-0000-0000-000000000008",
-  "aggregateType": "Assignment",
-  "occurredAt": "2026-09-10T17:00:00Z",
-  "version": 1,
-  "payload": {
-    "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "previousAssignmentId": "as1a2c3d-0000-0000-0000-000000000006",
-    "previousOperatorId": "op1a2c3d-0000-0000-0000-000000000007",
-    "newAssignmentId": "as1a2c3d-0000-0000-0000-000000000008",
-    "newOperatorId": "op1a2c3d-0000-0000-0000-000000000009"
-  }
-}
-```
+Examples include a permitted change of:
 
-Carries both the old and new assignment ids, matching the design decision
-in `entities-and-rules.md`: reassignment cancels the old `Assignment` and
-creates a new one, it doesn't mutate the existing record.
+- date/time;
+- selected service information;
+- other booking data allowed by the requirements.
 
-**What do consumers do with this event?**
+**Typical reactions:**
 
-| Consuming service | Action | Idempotent? |
-|---|---|---|
-| Notification | Tells the customer and both operators (old and new) about the change | Yes — uses `eventId` |
+- notify affected users;
+- re-evaluate availability/assignment if the change affects them.
 
 ---
 
-### Event: ServiceStarted
+## BookingCancelled
 
-| Field | Value |
-|---|---|
-| **Name** | `ServiceStarted` |
-| **Bounded Context** | Operations & Assignment |
-| **Aggregate** | Assignment |
-| **Trigger** | The assigned operator marks the wash as started |
-| **Consumers** | Booking, Notification |
-| **Channel (routing key)** | `operations.service_started` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Booking
 
-**Payload example:**
+**Meaning:** A booking was cancelled under the applicable rules.
 
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000007",
-  "eventType": "ServiceStarted",
-  "aggregateId": "as1a2c3d-0000-0000-0000-000000000006",
-  "aggregateType": "Assignment",
-  "occurredAt": "2026-09-11T09:02:00Z",
-  "version": 1,
-  "payload": {
-    "assignmentId": "as1a2c3d-0000-0000-0000-000000000006",
-    "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "operatorId": "op1a2c3d-0000-0000-0000-000000000007"
-  }
-}
-```
+**Important information:**
 
-**What do consumers do with this event?**
+- booking identifier;
+- cancellation reason;
+- previous lifecycle state;
+- cancelled time.
 
-| Consuming service | Action | Idempotent? |
-|---|---|---|
-| Booking | Calls `Booking.start()`, moving `BookingStatus` from `CONFIRMED` to `IN_PROGRESS` | Yes — `start()` is a no-op if the booking is already `IN_PROGRESS` |
-| Notification | Tells the customer the wash is underway | Yes — uses `eventId` |
+**Typical reactions:**
+
+- release availability;
+- cancel or update pending operational work;
+- notify affected users.
 
 ---
 
-### Event: ServiceCompleted
+## OperatorAssigned
 
-| Field | Value |
-|---|---|
-| **Name** | `ServiceCompleted` |
-| **Bounded Context** | Operations & Assignment |
-| **Aggregate** | Assignment |
-| **Trigger** | The assigned operator marks the wash as finished |
-| **Consumers** | Booking, Notification |
-| **Channel (routing key)** | `operations.service_completed` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Operations & Assignment
 
-**Payload example:**
+**Meaning:** An operator became responsible for a service execution.
 
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000008",
-  "eventType": "ServiceCompleted",
-  "aggregateId": "as1a2c3d-0000-0000-0000-000000000006",
-  "aggregateType": "Assignment",
-  "occurredAt": "2026-09-11T09:45:00Z",
-  "version": 1,
-  "payload": {
-    "assignmentId": "as1a2c3d-0000-0000-0000-000000000006",
-    "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "operatorId": "op1a2c3d-0000-0000-0000-000000000007"
-  }
-}
-```
+**Assignment methods:**
 
-**What do consumers do with this event?**
+- automatic;
+- customer selected;
+- administrator assigned.
 
-| Consuming service | Action | Idempotent? |
-|---|---|---|
-| Booking | Calls `Booking.complete()`, moving `BookingStatus` to `COMPLETED` — this also unlocks rating for that booking (INV-007) | Yes — `complete()` is a no-op if already `COMPLETED` |
-| Notification | Prompts the customer to rate the service | Yes — uses `eventId` |
+**Important information:**
+
+- booking/service-line reference;
+- operator;
+- assignment method;
+- assignment time.
+
+**Typical reactions:**
+
+- notify the operator;
+- notify the customer when required.
 
 ---
 
-### Event: PaymentInitiated
+## OperatorReassigned
 
-| Field | Value |
-|---|---|
-| **Name** | `PaymentInitiated` |
-| **Bounded Context** | Payment |
-| **Aggregate** | Payment |
-| **Trigger** | A customer scans the shop's QR code and submits a payment attempt |
-| **Consumers** | *(none currently — internal to payment-service)* |
-| **Channel (routing key)** | `payment.initiated` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Operations & Assignment
 
-**Payload example:**
+**Meaning:** Responsibility for operational work changed from one operator to another.
 
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000009",
-  "eventType": "PaymentInitiated",
-  "aggregateId": "pay1a2c3-0000-0000-0000-000000000010",
-  "aggregateType": "Payment",
-  "occurredAt": "2026-09-11T09:46:00Z",
-  "version": 1,
-  "payload": {
-    "paymentId": "pay1a2c3-0000-0000-0000-000000000010",
-    "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "amount": { "amount": 20000, "currency": "COP" },
-    "method": "NEQUI"
-  }
-}
-```
+The event should preserve enough information to distinguish the previous and new responsible operators.
 
-Published now so a future consumer (analytics, for example) has something
-to subscribe to — right now nothing in the platform reacts to it.
+**Important rule:**
+
+Automatic reassignment does not change the booking itself; it changes who is responsible for the operational work.
 
 ---
 
-### Event: PaymentConfirmed
+## ServiceStarted
 
-| Field | Value |
-|---|---|
-| **Name** | `PaymentConfirmed` |
-| **Bounded Context** | Payment |
-| **Aggregate** | Payment |
-| **Trigger** | An administrator approves the payment after reviewing the uploaded receipt |
-| **Consumers** | Notification, Promotions & Loyalty *(planned)* |
-| **Channel (routing key)** | `payment.confirmed` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Operations & Assignment
 
-**Payload example:**
+**Meaning:** An assigned operator started a service execution.
 
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000011",
-  "eventType": "PaymentConfirmed",
-  "aggregateId": "pay1a2c3-0000-0000-0000-000000000010",
-  "aggregateType": "Payment",
-  "occurredAt": "2026-09-11T09:46:05Z",
-  "version": 1,
-  "payload": {
-    "paymentId": "pay1a2c3-0000-0000-0000-000000000010",
-    "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "amount": { "amount": 20000, "currency": "COP" },
-    "reviewedBy": "adm1a2c3-0000-0000-0000-000000000020"
-  }
-}
-```
+**Important information:**
 
-**What do consumers do with this event?**
+- service execution identifier;
+- booking service identifier;
+- operator;
+- start time.
 
-| Consuming service | Action | Idempotent? |
-|---|---|---|
-| Notification | Sends the customer a payment receipt | Yes — uses `eventId` |
-| Promotions & Loyalty *(planned)* | Would credit loyalty points for this payment | Not built yet |
+**Typical reactions:**
+
+- update the booking's overall operational state when the business rules require it;
+- notify the customer.
 
 ---
 
-### Event: PaymentRejected
+## ServiceCompleted
 
-| Field | Value |
-|---|---|
-| **Name** | `PaymentRejected` |
-| **Bounded Context** | Payment |
-| **Aggregate** | Payment |
-| **Trigger** | An administrator rejects the payment on review — amount mismatch, unreadable receipt, or a reused transaction reference |
-| **Consumers** | Notification |
-| **Channel (routing key)** | `payment.rejected` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Operations & Assignment
 
-**Payload example:**
+**Meaning:** A service execution finished.
 
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000012",
-  "eventType": "PaymentRejected",
-  "aggregateId": "pay1a2c3-0000-0000-0000-000000000010",
-  "aggregateType": "Payment",
-  "occurredAt": "2026-09-11T09:46:05Z",
-  "version": 1,
-  "payload": {
-    "paymentId": "pay1a2c3-0000-0000-0000-000000000010",
-    "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "reviewedBy": "adm1a2c3-0000-0000-0000-000000000020",
-    "reason": "AMOUNT_MISMATCH"
-  }
-}
-```
+**Important information:**
 
-**What do consumers do with this event?**
+- service execution identifier;
+- booking service identifier;
+- operator;
+- finish time.
 
-| Consuming service | Action | Idempotent? |
-|---|---|---|
-| Notification | Tells the customer the payment failed and to try again | Yes — uses `eventId` |
+**Typical reactions:**
+
+- update the booking lifecycle when all required service work is complete;
+- make rating available for the completed service line;
+- notify the customer.
 
 ---
 
-### Event: RatingSubmitted
+## PaymentInitiated
 
-| Field | Value |
-|---|---|
-| **Name** | `RatingSubmitted` |
-| **Bounded Context** | Feedback & Rating |
-| **Aggregate** | Rating |
-| **Trigger** | A customer rates a `COMPLETED` booking (RF-012) |
-| **Consumers** | Operations & Assignment |
-| **Channel (routing key)** | `rating.submitted` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Payment
 
-**Payload example:**
+**Meaning:** A payment attempt was registered for a booking.
 
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000013",
-  "eventType": "RatingSubmitted",
-  "aggregateId": "rt1a2c3d-0000-0000-0000-000000000014",
-  "aggregateType": "Rating",
-  "occurredAt": "2026-09-11T12:00:00Z",
-  "version": 1,
-  "payload": {
-    "ratingId": "rt1a2c3d-0000-0000-0000-000000000014",
-    "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "operatorId": "op1a2c3d-0000-0000-0000-000000000007",
-    "score": 5,
-    "comment": "Great service, on time."
-  }
-}
-```
+**Important information:**
 
-**What do consumers do with this event?**
+- payment identifier;
+- booking identifier;
+- amount;
+- payment method.
 
-| Consuming service | Action | Idempotent? |
-|---|---|---|
-| Operations & Assignment | Records the score against the operator for future reference — **not** currently used as an automatic-assignment criterion (INV-008 keeps that to availability only) | Yes — uses `eventId` |
+For digital methods, the receipt/review workflow can continue after this event.
 
 ---
 
-### Event: NotificationCreated
+## PaymentConfirmed
 
-| Field | Value |
-|---|---|
-| **Name** | `NotificationCreated` |
-| **Bounded Context** | Notification |
-| **Aggregate** | Notification |
-| **Trigger** | Any of the events above that Notification reacts to |
-| **Consumers** | *(none — this is the terminal event in every chain)* |
-| **Channel (routing key)** | `notification.created` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Payment
 
-**Payload example:**
+**Meaning:** An authorized administrator approved a payment after the required verification.
 
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000015",
-  "eventType": "NotificationCreated",
-  "aggregateId": "nt1a2c3d-0000-0000-0000-000000000016",
-  "aggregateType": "Notification",
-  "occurredAt": "2026-09-11T09:02:01Z",
-  "version": 1,
-  "payload": {
-    "notificationId": "nt1a2c3d-0000-0000-0000-000000000016",
-    "recipientId": "c1a2c3d4-0000-0000-0000-000000000002",
-    "type": "SERVICE_STARTED",
-    "message": "Your wash just started."
-  }
-}
-```
+**Important information:**
 
-This one exists mostly for completeness and for future analytics — nothing
-downstream currently subscribes to it, since notifying the user *is* the
-end of the chain.
+- payment identifier;
+- booking identifier;
+- approved amount;
+- payment method;
+- reviewer.
+
+**Typical reactions:**
+
+- notify the customer;
+- apply loyalty effects when the final loyalty rules require them.
 
 ---
 
-### Event: PromotionApplied *(planned)*
+## PaymentRejected
 
-| Field | Value |
-|---|---|
-| **Name** | `PromotionApplied` |
-| **Bounded Context** | Promotions & Loyalty |
-| **Aggregate** | Promotion |
-| **Trigger** | An eligible promotion gets applied at payment time |
-| **Consumers** | Payment |
-| **Channel (routing key)** | `promotion.applied` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Payment
 
-**Payload example (draft — not built yet):**
+**Meaning:** A payment attempt was rejected.
 
-```json
-{
-  "eventType": "PromotionApplied",
-  "payload": {
-    "promotionId": "pr1a2c3d-0000-0000-0000-000000000017",
-    "bookingId": "b1a2c3d4-0000-0000-0000-000000000001",
-    "discountAmount": { "amount": 2000, "currency": "COP" }
-  }
-}
-```
+Possible review reasons include:
+
+- amount mismatch;
+- invalid/unreadable receipt;
+- reused transaction reference;
+- other defined verification failures.
+
+**Typical reactions:**
+
+- notify the customer;
+- allow another payment attempt when the booking rules permit it.
 
 ---
 
-### Event: LoyaltyPointsEarned *(planned)*
+## RatingSubmitted
 
-| Field | Value |
-|---|---|
-| **Name** | `LoyaltyPointsEarned` |
-| **Bounded Context** | Promotions & Loyalty |
-| **Aggregate** | TBD — see open question in `entities-and-rules.md` about where points live |
-| **Trigger** | A confirmed payment earns loyalty points |
-| **Consumers** | Notification |
-| **Channel (routing key)** | `loyalty.points_earned` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Feedback & Rating / Operations & Assignment
 
-**Payload example (draft — not built yet):**
+**Meaning:** A customer submitted a rating for a completed service execution.
 
-```json
-{
-  "eventType": "LoyaltyPointsEarned",
-  "payload": {
-    "customerId": "c1a2c3d4-0000-0000-0000-000000000002",
-    "pointsEarned": 20,
-    "sourceBookingId": "b1a2c3d4-0000-0000-0000-000000000001"
-  }
-}
-```
+**Important information:**
+
+- service execution;
+- customer;
+- score;
+- optional comment;
+- rating time.
+
+**Important rule:**
+
+Rating is not an operator-assignment criterion. A rating may be used for reporting, but it must not silently influence automatic assignment.
 
 ---
 
-### Event: LoyaltyPointsRedeemed *(planned)*
+## PromotionApplied
 
-| Field | Value |
-|---|---|
-| **Name** | `LoyaltyPointsRedeemed` |
-| **Bounded Context** | Promotions & Loyalty |
-| **Aggregate** | TBD — same open question as above |
-| **Trigger** | A customer spends points on a benefit |
-| **Consumers** | Payment |
-| **Channel (routing key)** | `loyalty.points_redeemed` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Promotions & Loyalty
 
-**Payload example (draft — not built yet):**
+**Meaning:** An eligible promotion was applied to a booking.
 
-```json
-{
-  "eventType": "LoyaltyPointsRedeemed",
-  "payload": {
-    "customerId": "c1a2c3d4-0000-0000-0000-000000000002",
-    "pointsRedeemed": 100,
-    "appliedToBookingId": "b1a2c3d4-0000-0000-0000-000000000001"
-  }
-}
-```
+**Important information:**
+
+- promotion;
+- booking;
+- discount type/value;
+- resulting discount amount.
+
+This event depends on the final promotion rules.
 
 ---
 
-### Event: UserRegistered
+## LoyaltyPointsEarned
 
-| Field | Value |
-|---|---|
-| **Name** | `UserRegistered` |
-| **Bounded Context** | Identity & Access |
-| **Aggregate** | User |
-| **Trigger** | A new account is created (RF-001) |
-| **Consumers** | Notification |
-| **Channel (routing key)** | `identity.user_registered` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Promotions & Loyalty / Payment
 
-**Payload example:**
+**Meaning:** A loyalty ledger transaction credited points to a customer.
 
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000018",
-  "eventType": "UserRegistered",
-  "aggregateId": "c1a2c3d4-0000-0000-0000-000000000002",
-  "aggregateType": "User",
-  "occurredAt": "2026-09-10T13:00:00Z",
-  "version": 1,
-  "payload": {
-    "userId": "c1a2c3d4-0000-0000-0000-000000000002",
-    "name": "Juan Díaz",
-    "role": "CUSTOMER"
-  }
-}
-```
+**Important information:**
 
-**What do consumers do with this event?**
+- customer;
+- point amount;
+- source booking/payment;
+- resulting ledger balance when appropriate.
 
-| Consuming service | Action | Idempotent? |
-|---|---|---|
-| Notification | Sends a welcome message | Yes — uses `eventId` |
+The authoritative balance remains the loyalty transaction ledger.
 
 ---
 
-### Event: UserAuthenticated
+## LoyaltyPointsRedeemed
 
-| Field | Value |
-|---|---|
-| **Name** | `UserAuthenticated` |
-| **Bounded Context** | Identity & Access |
-| **Aggregate** | User |
-| **Trigger** | A successful login |
-| **Consumers** | *(none currently)* |
-| **Channel (routing key)** | `identity.user_authenticated` |
-| **Schema version** | v1 |
-| **Delivery guarantee** | At-least-once |
+**Origin:** Promotions & Loyalty / Payment
 
-**Payload example:**
+**Meaning:** A loyalty ledger transaction deducted points used for a booking benefit.
 
-```json
-{
-  "eventId": "8f14e45f-ceea-4c9c-a5f3-000000000019",
-  "eventType": "UserAuthenticated",
-  "aggregateId": "c1a2c3d4-0000-0000-0000-000000000002",
-  "aggregateType": "User",
-  "occurredAt": "2026-09-11T08:00:00Z",
-  "version": 1,
-  "payload": {
-    "userId": "c1a2c3d4-0000-0000-0000-000000000002"
-  }
-}
-```
+**Important information:**
 
-Published mainly for audit purposes right now (`00-governance/security-policy.md`
-asks for auth events to be traceable) — no other service reacts to it yet.
+- customer;
+- points redeemed;
+- booking;
+- monetary discount.
+
+The booking records the monetary effect of the redemption; the ledger records the point movement.
 
 ---
 
-## Event flow: booking → assignment → completion
+## NotificationCreated
 
-This is the main flow of the platform, tying together Booking, Operations &
-Assignment, and Notification:
+**Origin:** Notification
 
-```
+**Meaning:** A notification record was created for a user.
+
+**Important information:**
+
+- notification identifier;
+- recipient;
+- notification type;
+- message;
+- creation time.
+
+The notification context communicates information but does not own the business state that generated the notification.
+
+---
+
+# 4. Main business event flows
+
+## Booking → assignment → execution
+
+```text
 Customer
-  │
-  │  CreateBooking (command)
-  ▼
-[Aggregate: Booking] ── BookingCreated ──────────────▶ [Notification]
-  │
-  │  (availability check passes)
-  ▼
-[Aggregate: Booking] ── BookingConfirmed ─────────────▶ [Notification]
-  │                                    │
-  │                                    ▼
-  │                          [operations-service]
-  │                          OperatorAssigner runs
-  │                          [Aggregate: Assignment]
-  │                                    │
-  │                                    ├── OperatorAssigned ─▶ [Notification]
-  │                                    │
-  │                       (operator marks it started)
-  │                                    │
-  │                          ServiceStarted ────────────────▶ [Booking: start()]
-  │                                                                    │
-  │                                                        BookingStatus = IN_PROGRESS
-  │
-  │                       (operator marks it done)
-  │                                    │
-  │                          ServiceCompleted ──────────────▶ [Booking: complete()]
-  │                                                                    │
-  │                                                        BookingStatus = COMPLETED
-  │                                                                    │
-  │                                                       (rating unlocked — RF-012)
-  ▼
-[Aggregate: Payment] ── PaymentConfirmed ─────────────▶ [Notification]
+   │
+   │ Create booking
+   ▼
+Booking
+   │
+   ├── BookingCreated
+   │
+   └── availability/confirmation
+           │
+           └── BookingConfirmed
+                    │
+                    ▼
+            Operations & Assignment
+                    │
+                    └── OperatorAssigned
+                              │
+                              ▼
+                       Service Execution
+                              │
+                         ServiceStarted
+                              │
+                         ServiceCompleted
+                              │
+                              ▼
+                      Rating available
 ```
+
+A booking can contain multiple service lines, so the execution/rating part of the flow is evaluated per service line.
 
 ---
 
-## Schema evolution strategy
+## Payment flow
 
-Events are contracts — changing one in an incompatible way breaks whoever's
-consuming it, possibly without anyone noticing until production.
-
-### Compatible changes (safe)
-
+```text
+Customer
+   │
+   │ Payment attempt
+   ▼
+Payment
+   │
+   └── PaymentInitiated
+           │
+           ▼
+      Administrator review
+           │
+       ┌───┴─────────┐
+       ▼             ▼
+PaymentConfirmed  PaymentRejected
+       │             │
+       ▼             ▼
+  Notification    Notification
 ```
-✓ Add a new optional field to the payload
-✓ Add a whole new event type
-✓ Change a required field to optional
-```
 
-### Incompatible changes (breaks consumers)
-
-```
-✗ Remove a field from the payload
-✗ Change a field's type (string → number)
-✗ Change an optional field to required
-✗ Rename the event
-```
-
-### How to evolve a schema without breaking anything
-
-```
-Step 1: Publish the new version (e.g. BookingConfirmedV2) alongside the old one
-Step 2: Keep publishing both during the migration window
-Step 3: Move consumers to V2 one at a time
-Step 4: Announce V1 as deprecated at least one sprint ahead
-Step 5: Stop publishing V1
-```
+Cash follows the same payment lifecycle conceptually, but it does not require a digital receipt.
 
 ---
 
-## Event summary table
+## Rating flow
 
-| Event | Origin context | Routing key | Consumers | Version |
-|---|---|---|---|---|
-| UserRegistered | Identity & Access | `identity.user_registered` | Notification | v1 |
-| UserAuthenticated | Identity & Access | `identity.user_authenticated` | — | v1 |
-| BookingCreated | Booking | `booking.created` | Notification | v1 |
-| BookingConfirmed | Booking | `booking.confirmed` | Operations & Assignment, Notification | v1 |
-| BookingModified | Booking | `booking.modified` | Notification | v1 |
-| BookingCancelled | Booking | `booking.cancelled` | Operations & Assignment, Notification | v1 |
-| OperatorAssigned | Operations & Assignment | `operations.operator_assigned` | Notification | v1 |
-| OperatorReassigned | Operations & Assignment | `operations.operator_reassigned` | Notification | v1 |
-| ServiceStarted | Operations & Assignment | `operations.service_started` | Booking, Notification | v1 |
-| ServiceCompleted | Operations & Assignment | `operations.service_completed` | Booking, Notification | v1 |
-| PaymentInitiated | Payment | `payment.initiated` | — | v1 |
-| PaymentConfirmed | Payment | `payment.confirmed` | Notification, Promotions & Loyalty (planned) | v1 |
-| PaymentRejected | Payment | `payment.rejected` | Notification | v1 |
-| RatingSubmitted | Feedback & Rating | `rating.submitted` | Operations & Assignment | v1 |
-| NotificationCreated | Notification | `notification.created` | — | v1 |
-| PromotionApplied | Promotions & Loyalty | `promotion.applied` | Payment | v1 (planned) |
-| LoyaltyPointsEarned | Promotions & Loyalty | `loyalty.points_earned` | Notification | v1 (planned) |
-| LoyaltyPointsRedeemed | Promotions & Loyalty | `loyalty.points_redeemed` | Payment | v1 (planned) |
-
----
-
-## Policies — reactions to events
-
-A **Policy** describes what happens automatically when an event shows up —
-"whenever X occurs, do Y."
-
-| Trigger event | Policy | Emitted command | Service |
-|---|---|---|---|
-| `BookingConfirmed` | Whenever it arrives with `operatorPreselected: false`, run automatic assignment | `AssignOperatorAutomatically` | operations-service |
-| `BookingCancelled` | Whenever it arrives and an `Assignment` exists for that booking, cancel it | `CancelAssignment` | operations-service |
-| `ServiceStarted` | Whenever it arrives, move the booking forward | `StartBooking` | booking-service |
-| `ServiceCompleted` | Whenever it arrives, close out the booking and unlock rating | `CompleteBooking` | booking-service |
-| `PaymentConfirmed` | Whenever it arrives *(once Promotions & Loyalty exists)*, credit loyalty points | `CreditLoyaltyPoints` | promotions-service *(planned)* |
-
----
-
-## Resilience patterns
-
-### At-least-once delivery + idempotency
-
-RabbitMQ guarantees an event is delivered **at least once**, but a retry
-after a dropped acknowledgment can deliver the same message twice.
-Consumers have to be idempotent — processing the same `eventId` twice must
-never double-apply the effect.
-
-```java
-// Idempotent consumer — checks eventId before doing anything
-public void onBookingConfirmed(BookingConfirmedEvent event) {
-    if (processedEventRepository.exists(event.getEventId())) {
-        log.info("Event {} already processed, skipping", event.getEventId());
-        return;
-    }
-
-    List<Operator> availableOperators = operatorRepository.findAvailable(event.getScheduledAt());
-    operatorAssigner.assignAutomatically(availableOperators);
-
-    // marked in the same transaction as the actual work, so a crash
-    // between the two never leaves the event "half processed"
-    processedEventRepository.markProcessed(event.getEventId());
-}
+```text
+ServiceCompleted
+       │
+       ▼
+Customer can rate
+       │
+       ▼
+RatingSubmitted
+       │
+       ├── stored with the service execution
+       └── available for reporting
 ```
 
-### Dead Letter Exchange (DLQ)
+Rating does not create a separate physical rating record in the current data model.
 
-When an event fails processing after a few retries, RabbitMQ routes it to a
-dead letter exchange instead of losing it silently.
+---
 
-| Setting | Recommended value |
+## Loyalty flow
+
+```text
+Approved payment / eligible promotion
+              │
+              ▼
+     Loyalty business rule
+              │
+       ┌──────┴──────┐
+       ▼             ▼
+Points earned   Points redeemed
+       │             │
+       └──────┬──────┘
+              ▼
+   payment.loyalty_transaction
+              │
+              ▼
+      ledger is source of truth
+```
+
+`customer.customer.loyalty_points` is only a display copy and must not be used to authorize a redemption.
+
+---
+
+# 5. Event ownership and current service alignment
+
+The current architecture groups the domain capabilities into six services.
+
+| Event family | Domain context | Current owning service |
+|---|---|---|
+| User events | Identity & Access | `security-service` |
+| Booking events | Booking | `booking-service` |
+| Operator/execution events | Operations & Assignment | `operations-service` |
+| Payment events | Payment | `payment-service` |
+| Promotion/loyalty events | Promotions & Loyalty | `payment-service` |
+| Notification events | Notification | `notification-service` |
+| Rating event | Feedback & Rating | `operations-service` |
+
+This mapping is included for consistency with the current architecture. The domain event itself remains a business fact, not a microservice-specific implementation object.
+
+---
+
+# 6. Event rules
+
+### Events are facts
+
+An event should describe something that happened.
+
+Bad:
+
+```text
+AssignOperator
+```
+
+Good:
+
+```text
+OperatorAssigned
+```
+
+### Events must not redefine domain ownership
+
+`NotificationCreated` does not mean Notification owns Booking.
+
+`PaymentConfirmed` does not mean Payment owns Booking.
+
+`RatingSubmitted` does not mean there must be a separate rating database/table.
+
+### Events must not create undocumented business rules
+
+For example:
+
+- a rating does not automatically change operator assignment;
+- payment approval does not automatically imply service completion;
+- a notification does not change a booking status;
+- a loyalty event does not authorize redemption unless the ledger rules allow it.
+
+---
+
+# 7. Event consistency and idempotency
+
+When events are transported asynchronously, duplicate delivery can occur.
+
+Consumers should therefore be designed so that processing the same business event more than once does not produce an incorrect duplicate effect.
+
+For example:
+
+```text
+PaymentConfirmed
+        │
+        ├── first delivery → create customer notification
+        │
+        └── duplicate delivery → recognize the same event and avoid
+                                  creating the same effect twice
+```
+
+The exact mechanism for idempotency, retries, dead-letter queues and message broker configuration belongs to `05-architecture`.
+
+---
+
+# 8. Event evolution
+
+Events are contracts.
+
+### Compatible changes
+
+Examples:
+
+- adding an optional field;
+- adding a new event type;
+- extending the payload without changing existing meaning.
+
+### Potentially breaking changes
+
+Examples:
+
+- removing a required field;
+- changing the type of an existing field;
+- renaming an event;
+- changing the meaning of an existing field.
+
+When a breaking change is required, the architecture/API documentation must define a migration strategy instead of silently changing the existing event.
+
+---
+
+# 9. Traceability
+
+| Event | Main requirement/domain area |
 |---|---|
-| Retries before DLQ | 3–5 |
-| Backoff | Exponential (1s → 2s → 4s → 8s) |
-| DLQ retention | 7 days |
-| Alert | Fires when the DLQ has more than 0 messages |
+| `UserRegistered` | RF-001 |
+| `UserAuthenticated` | RF-002 |
+| `BookingCreated` | RF-005 to RF-006 |
+| `BookingModified` / `BookingCancelled` | RF-007 |
+| `BookingConfirmed` | RF-005 to RF-007 |
+| `OperatorAssigned` / `OperatorReassigned` | RF-008 to RF-010 |
+| `ServiceStarted` / `ServiceCompleted` | RF-011 to RF-012b |
+| `RatingSubmitted` | RF-012 |
+| `PaymentInitiated` | RF-013 / RF-013b |
+| `PaymentConfirmed` / `PaymentRejected` | RF-014 |
+| Payment history | RF-015 |
+| Card/receipt rules | RF-016 |
+| Notifications | RF-018 |
+| Preferences | RF-019 to RF-020 |
+| Promotions / loyalty | RF-024 to RF-026 |
 
-> The runbook for handling messages stuck in the DLQ belongs in each
-> service's own `09-microservices/services/<service>/runbook.md`, not here.
+---
+
+# 10. What does not belong in this document
+
+The following should not be added here just because they are part of the technical solution:
+
+- SQL Server DDL;
+- table indexes;
+- foreign-key definitions;
+- Liquibase changesets;
+- REST endpoints;
+- DTO schemas;
+- Docker configuration;
+- API Gateway routes;
+- RabbitMQ exchange/queue names;
+- JWT configuration;
+- Kubernetes manifests;
+- database-per-service deployment decisions.
+
+Those details belong in the appropriate architecture, data, API or operations documentation.
+
+The purpose of this document is to keep the **business events and their meaning** stable while implementation details evolve.
