@@ -17,6 +17,14 @@ Domain tables use the audit block defined in `06-data/modeling-conventions.md`:
 
 Domain data uses soft delete. `audit.audit_log` records changes through database triggers. Services do not publish audit events as a replacement for this database-level audit.
 
+**How `changed_by` gets filled.** The trigger reads `SESSION_CONTEXT(N'user_id')`, which is empty unless something sets it first. Every service sets it at the start of each request, before touching any table:
+
+```sql
+EXEC sp_set_session_context @key = N'user_id', @value = @currentUserId;
+```
+
+`@currentUserId` comes from the authenticated JWT (`ADR-006`), read once per request — not per query. This has to happen in one shared place per service (a filter or interceptor), not copied into every use case by hand; ADR-009 flagged forgetting this as a real, High-probability risk, since a missed request just leaves `changed_by` NULL with no error to notice it by.
+
 ## 2. Concurrency
 
 `row_version` is used for optimistic locking. An update includes the version read by the application; if another update already changed the row, the update affects no row and the application reports a conflict.
@@ -69,13 +77,65 @@ Events are published after commit. The Outbox pattern is not adopted in the curr
 
 RabbitMQ provides asynchronous communication.
 
+**Topology.** One topic exchange, `carwash.events`, shared by all six services. A
+topic exchange (not a separate exchange per service) keeps this simple for a
+team of three, and a topic exchange still lets a service subscribe to only the
+routing keys it actually needs. The queue per consuming service is bound to
+the specific routing keys in the table below.
+
+**Routing key convention:** `<owning-schema>.<event-in-snake-case>` — the
+schema prefix matches `06-data`/`ADR-003` ownership directly, so the same name
+tells you both the queue to bind and which service's database the fact came
+from.
+
+| Event (`02-domain/domain-events.md`) | Routing key | Publishing service |
+|---|---|---|
+| `UserRegistered` | `security.user_registered` | `security-service` |
+| `UserAuthenticated` | `security.user_authenticated` | `security-service` |
+| `BookingCreated` | `booking.created` | `booking-service` |
+| `BookingConfirmed` | `booking.confirmed` | `booking-service` |
+| `BookingModified` | `booking.modified` | `booking-service` |
+| `BookingCancelled` | `booking.cancelled` | `booking-service` |
+| `OperatorAssigned` | `execution.operator_assigned` | `operations-service` |
+| `OperatorReassigned` | `execution.operator_reassigned` | `operations-service` |
+| `ServiceStarted` | `execution.service_started` | `operations-service` |
+| `ServiceCompleted` | `execution.service_completed` | `operations-service` |
+| `RatingSubmitted` | `execution.rating_submitted` | `operations-service` |
+| `PaymentInitiated` | `payment.initiated` | `payment-service` |
+| `PaymentConfirmed` | `payment.confirmed` | `payment-service` |
+| `PaymentRejected` | `payment.rejected` | `payment-service` |
+| `PromotionApplied` | `payment.promotion_applied` | `payment-service` (planned) |
+| `LoyaltyPointsEarned` | `payment.loyalty_points_earned` | `payment-service` (planned) |
+| `LoyaltyPointsRedeemed` | `payment.loyalty_points_redeemed` | `payment-service` (planned) |
+| `NotificationCreated` | `notification.created` | `notification-service` |
+
+`execution.*` is used for operator/service-execution events (including
+rating, since it physically lives on `service_execution`) rather than
+`operations.*`, to keep the prefix matching the schema name directly instead
+of introducing a second name for the same thing.
+
+**Envelope.** Every message on `carwash.events` carries this shape; only
+`payload` differs per event — its business fields are the "Important
+information" list already given for that event in `domain-events.md`.
+
+```json
+{
+  "eventId": "uuid — the idempotency key for consumers",
+  "eventType": "PascalCase event name, e.g. BookingConfirmed",
+  "aggregateId": "uuid of the aggregate that produced it",
+  "occurredAt": "ISO 8601 timestamp",
+  "version": 1,
+  "payload": { "...": "event-specific fields" }
+}
+```
+
 | Concern | Current rule |
 |---|---|
 | Delivery | At least once should be assumed by consumers |
 | Acknowledgement | After successful processing |
 | Retry | Limited retries with backoff are proposed |
 | Dead letter | Failed messages should be retained for review |
-| Idempotency | Pending implementation decision |
+| Idempotency | A consumer checks `eventId` against its own processed-events record before acting, in the same transaction as the work it does |
 | Outbox | Not adopted in this version |
 
 A new event should have a documented consumer and a reason to exist.

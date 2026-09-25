@@ -30,7 +30,7 @@ The exact API contracts belong to `07-api`. Service-to-service calls do not pass
 
 ### RabbitMQ examples
 
-Events may include booking confirmation/cancellation, operator assignment, service execution changes, payment review results, loyalty changes and notification-triggering events. The exact event catalogue belongs to `02-domain/domain-events.md` and the API/event contracts.
+Events may include booking confirmation/cancellation, operator assignment, service execution changes, payment review results, loyalty changes and notification-triggering events. Each event's business meaning and payload fields belong to `02-domain/domain-events.md`. The exchange, the exact routing key per event, and the envelope shape are in `cross-cutting.md`, section 7 — kept there instead of here so there's one place for it, not two.
 
 ## Event rules
 
@@ -55,5 +55,6 @@ REST keeps required validation explicit. RabbitMQ prevents non-essential side ef
 ## References
 
 - Domain events → `02-domain/domain-events.md`
+- Exchange, routing keys and envelope → `../cross-cutting.md`, section 7
 - Cross-service references → `06-data/models.md`
 - Cross-cutting messaging → `../cross-cutting.md`
