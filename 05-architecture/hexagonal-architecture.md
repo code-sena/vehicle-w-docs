@@ -61,7 +61,7 @@ The domain contains business concepts and rules with no framework annotations.
 For the booking domain, examples include:
 
 - `Booking`
-- `BookingServiceLine`
+- `BookingService`
 - `TimeSlot`
 - `Money`
 - booking invariants
