@@ -15,6 +15,8 @@ This folder contains the decisions that define the architecture of Express car w
 | ADR-007 | Internal hexagonal architecture | Accepted |
 | ADR-008 | Manual QR/receipt payment verification | Accepted |
 | ADR-009 | Revised six-service decomposition | Current proposed decomposition |
+| ADR-010 | Data model vs frontend alignment | Accepted |
+| ADR-011 | Notification service: push delivery and event contract | Accepted |
 
 ## How to read the ADRs
 

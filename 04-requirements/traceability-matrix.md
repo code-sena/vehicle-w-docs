@@ -44,7 +44,7 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RF-015 | Payment history by date/service | HU-PAY-002 | — | `payment-service` | 🟡 In progress |
 | RF-016 | No card data collected; reject reused transaction reference | HU-PAY-001 | `PaymentTest` (reference) | `payment-service` | 🟡 In progress |
 | RF-017 | Role-based dashboard | HU-UI-001 | — | Frontend only | 🟡 In progress (screens built, not yet fed by the API) |
-| RF-018 | Notifications with read/unread state | HU-UI-002 | `NotificationFactoryTest` | `notification-service` | 🟡 In progress |
+| RF-018 | Notifications with read/unread state | HU-UI-002 | `NotificationFactoryTest`, `NotificationUseCasesTest` | `notification-service` | 🟡 In progress (service, push and RabbitMQ consumer done; web/mobile connection pending) |
 | RF-019 | Theme customisation | HU-UI-003 | Manual check | `security-service` | 🟡 In progress |
 | RF-020 | Language switch (4 languages) | HU-UI-003 | Manual check | `security-service` | 🟡 In progress |
 | RF-021 | Configure business hours and exceptions | HU-ADMIN-001 | — | `booking-service` | 🔴 Pending |
