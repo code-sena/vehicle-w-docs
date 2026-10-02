@@ -60,7 +60,7 @@ the token's `sub`).
 
 | Event | Routing key | Payload fields read by `notification-service` | Notification |
 |---|---|---|---|
-| `UserRegistered` | `security.user_registered` | `userId` | `USER_WELCOME` |
+| `UserRegistered` | `security.user_registered` | `userId`, `email`, `firstName` | `USER_WELCOME` (inbox + email) |
 | `BookingCreated` | `booking.created` | `customerUserId`, `bookingId`, `bookingCode`, `scheduledStart` | `BOOKING_CREATED` |
 | `BookingConfirmed` | `booking.confirmed` | `customerUserId`, `operatorUserId` (optional), `bookingId`, `bookingCode`, `scheduledStart` | `BOOKING_CONFIRMED` (+ `OPERATOR_ASSIGNED`) |
 | `BookingCancelled` | `booking.cancelled` | `customerUserId`, `bookingId`, `bookingCode`, `reason` | `BOOKING_CANCELLED` |
@@ -82,7 +82,16 @@ for testing before the other services publish events. Each code maps to a displa
 (`REMINDER`, `PROMOTION`, `CONFIRMATION`, `CANCELLATION`, `MESSAGE`, `SYSTEM`) computed in code,
 not stored.
 
-### 5. Messaging can be switched off
+### 5. Welcome email
+
+The welcome notification is also sent by email through the same SMTP settings as
+`security-service` (`MAIL_*`, Gmail app password or Mailpit), controlled by `MAIL_ENABLED`. To
+avoid storing or querying emails, `UserRegistered` carries the recipient's `email` and
+`firstName`; this is the only personal data on the bus, and `UserRegistered.toString()` omits it
+so it never reaches the logs. Other notifications are not emailed yet: booking reminders need
+`booking-service` data.
+
+### 6. Messaging can be switched off
 
 `MESSAGING_ENABLED` (default `false`) turns RabbitMQ on for `security-service` (publisher) and
 `notification-service` (consumer). Queue `notification-service.events` is bound to the routing
