@@ -1,6 +1,6 @@
 # Data Models per Service
 
-**Last updated:** 2026-09-24 — regrouped into six services (ADR-009).
+**Last updated:** 2026-10-02 — booking schema aligned with the booking-service Liquibase changelog (005/018 + seeds 103/104/109).
 
 The system is split into **six microservices over nine schemas**, all inside a single SQL
 Server 2016+ instance. Every schema has exactly one owning service; a service may own more
@@ -26,12 +26,12 @@ below.
 |---------|-----------------|--------|
 | `security-service` | [`security`](#01-security), [`audit`](#02-audit) | 10 |
 | `customer-service` | [`customer`](#03-customer) | 3 |
-| `booking-service` | [`catalog`](#04-catalog), [`booking`](#05-booking) | 11 |
+| `booking-service` | [`catalog`](#04-catalog), [`booking`](#05-booking) | 12 |
 | `operations-service` | [`execution`](#06-execution) | 5 |
 | `payment-service` | [`promotion`](#07-promotion), [`payment`](#08-payment) | 12 |
 | `notification-service` | [`notification`](#09-notification) | 2 |
 
-43 tables in total. The `settings` schema no longer exists: `establishment` moved to
+44 tables in total. The `settings` schema no longer exists: `establishment` moved to
 `booking` and `user_preference` to `security`; the loyalty ledger moved from `customer` to
 `payment` (see each table's modeling decisions).
 
@@ -785,6 +785,9 @@ CREATE TABLE [booking].business_hour (
     day_of_week      SMALLINT     NOT NULL,
     opens_at         TIME(0)      NOT NULL,
     closes_at        TIME(0)      NOT NULL,
+    -- ADR-010: pausa de almuerzo, opcional y dentro de la jornada
+    break_starts_at  TIME(0)      NULL,
+    break_ends_at    TIME(0)      NULL,
     is_active        BIT          NOT NULL CONSTRAINT df_bh_active DEFAULT 1,
     created_at       DATETIME2(3) NOT NULL CONSTRAINT df_bh_created DEFAULT SYSUTCDATETIME(),
     created_by       BIGINT       NULL,
@@ -796,7 +799,14 @@ CREATE TABLE [booking].business_hour (
     CONSTRAINT pk_business_hour PRIMARY KEY (business_hour_id),
     CONSTRAINT uq_business_hour_day UNIQUE (day_of_week),
     CONSTRAINT ck_business_hour_day CHECK (day_of_week BETWEEN 1 AND 7),
-    CONSTRAINT ck_business_hour_range CHECK (closes_at > opens_at)
+    CONSTRAINT ck_business_hour_range CHECK (closes_at > opens_at),
+    -- el descanso, si existe, queda dentro de la jornada
+    CONSTRAINT ck_business_hour_break CHECK (
+        (break_starts_at IS NULL AND break_ends_at IS NULL) OR
+        (break_starts_at IS NOT NULL AND break_ends_at IS NOT NULL
+         AND break_starts_at < break_ends_at
+         AND opens_at < break_starts_at AND break_ends_at < closes_at)
+    )
 );
 ```
 
@@ -808,12 +818,15 @@ CREATE TABLE [booking].business_hour (
 | `day_of_week` | SMALLINT | No | 1–7. | Unique |
 | `opens_at` | TIME(0) | No | Opening time. | — |
 | `closes_at` | TIME(0) | No | Closing time. | — |
-| `is_active` | BIT | No | Soft on/off switch. | — |
+| `break_starts_at` | TIME(0) | Yes | Lunch break start; only when a break exists (ADR-010). | — |
+| `break_ends_at` | TIME(0) | Yes | Lunch break end; only when a break exists (ADR-010). | — |
+| `is_active` | BIT | No | Soft on/off switch — Sunday is seeded inactive. | — |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
 **Modeling decisions:**
 
 1. Deliberately does not store a bay count. An earlier version repeated `concurrent_bays` on all seven rows — always the same number — which violates 3NF, since bay capacity has nothing to do with the day of week. Capacity is now obtained by counting active `service_bay` rows.
+2. **Lunch break added (ADR-010, changeset `018`).** The shop closes for lunch some days; without these two columns availability would offer slots at noon every day. A CHECK constraint keeps the break inside the shift (both null, or both set and strictly between `opens_at` and `closes_at`).
 
 ---
 
@@ -864,6 +877,46 @@ CREATE TABLE [booking].business_hour_exception (
 
 ---
 
+### Table: `bay_status`
+
+**Purpose:** The possible states of a wash bay (ADR-010 replaced `service_bay.is_active` with this catalog).
+
+```sql
+CREATE TABLE [booking].bay_status (
+    bay_status_id    SMALLINT     IDENTITY(1,1) NOT NULL,
+    code             NVARCHAR(30) NOT NULL,
+    name             NVARCHAR(60) NOT NULL,
+    accepts_bookings BIT          NOT NULL CONSTRAINT df_baystatus_accepts DEFAULT 0,
+    display_order    SMALLINT     NOT NULL CONSTRAINT df_baystatus_order DEFAULT 0,
+    created_at       DATETIME2(3) NOT NULL CONSTRAINT df_baystatus_created DEFAULT SYSUTCDATETIME(),
+    created_by       BIGINT       NULL,
+    updated_at       DATETIME2(3) NULL,
+    updated_by       BIGINT       NULL,
+    deleted_at       DATETIME2(3) NULL,
+    deleted_by       BIGINT       NULL,
+    row_version      INT          NOT NULL CONSTRAINT df_baystatus_rv DEFAULT 1,
+    CONSTRAINT pk_bay_status PRIMARY KEY (bay_status_id),
+    CONSTRAINT uq_bay_status_code UNIQUE (code)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `bay_status_id` | SMALLINT | No | Surrogate primary key (IDENTITY). ⚠️ Seeded `1 = ACTIVE`, `2 = MAINTENANCE`, `3 = INACTIVE` (changeset `018`) — availability and confirmation only count bays whose status accepts bookings. | PK |
+| `code` | NVARCHAR(30) | No | `ACTIVE`, `MAINTENANCE`, `INACTIVE`. | Unique |
+| `name` | NVARCHAR(60) | No | Label. | — |
+| `accepts_bookings` | BIT | No | Whether bays in this state can receive bookings (`ACTIVE` = 1, the rest = 0). | — |
+| `display_order` | SMALLINT | No | Sort order. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
+
+**Modeling decisions:**
+
+1. **Created by ADR-010** (changeset `018`). The old `service_bay.is_active` boolean could not express "under maintenance": an inactive bay was indistinguishable from one the shop simply does not use today. A catalog of states (`ACTIVE`, `MAINTENANCE`, `INACTIVE`) gives the admin screen an explicit switch, and `accepts_bookings` says who counts for slot availability without confusing state with usage.
+
+---
+
 ### Table: `service_bay`
 
 **Purpose:** The shop's physical wash bays.
@@ -873,7 +926,7 @@ CREATE TABLE [booking].service_bay (
     service_bay_id SMALLINT     IDENTITY(1,1) NOT NULL,
     code           NVARCHAR(20) NOT NULL,
     name           NVARCHAR(60) NOT NULL,
-    is_active      BIT          NOT NULL CONSTRAINT df_bay_active DEFAULT 1,
+    bay_status_id  SMALLINT     NOT NULL CONSTRAINT df_bay_status DEFAULT 1,   -- ADR-010: estado desde bay_status (1 = ACTIVE)
     created_at     DATETIME2(3) NOT NULL CONSTRAINT df_bay_created DEFAULT SYSUTCDATETIME(),
     created_by     BIGINT       NULL,
     updated_at     DATETIME2(3) NULL,
@@ -882,7 +935,8 @@ CREATE TABLE [booking].service_bay (
     deleted_by     BIGINT       NULL,
     row_version    INT          NOT NULL CONSTRAINT df_bay_rv DEFAULT 1,
     CONSTRAINT pk_service_bay PRIMARY KEY (service_bay_id),
-    CONSTRAINT uq_service_bay_code UNIQUE (code)
+    CONSTRAINT uq_service_bay_code UNIQUE (code),
+    CONSTRAINT fk_service_bay_status FOREIGN KEY (bay_status_id) REFERENCES [booking].bay_status(bay_status_id)
 );
 ```
 
@@ -893,12 +947,13 @@ CREATE TABLE [booking].service_bay (
 | `service_bay_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
 | `code` | NVARCHAR(20) | No | Short code, e.g. `BAHIA-1`. | Unique |
 | `name` | NVARCHAR(60) | No | Label. | — |
-| `is_active` | BIT | No | Soft on/off switch. | — |
+| `bay_status_id` | SMALLINT | No | Current state: `ACTIVE`, `MAINTENANCE` or `INACTIVE`. | FK → `booking.bay_status.bay_status_id` |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
 **Modeling decisions:**
 
 1. Beyond counting capacity, a real bay row lets the database itself block two bookings from occupying the same bay at the same time — a plain counter could never do that.
+2. **Status moved to the `bay_status` catalog (ADR-010).** `is_active` was dropped: availability and confirmation only consider bays whose status is `ACTIVE`; a bay under maintenance keeps its row and its history.
 
 ---
 
@@ -931,7 +986,7 @@ CREATE TABLE [booking].booking_status (
 | Column | Type | Nullable | Description | Constraints |
 |--------|------|----------|--------------|-------------|
 | `booking_status_id` | SMALLINT | No | Surrogate primary key (IDENTITY). ⚠️ ID `5` is `CANCELLED` and is hard-coded as a literal inside `ck_booking_cancel` and `tr_booking_bay_overlap` — never re-seed this table with a different order. | PK |
-| `code` | NVARCHAR(30) | No | `AGENDADA`, `CONFIRMADA`, `EN_EJECUCION`, `FINALIZADA`, `CANCELLED`, `NO_ASISTIO`. | Unique |
+| `code` | NVARCHAR(30) | No | `SCHEDULED`, `CONFIRMED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`, `NO_SHOW` (seed `104`, ADR-010). | Unique |
 | `name` | NVARCHAR(60) | No | Label. | — |
 | `is_final` | BIT | No | Whether this status accepts further changes. | — |
 | `display_order` | SMALLINT | No | Sort order. | — |
@@ -1030,7 +1085,7 @@ CREATE TABLE [booking].booking (
 |--------|------|----------|--------------|-------------|
 | `booking_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
 | `customer_vehicle_id` | BIGINT | No | Which vehicle. | No FK — owned by `customer.customer_vehicle`, see the cross-service contract below. |
-| `service_bay_id` | SMALLINT | Yes | NULL while still `AGENDADA`; assigned on confirmation. | FK → `booking.service_bay.service_bay_id` |
+| `service_bay_id` | SMALLINT | Yes | NULL while still `SCHEDULED`; assigned on confirmation. | FK → `booking.service_bay.service_bay_id` |
 | `scheduled_start` | DATETIME2(3) | No | Start of the slot, UTC. | — |
 | `scheduled_end` | DATETIME2(3) | No | End of the slot, UTC. | — |
 | `booking_status_id` | SMALLINT | No | Current status. | FK → `booking.booking_status.booking_status_id` |

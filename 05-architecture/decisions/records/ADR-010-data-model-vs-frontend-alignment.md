@@ -77,6 +77,23 @@ expensive once real data exists, so only what the business needs goes into the m
 protect money and personal data (price per vehicle type, capped discounts, consent) stay in the
 model.
 
+### Implementation status
+
+The booking-side changes are implemented in the booking-service Liquibase changelog (each
+service migrates the shared SQL Server instance with its own changelog table):
+
+| ADR-010 change | Where it landed |
+|---|---|
+| `service_bay.is_active` → `bay_status` catalog (ACTIVE, MAINTENANCE, INACTIVE, with `accepts_bookings`) | changeset `018` (the status ids 1/2/3 are seeded there) |
+| `booking.business_hour` lunch break (`break_starts_at` / `break_ends_at`) | changeset `018` |
+| Status codes in English (`SCHEDULED` … `NO_SHOW`), cancellation reasons in Spanish | seed `104` |
+| Catalog seeds: 5 categories, 3 example services (BASIC/PREMIUM/FULL) with per-vehicle-type prices | seed `103` |
+| Establishment singleton, 4 bays (BAY-04 starts in maintenance), weekly hours (Sunday inactive) | seed `109` |
+
+`catalog` and `booking` are recreated from scratch in dev by changeset `005` (approved reset in
+plan P2) so the schema always matches this ADR. `booking` intentionally keeps **no total column**:
+the total is derived from `booking_service` + prices minus `points_discount_amount`, never stored.
+
 ---
 
 ## Evaluated alternatives
