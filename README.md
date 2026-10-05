@@ -1,10 +1,45 @@
-# Microservices Governance Framework
+# LavaRápido — Project Documentation
+
+> Documentation of **LavaRápido / Express car wash**, a web and Android platform to book and
+> manage vehicle washes at one shop (ADSO academic project). Written in English (ADR-001).
+> Built on the *Microservices Governance Framework* template described further below.
+
+## Where to start
+
+| You want to… | Read |
+|---|---|
+| Understand the project | [`01-context/overview.md`](./01-context/overview.md) |
+| See the architecture | [`05-architecture/overview.md`](./05-architecture/overview.md), [`08-uml/diagram-index.md`](./08-uml/diagram-index.md) |
+| Run everything locally | [`10-devops/local-setup.md`](./10-devops/local-setup.md) |
+| Work on a service | [`09-microservices/service-catalog.md`](./09-microservices/service-catalog.md) |
+| Call the API | [`07-api/`](./07-api/README.md) (guidelines, authentication, OpenAPI per service) |
+| Know the data | [`06-data/models.md`](./06-data/models.md) (47 tables) |
+| Know what is done and what is missing | [`04-requirements/traceability-matrix.md`](./04-requirements/traceability-matrix.md), [`15-project-control/`](./15-project-control/README.md) |
+| Join the team | [`14-training/technical-onboarding.md`](./14-training/technical-onboarding.md) |
+
+## Status (2026-10-04)
+
+| Component | State |
+|---|---|
+| api-gateway (8080), security (3001), customer (3002), booking (3003), notification (3006) | Built, tested (286 tests), running with Docker Compose |
+| Web (Angular 21) | Connected to the built services (client dashboard, history and payment amount included); receipt upload and operator screens still local |
+| operations-service, Android app | In development by teammates (the app already uses security, customer and booking) |
+| payment-service | Incomplete |
+| CI | Jenkins planned |
+
+Stack: Java 21 · Spring Boot 4 · Spring Cloud Gateway · SQL Server 2022 · Liquibase · RabbitMQ ·
+Angular 21 · React Native (Expo) · Docker.
+
+---
+
+## About this framework
+
 
 > Generic documentation template · v1.0 · MIT License
 > Authored by Jesus Ariel Gonzalez Bonilla - freely licensed (MIT) for anyone.
 
-This repository is a **documentation scaffold** for any microservices project.
-It contains no project-specific information. Its purpose is to teach how to document
+The framework is a **documentation scaffold** for any microservices project.
+The template itself contains no project-specific information. Its purpose is to teach how to document
 a software system professionally — showing what goes in each section, why it matters,
 and how every document relates to the others.
 
