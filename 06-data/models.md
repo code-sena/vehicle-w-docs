@@ -2301,10 +2301,10 @@ See `migration-strategy.md`.
 
 ## Relationship diagrams
 
-A full ER diagram per service, plus one combined diagram for the whole system, lives in
-`08-uml/` as DBML (`00-full-model.dbml` and one file per service). Cross-service references
-are documented there as comments, not as drawn relationships, for the same reason they have
-no FK here.
+There is no ER diagram file yet: the tables above and the executable script
+`lavarapido-6-services-sqlserver.sql` are the reference. Flow and state diagrams live in
+`08-uml/diagrams/source/` (`08-uml/diagram-index.md`). If an ER diagram is added, cross-service
+references go as comments, not as drawn relationships, for the same reason they have no FK here.
 
 ## Correlations
 
