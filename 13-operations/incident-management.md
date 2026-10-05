@@ -1,192 +1,108 @@
 # Incident Management
 
-> An incident is any unplanned event that interrupts or degrades service.
-> Effective incident response is trained before incidents occur, not during.
-> Follow this playbook in order — in an incident, stress blocks free thinking.
+> An incident is anything that stops the system from working as expected — in a demo, a review
+> session (RNF-002) or while the team develops. The project runs on the team's machines (no
+> production yet), so this playbook is sized for a small academic team: short, concrete, and
+> pointing to the tools that actually exist.
 
 ---
 
 ## Severity classification
 
-| Level | Name | Definition | Example | Response time |
-|-------|------|------------|---------|---------------|
-| **P0** | Critical | System completely down. Total impact to all users. | API Gateway down, DB inaccessible | **Immediate** (<5 min) |
-| **P1** | High | Core functionality degraded. Impact to > 50% of users. | Login not working, payments failing | **15 minutes** |
-| **P2** | Medium | Secondary functionality degraded. Workaround available. | Report export slow | **1 hour** |
-| **P3** | Low | Minor nuisance. No impact on business operations. | Button with incorrect label | **Next sprint** |
+| Level | Definition | Example | Response |
+|-------|------------|---------|----------|
+| **P0** | Nothing works | SQL Server down, every service fails at startup, login impossible | Stop everything else |
+| **P1** | A core flow is broken | Booking fails, "My vehicles" fails, notifications not created | Same day, before the next review |
+| **P2** | Secondary feature broken, workaround exists | Emails not arriving but the inbox works; push not sent | Within the sprint |
+| **P3** | Cosmetic | Untranslated text, wrong icon color | Backlog |
 
 ---
 
-## Roles during an incident
+## Roles
 
-| Role | Responsibility | When activated |
-|------|----------------|----------------|
-| **Incident Commander (IC)** | Coordinates response. Makes decisions. Communicates. | P0 and P1 always |
-| **Tech Lead** | In-depth technical diagnosis | P0 and P1 always |
-| **On-Call Engineer** | First responder. Executes technical actions | All incidents |
-| **Comms Lead** | Communicates to external stakeholders | P0 and P1 |
+| Role | Who | Responsibility |
+|------|-----|----------------|
+| Incident lead | Whoever detects it, or the owner of the affected service | Coordinates, keeps the team chat updated, decides when it is resolved |
+| Service owner | Team member who owns the service (see `09-microservices/service-catalog.md`) | Diagnoses and fixes |
 
 ---
 
 ## Response playbook
 
-### Step 1: DETECT (0-5 min)
+### 1. Detect
 
-```
-How do you know there is an incident?
-  → Alert from Prometheus / PagerDuty
-  → User report
-  → Proactive monitoring on the dashboard
+- Someone sees an error in the web (translated `API_ERRORS.*` message), a 500, or a service that
+  does not start.
+- Check the health of everything:
+  ```bash
+  docker ps                                             # sqlserver / rabbitmq / mailpit healthy?
+  for p in 3001 3002 3003 3006 8080; do echo "$p $(curl -s localhost:$p/actuator/health)"; done
+  ```
 
-Immediate action:
-  1. Acknowledge the alert in PagerDuty (to silence it and mark that someone responded)
-  2. Go to the Slack #incidents channel and write: "Investigating [brief description] — [your name]"
-  3. Open the runbook for the affected service: `09-microservices/services/[service]/runbook.md`
-```
+### 2. Classify and tell the team
 
-### Step 2: CLASSIFY (5-10 min)
+Post in the team chat: what fails, severity, who is looking at it.
 
-```
-Determine severity:
-  → How many users are affected?
-  → What features are down?
-  → Is there a workaround available?
+### 3. Diagnose
 
-If P0 or P1:
-  → Activate the Incident Commander
-  → Create the incident ticket in [Jira/Linear]: INC-XXX
-  → Open the War Room (temporary Slack channel or video call)
-```
+| Look at | For |
+|---|---|
+| Terminal / `docker logs` of the failing service | The first `ERROR` / `Caused by` line |
+| Browser DevTools → Network | Which call failed, its status and its `code` |
+| `ng serve` console | `ECONNREFUSED` = the target service is not running |
+| RabbitMQ panel (http://localhost:15672) | Queues growing, messages in a `.dlq` |
+| Database (DBeaver / sqlcmd) | The data the flow reads or writes |
+| Service runbook | Known symptoms and fixes: `09-microservices/services/<NN-service>/runbook.md` |
 
-### Step 3: COMMUNICATE (10-15 min)
+Frequent causes already seen in this project:
 
-Initial update in the team channel and to stakeholders:
+| Symptom | Cause |
+|---|---|
+| Service fails with "TCP connection to localhost:1433 failed" | Started before SQL Server was healthy |
+| "Login failed for user 'sa'" with the right password | A native Windows SQL Server is also on port 1433 and answers instead of the container: stop the `MSSQLSERVER` service and restart the services |
+| Every call answers 401 | Different `JWT_SECRET` between services |
+| "Port … already in use" | An instance is still running |
+| Times shifted 5 hours | JVM time zone (fixed in booking-service: JVM runs in UTC) |
+| Booking emails only in the inbox | `INTERNAL_API_KEY` missing or different |
+| `./mvnw` cannot read `distributionUrl` | `maven-wrapper.properties` without final newline |
 
-```
-Initial communication template:
-─────────────────────────────────
-🔴 INCIDENT P[N] — [INC-XXX]
-Affected service: [name]
-Impact: [What is not working for whom]
-Status: Investigating
-Next update: in 30 minutes
-IC: [Incident Commander Name]
-─────────────────────────────────
-```
+### 4. Mitigate
 
-### Step 4: DIAGNOSE (10-30 min)
+Get the flow working again first (restart the service, fix the `.env`, start the missing
+container), then fix the root cause in code with a branch and a PR.
 
-```
-Diagnostic tools (in order):
-  1. Grafana → When did the problem start? Which service has a high error rate?
-  2. Logs (Kibana/CloudWatch) → What does the affected service say?
-  3. Jaeger/Zipkin → Where does the trace break?
-  4. kubectl get pods / docker ps → Is the pod/container running?
-  5. Manual health check → curl http://[service]/health
+### 5. Resolve and record
 
-Key question: What changed in the last 2 hours?
-  → Last deploy
-  → Configuration change
-  → Traffic spike
-  → Change in an external system
-```
-
-**See specific decision tree:** `09-microservices/services/[service]/runbook.md`
-
-### Step 5: MITIGATE (15-60 min)
-
-```
-Mitigation options (from safest to riskiest):
-  1. Rollback to the last stable deploy (if a deploy caused the problem)
-  2. Disable the feature flag that introduced the problem
-  3. Scale horizontally if it is a capacity issue
-  4. Temporarily increase timeout / circuit breaker
-  5. Redirect traffic to an alternative region (if available)
-  6. Activate maintenance mode (last resort)
-```
-
-**Before each change during an incident:**
-- Announce in the War Room what you are going to do
-- Wait for the IC's confirmation
-- Execute the change
-- Report the result within 2 minutes
-
-### Step 6: RESOLVE AND COMMUNICATE
-
-```
-The incident is resolved when:
-  - Error metrics return to normal levels
-  - Health checks respond 200 on all services
-  - The PO / stakeholder confirms users can operate normally
-
-Resolution communication:
-─────────────────────────
-✅ RESOLVED — [INC-XXX]
-Root cause: [brief description]
-Resolution: [what was done]
-Total duration: [X] minutes
-Post-mortem: [meeting date]
-─────────────────────────
-```
+Post the cause and the fix in the chat. For P0/P1 write a short post-mortem.
 
 ---
 
-## Post-Mortem (Incident Retrospective)
+## Post-mortem (P0 and P1)
 
-The post-mortem is not to blame anyone — it is to understand and prevent.
-Held within 2 business days after resolving the incident.
+Blameless, one page, kept in `13-operations/postmortems/YYYY-MM-DD-<title>.md`:
 
-### Post-mortem structure
-
-**INC-XXX — [Incident title]**
-
-**Key data:**
-- Start date and time: 
-- Resolution date and time: 
-- Total duration: 
-- Severity: P[N]
-- Affected users: [N]
-
-**Timeline:**
-
-| Time | Event | Action taken |
-|------|-------|-------------|
-| HH:MM | [What happened] | [Who did what] |
-
-**Root cause:**
-> Why did it happen? (5 Why's — get to the real cause, not the symptom)
-
-**Contributing factors:**
-> Factors that facilitated the incident (without blaming people)
-
-**What went well:**
-> [What part of the incident response was effective]
-
-**What did not work:**
-> [What part failed or could be improved]
-
-**Action items:**
-
-| Action | Owner | Deadline | Status |
-|--------|-------|---------|--------|
-| [Concrete action to prevent recurrence] | [Name] | [date] | Pending |
+```markdown
+# <date> — <what failed>
+**Severity:** P0/P1   **Duration:** …   **Affected:** <flow / service>
+## What happened (timeline)
+## Root cause
+## How it was fixed
+## What we change so it does not happen again (owner, date)
+```
 
 ---
 
 ## Communication channels
 
-| Channel | Purpose |
-|---------|---------|
-| Slack `#incidents` | Main channel for all incidents |
-| Slack `#war-room-[INC-XXX]` | Temporary channel created for P0/P1 incidents |
-| PagerDuty | Alerts and on-call rotation |
-| [Ticketing system] | Official record: INC-XXX |
-| Status Page | Public communication to users (if applicable) |
+| Channel | Use |
+|---------|-----|
+| Team chat | Incident notice, progress, resolution |
+| GitHub issue / PR | The code fix, linked from the post-mortem |
 
 ---
 
 ## Correlations
 
-- Observability alerts → `13-operations/observability.md`
-- Service runbooks → `09-microservices/services/XX/runbook.md`
-- SLOs and Error Budget → `13-operations/README.md`
+- Observability (logs, health, broker) → `13-operations/observability.md`
+- Runbooks → `09-microservices/services/<NN-service>/runbook.md`
+- Local setup and common issues → `10-devops/local-setup.md`
