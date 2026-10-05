@@ -34,6 +34,15 @@ The gateway does not contain booking, payment, assignment or loyalty business ru
 
 Clients have one base URL and internal service addresses remain an implementation detail. The gateway becomes a required component for external traffic, so its health must be checked in the local deployment.
 
+## Implementation note (2026-10-04)
+
+The gateway was built with Spring Cloud Gateway 2025.1 on Spring MVC (`lavarapido-api-gateway`, port 8080). Two responsibilities above were deliberately **not** implemented in the gateway:
+
+- **Edge JWT rejection:** the gateway forwards `Authorization` unchanged and every service validates the token (ADR-006). An anonymous request to a protected route reaches the service and gets its 401. This keeps one source of truth for security and protects services that are called directly.
+- **Correlation id generation and request limits:** not done; each service generates its own correlation id (see `13-operations/observability.md`).
+
+Added: CORS is answered by the gateway, and `/internal/**` is never routed. Details → `09-microservices/services/01-api-gateway/decisions.md`.
+
 ## References
 
 - Security → `ADR-006-authentication-and-authorization.md`
