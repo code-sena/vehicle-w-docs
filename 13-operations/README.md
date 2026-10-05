@@ -1,94 +1,58 @@
 # 13 — Operations
 
-> **What is this?** How the system is operated in production: how problems are detected,
-> how incidents are responded to, and how availability commitments are guaranteed.
-
-## Why this section exists
-
-A system that "works" in staging but is impossible to operate in production is useless.
-The key operations questions are:
-- Do we know when something fails BEFORE users call?
-- Do we know exactly what to do when something fails at 3am?
-- Do we have formal availability commitments?
+> How the system is kept running: how problems are detected, how the team responds, and what
+> availability is promised. The system runs on the team's machines (no production environment
+> yet), so the commitments here are sized for development, demos and review sessions.
 
 ---
 
-## Key concepts: SLA, SLO, SLI
+## Availability commitment (RNF-002)
 
-**SLI (Service Level Indicator):** the metric you measure — e.g.: percentage of successful requests.
+| Indicator (SLI) | Objective (SLO) |
+|---|---|
+| Every service answers `UP` on `/actuator/health` | During every review session and demo |
+| The core flows work end to end: sign-up → login → vehicle → booking → notification | Verified before every review session |
 
-**SLO (Service Level Objective):** the target for that SLI — e.g.: "99.9% of successful requests in 30 days".
+There is no SLA with an external customer: the project is academic.
 
-**SLA (Service Level Agreement):** the contract with the customer about those targets, with consequences.
-
-**Error Budget:** how much you can "fail" within the SLO. If the SLO is 99.9%, you have 43.8 minutes/month of available downtime.
+**Before a review session (checklist):**
+1. `docker compose up -d` and wait for `lavarapido-sqlserver` to be healthy.
+2. Start the services; all health checks `UP` (see `observability.md`).
+3. Run the core flow once with a demo account.
+4. RabbitMQ dead-letter queues empty.
 
 ---
 
-## What is here and how to fill it in
+## Contents
 
-### `observability.md` ⭐
-How the system makes its internal state visible.
-**The 3 pillars of observability:**
-- **Logs:** what each service records, in what format (structured JSON recommended), where they go
-- **Metrics:** what each service measures (latency, error rate, throughput), with what tool (Prometheus)
-- **Traces:** how a request that passes through multiple services is tracked (OpenTelemetry, Jaeger)
+| File | What it answers |
+|------|-----------------|
+| [`observability.md`](./observability.md) | What logs, health checks and panels exist, and how to read them |
+| [`incident-management.md`](./incident-management.md) | What to do when something breaks |
 
-**Fill in:**
-```markdown
-## Logs
-- Format: structured JSON with fields: timestamp, service, level, traceId, message, [contextual data]
-- Tool: [ELK Stack / Loki + Grafana / CloudWatch]
-- Retention: [30 days hot, 1 year cold]
+---
 
-## Metrics
-- Tool: Prometheus + Grafana
-- Main dashboard: [URL]
-- Required metrics per service:
-  - http_request_duration_seconds (histogram)
-  - http_requests_total (counter by status code)
-  - [specific business metrics]
+## Backup and recovery
 
-## Distributed traces
-- Tool: OpenTelemetry + Jaeger
-- How to propagate traceId between services: X-Trace-Id header
+All data lives in the `LavaRapido` database (Docker volume `sqlserver-data`). Back it up before
+risky changes (migrations by hand, demos with real data):
+
+```bash
+docker exec lavarapido-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C \
+  -Q "BACKUP DATABASE LavaRapido TO DISK = '/var/opt/mssql/backup/LavaRapido.bak' WITH INIT"
+docker cp lavarapido-sqlserver:/var/opt/mssql/backup/LavaRapido.bak ./LavaRapido.bak
 ```
 
-### `incident-management.md` ⭐
-Incident response process.
-**Fill in:** how severity is classified (P0/P1/P2/P3), who responds, communication channel,
-when to escalate, post-mortem process.
-
-**Severities:**
-```markdown
-| Level | Description | Response SLA | Resolution SLA |
-|-------|-------------|-------------|----------------|
-| P0 | System completely down | 5 min | 1 hour |
-| P1 | Critical functionality degraded | 15 min | 4 hours |
-| P2 | Non-critical functionality affected | 1 hour | 24 hours |
-| P3 | Minor issue, workaround available | 4 hours | 1 week |
-```
-
-### `backup-and-recovery.md`
-Data backup and recovery strategy.
-**Fill in:** backup frequency, where they are stored, how they are tested, target recovery time (RTO/RPO).
+Restore: copy the file back into the container and run `RESTORE DATABASE LavaRapido FROM DISK = …
+WITH REPLACE` with the services stopped. `docker compose down -v` **deletes** the volume and every
+record.
 
 ---
 
-## Correlations with other sections
+## Correlations
 
-| This section is fed by... | And feeds into... |
-|---------------------------|-------------------|
-| `09-microservices/[service]/runbook.md` | Specific runbooks consolidated here |
-| `05-architecture/overview.md` | What to monitor in each service |
-| `10-devops/environments.md` | Alert configuration per environment |
-| Incidents documented here | `15-project-control/technical-backlog.md` → post-incident improvements |
-
----
-
-## Questions this section must answer
-
-- How do we know the system is failing before users report it?
-- What exactly do we do when service X fails at 3am?
-- How much downtime can we have per month?
-- How do we recover data if the DB fails?
+| Section | Relationship |
+|---------|--------------|
+| `10-devops/` | How the system is started (local, Docker) |
+| `09-microservices/services/*/runbook.md` | Symptoms and fixes per service |
+| `04-requirements/non-functional.md` | RNF-002 (availability), RNF-005 (observability) |
