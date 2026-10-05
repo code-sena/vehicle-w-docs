@@ -1,60 +1,68 @@
 # Deployment
 
-**Last updated:** 2026-09-24
+**Last updated:** 2026-10-04
 
-The current project environment is local development and testing. There is no staging or production deployment in scope.
+The project runs on the team's machines (local development, integration testing and demos).
+There is no staging or production deployment in scope.
 
 ## 1. Environments
 
 | Environment | Status | Purpose |
 |---|---|---|
-| Local | In scope | Development and integration testing with Docker |
+| Local | In use | Development, integration testing and demos with Docker Compose |
 | Staging | Out of scope | Not built in this academic version |
 | Production | Out of scope | The system is not deployed for real users |
 
 ## 2. Runtime components
 
-The local environment contains:
+Defined in `lavarapido-infra/docker-compose.yml`:
 
-| Component | Role |
-|---|---|
-| SQL Server | One physical database containing the nine owned schemas |
-| RabbitMQ | Asynchronous event broker |
-| API Gateway | External HTTP entry point |
-| Six backend services | Domain functionality |
-| Web application | Angular client |
-| Android application | React Native client; development status is separate from backend deployment |
-| Mailpit | Local SMTP catcher for password-recovery messages |
+| Component | Image / source | Port(s) | Role |
+|---|---|---|---|
+| `sqlserver` | `mcr.microsoft.com/mssql/server:2022-latest` | 1433 | Database `LavaRapido`, nine owned schemas |
+| `db-init` | same image, runs once | — | Creates the `LavaRapido` database if missing |
+| `rabbitmq` | `rabbitmq:4-management` | 5672, 15672 (panel) | Event broker, exchange `carwash.events` |
+| `mailpit` | `axllent/mailpit` | 1025 (SMTP), 8025 (inbox) | Catches emails in local tests (Gmail SMTP is used when configured) |
+| `security-service` | `lavarapido/security-service:local` | 3001 | Identity, roles, preferences |
+| `customer-service` | `lavarapido/customer-service:local` | 3002 | Customers and vehicles |
+| `booking-service` | `lavarapido/booking-service:local` | 3003 | Catalog, schedule, bays, bookings |
+| `notification-service` | `lavarapido/notification-service:local` | 3006 | Inbox, push, email, reminders |
+| `api-gateway` | `lavarapido/api-gateway:local` | 8080 | External entry point |
+| Web (Angular) | `ng serve` | 4200 | Not containerised; proxies `/api` (`proxy.conf.json`) |
+| Mobile (Expo) | Expo dev server | — | Developed separately |
 
-The exact application-service ports are configuration details and must be taken from the active Docker/DevOps configuration rather than invented in this document. The API Gateway is the client entry point.
+`docker compose up -d` starts only the infrastructure (SQL Server, RabbitMQ, Mailpit); the services
+and the gateway belong to the `app` profile (`docker compose --profile app up -d --build`), so a
+developer can run them from the IDE with `./mvnw spring-boot:run` instead.
+
+`operations-service` and `payment-service` are not in the compose file yet (in development /
+incomplete).
 
 ## 3. Logical topology
 
 ```text
-Angular / React Native
-          │
+Angular (4200) / React Native
+          │ REST
           ▼
-     API Gateway
+   API Gateway (8080)           ← in development the web may still call services directly
           │
-   ┌──────┴─────────────────────────────┐
-   │                                    │
-   ▼                                    ▼
-Six Spring Boot services              RabbitMQ
-   │                                    │
-   └──────────────┬─────────────────────┘
-                  ▼
-              SQL Server
-                  │
-          one physical database
-                  │
-          nine logical schemas
-
-security-service ──► Mailpit / SMTP
+   ┌──────┼──────────────┬───────────────┐
+   ▼      ▼              ▼               ▼
+security customer     booking      notification
+ (3001)  (3002)        (3003)         (3006)
+   │       ▲  REST        │               │  REST (X-Internal-Key) → security
+   │       └──────────────┘               │
+   └──── publish ──► RabbitMQ ◄── publish ┘(consumes)
+                       │
+          customer, notification consume
+   all ──► SQL Server (1433) · database LavaRapido · one schema owner per service
+security (recovery code), notification (emails) ──► SMTP (Gmail or Mailpit)
+notification ──► Expo Push API
 ```
 
 ## 4. SQL Server deployment
 
-The database is shared physically but separated logically by schema ownership:
+One database, separated by schema ownership (ADR-003):
 
 - `security`, `audit` → `security-service`
 - `customer` → `customer-service`
@@ -63,61 +71,34 @@ The database is shared physically but separated logically by schema ownership:
 - `promotion`, `payment` → `payment-service`
 - `notification` → `notification-service`
 
-Cross-service foreign keys are not used. This keeps the logical service boundaries visible even though the academic environment uses one database instance.
+Each service applies its own Liquibase changelog at startup and keeps its own changelog tables,
+so services can be migrated independently. Cross-service foreign keys are not used.
 
-## 5. Service startup order
+## 5. Startup order
 
-The application should not rely on a fixed hard-coded startup order beyond infrastructure readiness. At minimum, SQL Server and RabbitMQ must be available before services that depend on them start.
-
-A practical local sequence is:
-
-1. SQL Server
-2. RabbitMQ
-3. Mailpit
-4. `security-service`
-5. `customer-service`
-6. `booking-service`
-7. `operations-service`
-8. `payment-service`
-9. `notification-service`
-10. API Gateway
-
-This sequence follows the current build order from the architecture decision, but services should still perform health/readiness checks rather than assuming another container is ready merely because it started.
+Compose enforces it with `depends_on`: SQL Server healthy → `db-init` completed and RabbitMQ
+healthy → services → gateway (the gateway waits only for the services to start). Running the services with `./mvnw spring-boot:run`, start the containers first
+and wait for `sqlserver` to be healthy; the services do not depend on each other to start.
 
 ## 6. Configuration
 
-Environment-specific values must be external to the source code. Examples include:
-
-- SQL Server connection string
-- RabbitMQ host and credentials
-- JWT signing secret
-- SMTP configuration
-- application ports
-
-A committed `.env.example` may document variable names without real secrets. Real credentials must never be committed.
+All values come from `lavarapido-infra/.env` (template `.env.example`, never commit `.env`):
+database, RabbitMQ, `JWT_SECRET`, `INTERNAL_API_KEY`, mail, CORS origins, booking time zone,
+reminder leads. Full list → `10-devops/environments.md`.
 
 ## 7. Storage and backups
 
-SQL Server uses persistent storage in the local Docker environment. The repository's current scope does not define a production backup strategy because production is out of scope.
-
-Payment receipt storage is still a pending implementation decision. Until it is defined, this document does not prescribe a folder path or database storage format.
+SQL Server and RabbitMQ use named volumes (`sqlserver-data`, `rabbitmq-data`). Backup and restore
+commands → `13-operations/README.md`. Payment receipt storage is still pending (payment-service).
 
 ## 8. Health and verification
 
-Each service should expose a health/readiness endpoint through the implementation used by the team. The gateway is the main entry point for client verification.
-
-Integration checks should cover:
-
-- database connectivity
-- RabbitMQ connectivity
-- JWT authentication
-- service-to-service validation
-- booking creation and conflict handling
-- payment review
+Every service and the gateway expose `GET /actuator/health` (database included). Verification
+before a demo → `13-operations/README.md`.
 
 ## 9. CI/CD boundary
 
-Jenkins and pipeline configuration belong to `10-devops`. This section only describes what must be available for the architecture to run locally.
+Jenkins is the planned CI tool; pipeline design lives in `10-devops/ci-cd.md`.
 
 ## References
 
