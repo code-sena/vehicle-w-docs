@@ -88,8 +88,8 @@ The welcome notification is also sent by email through the same SMTP settings as
 `security-service` (`MAIL_*`, Gmail app password or Mailpit), controlled by `MAIL_ENABLED`. To
 avoid storing or querying emails, `UserRegistered` carries the recipient's `email` and
 `firstName`; this is the only personal data on the bus, and `UserRegistered.toString()` omits it
-so it never reaches the logs. Other notifications are not emailed yet: booking reminders need
-`booking-service` data.
+so it never reaches the logs. Other notifications are not emailed yet (see section 7 for
+reminders).
 
 ### 6. Messaging can be switched off
 
@@ -97,6 +97,38 @@ so it never reaches the logs. Other notifications are not emailed yet: booking r
 `notification-service` (consumer). Queue `notification-service.events` is bound to the routing
 keys above on `carwash.events`; failed messages are retried three times and then dead-lettered to
 `notification-service.events.dlq`.
+
+### 7. Booking reminders (added 2026-10-02)
+
+`notification-service` reminds the customer before each booking (`BOOKING_REMINDER`, category
+`REMINDER`) without querying `booking-service`:
+
+- `BookingConfirmed` (new or rescheduled booking) carries `bookingId`, `bookingCode`,
+  `customerUserId` and `scheduledStart`; the consumer stores one row per booking and lead time in
+  the new table `notification.booking_reminder` (migration 019). Default leads: 24 h and 1 h
+  (`app.reminders.leads`). Leads already in the past are not scheduled; a reschedule moves them.
+- `BookingCancelled` cancels the pending reminders (soft delete).
+- A scheduled task (`app.reminders.check-interval`, default 5 min) sends the due reminders to the
+  inbox and by push, and marks them sent. A reminder whose booking time already passed (service
+  was down) is discarded without notifying.
+- Reminders are also emailed (section 8).
+- Designed for a single instance; several instances would need a lock to avoid duplicates.
+
+### 8. Booking and reminder emails: contact read from `security-service` (added 2026-10-04)
+
+Booking notifications (`BOOKING_CREATED`, `BOOKING_CONFIRMED`, `BOOKING_CANCELLED`) and
+`BOOKING_REMINDER` are also emailed. `notification-service` still stores no emails: when one of
+these is sent it asks `security-service` for the current contact:
+
+- `GET /internal/v1/users/{id}/contact` returns only `email`, `firstName` and `active`.
+- `/internal/**` lives outside `/api/v1` (never exposed to the web or the gateway) and has its own
+  security chain: it ignores user JWTs and requires the shared key `INTERNAL_API_KEY` in the
+  `X-Internal-Key` header (constant-time comparison). With no key configured the routes stay closed.
+- If the key is missing, `security-service` is down or the account is inactive, the notification
+  still reaches the inbox and push, without email.
+
+Alternative discarded: copying the email from `UserRegistered` into this service — it would
+duplicate personal data, go stale when the user changes it, and existing accounts would have none.
 
 ---
 
