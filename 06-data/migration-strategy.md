@@ -1,93 +1,83 @@
 # Migration Strategy
 
-## Tool: Liquibase
+## Tool: Liquibase, one changelog per service
 
-Liquibase is the team's actual choice (see `01-context/overview.md` and the "Migration" entry in
-`01-context/glossary.md`). We use its **SQL-formatted changelogs** — plain `.sql` files with a
-`--liquibase formatted sql` header and one `--changeset` comment per unit of change — rather than
-its XML/YAML format, since the whole schema is already hand-written T-SQL and a formatted-SQL
-changelog stays a normal `.sql` file that SSMS, `sqlcmd`, and this document's own code blocks can
-run unmodified.
+Liquibase with **SQL-formatted changelogs** (`--liquibase formatted sql`, one `--changeset` per
+unit of change). Each service owns the changelog of **its own schemas** in
+`src/main/resources/db/changelog/` and applies it at startup; `ddl-auto: validate` then checks that
+the JPA entities match the tables.
 
-Liquibase tracks what ran in `DATABASECHANGELOG` (and coordinates concurrent deploys with
-`DATABASECHANGELOGLOCK`), keyed by `id` + `author` + file path — not by filename convention the
-way Flyway is, but we still name files in the order they must run, for humans reading the
-folder.
+Every service records its history in its **own changelog tables**, so services migrate
+independently in the shared `LavaRapido` database:
 
-The table definitions follow the six-service layout of ADR-009 (`models.md`); grants go in
-`001` because `GRANT ... ON SCHEMA` covers every table created in that schema afterwards.
+| Service | Changelog tables |
+|---|---|
+| security-service | `DATABASECHANGELOG_SECURITY`, `DATABASECHANGELOGLOCK_SECURITY` |
+| customer-service | `DATABASECHANGELOG_CUSTOMER`, `DATABASECHANGELOGLOCK_CUSTOMER` |
+| booking-service | `DATABASECHANGELOG_BOOKING`, `DATABASECHANGELOGLOCK_BOOKING` |
+| notification-service | `DATABASECHANGELOG_NOTIFICATION`, `DATABASECHANGELOGLOCK_NOTIFICATION` |
 
-`schema_sqlserver.sql`, as it stands today, is a single script meant to be run once against a
-fresh database. Turning it into a changelog history means splitting it along the same section
-breaks it already has, with one SQL file per changeset group:
+## File numbering (shared across services)
+
+Numbers are unique across the whole system, so a number tells which part of the model a file
+touches and in which order the global script (`lavarapido-6-services-sqlserver.sql`) applies them:
+
+| Range | Meaning |
+|---|---|
+| `001`–`013` | Initial schema, one block per schema (from the original single script) |
+| `014`+ | Later changes, numbered in the order they were made |
+| `101`–`109` | Seed data (`seed/` folder) |
+
+Current files (2026-10-04):
 
 ```
-db/changelog/
-  db.changelog-master.xml                        (root — includes every file below, in order)
-  001-create-schemas.sql                          (the 9 schemas, plus one database role per
-                                                    service with rights on its own schemas)
-  002-create-security-and-audit-core.sql          (person, app_user, role, permission,
-                                                    role_permission, user_role, user_session,
-                                                    password_reset_token, audit_log)
-  003-create-security-user-preference.sql         (user_preference — moved from `settings`)
-  004-create-customer-schema.sql
-  005-create-catalog-schema.sql
-  006-create-booking-schema.sql                   (includes establishment — moved from `settings`)
-  007-create-execution-schema.sql
-  008-create-promotion-schema.sql
-  009-create-payment-schema.sql                   (includes the loyalty ledger — moved from `customer`)
-  010-create-notification-schema.sql
-  011-create-overlap-triggers.sql                 (section 12)
-  012-create-service-price-immutability-trigger.sql (section 13)
-  013-create-audit-triggers.sql                   (section 14 — see note below)
-  seed/
-    101-seed-security-role.sql                    (section 15)
-    102-seed-customer-catalogs.sql              (vehicle_type)
-    103-seed-catalog-service-category.sql
-    104-seed-booking-catalogs.sql
-    105-seed-execution-status.sql
-    106-seed-promotion-discount-type.sql
-    107-seed-payment-catalogs.sql               (payment catalogs + loyalty_movement_type)
-    108-seed-notification-type.sql
-    109-seed-booking-bays-and-hours.sql
+security-service       001-create-security-schemas · 002-create-security-and-audit-core
+                       003-create-security-user-preference · seed/101-seed-security-role
+customer-service       004-create-customer-schema · 014-add-customer-user-id
+                       015-add-customer-vehicle-model · seed/102-seed-customer-catalogs
+booking-service        005-create-booking-schemas (catalog + booking, triggers)
+                       018-booking-adr-010 (bay_status, bay state, business-hour break)
+                       seed/103-seed-catalog · seed/104-seed-booking-catalogs
+                       seed/109-seed-establishment-schedule
+notification-service   010-create-notification-schema · 016-create-notification-device-token
+                       017-create-notification-processed-event
+                       019-create-notification-booking-reminder · seed/108-seed-notification-type
+operations / payment   007, 008, 009, 105–107 reserved (in the global script, not yet in a service)
 ```
 
-`db.changelog-master.xml` just lists `<include file="..."/>` in this exact order — Liquibase runs
-files in the order the master lists them, not alphabetically, so the include order is what
-actually enforces section 1 before section 2, seeds after every schema exists, and so on.
+`db.changelog-master.xml` of each service lists its files with `<include>`; Liquibase runs them in
+that order (schema first, then later changes, then seeds).
 
-**A SQL-formatted changeset looks like this** (the header Liquibase parses, wrapping the T-SQL we
-already have):
+## How a changeset looks
 
 ```sql
 --liquibase formatted sql
 
---changeset merari:002-create-security-and-audit-core
---comment: Shared core (person, app_user, role, permission, role_permission,
---         user_role, user_session, password_reset_token) plus audit.audit_log
-CREATE TABLE [audit].audit_log (
-    ...
-);
-GO
-CREATE TABLE [security].person (
-    ...
-);
-GO
--- ... the rest of section 2, unchanged from schema_sqlserver.sql
+--changeset lavarapido:security-001-schema-security
+--comment: Esquema del security-service (ADR-009)
+--preconditions onFail:MARK_RAN
+--precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM sys.schemas WHERE name = 'security'
+CREATE SCHEMA [security];
 ```
 
-**Why `013-create-audit-triggers.sql` (the audit trigger generator) has to run last:** section 14
-builds one `tr_touch_<table>` trigger per table by querying `sys.tables` / `sys.columns` for every
-table that already has a `row_version` column. It's a chicken-and-egg dependency on every earlier
-changeset — running it any sooner would generate triggers for a subset of tables and silently miss
-the rest.
+- Author `lavarapido`, id `<service>-<number>-<what>`.
+- **Every changeset has a precondition with `onFail:MARK_RAN`**: if the object already exists
+  (database created earlier from the global script), Liquibase marks it as run instead of failing.
+  This is what lets a database created by hand and a database created by the services converge.
 
-**Where this breaks down later:** a new domain table added in changeset `014` and beyond won't get
-a `tr_touch_` trigger automatically, because `013` already ran and Liquibase never re-runs a
-changeset it has already recorded as executed (it checksums each changeset and errors out if the
-content of an already-run one changes). From that point on, a changeset adding a new domain table
-must also `CREATE TRIGGER tr_touch_<new_table>` explicitly, following the same shape section 14
-generates, instead of relying on the one-time bulk generation.
+## Triggers
+
+There is no generic trigger generator. Each changeset that creates a domain table with
+`row_version` also creates its `tr_touch_<table>` trigger explicitly (examples: `tr_touch_booking`,
+`tr_touch_customer_vehicle`, `tr_touch_user_preference`). Business triggers live with their
+tables: `tr_booking_bay_overlap` and `tr_service_price_immutable` in booking `005`.
+
+## Keeping the global script in sync
+
+`lavarapido-6-services-sqlserver.sql` (repository root of the docs workspace) is the full model in
+one script for people who create the database by hand. When a service adds a changeset, the same
+change goes into the script and into `models.md` in the same PR. Last full check: 2026-10-04 (script
+run on an empty database: 47 tables).
 
 ## Rules
 
@@ -105,16 +95,16 @@ generates, instead of relying on the one-time bulk generation.
 
 ## Two seed-data details that are easy to break by mistake
 
-- `101` through `109` use `SET IDENTITY_INSERT … ON` to seed specific IDs. Two of those IDs are
+- Seeds of status catalogs use `SET IDENTITY_INSERT … ON` to seed specific IDs. Two of those IDs are
   load-bearing: `booking_status.booking_status_id = 5` (`CANCELLED`) is hard-coded inside
   `ck_booking_cancel` and `tr_booking_bay_overlap`; `payment_status.payment_status_id = 3`
   (`APPROVED`) is hard-coded inside `ux_payment_one_approved_per_booking`. Re-running a seed
   changeset with a different row order, or re-seeding from scratch without `IDENTITY_INSERT`,
   would silently break both constraints.
-- Seed changesets are the one place a `preConditions` block matters: add
-  `--preConditions onFail:MARK_RAN` with a `sqlCheck` that the target table is empty, so
-  re-running Liquibase against a database that already has this seed data skips the insert
-  instead of violating the tables' `UNIQUE (code)` constraints.
+- Seed changesets check that the target table is empty
+  (`--precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM …` with `onFail:MARK_RAN`), so a
+  database that already has the seed data skips the insert instead of violating the tables'
+  `UNIQUE (code)` constraints.
 
 ## Compatible changes (ship directly as a new changeset)
 
