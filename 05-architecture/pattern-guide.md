@@ -1,6 +1,6 @@
 # Pattern Guide
 
-**Last updated:** 2026-09-24
+**Last updated:** 2026-10-04
 
 This document distinguishes patterns that are part of the current architecture from patterns that are only proposals or alternatives. A pattern listed here is not automatically an implementation requirement.
 
@@ -14,7 +14,13 @@ This document distinguishes patterns that are part of the current architecture f
 | Repository / ports | Service persistence | Adopted | Isolates domain/application from SQL Server access |
 | Publish/Subscribe | RabbitMQ | Adopted | Decouples asynchronous reactions such as notifications |
 | Soft delete | Domain data | Adopted | Keeps operational history |
-| Optimistic locking | Domain data | Adopted | Protects concurrent updates with `row_version` |
+| Optimistic locking | Domain data | Modeled, not enforced | `row_version` columns and triggers exist, but no service maps them with `@Version` yet |
+| Pessimistic schedule lock | booking-service | Adopted | `sp_getapplock` serialises booking creation/rescheduling so two clients cannot take the same bay; `tr_booking_bay_overlap` is the database safety net |
+| Idempotent consumer | customer, notification | Adopted | `notification.processed_event` stores handled `eventId`s; customer skips a profile that already exists |
+| Dead-letter queue | RabbitMQ consumers | Adopted | Invalid or repeatedly failing messages go to `<service>.events.dlq` |
+| Ports for external calls | booking, customer, notification | Adopted | REST clients to other services are output adapters behind a port (e.g. `CustomerDirectory`, `UserContactDirectory`) |
+| Shared-key internal API | security ← notification | Adopted | `/internal/**` routes protected by `X-Internal-Key`, never routed by the gateway (ADR-011 §8) |
+| Scheduler | notification | Adopted | `ReminderScheduler` sends due booking reminders |
 
 ## 2. API Gateway
 
@@ -24,7 +30,7 @@ Clients call the gateway instead of addressing backend services directly.
 Client → API Gateway → service
 ```
 
-The gateway handles routing and edge authentication checks. Service-level authorization remains inside each service.
+The gateway handles routing and CORS. It does **not** validate the JWT: every service validates it and applies its own authorization (ADR-005 implementation note, ADR-006).
 
 ## 3. Hexagonal architecture
 
@@ -53,7 +59,7 @@ booking-service
       └── notification-service
 ```
 
-Consumers must be prepared for duplicate delivery because the current design does not yet include a processed-event table or Outbox implementation.
+Consumers must be prepared for duplicate delivery: notification-service records each handled `eventId` in `notification.processed_event`, and customer-service ignores a `UserRegistered` whose profile already exists. There is still no Outbox: an event can be lost if the service stops between commit and publish.
 
 ## 6. Soft delete
 
@@ -61,7 +67,7 @@ Business data uses `deleted_at` instead of physical deletion. Queries exclude de
 
 ## 7. Optimistic locking
 
-`row_version` prevents an update based on stale data from silently overwriting another update.
+`row_version` is designed to prevent an update based on stale data from silently overwriting another update. **Status:** the column and its `tr_touch_*` trigger exist, but the services do not read it back yet (no `@Version` in the JPA entities), so today the last write wins. Booking conflicts are covered instead by the schedule lock.
 
 ```text
 Admin A reads version 4
