@@ -638,6 +638,13 @@ Scenario 2: Change language
   Given I am in settings
   When  I select one of the four supported languages (Spanish, English, French, Portuguese)
   Then  all interface text updates to that language
+  And   it is kept the next time I log in
+
+Scenario 3: Preferences belong to each account
+  Given I changed theme and language while signed in as a client
+  When  I sign out and sign in as an administrator (another email) on the same browser
+  Then  I see the administrator's own theme and language, not the client's
+  And   signing in again as the client restores the client's theme and language
 ```
  
 | Field | Value |
