@@ -167,23 +167,21 @@ A booking can contain **one or more `BookingService` lines**.
 
 ### Booking lifecycle
 
-The current persistence model uses these states:
+The persistence model uses these states (English codes, ADR-010). Guards as implemented in
+`booking-service` (`Booking.moveTo`, `Booking.cancel`):
 
 ```text
-AGENDADA
-   │
-   ├── confirm ──▶ CONFIRMADA
-   │                  │
-   │                  └── start ──▶ EN_EJECUCION
-   │                                   │
-   │                                   └── finish ──▶ FINALIZADA
-   │
-   ├── cancel ──▶ CANCELLED
-   │
-   └── no-show ─▶ NO_ASISTIO
+create ──▶ CONFIRMED  (a free bay is assigned at once, RF-006)
+
+SCHEDULED ── confirm (needs a bay) ──▶ CONFIRMED
+CONFIRMED ── start ──▶ IN_PROGRESS ── complete ──▶ COMPLETED
+CONFIRMED ── no-show ──▶ NO_SHOW
+SCHEDULED / CONFIRMED ── cancel (reason) ──▶ CANCELLED
+SCHEDULED / CONFIRMED ── reschedule ──▶ same state, new time and bay (prices kept)
 ```
 
-The exact transition guards must follow the current functional requirements and operational flow.
+Only `SCHEDULED` and `CONFIRMED` can be changed or cancelled (RF-007). Diagram:
+`08-uml/diagrams/source/state-booking.md`.
 
 ### Booking rules
 
