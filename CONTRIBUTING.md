@@ -28,41 +28,40 @@
 ### Branch naming
 
 ```
-feat/HU-[service]-[number]-short-description
-fix/HU-[service]-[number]-short-description
-chore/short-description
-docs/short-description
+feat/short-description     (feature/ is also used in existing repos)
+fix/short-description
+chore/short-description    (documentation changes in this repository use chore/)
 ```
 
 Examples:
 ```
-feat/HU-AUTH-001-jwt-login
-fix/HU-SCHEDULING-003-schedule-overlap
-docs/adr-002-database-engine
+feat/booking-reminders
+fix/booking-time-zone
+chore/architecture-update-docs
 ```
 
 ---
 
 ## Pull Request process
 
-1. **Open the PR** against `develop` (never directly against `main`)
+1. **Open the PR** against `develop` (`dev` in this documentation repository; never directly against `main`)
 2. **Fill in the PR template** completely (`/.github/pull_request_template.md`)
 3. **Assign reviewers:** at least 1 (preferably the Tech Lead or service owner)
-4. **CI must be green** — do not request review with a failing pipeline
+4. **Tests must be green** — `./mvnw test` or `ng build` locally until the Jenkins pipeline exists (`10-devops/ci-cd.md`)
 5. **Do not force-push** to a branch whose PR already has comments — create new commits
 
 ### What blocks a merge
 
-- Failing CI pipeline (lint, tests, build)
+- Failing tests or build
 - Fewer than 1 approval
 - Documentation not updated (API, data model, domain)
-- Test coverage below the project minimum (see `11-quality/tdd-guide.md`)
+- A new business rule or endpoint without a test (see `11-quality/testing-strategy.md`)
 
 ---
 
 ## Code style
 
-- Follow the linting and formatting conventions defined in your stack guide (`_stacks/[your-stack].md`). Do not modify linter configuration without an ADR.
+- Follow `_stacks/java-spring.md` and the existing code: identifiers in English, code comments in Spanish, documentation in English (ADR-001).
 - Conventional Commits are mandatory: `type(scope): description`
 - One commit = one logical unit of change. Do not commit "wip" or "fixing stuff"
 
@@ -97,8 +96,8 @@ See full guide: `11-quality/tdd-guide.md`
 ## Documentation
 
 If your change:
-- Adds/modifies an endpoint → update the OpenAPI contract
-- Changes a data model → update the service's `data-model.md`
+- Adds/modifies an endpoint → re-export the OpenAPI contract (`07-api/README.md`) and, if public, add the gateway route
+- Changes a data model → Liquibase changeset + `06-data/models.md` + the service's `data-model.md` + the global script `lavarapido-6-services-sqlserver.sql`
 - Makes an architecture decision → write an ADR
 - Adds a new microservice → update `service-catalog.md`
 
