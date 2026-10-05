@@ -1,0 +1,980 @@
+# Generated from the running booking-service (springdoc, GET /v3/api-docs) on 2026-10-05.
+# Do not edit by hand: regenerate from the code so the contract never drifts.
+openapi: "3.1.0"
+info:
+  title: "LavaRápido booking-service API"
+  version: "v1"
+  description: "Contract of booking-service. Public paths are reached through the API gateway."
+servers:
+  - url: "http://localhost:8080"
+    description: "Through the API gateway (ADR-005)"
+  - url: "http://localhost:3003"
+    description: "booking-service directly (local development)"
+paths:
+  "/api/v1/bookings/{id}":
+    get:
+      tags:
+        - "booking-controller"
+      operationId: "get"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BookingResponse"
+    put:
+      tags:
+        - "booking-controller"
+      operationId: "reschedule"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/RescheduleRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BookingResponse"
+  "/api/v1/admin/schedule/exceptions/{id}":
+    put:
+      tags:
+        - "schedule-controller"
+      operationId: "updateException"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ExceptionRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/ExceptionResponse"
+    delete:
+      tags:
+        - "schedule-controller"
+      operationId: "deleteException"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      responses:
+        "204":
+          description: "No Content"
+  "/api/v1/admin/schedule/business-hours":
+    put:
+      tags:
+        - "schedule-controller"
+      operationId: "updateBusinessHours"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: "array"
+              items:
+                "$ref": "#/components/schemas/BusinessHourDto"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/BusinessHourDto"
+  "/api/v1/admin/catalog/services/{id}":
+    put:
+      tags:
+        - "catalog-controller"
+      operationId: "update"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ServiceRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/ServiceResponse"
+    delete:
+      tags:
+        - "catalog-controller"
+      operationId: "delete"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      responses:
+        "204":
+          description: "No Content"
+  "/api/v1/admin/bookings/{id}":
+    get:
+      tags:
+        - "admin-booking-controller"
+      operationId: "get_1"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BookingResponse"
+    put:
+      tags:
+        - "admin-booking-controller"
+      operationId: "reschedule_1"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/RescheduleRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BookingResponse"
+  "/api/v1/admin/bays/{id}":
+    put:
+      tags:
+        - "schedule-controller"
+      operationId: "updateBay"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/BayRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BayResponse"
+    delete:
+      tags:
+        - "schedule-controller"
+      operationId: "deleteBay"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      responses:
+        "204":
+          description: "No Content"
+  "/api/v1/bookings":
+    post:
+      tags:
+        - "booking-controller"
+      operationId: "create"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/CreateBookingRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BookingResponse"
+  "/api/v1/bookings/{id}/cancel":
+    post:
+      tags:
+        - "booking-controller"
+      operationId: "cancel"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/CancelRequest"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BookingResponse"
+  "/api/v1/admin/schedule/exceptions":
+    post:
+      tags:
+        - "schedule-controller"
+      operationId: "createException"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ExceptionRequest"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/ExceptionResponse"
+  "/api/v1/admin/catalog/services":
+    get:
+      tags:
+        - "catalog-controller"
+      operationId: "allServices"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/ServiceResponse"
+    post:
+      tags:
+        - "catalog-controller"
+      operationId: "create_1"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ServiceRequest"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/ServiceResponse"
+  "/api/v1/admin/bookings":
+    get:
+      tags:
+        - "admin-booking-controller"
+      operationId: "list"
+      parameters:
+        - name: "from"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "to"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "status"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/BookingResponse"
+    post:
+      tags:
+        - "admin-booking-controller"
+      operationId: "create_2"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/CreateBookingRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BookingResponse"
+  "/api/v1/admin/bays":
+    get:
+      tags:
+        - "schedule-controller"
+      operationId: "bays"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/BayResponse"
+    post:
+      tags:
+        - "schedule-controller"
+      operationId: "createBay"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/BayRequest"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BayResponse"
+  "/api/v1/admin/catalog/services/{id}/status":
+    patch:
+      tags:
+        - "catalog-controller"
+      operationId: "setActive"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ActiveRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/ServiceResponse"
+  "/api/v1/admin/bookings/{id}/status":
+    patch:
+      tags:
+        - "admin-booking-controller"
+      operationId: "changeStatus"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/StatusRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BookingResponse"
+  "/api/v1/schedule/exceptions":
+    get:
+      tags:
+        - "schedule-controller"
+      operationId: "exceptions"
+      parameters:
+        - name: "from"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/ExceptionResponse"
+  "/api/v1/schedule/business-hours":
+    get:
+      tags:
+        - "schedule-controller"
+      operationId: "businessHours"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/BusinessHourDto"
+  "/api/v1/establishment":
+    get:
+      tags:
+        - "schedule-controller"
+      operationId: "establishment"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/EstablishmentResponse"
+  "/api/v1/catalog/services":
+    get:
+      tags:
+        - "catalog-controller"
+      operationId: "services"
+      parameters:
+        - name: "vehicleTypeId"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/ServiceResponse"
+  "/api/v1/catalog/categories":
+    get:
+      tags:
+        - "catalog-controller"
+      operationId: "categories"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/CategoryResponse"
+  "/api/v1/bookings/me":
+    get:
+      tags:
+        - "booking-controller"
+      operationId: "mine"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/BookingResponse"
+  "/api/v1/bookings/cancellation-reasons":
+    get:
+      tags:
+        - "booking-controller"
+      operationId: "cancellationReasons"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/ReasonResponse"
+  "/api/v1/bookings/availability":
+    get:
+      tags:
+        - "booking-controller"
+      operationId: "availability"
+      parameters:
+        - name: "date"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            format: "date"
+        - name: "vehicleTypeId"
+          in: "query"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+        - name: "serviceIds"
+          in: "query"
+          required: true
+          schema:
+            type: "array"
+            items:
+              type: "integer"
+              format: "int32"
+        - name: "excludeBookingId"
+          in: "query"
+          required: false
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/AvailabilityResponse"
+components:
+  schemas:
+    RescheduleRequest:
+      type: "object"
+      properties:
+        serviceIds:
+          type: "array"
+          items:
+            type: "integer"
+            format: "int32"
+        date:
+          type: "string"
+          format: "date"
+        time:
+          type: "string"
+        notes:
+          type: "string"
+          maxLength: 300
+          minLength: 0
+      required:
+        - "date"
+        - "time"
+    BayResponse:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+        code:
+          type: "string"
+        name:
+          type: "string"
+        status:
+          type: "string"
+    BookingResponse:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+        code:
+          type: "string"
+        status:
+          type: "string"
+        date:
+          type: "string"
+          format: "date"
+        startTime:
+          type: "string"
+        endTime:
+          type: "string"
+        durationMinutes:
+          type: "integer"
+          format: "int32"
+        scheduledStart:
+          type: "string"
+          format: "date-time"
+        scheduledEnd:
+          type: "string"
+          format: "date-time"
+        bay:
+          "$ref": "#/components/schemas/BayResponse"
+        vehicle:
+          "$ref": "#/components/schemas/VehicleResponse"
+        ownerUserId:
+          type: "integer"
+          format: "int64"
+        bookedBy:
+          type: "integer"
+          format: "int64"
+        services:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/LineResponse"
+        subtotal:
+          type: "number"
+        pointsDiscountAmount:
+          type: "number"
+        total:
+          type: "number"
+        cancellationReason:
+          "$ref": "#/components/schemas/ReasonResponse"
+        notes:
+          type: "string"
+        changeable:
+          type: "boolean"
+        createdAt:
+          type: "string"
+          format: "date-time"
+    LineResponse:
+      type: "object"
+      properties:
+        serviceId:
+          type: "integer"
+          format: "int32"
+        code:
+          type: "string"
+        name:
+          type: "string"
+        price:
+          type: "number"
+        estimatedMinutes:
+          type: "integer"
+          format: "int32"
+        quantity:
+          type: "integer"
+          format: "int32"
+    ReasonResponse:
+      type: "object"
+      properties:
+        code:
+          type: "string"
+        name:
+          type: "string"
+    VehicleResponse:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+        licensePlate:
+          type: "string"
+        licensePlateFormatted:
+          type: "string"
+        vehicleType:
+          type: "string"
+        vehicleTypeName:
+          type: "string"
+        brand:
+          type: "string"
+        model:
+          type: "string"
+    ExceptionRequest:
+      type: "object"
+      properties:
+        date:
+          type: "string"
+          format: "date"
+        closed:
+          type: "boolean"
+        opensAt:
+          type: "string"
+        closesAt:
+          type: "string"
+        reason:
+          type: "string"
+          maxLength: 120
+          minLength: 0
+      required:
+        - "closed"
+        - "date"
+        - "reason"
+    ExceptionResponse:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+        date:
+          type: "string"
+          format: "date"
+        closed:
+          type: "boolean"
+        opensAt:
+          type: "string"
+        closesAt:
+          type: "string"
+        reason:
+          type: "string"
+    BusinessHourDto:
+      type: "object"
+      properties:
+        dayOfWeek:
+          type: "integer"
+          format: "int32"
+          maximum: 7
+          minimum: 1
+        working:
+          type: "boolean"
+        opensAt:
+          type: "string"
+        closesAt:
+          type: "string"
+        breakStartsAt:
+          type: "string"
+        breakEndsAt:
+          type: "string"
+      required:
+        - "closesAt"
+        - "dayOfWeek"
+        - "opensAt"
+        - "working"
+    PriceRequest:
+      type: "object"
+      properties:
+        vehicleTypeId:
+          type: "integer"
+          format: "int32"
+        price:
+          type: "number"
+        estimatedMinutes:
+          type: "integer"
+          format: "int32"
+      required:
+        - "estimatedMinutes"
+        - "price"
+        - "vehicleTypeId"
+    ServiceRequest:
+      type: "object"
+      properties:
+        code:
+          type: "string"
+          maxLength: 30
+          minLength: 0
+        name:
+          type: "string"
+          maxLength: 100
+          minLength: 0
+        description:
+          type: "string"
+        categoryId:
+          type: "integer"
+          format: "int32"
+        prices:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PriceRequest"
+      required:
+        - "categoryId"
+        - "name"
+    CategoryResponse:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+        code:
+          type: "string"
+        name:
+          type: "string"
+    PriceResponse:
+      type: "object"
+      properties:
+        vehicleTypeId:
+          type: "integer"
+          format: "int32"
+        price:
+          type: "number"
+        estimatedMinutes:
+          type: "integer"
+          format: "int32"
+        validFrom:
+          type: "string"
+          format: "date"
+    ServiceResponse:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+        code:
+          type: "string"
+        name:
+          type: "string"
+        description:
+          type: "string"
+        category:
+          "$ref": "#/components/schemas/CategoryResponse"
+        active:
+          type: "boolean"
+        prices:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PriceResponse"
+    BayRequest:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+          maxLength: 60
+          minLength: 0
+        status:
+          type: "string"
+      required:
+        - "name"
+    CreateBookingRequest:
+      type: "object"
+      properties:
+        vehicleId:
+          type: "integer"
+          format: "int64"
+        serviceIds:
+          type: "array"
+          items:
+            type: "integer"
+            format: "int32"
+          minItems: 1
+        date:
+          type: "string"
+          format: "date"
+        time:
+          type: "string"
+        notes:
+          type: "string"
+          maxLength: 300
+          minLength: 0
+      required:
+        - "date"
+        - "serviceIds"
+        - "time"
+        - "vehicleId"
+    CancelRequest:
+      type: "object"
+      properties:
+        reasonCode:
+          type: "string"
+    ActiveRequest:
+      type: "object"
+      properties:
+        active:
+          type: "boolean"
+      required:
+        - "active"
+    StatusRequest:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          minLength: 1
+        reasonCode:
+          type: "string"
+      required:
+        - "status"
+    EstablishmentResponse:
+      type: "object"
+      properties:
+        tradeName:
+          type: "string"
+        legalName:
+          type: "string"
+        taxId:
+          type: "string"
+        address:
+          type: "string"
+        phone:
+          type: "string"
+        email:
+          type: "string"
+        logoUrl:
+          type: "string"
+    AvailabilityResponse:
+      type: "object"
+      properties:
+        date:
+          type: "string"
+          format: "date"
+        open:
+          type: "boolean"
+        durationMinutes:
+          type: "integer"
+          format: "int32"
+        slots:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SlotResponse"
+    SlotResponse:
+      type: "object"
+      properties:
+        time:
+          type: "string"
+        available:
+          type: "boolean"
