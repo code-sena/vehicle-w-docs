@@ -43,8 +43,8 @@ The browser/mobile client is untrusted. Service code validates authorization eve
 
 | Threat | Example | Current mitigation | Status |
 |---|---|---|---|
-| Spoofing | Stolen credentials used to log in | BCrypt passwords, JWT authentication, login controls | Implemented in design |
-| Spoofing | Forged service-to-service identity | Forwarded authenticated token and service authorization | Design |
+| Spoofing | Stolen credentials used to log in | BCrypt passwords, JWT authentication, inactive accounts rejected | Implemented — **no login attempt limit yet** (RF-004b gap) |
+| Spoofing | Forged service-to-service identity | Forwarded user token (booking → customer, customer → security); `X-Internal-Key` on `/internal/**` (notification → security), not routed by the gateway | Implemented |
 | Tampering | Customer changes another customer's booking id | Ownership checks inside owning service | Required |
 | Tampering | Receipt reference reused | Unique transaction reference constraint | Data model |
 | Repudiation | User denies changing a booking | Audit trigger with user id and timestamps | Data model |
@@ -56,7 +56,7 @@ The browser/mobile client is untrusted. Service code validates authorization eve
 
 ## 4. Authentication
 
-`security-service` issues JWTs. The gateway verifies the token at the edge, and every backend service verifies the token and applies its own authorization rules.
+`security-service` issues JWTs (HS256, shared secret). Every backend service verifies the token and applies its own authorization rules; the gateway only routes (ADR-005 implementation note).
 
 The current design uses:
 
@@ -108,7 +108,8 @@ The current design does not define message-level encryption or a separate servic
 | JWT secret shared by services is leaked | High | Environment variables; reconsider asymmetric signing before real deployment |
 | Event published after DB commit but service crashes before publish | Medium/High | Manual recovery; Outbox remains a future option |
 | Receipt storage is not yet defined | Medium | Decision required before implementation |
-| Password recovery needs a usable SMTP provider | Medium | Mailpit locally; real SMTP account pending |
+| SMTP credentials (Gmail app password) in `.env` | Medium | `.env` is git-ignored; never logged; rotate if shared |
+| Internal API key leaked | Medium | Only grants read of a user's email/name; separate from `JWT_SECRET`; rotate in `.env` |
 | Rate limiting is not implemented | Medium | Public production exposure is out of scope |
 
 ## References
