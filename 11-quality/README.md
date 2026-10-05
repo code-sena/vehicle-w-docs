@@ -1,87 +1,54 @@
 # 11 — Quality
 
-> **What is this?** How the team ensures the system works correctly
-> and keeps working as it evolves. Tests, code review, and metrics.
-
-## The testing pyramid
-
-```
-          /\
-         /  \
-        / E2E \      ← Few, slow, expensive (end-to-end tests)
-       /--------\
-      / Integra-  \   ← Some, moderate (test interaction between parts)
-     /  tion       \
-    /--------------\
-   / Unit Tests     \  ← Many, fast, cheap (test a function/class)
-  /------------------\
-```
-
-In microservices, add a layer: **Contract Tests**.
-They verify that the consumer and provider of an API agree on the contract.
+> How the team makes sure LavaRápido works and keeps working as it changes: automated tests per
+> service, manual end-to-end runs, and pull-request review.
 
 ---
 
-## What is here and how to fill it in
+## State today (2026-10-04)
 
-### `testing-strategy.md` ⭐
-The complete testing strategy for the project.
-**Fill in:** what types of tests are done, with what tool, minimum expected coverage,
-which go in the CI/CD pipeline, which are manual.
+| Item | State |
+|---|---|
+| Backend automated tests | 286, all green (security 106, customer 67, booking 31, notification 60, api-gateway 22) |
+| Web automated tests | 36 Vitest spec files; the suite **does not compile** (6 stale scaffold specs) |
+| End-to-end | Manual, full flow passed 2026-10-04 |
+| CI | None yet — Jenkins planned |
+| Coverage tool | None yet |
 
-**Format:**
-```markdown
-## Types of tests
-
-### Unit
-- **Tool:** [Jest / JUnit / pytest / etc.]
-- **Minimum coverage:** [80%]
-- **What they test:** functions, classes, business logic in isolation
-- **What they do NOT test:** DB, network, external services
-
-### Integration
-- **Tool:** [Testcontainers + JUnit / pytest]
-- **What they test:** service + real DB (in container), without external services
-- **When they run:** on every PR
-
-### Contract (Contract Testing)
-- **Tool:** [Pact / Spring Cloud Contract]
-- **What they test:** that the producer fulfills what the consumer expects
-- **When they run:** on every PR of the producer and consumer
-
-### E2E (End-to-End)
-- **Tool:** [Playwright / Cypress / k6]
-- **What they test:** complete user flows with the entire system running
-- **When they run:** before each deploy to staging
-
-## Minimum coverage per service
-| Service | Unit | Integration | Contract |
-|---------|------|-------------|---------|
-| iam | 85% | Required | Required |
-| [rest] | 80% | Required | Recommended |
-```
-
-### `code-review.md`
-Team code review guide.
-**Fill in:** what to verify in a PR (beyond "it works"), list of required checks,
-how to give constructive feedback, maximum time to review a PR.
+Details, tiers, tools and gaps → [`testing-strategy.md`](./testing-strategy.md).
 
 ---
 
-## Correlations with other sections
+## Contents
+
+| File | What it answers |
+|------|-----------------|
+| [`testing-strategy.md`](./testing-strategy.md) | Which tests exist, what each protects, how to run them, gaps |
+| [`tdd-guide.md`](./tdd-guide.md) | How to write a test first, with the conventions used in this project |
+
+---
+
+## Pull-request review checklist
+
+A reviewer checks, besides "it works":
+
+1. `./mvnw test` (or `ng build`) passes locally; new rules have a test.
+2. Business rules live in the backend domain/use cases, not in the frontend.
+3. Identifiers in English, code comments in Spanish, docs in English (ADR-001).
+4. No secrets in the diff (`.env`, passwords, keys); new variables added to `.env.example`.
+5. New tables/columns come with a Liquibase changeset and an update of `06-data/models.md`.
+6. New endpoints appear in the exported OpenAPI (`07-api/contracts/openapi/`) and in the gateway
+   routes if they are public.
+7. Errors use RFC 9457 with a `code`, and the web has the `API_ERRORS.<code>` translation in the
+   4 languages.
+
+---
+
+## Correlations
 
 | This section is fed by... | And feeds into... |
 |---------------------------|-------------------|
-| `04-requirements/traceability-matrix.md` → what to test | Test cases covering each FR |
-| `07-api/contracts/` → API contracts | Contract tests |
-| `00-governance/definition-of-done.md` → what every PR must have | Code review checklist |
-| `10-devops/ci-cd.md` | Which tests go in which pipeline step |
-
----
-
-## Questions this section must answer
-
-- What types of tests does the team write?
-- How much code coverage is required?
-- What does a reviewer check in a Pull Request?
-- How do we know a change did not break anything?
+| `04-requirements/traceability-matrix.md` → what to test | Tests per RF |
+| `07-api/contracts/openapi/` → API contracts | Web/API slice tests |
+| `00-governance/definition-of-done.md` | Review checklist |
+| `10-devops/` | How to start the system for end-to-end runs |
