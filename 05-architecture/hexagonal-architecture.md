@@ -1,6 +1,6 @@
 # Hexagonal Architecture
 
-**Last updated:** 2026-09-24
+**Last updated:** 2026-10-04
 
 The six backend services use the same internal architectural style: **hexagonal architecture (ports and adapters)** with Java 21 and Spring Boot.
 
@@ -31,28 +31,33 @@ Dependencies point inward. The domain does not depend on infrastructure.
 
 ## 2. Package structure
 
-A service can follow this structure:
+Every built service (security, customer, booking, notification) follows this structure. Real
+example, `booking-service` (`com.lavarapido.booking`):
 
 ```text
-src/main/java/.../
+src/main/java/com/lavarapido/booking/
 ├── domain/
-│   ├── model/
-│   ├── service/
+│   ├── model/          Booking, BookingLine, BookingStatus… (no Spring, no JPA)
+│   ├── service/        AvailabilityPolicy (pure domain policy)
+│   ├── event/          BookingEvent
+│   ├── exception/      ConflictException, InvalidValueException… (carry the API `code`)
 │   └── port/
-│       ├── in/
-│       └── out/
+│       ├── in/         use-case interfaces, commands and views
+│       └── out/        repositories, directories, event publisher
 ├── application/
-│   └── usecase/
+│   └── usecase/        BookingService, CatalogService (implement port.in)
 └── infrastructure/
     ├── adapter/
-    │   ├── in/web/
-    │   ├── out/persistence/
-    │   ├── out/messaging/
-    │   └── out/storage/
-    └── config/
+    │   ├── in/web/             REST controllers + dto/
+    │   ├── out/persistence/    JPA entities, Spring Data repositories, adapters
+    │   ├── out/messaging/      RabbitMQ publisher
+    │   └── out/customer/       REST client to customer-service
+    └── config/                 security, clock, beans
 ```
 
-The exact package names may evolve when implementation starts, but the dependency direction must remain.
+Other services add adapters with the same rule: `in/messaging` (RabbitMQ listeners) in customer
+and notification, `in/scheduling` (reminder job) in notification, `out/identity` (REST client to
+security), `out/email` and `out/push` in notification. The dependency direction never changes.
 
 ## 3. Domain layer
 
