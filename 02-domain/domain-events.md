@@ -520,6 +520,26 @@ This mapping is included for consistency with the current architecture. The doma
 
 ---
 
+## Implementation status (2026-10-04)
+
+Which domain events are emitted by the built services. Transport details (routing keys, queues,
+payload fields) are in `09-microservices/services/<NN-service>/events.md`.
+
+| Domain event | State | Notes |
+|---|---|---|
+| `UserRegistered` | Published | Consumed by customer (profile) and notification (welcome) |
+| `UserAuthenticated` | Not emitted | No consumer needs it; logins are only logged |
+| `BookingCreated` | Covered by `BookingConfirmed` | A booking is confirmed in the same transaction it is created (RF-006), so only `BookingConfirmed` is published |
+| `BookingConfirmed` | Published | Also published when a booking is rescheduled |
+| `BookingModified` | Covered by `BookingConfirmed` | A reschedule republishes `BookingConfirmed` with the new start time; consumers treat it as "the booking is now at this time" |
+| `BookingCancelled` | Published | Includes the cancellation reason |
+| Operator, execution and rating events | Pending | `operations-service` in development; notification already listens for `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` |
+| Payment, promotion and loyalty events | Pending | `payment-service` incomplete; notification already listens for `PaymentConfirmed`, `PaymentRejected` |
+| `NotificationCreated` | Not emitted | Notifications are read through the inbox API |
+| `CustomerProvisioned`, vehicle events | Raised, only logged | Raised by the customer domain; no consumer needs them yet |
+
+---
+
 # 6. Event rules
 
 ### Events are facts
