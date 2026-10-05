@@ -1,87 +1,38 @@
 openapi: 3.0.3
 info:
-  title: API Gateway
-  version: 1.0.0
+  title: LavaRápido API gateway
+  version: v1
   description: |
-    Punto único de entrada al sistema. El gateway enruta las peticiones a los
-    microservicios correspondientes según el path.
+    Single entry point of the system (ADR-005). The gateway has no business endpoints of its own:
+    it forwards every `/api/v1/**` request unchanged to the service that owns the path, so the
+    business contracts are the ones of each service:
 
-    ## Autenticación
-    La mayoría de los endpoints requieren un JWT válido:
-    ```
-    Authorization: Bearer <access_token>
-    ```
-    El token se obtiene en `POST /api/v1/auth/login` (ver `auth-service.yaml`).
+    | Path | Contract |
+    |---|---|
+    | `/api/v1/auth/**`, `/api/v1/users/**`, `/api/v1/admin/users/**` | `security-service.yaml` |
+    | `/api/v1/vehicles/**`, `/api/v1/vehicle-types`, `/api/v1/admin/vehicles` | `customer-service.yaml` |
+    | `/api/v1/catalog/**`, `/api/v1/schedule/**`, `/api/v1/establishment`, `/api/v1/bookings/**`, `/api/v1/admin/bookings/**`, `/api/v1/admin/catalog/**`, `/api/v1/admin/schedule/**`, `/api/v1/admin/bays/**` | `booking-service.yaml` |
+    | `/api/v1/notifications/**`, `/api/v1/admin/notifications/**` | `notification-service.yaml` |
 
-    ## Headers internos (solo entre servicios)
-    El gateway agrega estos headers antes de reenviar la petición al upstream:
-    - `X-User-Id`: UUID del usuario autenticado
-    - `X-User-Role`: Rol del usuario (ADMIN, USER, VIEWER)
-    - `X-Correlation-Id`: ID de traza para correlacionar logs
-
+    The JWT is validated by each service (ADR-006); the gateway forwards `Authorization`
+    as is. CORS is answered by the gateway. `/internal/**` and any other path answer 404.
 servers:
   - url: http://localhost:8080
-    description: Local development
-  - url: https://api.dev.{domain}
-    description: Development
-    variables:
-      domain:
-        default: example.com
-  - url: https://api.{domain}
-    description: Production
-    variables:
-      domain:
-        default: example.com
-
-tags:
-  - name: Health
-    description: Estado del gateway y sus upstreams
-
+    description: Local
 paths:
-  /health:
+  /actuator/health:
     get:
-      summary: Health check del gateway
-      description: |
-        Verifica que el gateway esté funcionando y que todos los servicios upstream
-        estén respondiendo. No requiere autenticación.
-      tags:
-        - Health
-      security: []
+      summary: Gateway health
+      operationId: health
+      tags: [gateway]
       responses:
-        '200':
-          description: Gateway y upstreams saludables
+        "200":
+          description: The gateway is up
           content:
             application/json:
               schema:
                 type: object
-                required: [status, timestamp]
                 properties:
                   status:
                     type: string
-                    enum: [ok, degraded]
-                  timestamp:
-                    type: string
-                    format: date-time
-                  upstreams:
-                    type: object
-                    description: Estado de cada microservicio
-                    additionalProperties:
-                      type: string
-                      enum: [ok, degraded, down]
-              example:
-                status: ok
-                timestamp: '2024-01-15T10:30:00Z'
-                upstreams:
-                  auth-service: ok
-                  nombre-servicio: ok
-        '503':
-          description: El gateway está iniciando o un upstream crítico está caído
-          content:
-            application/json:
-              schema:
-                $ref: './auth-service.yaml#/components/schemas/ErrorResponse'
-
-components:
-  securitySchemes:
-    bearerAuth:
-      $ref: './_shared.yaml#/components/securitySchemes/bearerAuth'
+                    example: UP
