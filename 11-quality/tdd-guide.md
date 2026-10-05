@@ -407,38 +407,58 @@ class Email {
 
 ---
 
-## Testing stack configuration
 
-```json
-// package.json
-{
-  "scripts": {
-    "test": "jest",
-    "test:unit": "jest --testPathPattern='tests/unit'",
-    "test:integration": "jest --testPathPattern='tests/integration' --runInBand",
-    "test:coverage": "jest --coverage",
-    "test:watch": "jest --watch"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "coverageThreshold": {
-      "global": {
-        "lines": 80,
-        "branches": 75
-      },
-      "./src/domain/": {
-        "lines": 90
-      }
-    }
-  }
+## In this project (Java + Spring Boot)
+
+The examples above are language-neutral. This is how the LavaRápido services apply them.
+
+### Stack
+
+| Need | Tool |
+|---|---|
+| Runner and assertions | JUnit 5 (`spring-boot-starter-test`) |
+| Mocks | Mockito (booking, customer, security) |
+| Fakes | Hand-written in-memory repositories (`Fakes.java` in security and notification) |
+| HTTP + security slice | `@WebMvcTest` + `spring-boot-starter-webmvc-test` + `spring-boot-starter-security-test` |
+| Tokens in tests | `NimbusJwtEncoder` with the test secret (HS256, same as production) |
+| Time | `Clock.fixed(...)` injected into use cases |
+| Command | `./mvnw test` from the service folder |
+
+### Conventions
+
+- One test class per aggregate, policy or use-case service: `BookingTest`, `AvailabilityPolicyTest`,
+  `BookingServiceTest`, `BookingApiWebTest`.
+- Method names in English describe the behavior; `@DisplayName` in Spanish states the rule and
+  cites the invariant or requirement it protects (`INV-BOOK-003/004`, `RF-007`).
+- Fixed instants (`Instant.parse("2026-10-01T14:00:00Z")`), never `Instant.now()`.
+- Domain tests do not start Spring; only the web slice tests do.
+
+### Real example (booking-service, domain)
+
+```java
+@Test
+@DisplayName("RF-007: no se cancela ni se cambia despues de empezar")
+void cannotChangeAfterStarting() {
+    Booking booking = confirmed();
+    booking.moveTo(BookingStatus.IN_PROGRESS);
+
+    assertThrows(ConflictException.class, () -> booking.cancel(CUSTOMER));
 }
 ```
+
+### Order in a feature
+
+1. Domain test for the new rule → domain code.
+2. Use-case test with fakes/mocks → application service.
+3. `@WebMvcTest` for the endpoint: success, 400 validation, 401/403, business error `code`.
+4. Liquibase changeset if the data changes; start the service (schema is validated).
+5. Manual run through the web.
 
 ---
 
 ## Correlations
 
 - Hexagonal Architecture (facilitates TDD) → `05-architecture/hexagonal-architecture.md`
-- Testing pyramid → `11-quality/README.md`
-- Testing strategy by type → `11-quality/testing-strategy.md`
-- Definition of Done (required coverage) → `00-governance/definition-of-done.md`
+- Testing strategy and current numbers → `11-quality/testing-strategy.md`
+- Stack-specific examples → `_stacks/java-spring.md`
+- Definition of Done → `00-governance/definition-of-done.md`
