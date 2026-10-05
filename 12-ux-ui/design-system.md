@@ -1,99 +1,78 @@
 # Design System
 
-> The design system is the shared visual language between design and development.
-> It prevents inconsistencies, accelerates design, and reduces rework.
-> **Rule:** Before creating a new component, check here if it already exists.
+> The visual language of the web app as implemented in `Web/src/styles.scss`,
+> `Web/src/styles/_variables.scss`, `_mixins.scss` and `_breakpoints.scss`.
+> Stack: Angular 21 + Angular Material 21 + ngx-translate (es, en, fr, pt).
 
 ---
 
 ## Design tokens
 
-Tokens are the design system's variables. Changing a token changes the entire system.
+### Themes
 
-### Colors
+Colors are CSS custom properties on `body`, so a theme switch only changes the class of `body`.
+The user picks the theme in Configuration. **Requirement (RF-019):** the theme belongs to the account — each user (each email) gets their own theme back when signing in, even on a shared browser. **Today** it is stored in the browser (`localStorage`, key `theme`, shared by every account on that device) and security-service's `/users/me/preferences` is not used yet; it also only accepts `light`/`dark` while the web has `green-light`, `green-dark`, `pink`, `pink-dark` (TD-002).
+
+| Theme class | Look |
+|---|---|
+| *(default)* — green light | Primary teal on a light background |
+| `green-dark` | Same teal on dark surfaces |
+| `pink` | Primary pink on a light background |
+| `pink-dark` | Pink on dark surfaces |
+
+### Colors (green light, default)
 
 ```css
-/* Base palette */
---color-primary-50:  #[hex];   /* Lightest */
---color-primary-100: #[hex];
---color-primary-500: #[hex];   /* Default */
---color-primary-900: #[hex];   /* Darkest */
+--primary:        #2ec4b6;   /* main actions, active states */
+--primary-hover:  #229990;
+--primary-text:   #0e7a70;   /* primary color used as text (contrast on white) */
+--primary-soft:   rgba(46, 196, 182, 0.15);   /* chips, selected rows */
+--sidebar:        #104039;
 
---color-secondary-500: #[hex];
---color-neutral-50:  #[hex];
---color-neutral-900: #[hex];
+--bg:             #f5f6f8;   /* page */
+--bg-soft:        #F9FBFB;
+--card:           #ffffff;
+--border:         #e6eaea;
 
-/* Semantic colors */
---color-success:  #[hex];      /* Green — success, confirmed */
---color-warning:  #[hex];      /* Yellow — caution, pending */
---color-error:    #[hex];      /* Red — error, cancelled */
---color-info:     #[hex];      /* Blue — neutral information */
+--text:           #1a1a2e;
+--text-secondary: #5f6f75;
+--text-muted:     #6f8089;
 
-/* Text */
---color-text-primary:   #[hex];
---color-text-secondary: #[hex];
---color-text-disabled:  #[hex];
-
-/* Backgrounds */
---color-bg-page:    #[hex];
---color-bg-card:    #[hex];
---color-bg-overlay: rgba([r],[g],[b], 0.5);
+--success: #0e7a70;  --success-soft: #E0EBEA;   /* confirmed, completed */
+--warning: #B45309;  --warning-soft: #FEF3C7;   /* pending, maintenance, attention */
+--error:   #D32F2F;  --error-soft:   #FFEBEE;   /* error, cancelled */
+--neutral-badge: #67777E;  --neutral-badge-soft: #EDF2F2;
 ```
+
+In the dark themes the same names take dark values (e.g. `--bg: #1a1a1a`, `--card: #2a2a2a`,
+`--text: #ffffff`, `--error: #ff6b6b`). **Components must use the variables, never fixed hex
+values**, so they work in the four themes.
+
+SCSS constants in `_variables.scss` (`$color-primary: #29AEA0`, `$color-dark`, `$color-gray`…)
+are older static values; new styles should prefer the CSS variables above.
 
 ### Typography
 
-```css
-/* Families */
---font-family-sans:  '[Font name], sans-serif';
---font-family-mono:  '[Mono font name], monospace';
+```scss
+$font-family: 'Plus Jakarta Sans', sans-serif;   // Google Fonts, weights 400–700
 
-/* Sizes (modular scale 1.25) */
---font-size-xs:   0.75rem;   /* 12px */
---font-size-sm:   0.875rem;  /* 14px */
---font-size-base: 1rem;      /* 16px */
---font-size-lg:   1.25rem;   /* 20px */
---font-size-xl:   1.563rem;  /* 25px */
---font-size-2xl:  1.953rem;  /* 31px */
---font-size-3xl:  2.441rem;  /* 39px */
-
-/* Weights */
---font-weight-regular: 400;
---font-weight-medium:  500;
---font-weight-bold:    700;
-
-/* Line height */
---line-height-tight:  1.2;
---line-height-normal: 1.5;
---line-height-loose:  1.8;
+$fs-h1: 32px;  $fs-h2: 24px;  $fs-h3: 20px;
+$fs-subtitle: 16px;  $fs-body: 14px;  $fs-caption: 12px;
+$fw-regular: 400;  $fw-medium: 500;  $fw-semibold: 600;  $fw-bold: 700;
+$lh-heading: 1.3;  $lh-body: 1.5;
 ```
 
-### Spacing
+Use the mixins instead of raw sizes: `heading-1`, `heading-2`, `heading-3`, `subtitle`,
+`body-text`, `body-text-bold`, `caption-text`. Icons: Material Icons (`<mat-icon>`).
 
-```css
-/* 4px system */
---space-1:  0.25rem;   /* 4px */
---space-2:  0.5rem;    /* 8px */
---space-3:  0.75rem;   /* 12px */
---space-4:  1rem;      /* 16px */
---space-6:  1.5rem;    /* 24px */
---space-8:  2rem;      /* 32px */
---space-12: 3rem;      /* 48px */
---space-16: 4rem;      /* 64px */
-```
+### Spacing, radius and breakpoints
 
-### Borders and shadows
+```scss
+$padding-page: 40px 48px;
+$border-radius: 16px;      // cards, dialogs
+$border-radius-sm: 10px;   // inputs, chips
 
-```css
-/* Border radius */
---radius-sm: 4px;
---radius-md: 8px;
---radius-lg: 16px;
---radius-full: 9999px;  /* Pill */
-
-/* Shadows */
---shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
---shadow-md: 0 4px 6px rgba(0,0,0,0.1);
---shadow-lg: 0 10px 15px rgba(0,0,0,0.15);
+$mobile: 768px;  $tablet: 1024px;  $desktop: 1280px;   // mixins: @include mobile / tablet
 ```
 
 ---
@@ -102,61 +81,46 @@ Tokens are the design system's variables. Changing a token changes the entire sy
 
 ### Buttons
 
-| Variant | Use | Disabled state |
-|---------|-----|----------------|
-| Primary | Main action on the page | `opacity: 0.5; cursor: not-allowed` |
-| Secondary | Secondary actions | same |
-| Danger | Destructive actions (delete) | same |
-| Ghost | Tertiary actions, links | same |
+| Class | Use |
+|-------|-----|
+| `btn-primary` | Main action of the view (one per view) |
+| `btn-outline` | Secondary actions (export, clear filters, retry) |
+| `btn-icon` | Icon-only actions in tables and cards (edit, view, delete); always with `aria-label` |
+| `btn-icon--danger` | Destructive icon action — always behind a confirmation dialog |
 
-**Usage rules:**
-- Only one Primary action per view
-- Danger only with modal confirmation ("Are you sure?")
-- Buttons have a loading state for async operations
+Disabled while a request is running (`[disabled]="saving"`), so a double click cannot submit twice.
 
 ### Forms
 
-| Component | When to use |
-|-----------|-------------|
-| Input text | Single-line free text |
-| Textarea | Multi-line free text |
-| Select | Fixed list of options (< 15 items) |
-| Combobox | List with search (> 15 items or dynamic loading) |
-| Checkbox | Independent binary option |
-| Radio | Select one option from a few (2-5) |
-| Toggle | Enable/disable a feature |
-| DatePicker | Date selection |
-
-**Error messages in forms:**
-- The message appears below the field, in red
-- The field border turns red
-- The message says how to fix the error, not just that there is an error
-
-```
-✓ "The email must have the format user@domain.com"
-✗ "Invalid email"
-```
+- Reactive or template-driven forms with the labels from the translation files.
+- Errors appear under the field (`form-field__error`, red with an icon) and only after the user
+  tried to submit or left the field.
+- Validation that protects data lives in the backend; the form only guides the user. A backend
+  error comes back with a `code` and is shown translated (`API_ERRORS.<code>`).
+- Prices are always shown with the `copPrice` pipe (`35000` → `$35.000`), whatever the language.
 
 ### Feedback
 
-| Component | When | Duration |
-|-----------|------|---------|
-| Toast/Snackbar | Action confirmations | 4 seconds |
-| Inline alert | Form errors | Until corrected |
-| Modal | Destructive confirmations, irreversible actions | Until the user decides |
-| Loading spinner | Operations > 200ms | Until finished |
-| Skeleton | Loading list content / cards | Until loaded |
+| Component | When |
+|-----------|------|
+| `FeedbackService.success / info / error` (`status-modal`) | Result of an action ("Booking created", error with its translated message) |
+| `ConfirmModal` | Destructive or irreversible actions (delete, cancel, deactivate); `danger: true` styles the confirm button in red |
+| `app-empty-state` (`variant: 'empty' \| 'filtered'`) | A list with no data, or no results for the current filters — with a call to action |
+| Inline "Loading…" text | While a list loads |
+| Status pills (`status-pill--<status>`) and `badge` | Booking, bay, payment and user states |
 
-### Data table
+All dialogs open with `panelClass: 'custom-dialog'` and share `shared/dialogs/_dialog-base.scss`.
 
-| Aspect | Behavior |
-|--------|---------|
-| Pagination | Maximum 20 rows per page (user-configurable) |
-| Sorting | Click on column, toggle asc/desc |
-| Filters | Side panel or filter row above the table |
-| Selection | Checkbox in the first column |
-| Actions | Final column with actions menu (edit, delete, etc.) |
-| Empty state | Illustration + message + primary action CTA |
+### Shared building blocks (`Web/src/app/shared`)
+
+| Component | Purpose |
+|---|---|
+| `sidebar` | Role menu (client, operator, admin) |
+| `notifications` | The notification inbox used by the three roles |
+| `profile-card`, `settings-panel` | Profile and preferences (theme, language, help center) |
+| `stepper`, `password-requirements`, `auth-card`, `auth-side-panel` | Auth and registration screens |
+| `empty-state`, `coming-soon`, `back-button` | Common states and navigation |
+| `dialogs/*` | Modals: confirm, status, service, schedule exception, register vehicle, notification detail… |
 
 ---
 
@@ -164,24 +128,23 @@ Tokens are the design system's variables. Changing a token changes the entire sy
 
 ### Principles
 
-1. **Confirm before destroying:** Any action that permanently deletes or modifies data requires a confirmation modal.
+1. **Confirm before destroying:** delete, cancel and deactivate always open a confirmation dialog.
+2. **The backend decides, the screen shows:** prices, free times and whether a booking can still
+   be changed come from the API (`changeable`); the frontend does not recompute business rules.
+3. **Empty state as a guide:** a screen without data explains what to do next.
+4. **One language at a time:** every text comes from `assets/i18n/{es,en,fr,pt}.json`.
 
-2. **Immediate feedback:** Every action must have a visual response in < 100ms (even if it is just the loading state).
+### Error handling (as implemented)
 
-3. **Prevent rather than correct:** Validate in real time in the form, not only on submit.
-
-4. **Empty state as a feature:** The screen without data is the new user's first impression — guide them to the first action.
-
-### Error handling
-
-| Scenario | What to show |
-|----------|-------------|
-| Network error | Toast "No connection. Retrying..." with automatic retry |
-| 401 error | Redirect to login with message "Your session expired" |
-| 403 error | Screen "You do not have permission to view this" with link to support |
-| 404 error | 404 screen with back navigation |
-| 500 error | Error toast + "Retry" button |
-| Timeout | Toast "This is taking longer than normal" with cancel option |
+| Scenario | What the app does |
+|----------|-------------------|
+| Network error (status 0) | Error message `API_ERRORS.NETWORK_ERROR` |
+| 401 on a protected call | `auth-interceptor` ends the session and returns to login with the previous URL |
+| 403 | Error message `API_ERRORS.FORBIDDEN` |
+| 409 `SLOT_UNAVAILABLE` (booking) | The alternative times returned by the backend are offered |
+| Any other error with a known `code` | Its translated message |
+| Unknown code | `API_ERRORS.UNEXPECTED` — the user never sees a raw key or stack trace |
+| Unknown route | **Gap:** no 404 page yet |
 
 ---
 
@@ -189,16 +152,16 @@ Tokens are the design system's variables. Changing a token changes the entire sy
 
 | Aspect | Minimum required |
 |--------|-----------------|
-| Text contrast | WCAG AA (4.5:1 for normal text, 3:1 for large text) |
-| Keyboard navigation | All interactive elements accessible with Tab |
-| Form labels | All fields with associated label (`for` / `aria-label`) |
-| Images | Descriptive alt text on all non-decorative images |
-| Visible focus | Visible focus indicator on all interactive elements |
+| Text contrast | WCAG AA (4.5:1 normal text). `--primary-text` exists because `--primary` on white is too light for text |
+| Keyboard navigation | All interactive elements reachable with Tab |
+| Form labels | Every field has a visible label |
+| Icon buttons | `aria-label` (translated) on every icon-only button |
+| Visible focus | Do not remove the focus outline |
 
 ---
 
 ## Correlations
 
 - Navigation map → `12-ux-ui/navigation-map.md`
-- Wireframes → `12-ux-ui/wireframes.md`
-- UX non-functional requirements → `04-requirements/non-functional.md`
+- Mockups → `12-ux-ui/mockup/`
+- UX non-functional requirements (RNF-008 compatibility, RNF-009 usability, RNF-010 localisation) → `04-requirements/non-functional.md`
