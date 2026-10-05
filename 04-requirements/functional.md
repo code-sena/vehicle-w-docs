@@ -46,8 +46,8 @@
 |----|--------|-------------|--------|----------|
 | RF-017 | Frontend only | The system must show a role-based dashboard with summary metrics and quick actions | HU-UI-001 | Should Have |
 | RF-018 | `notification-service` | The system must notify users of relevant events (booking created, status change, payment, assignment), tracking read/unread state | HU-UI-002 | Should Have |
-| RF-019 | `security-service` | The system must let a user customise the visual theme and persist it as a preference | HU-UI-003 | Could Have |
-| RF-020 | `security-service` | The system must let a user switch the interface language among the four supported languages (Spanish, English, French, Portuguese) | HU-UI-003 | Could Have |
+| RF-019 | `security-service` | The system must let a user customise the visual theme (palette) and persist it **per account**: each user (each email) keeps their own theme, and signing in with another account on the same device shows that account's theme, not the previous one | HU-UI-003 | Could Have |
+| RF-020 | `security-service` | The system must let a user switch the interface language among the four supported languages (Spanish, English, French, Portuguese) and persist it **per account**, with the same rule as RF-019 | HU-UI-003 | Could Have |
  
 ## Administration (`booking-service`, `operations-service`, `payment-service`)
  
