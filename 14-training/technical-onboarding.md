@@ -1,179 +1,111 @@
 # Technical Onboarding
 
-> Welcome to the team. This document is your guide for the first days.
-> Goal: you can make your first commit in 3 days.
-> If anything in this document is unclear or outdated, fix it yourself — that is your first contribution.
+> Guide for a developer joining LavaRápido. Goal: the whole system running on your machine on
+> day 1 and a first PR by day 3. If something here is wrong, fixing it is your first contribution.
 
 ---
 
-## Day 1 — Setup and context
+## Day 1 — Run the system
 
-### Morning: Access and environment
+### Install
 
-- [ ] Get access to the repository (confirm with the Tech Lead)
-- [ ] Get access to Slack / Teams (team channel: `#[channel-name]`)
-- [ ] Get access to Jira / Linear / GitHub Projects
-- [ ] Configure your local environment following `10-devops/local-setup.md`
-- [ ] Verify that `curl http://localhost:8080/health` responds `{"status": "ok"}`
+- [ ] JDK 21, Git, Docker Desktop, Node.js (LTS) + npm, an IDE (IntelliJ / VS Code)
+- [ ] Access to the GitHub repositories (ask the team lead)
 
-### Afternoon: Read core documentation
+### Start everything (details: `10-devops/local-setup.md`)
 
-Read in this order — each builds on the previous:
+1. Clone `lavarapido-infra`, the four services, `lavarapido-api-gateway` and the web, side by side.
+2. In `lavarapido-infra`: copy `.env.example` to `.env` and ask a teammate for the real values
+   **in private** (`DB_PASSWORD`, `JWT_SECRET`, `INTERNAL_API_KEY`, mail). Never commit `.env`.
+3. `docker compose up -d` → wait until `lavarapido-sqlserver` is healthy.
+4. Each service: `./mvnw spring-boot:run` (security 3001, customer 3002, booking 3003,
+   notification 3006, gateway 8080). Liquibase creates the tables on first start.
+5. Web: `npm install`, then `npm start` (port 4200).
+6. Check:
+   ```bash
+   for p in 3001 3002 3003 3006 8080; do echo "$p $(curl -s localhost:$p/actuator/health)"; done
+   ```
+7. Sign in with a demo account seeded by the `dev` profile (`admin@gmail.com`,
+   `operador@gmail.com`, `cliente@gmail.com`; ask for the password) and book a wash.
 
-1. `00-sdd-guide.md` — How the team works (30 min)
-2. `01-context/overview.md` — What we are building (20 min)
-3. `02-domain/domain-map.md` — The business domain (30 min)
-4. `05-architecture/overview.md` — How it is built (30 min)
-5. `00-governance/git-conventions.md` — How we manage code (20 min)
+### Read (in this order)
 
-### Day 1 meetings
-
-- [ ] Meet & greet with the team
-- [ ] 1:1 with the Tech Lead (30 min) — project context and your responsibilities
-- [ ] Product demo (if there is a recording, watch it beforehand)
+1. `01-context/overview.md` — what we are building (20 min)
+2. `05-architecture/overview.md` — services, data ownership, communication (30 min)
+3. `05-architecture/hexagonal-architecture.md` — how every service is organised (20 min)
+4. `00-governance/git-conventions.md` — branches, commits, PRs (15 min)
 
 ---
 
-## Day 2 — Understand the domain
+## Day 2 — Understand the domain and your service
 
-### Read domain and requirements documentation
-
-- [ ] `02-domain/entities-and-rules.md` — Entities and business rules
-- [ ] `02-domain/domain-events.md` — System events
-- [ ] `04-requirements/user-stories.md` — HUs for the current sprint
-- [ ] `01-context/glossary.md` — Project terms
-
-### Explore the code
-
-- [ ] Clone the repository for the service you will work on
-- [ ] Read `09-microservices/services/[your-service]/README.md`
-- [ ] Follow the folder structure — it should match `05-architecture/hexagonal-architecture.md`
-- [ ] Run the tests: `npm run test:unit` — all must be green
-- [ ] Run the service locally and test the main endpoints
-
-### Day 2 meeting
-
-- [ ] Domain walkthrough session with the Tech Lead or a senior developer (1 hour)
-  - Ask them to explain the main business flow
-  - Take notes on terms you do not know — add them to the glossary
+- [ ] `02-domain/entities-and-rules.md` and `02-domain/domain-events.md`
+- [ ] `04-requirements/user-stories.md` — stories of the current sprint
+- [ ] `01-context/glossary.md`
+- [ ] `09-microservices/services/<NN-your-service>/` — README, data model, events, decisions, runbook
+- [ ] Run its tests: `./mvnw test` — all green
+- [ ] Open Swagger UI (`http://localhost:300N/swagger-ui.html`, dev profile) and call an endpoint
+      with a token from `POST /api/v1/auth/login`
 
 ---
 
 ## Day 3 — First contribution
 
-### Your first task
-
-The Tech Lead will assign you a small task labeled `good-first-issue`:
-- It should be a small bug fix or documentation improvement
-- The goal is to learn the workflow, not the complexity of the task
-
-### TDD workflow for your first task
-
-1. Read the ticket and the acceptance criteria
-2. Write the test that verifies the criterion (`🔴 RED`)
-3. Implement the minimum code to make the test pass (`🟢 GREEN`)
-4. Refactor if necessary (`♻️ REFACTOR`)
-5. Create the PR following the conventions in `00-governance/git-conventions.md`
-
-### Checklist before opening the PR
-
-- [ ] `npm run test:unit` passes (green)
-- [ ] `npm run lint` passes (0 errors)
-- [ ] The commit title follows `type(scope): description`
-- [ ] The branch is named `feat/HU-XXX-description` or `fix/BUG-XXX-description`
+1. Pick a small item (a `technical-backlog.md` entry marked 0.5–1 SP, or a doc fix).
+2. Branch from `develop`: `feat/<description>` or `fix/<description>`.
+3. Test first (`11-quality/tdd-guide.md`): domain test → use case test → web slice test.
+4. `./mvnw test` green; Conventional Commit title `type(scope): description`.
+5. PR to `develop` with the template; one approval.
 
 ---
 
-## Week 1 — Go deeper
+## The five things to understand first
 
-| Day | Activity |
-|-----|----------|
-| 4 | Code review (participate in the team's code review — observe first) |
-| 5 | Participate in the Daily Standup with something concrete to report |
-| 5 | Read `05-architecture/pattern-guide.md` — the patterns we use |
-| 5 | Read `11-quality/tdd-guide.md` and `11-quality/testing-strategy.md` in full |
-
----
-
-## Week 2 — Guided independence
-
-- [ ] Complete your first HU independently
-- [ ] Actively participate in a code review
-- [ ] Read `07-api/README.md` and understand an OpenAPI contract for a service you use
-- [ ] Participate in the sprint Retrospective
+1. **One schema owner per service** — never read another service's tables; ask its API or listen
+   to its events (`06-data/models.md`, cross-service contract).
+2. **Hexagonal** — `domain` has no Spring/JPA; use cases in `application`; controllers, JPA,
+   RabbitMQ and REST clients are adapters in `infrastructure`.
+3. **Every service validates the JWT** — the gateway only routes; roles come from the `roles`
+   claim (`CLIENT`, `OPERATOR`, `ADMIN`).
+4. **Events after commit** — `carwash.events` exchange, consumers idempotent, failures to `.dlq`.
+5. **Business rules live in the backend** — the web shows what the API answers and translates
+   error `code`s (`API_ERRORS.<code>`), it does not re-implement rules.
 
 ---
 
-## Architecture: The 5 concepts you must understand first
+## Conventions
 
-Before writing code, understand these 5 concepts from the project's architecture:
-
-### 1. Bounded Contexts
-Each service corresponds to a Bounded Context of the domain.
-See: `02-domain/domain-map.md`
-
-### 2. Hexagonal Architecture
-The domain is the center. Nothing from the framework enters the domain.
-See: `05-architecture/hexagonal-architecture.md`
-
-### 3. Ports and Adapters
-Interfaces live in the domain. Implementations in infrastructure.
-See: `05-architecture/hexagonal-architecture.md`
-
-### 4. The flow of a request
-```
-HTTP Request
-  → [Controller] (adapter in)
-  → [UseCase] (application)
-  → [Aggregate] (domain — business logic lives here)
-  → [Repository] (port → adapter out)
-  → Database
-```
-
-### 5. Domain events
-Services communicate via events, not direct calls (when possible).
-See: `02-domain/domain-events.md`
+| Item | Rule |
+|---|---|
+| Identifiers, commits, branches | English |
+| Code comments | Spanish |
+| Documentation (this repository) | English (ADR-001) |
+| Times | Stored in UTC; booking times interpreted in `America/Bogota` |
+| Errors | RFC 9457 `ProblemDetail` with a `code` |
+| New column/table | Liquibase changeset in the owning service + `06-data/models.md` |
 
 ---
 
-## Frequently asked questions (FAQ)
+## FAQ
 
-**Why don't I use `console.log` in tests?**
-Because it pollutes the output. Use `logger.debug()` from the configured logger.
+**Can I change the database by hand?** Only to explore. Every real change is a Liquibase
+changeset (`06-data/migration-strategy.md`).
 
-**Can I commit directly to `main`?**
-No. Everything goes through a PR with at least 1 approval.
+**A service does not start.** Usually SQL Server was not healthy yet, or a port is busy. See the
+service runbook and `10-devops/local-setup.md` (common issues).
 
-**Can I change the database schema directly?**
-No. Every change goes as a versioned migration. See `06-data/models.md`.
+**Every call answers 401.** `JWT_SECRET` differs between services or the token expired (1 hour).
 
-**How do I know if my API change breaks consumers?**
-Run the contract tests: `npm run test:contract`. If they pass, the contract is maintained.
+**Where is the API contract?** `07-api/contracts/openapi/<service>.yaml`, exported from the running
+services.
 
-**Where do I ask for help if I am stuck?**
-1. Search this documentation first
-2. Ask in `#[team-channel]`
-3. Do not wait more than 1 hour before asking for help — the team's time is valuable
-
-**What do I do if I find incorrect or outdated documentation?**
-Fix it and open a PR. Documentation is code.
-
----
-
-## Additional resources
-
-| Resource | URL / Location | Purpose |
-|----------|---------------|---------|
-| Git guide | `00-governance/git-conventions.md` | Commit and branch conventions |
-| Project ADRs | `05-architecture/decisions/` | Understand decisions made and why |
-| Service runbook | `09-microservices/services/[your-service]/runbook.md` | Operate and troubleshoot |
-| [External documentation] | [URL] | [purpose] |
+**Where do I ask?** In the team chat; do not stay blocked more than an hour.
 
 ---
 
 ## Correlations
 
-- Technical setup → `10-devops/local-setup.md`
-- TDD process → `11-quality/tdd-guide.md`
-- Code conventions → `00-governance/git-conventions.md`
-- Your service → `09-microservices/services/[name]/`
+- Setup → `10-devops/local-setup.md`
+- TDD → `11-quality/tdd-guide.md`
+- Git → `00-governance/git-conventions.md`
+- Services → `09-microservices/service-catalog.md`
