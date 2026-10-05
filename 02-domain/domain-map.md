@@ -296,18 +296,18 @@ The project keeps separate lifecycles for booking, execution and payment. They m
 
 ### Booking status
 
-The current data model uses:
+The current data model uses English codes (ADR-010); the web translates them:
 
 | Status | Meaning |
 |---|---|
-| `AGENDADA` | Booking exists and is scheduled but is not yet confirmed for execution. |
-| `CONFIRMADA` | Booking has been validated and confirmed. |
-| `EN_EJECUCION` | Work for the booking is underway. |
-| `FINALIZADA` | The booking has finished. |
-| `CANCELLED` | Booking was cancelled. |
-| `NO_ASISTIO` | The customer did not attend the scheduled service. |
+| `SCHEDULED` | Booking exists but has no bay yet. Kept in the model; the current flow never creates it because a booking is confirmed with a bay at once (RF-006). |
+| `CONFIRMED` | Booking has a bay and a time. |
+| `IN_PROGRESS` | Work for the booking is underway. |
+| `COMPLETED` | The booking has finished. |
+| `CANCELLED` | Booking was cancelled (with a reason). |
+| `NO_SHOW` | The customer did not attend the scheduled service. |
 
-The exact transition guards must follow the current requirements and booking workflow.
+Transition guards as implemented: see the booking lifecycle in `entities-and-rules.md`.
 
 ### Service execution status
 
