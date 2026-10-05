@@ -1,114 +1,55 @@
 # Runbook — API Gateway
 
-> Procedimientos de operación para quien esté en guardia.
-> Cada sección es ejecutable sin contexto adicional.
-
-**Servicio:** api-gateway
-**Puerto local:** 8080
-**Versión:** 1.0
-**Última actualización:** [YYYY-MM-DD]
+**Service:** api-gateway · **Port:** 8080 · **Repository:** `lavarapido-api-gateway`
+**Last updated:** 2026-10-04
 
 ---
 
-## 1. Información rápida
+## 1. Quick facts
 
-| Campo | Valor |
-|-------|-------|
-| Puerto local | 8080 |
-| URL producción | `https://api.[dominio]/` |
-| URL staging | `https://staging.api.[dominio]/` |
-| Dashboard Grafana | [URL del panel de gateway] |
-| Canal de alertas | [#alerts] |
-| Escalamiento | [Tech Lead — contacto] |
-| RTO objetivo | 5 min (es la puerta de entrada — P0 inmediato) |
-| RPO objetivo | N/A (stateless) |
+| Item | Value |
+|---|---|
+| Start | `./mvnw spring-boot:run` (or the `api-gateway` service in `lavarapido-infra/docker-compose.yml`) |
+| Health | `GET http://localhost:8080/actuator/health` |
+| Depends on | The 4 services it routes to (it starts without them; their routes fail until they are up) |
+| Database / broker | None |
 
 ---
 
-## 2. Verificar salud
+## 2. Check health
 
 ```bash
-# Health check público (no requiere autenticación)
-curl https://api.[dominio]/health
-
-# Respuesta esperada:
-# {"status": "ok", "timestamp": "2024-01-15T10:30:00Z"}
-
-# Si hay problemas, verificar los upstreams:
-curl -H "Authorization: Bearer [token-dev]" https://api.[dominio]/api/v1/auth/health
+curl -s localhost:8080/actuator/health                 # {"status":"UP",...}
+curl -s localhost:8080/api/v1/catalog/services         # public route through booking-service
+for p in 3001 3002 3003 3006; do echo "$p $(curl -s localhost:$p/actuator/health)"; done
 ```
 
 ---
 
-## 3. Alertas frecuentes
+## 3. Known symptoms
 
-### Alta tasa de errores 502/503 (upstream no responde)
-
-**Síntoma:** Los servicios detrás del gateway devuelven 502 o 503.
-
-```bash
-# Ver a qué servicio corresponden los errores
-kubectl logs -n [ns] -l app=api-gateway --tail=200 | grep '"status":50'
-
-# Verificar que los pods del servicio afectado estén running
-kubectl get pods -n [ns] -l app=[servicio-afectado]
-```
-
-**Árbol de decisión:**
-- ¿El servicio afectado tiene pods `Running`? → El problema puede ser una excepción no manejada. Ver los logs del servicio.
-- ¿Los pods están en `CrashLoopBackOff`? → El servicio se cayó. Escalar el runbook del servicio afectado.
-- ¿Todos los servicios están caídos? → Problema de red o del gateway mismo. Ver sección 3.3.
-
-### Alta tasa de errores 401 (token inválido)
-
-**Síntoma:** Muchos 401. Puede ser ataque o clave JWT rotada.
-
-```bash
-# Ver IPs con más 401s
-kubectl logs -n [ns] -l app=api-gateway --tail=500 | \
-  grep '"status":401' | jq '.ip' | sort | uniq -c | sort -rn | head
-```
-
-- ¿Una IP sola genera todos los 401? → Posible ataque. Agregar a denylist.
-- ¿Muchas IPs generan 401 después de un deploy? → La clave pública JWT puede haber cambiado. Verificar variables de ambiente del gateway.
-
-### Rate limit disparado globalmente
-
-```bash
-# Ver cuántas peticiones bloqueadas por rate limit
-kubectl logs -n [ns] -l app=api-gateway --tail=200 | grep '"status":429'
-```
-
-Si el rate limit está disparado en condiciones normales, el límite puede ser muy bajo.
-Coordinar con Tech Lead antes de modificarlo.
+| Symptom | Cause | Fix |
+|---|---|---|
+| A route answers 500/502 with "Connection refused" in the log | The target service is not running | Start it; check `ROUTE_*_URL` |
+| 404 on a path that works on the service directly | Path not in the route predicates (or it is `/internal/**`, never routed on purpose) | Add the path to the route in `application.yml`, restart |
+| Browser: CORS error | Web origin not in `CORS_ALLOWED_ORIGINS` | Add it (comma separated), restart |
+| Browser: duplicated `Access-Control-Allow-Origin` | A new route without the `RemoveResponseHeader` filters | Copy the three filters to the route |
+| 401 on every protected call | Token invalid for the services (`JWT_SECRET` differs between services) — the gateway does not validate tokens | Same `JWT_SECRET` in every service |
+| "Port 8080 already in use" | Another instance or program on 8080 | Stop it or set `GATEWAY_PORT` |
 
 ---
 
-## 4. Rollback
+## 4. Routine operations
 
-El API Gateway es stateless — el rollback es un redeploy de la versión anterior:
-
-```bash
-kubectl rollout history deployment/api-gateway -n [ns]
-kubectl rollout undo deployment/api-gateway -n [ns]
-kubectl rollout status deployment/api-gateway -n [ns]
-```
+| Task | How |
+|---|---|
+| Point the web to the gateway | Today the web `proxy.conf.json` targets each service directly (3001–3006). To go through the gateway, replace those entries with one `/api` entry targeting `http://localhost:8080` |
+| Add a service | New route block in `application.yml` + test in `GatewayRoutesTest` |
+| Run the tests | `./mvnw test` (22 tests; starts fake HTTP servers, no other service needed) |
 
 ---
 
-## 5. Escalar el gateway
+## Correlations
 
-```bash
-# Escalar horizontalmente (sin downtime, stateless)
-kubectl scale deployment/api-gateway -n [ns] --replicas=3
-kubectl get pods -n [ns] -l app=api-gateway
-```
-
----
-
-## 6. Post-incidente
-
-- [ ] Gateway respondiendo con latencia P95 < 50ms
-- [ ] Zero 5xx en los últimos 5 minutos
-- [ ] Incidente registrado en `13-operations/incident-management.md`
-- [ ] Si el incidente causó SLA breach: notificar al Tech Lead
+- Routes and design → `README.md`, `decisions.md`
+- Incidents → `13-operations/incident-management.md`
