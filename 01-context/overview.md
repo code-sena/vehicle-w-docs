@@ -50,10 +50,10 @@ the risks to validate before trusting this hypothesis, in
 
 ## Current status
 
-- **Phase:** Implementation. The design (`02-domain` to `06-data`, 9 ADRs) is complete; the backend is regrouped into **six services plus the API Gateway** (ADR-009). The services' business rules are written and unit-tested; the first full run of the system (Docker Compose) and the connection of the web client to the API are in progress. The Android app has not started
+- **Phase:** Implementation (status at 2026-10-04). Design complete (`02-domain` to `06-data`, 11 ADRs). Built, tested and running together with Docker Compose: **api-gateway, security, customer, booking and notification** (286 backend tests). The web client uses the API for sign-up, login, profile, vehicles, catalog, schedule, bays, bookings and notifications; booking emails and reminders reach the customer's inbox. In progress: **operations-service** and the Android app (teammates); **payment-service** is incomplete, so the receipt upload and the operator screens still use local data (the client dashboard, history and payment amount already come from booking-service). The Android app already calls security, customer and booking. Jenkins CI is planned, not built yet
 - **Current version:** N/A — the project does not use release versioning yet
 - **Last release:** N/A
-- **Next milestone:** the complete booking flow running end to end — sign-up, booking, automatic assignment, execution, rating, QR payment and approval — following the build order in ADR-009 (`security` → `customer` → `booking` → `operations` → `payment` → `notification`)
+- **Next milestone:** merge operations-service (assignment, execution, rating) and payment-service (QR payment and approval) to close the end-to-end flow; then the Jenkins pipeline. Pending gaps: `04-requirements/traceability-matrix.md`
 
 ## Project contacts
 
