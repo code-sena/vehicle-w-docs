@@ -126,7 +126,7 @@ Use the template: `07-api/contracts/openapi/_template-service.yaml`
 
 1. Copy `09-microservices/_template/service/` → `09-microservices/services/NN-name/`
 2. Update `09-microservices/service-catalog.md` with the new service's entry
-3. Update `09-microservices/dependency-map.md` (or create it if it doesn't exist)
+3. Update the communication matrix in `09-microservices/service-catalog.md`
 4. Copy `07-api/contracts/openapi/_template-service.yaml` → `07-api/contracts/openapi/service-name.yaml`
 5. Create a PR with at least the README.md and the sketched API contract
 
