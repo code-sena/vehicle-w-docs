@@ -1,54 +1,42 @@
-# Modelo de Datos — API Gateway
+# Data Model — API Gateway
 
-> El API Gateway es **stateless**: no tiene base de datos propia.
-> Su estado de configuración (rutas, rate limits, allowlists) se gestiona
-> mediante variables de ambiente y archivos de configuración versionados en Git,
-> no en tablas de base de datos.
+> The gateway is **stateless**: no database, no cache, no session. Everything it needs is
+> configuration in `src/main/resources/application.yml`, overridable with environment variables.
 
 ---
 
-## Motor de base de datos
+## Storage
 
-**Motor:** No aplica — sin base de datos persistente.
+| Item | Value |
+|---|---|
+| Database | None |
+| Cache / shared store | None (no Redis in the stack) |
+| In-memory state | None that outlives a request |
 
-**Justificación:** Un API Gateway que requiere una BD propia introduce un punto de falla
-adicional en la capa que todo el tráfico atraviesa. El estado de routing se gestiona
-via configuración (archivos YAML o variables de ambiente), y el estado de sesión
-(token blacklist, rate limits) se delega a Redis compartido.
-
----
-
-## Estado en memoria / Redis
-
-El API Gateway sí mantiene estado efímero:
-
-| Dato | Almacenamiento | TTL | Propósito |
-|------|---------------|-----|-----------|
-| Rate limit counters | Redis | 60 segundos | Conteo de peticiones por IP |
-| Token blacklist check | Redis (read-only) | Según expiración del token | Verificar tokens revocados |
-
-El auth-service es el **dueño** del token blacklist — el gateway solo lo consulta.
+Consequence: rate limiting and token revocation are **not** done here (they would need a shared
+store). See `decisions.md`.
 
 ---
 
-## Archivos de configuración de rutas
+## Configuration instead of tables
 
-En lugar de tablas, las rutas se definen en:
+| Setting | Property | Env variable | Default |
+|---|---|---|---|
+| Port | `server.port` | `GATEWAY_PORT` | `8080` |
+| security-service URL | route `security-service` | `ROUTE_SECURITY_URL` | `http://localhost:3001` |
+| customer-service URL | route `customer-service` | `ROUTE_CUSTOMER_URL` | `http://localhost:3002` |
+| booking-service URL | route `booking-service` | `ROUTE_BOOKING_URL` | `http://localhost:3003` |
+| notification-service URL | route `notification-service` | `ROUTE_NOTIFICATION_URL` | `http://localhost:3006` |
+| Allowed web origins | `app.cors.allowed-origins` | `CORS_ALLOWED_ORIGINS` | `http://localhost:4200` |
 
-```
-config/
-├── routes.yaml          # Mapa de rutas: path → servicio + puerto
-├── rate-limits.yaml     # Límites por ruta y por rol
-└── cors.yaml            # Configuración CORS por origen
-```
-
-Estos archivos están versionados en Git y se recargo en el startup del servicio.
-Un cambio de rutas requiere un redeploy (intencional: los cambios de routing son cambios de infraestructura).
+Routes live in `spring.cloud.gateway.server.webmvc.routes` (path predicates per service; full table
+in `README.md`). Changing a route means editing the file and restarting the gateway.
+Values can also come from `lavarapido-infra/.env` (imported as optional properties).
 
 ---
 
-## Correlaciones
+## Correlations
 
-- Configuración de ambientes → `10-devops/environments.md`
-- Runbook del gateway → `runbook.md`
-- Catálogo de rutas disponibles → `09-microservices/service-catalog.md`
+- Routes and responsibilities → `README.md`
+- Environments → `10-devops/environments.md`
+- Service registry → `09-microservices/service-catalog.md`
