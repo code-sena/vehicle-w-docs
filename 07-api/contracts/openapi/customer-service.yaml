@@ -1,0 +1,244 @@
+# Generated from the running customer-service (springdoc, GET /v3/api-docs) on 2026-10-05.
+# Do not edit by hand: regenerate from the code so the contract never drifts.
+openapi: "3.1.0"
+info:
+  title: "LavaRápido customer-service API"
+  version: "v1"
+  description: "Contract of customer-service. Public paths are reached through the API gateway."
+servers:
+  - url: "http://localhost:8080"
+    description: "Through the API gateway (ADR-005)"
+  - url: "http://localhost:3002"
+    description: "customer-service directly (local development)"
+paths:
+  "/api/v1/vehicles/{id}":
+    get:
+      tags:
+        - "customer-vehicle-controller"
+      operationId: "get"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/VehicleResponse"
+    put:
+      tags:
+        - "customer-vehicle-controller"
+      operationId: "update"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/UpdateVehicleRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/VehicleResponse"
+    delete:
+      tags:
+        - "customer-vehicle-controller"
+      operationId: "remove"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "204":
+          description: "No Content"
+  "/api/v1/vehicles":
+    get:
+      tags:
+        - "customer-vehicle-controller"
+      operationId: "list"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/VehicleResponse"
+    post:
+      tags:
+        - "customer-vehicle-controller"
+      operationId: "register"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/RegisterVehicleRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/VehicleResponse"
+  "/api/v1/vehicle-types":
+    get:
+      tags:
+        - "vehicle-type-controller"
+      operationId: "list_1"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/VehicleTypeResponse"
+  "/api/v1/admin/vehicles":
+    get:
+      tags:
+        - "admin-vehicle-controller"
+      operationId: "find"
+      parameters:
+        - name: "ids"
+          in: "query"
+          required: false
+          schema:
+            type: "array"
+            items:
+              type: "integer"
+              format: "int64"
+        - name: "plate"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/OwnedVehicleResponse"
+components:
+  schemas:
+    UpdateVehicleRequest:
+      type: "object"
+      properties:
+        licensePlate:
+          type: "string"
+          maxLength: 10
+          minLength: 0
+        vehicleType:
+          type: "string"
+          minLength: 1
+        brand:
+          type: "string"
+          maxLength: 50
+          minLength: 0
+        model:
+          type: "string"
+          maxLength: 50
+          minLength: 0
+        color:
+          type: "string"
+          maxLength: 30
+          minLength: 0
+      required:
+        - "licensePlate"
+        - "vehicleType"
+    VehicleResponse:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+        licensePlate:
+          type: "string"
+        licensePlateFormatted:
+          type: "string"
+        vehicleType:
+          type: "string"
+        vehicleTypeId:
+          type: "integer"
+          format: "int32"
+        vehicleTypeName:
+          type: "string"
+        brand:
+          type: "string"
+        model:
+          type: "string"
+        color:
+          type: "string"
+        createdAt:
+          type: "string"
+          format: "date-time"
+    RegisterVehicleRequest:
+      type: "object"
+      properties:
+        licensePlate:
+          type: "string"
+          maxLength: 10
+          minLength: 0
+        vehicleType:
+          type: "string"
+          minLength: 1
+        brand:
+          type: "string"
+          maxLength: 50
+          minLength: 0
+        model:
+          type: "string"
+          maxLength: 50
+          minLength: 0
+        color:
+          type: "string"
+          maxLength: 30
+          minLength: 0
+      required:
+        - "licensePlate"
+        - "vehicleType"
+    VehicleTypeResponse:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+        code:
+          type: "string"
+        name:
+          type: "string"
+        sizeFactor:
+          type: "number"
+        displayOrder:
+          type: "integer"
+          format: "int32"
+    OwnedVehicleResponse:
+      type: "object"
+      properties:
+        vehicle:
+          "$ref": "#/components/schemas/VehicleResponse"
+        ownerUserId:
+          type: "integer"
+          format: "int64"
