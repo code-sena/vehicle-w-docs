@@ -25,7 +25,9 @@ The backend uses six domain services plus one API Gateway:
 | `booking-service` | `catalog`, `booking` | Services, prices, shop hours, bays and bookings |
 | `operations-service` | `execution` | Operators, availability, assignment, execution and ratings |
 | `payment-service` | `promotion`, `payment` | Promotions, payments, receipts and loyalty ledger |
-| `notification-service` | `notification` | In-app notifications and read state |
+| `notification-service` | `notification` | In-app notifications, push, email and booking reminders |
+
+Built and running today: api-gateway, security, customer, booking and notification. `operations-service` is in development and `payment-service` is incomplete (status table in `overview.md`).
 
 All six services use the same physical SQL Server database in the current academic environment. Schemas provide logical ownership boundaries. A service may own more than one schema, but every schema has exactly one owning service.
 
@@ -40,7 +42,9 @@ All six services use the same physical SQL Server database in the current academ
 - The API Gateway is infrastructure, not a domain microservice.
 - REST is used for synchronous validation and RabbitMQ for asynchronous consequences.
 - Authentication uses JWT issued by `security-service`; each service performs its own authorization and ownership checks.
-- Services use Java 21 and Spring Boot with hexagonal architecture.
+- Services use Java 21 and Spring Boot with hexagonal architecture (ports and adapters, ADR-007): `domain` (model, ports) → `application` (use cases) → `infrastructure` (web, persistence, messaging adapters).
+- The JWT is validated by every service; the gateway only routes and answers CORS.
+- Service-to-service calls without a user (notification → security) use `X-Internal-Key` on `/internal/**` routes, which the gateway never exposes.
 
 ## Sources of truth
 
@@ -53,4 +57,4 @@ The architecture is checked against `01-context`, `03-product`, `04-requirements
 - `06-data/` — SQL Server schemas, tables, constraints and migrations
 - `07-api/` — API contracts
 - `09-microservices/` — service implementation documentation
-- `10-devops/` — CI/CD and local environment procedures
+- `10-devops/` — local environment procedures and the planned Jenkins pipeline
