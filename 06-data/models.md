@@ -1,6 +1,6 @@
 # Data Models per Service
 
-**Last updated:** 2026-10-02 — booking schema aligned with the booking-service Liquibase changelog (005/018 + seeds 103/104/109).
+**Last updated:** 2026-10-04 — ADR-010 (bay status, daily break, vehicle model, customer user id) and ADR-011 (device tokens, processed events, booking reminders), as applied by the services' migrations.
 
 The system is split into **six microservices over nine schemas**, all inside a single SQL
 Server 2016+ instance. Every schema has exactly one owning service; a service may own more
@@ -29,9 +29,9 @@ below.
 | `booking-service` | [`catalog`](#04-catalog), [`booking`](#05-booking) | 12 |
 | `operations-service` | [`execution`](#06-execution) | 5 |
 | `payment-service` | [`promotion`](#07-promotion), [`payment`](#08-payment) | 12 |
-| `notification-service` | [`notification`](#09-notification) | 2 |
+| `notification-service` | [`notification`](#09-notification) | 5 |
 
-44 tables in total. The `settings` schema no longer exists: `establishment` moved to
+47 tables in total. The `settings` schema no longer exists: `establishment` moved to
 `booking` and `user_preference` to `security`; the loyalty ledger moved from `customer` to
 `payment` (see each table's modeling decisions).
 
@@ -484,6 +484,7 @@ CREATE TABLE [customer].vehicle_type (
 CREATE TABLE [customer].[customer] (
     customer_id    BIGINT       IDENTITY(1,1) NOT NULL,
     person_id      BIGINT       NOT NULL,   -- [security].person
+    user_id        BIGINT       NULL,       -- [security].app_user = JWT subject (changeset 014)
     loyalty_points INT          NOT NULL CONSTRAINT df_customer_points DEFAULT 0,   -- display copy, truth = [payment].loyalty_transaction (ADR-009)
     customer_since DATE         NOT NULL CONSTRAINT df_customer_since DEFAULT CAST(SYSUTCDATETIME() AS DATE),
     created_at     DATETIME2(3) NOT NULL CONSTRAINT df_customer_created DEFAULT SYSUTCDATETIME(),
@@ -499,12 +500,19 @@ CREATE TABLE [customer].[customer] (
 );
 ```
 
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ux_customer_user` | `user_id` `WHERE user_id IS NOT NULL AND deleted_at IS NULL` | Unique, filtered | One profile per account; the profile is looked up by the token's subject. |
+
 **Data dictionary:**
 
 | Column | Type | Nullable | Description | Constraints |
 |--------|------|----------|--------------|-------------|
 | `customer_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
 | `person_id` | BIGINT | No | The underlying human. | Unique, No FK — owned by `security.person`, see the cross-service contract below. |
+| `user_id` | BIGINT | Yes | The login account (`security.app_user`), equal to the JWT `sub`. Added by customer-service changeset 014. | Unique (filtered), No FK |
 | `loyalty_points` | INT | No | Display copy of the balance. The source of truth is `payment.loyalty_transaction` (`payment-service`); this copy is updated from `LoyaltyPointsEarned` / `LoyaltyPointsRedeemed` events. | — |
 | `customer_since` | DATE | No | Date they became a customer. | — |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
@@ -514,6 +522,7 @@ CREATE TABLE [customer].[customer] (
 1. Does not repeat name or phone — those already live in `security.person`. Duplicating them would violate 3NF and guarantee that, sooner or later, a phone number gets updated in one table and goes stale in the other.
 2. `loyalty_points` is a controlled denormalization: it could always be derived by summing `loyalty_transaction`, but doing that on every screen would be slow. The cached value must stay reconcilable against the ledger.
 3. **`loyalty_points` is a display copy since ADR-009.** The ledger moved to `payment-service`, so this column is updated by `customer-service` from loyalty events and can lag a few seconds behind. A redemption is always validated against the ledger (`payment.loyalty_transaction.balance_after`), never against this copy: the copy is for display, never for decisions.
+4. **`user_id` (changeset 014):** the token carries the user id, not the person id, so the profile is found by `user_id`. It is nullable only because rows created before the change had none.
 
 ---
 
@@ -528,6 +537,7 @@ CREATE TABLE [customer].customer_vehicle (
     license_plate       NVARCHAR(10) NOT NULL,
     vehicle_type_id     SMALLINT     NOT NULL,
     brand               NVARCHAR(50) NULL,
+    model               NVARCHAR(50) NULL,   -- ADR-010 (changeset 015)
     color               NVARCHAR(30) NULL,
     created_at          DATETIME2(3) NOT NULL CONSTRAINT df_cveh_created DEFAULT SYSUTCDATETIME(),
     created_by          BIGINT       NULL,
@@ -558,6 +568,7 @@ CREATE TABLE [customer].customer_vehicle (
 | `license_plate` | NVARCHAR(10) | No | Unique only among vehicles that aren't soft-deleted — see the filtered index below. | — |
 | `vehicle_type_id` | SMALLINT | No | Category used for pricing. | FK → `customer.vehicle_type.vehicle_type_id` |
 | `brand` | NVARCHAR(50) | Yes | Optional. | — |
+| `model` | NVARCHAR(50) | Yes | Optional (ADR-010: the registration form asks for it). | — |
 | `color` | NVARCHAR(30) | Yes | Optional. | — |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
@@ -789,6 +800,8 @@ CREATE TABLE [booking].business_hour (
     break_starts_at  TIME(0)      NULL,
     break_ends_at    TIME(0)      NULL,
     is_active        BIT          NOT NULL CONSTRAINT df_bh_active DEFAULT 1,
+    break_starts_at  TIME(0)      NULL,   -- optional daily break (ADR-010)
+    break_ends_at    TIME(0)      NULL,
     created_at       DATETIME2(3) NOT NULL CONSTRAINT df_bh_created DEFAULT SYSUTCDATETIME(),
     created_by       BIGINT       NULL,
     updated_at       DATETIME2(3) NULL,
@@ -800,12 +813,10 @@ CREATE TABLE [booking].business_hour (
     CONSTRAINT uq_business_hour_day UNIQUE (day_of_week),
     CONSTRAINT ck_business_hour_day CHECK (day_of_week BETWEEN 1 AND 7),
     CONSTRAINT ck_business_hour_range CHECK (closes_at > opens_at),
-    -- el descanso, si existe, queda dentro de la jornada
     CONSTRAINT ck_business_hour_break CHECK (
         (break_starts_at IS NULL AND break_ends_at IS NULL) OR
         (break_starts_at IS NOT NULL AND break_ends_at IS NOT NULL
-         AND break_starts_at < break_ends_at
-         AND opens_at < break_starts_at AND break_ends_at < closes_at)
+            AND break_starts_at > opens_at AND break_ends_at < closes_at AND break_ends_at > break_starts_at)
     )
 );
 ```
@@ -818,9 +829,9 @@ CREATE TABLE [booking].business_hour (
 | `day_of_week` | SMALLINT | No | 1–7. | Unique |
 | `opens_at` | TIME(0) | No | Opening time. | — |
 | `closes_at` | TIME(0) | No | Closing time. | — |
-| `break_starts_at` | TIME(0) | Yes | Lunch break start; only when a break exists (ADR-010). | — |
-| `break_ends_at` | TIME(0) | Yes | Lunch break end; only when a break exists (ADR-010). | — |
-| `is_active` | BIT | No | Soft on/off switch — Sunday is seeded inactive. | — |
+| `break_starts_at` | TIME(0) | Yes | Start of the daily lunch break (ADR-010); only when a break exists. | Both or neither; inside the opening hours (`ck_business_hour_break`) |
+| `break_ends_at` | TIME(0) | Yes | End of the daily lunch break. | idem |
+| `is_active` | BIT | No | Whether the shop opens that weekday (`false` = closed day; the hours are kept). Sunday is seeded inactive. | — |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
 **Modeling decisions:**
@@ -986,7 +997,7 @@ CREATE TABLE [booking].booking_status (
 | Column | Type | Nullable | Description | Constraints |
 |--------|------|----------|--------------|-------------|
 | `booking_status_id` | SMALLINT | No | Surrogate primary key (IDENTITY). ⚠️ ID `5` is `CANCELLED` and is hard-coded as a literal inside `ck_booking_cancel` and `tr_booking_bay_overlap` — never re-seed this table with a different order. | PK |
-| `code` | NVARCHAR(30) | No | `SCHEDULED`, `CONFIRMED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`, `NO_SHOW` (seed `104`, ADR-010). | Unique |
+| `code` | NVARCHAR(30) | No | `SCHEDULED`, `CONFIRMED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`, `NO_SHOW` (English codes, ADR-010; ids 1–6 fixed). | Unique |
 | `name` | NVARCHAR(60) | No | Label. | — |
 | `is_final` | BIT | No | Whether this status accepts further changes. | — |
 | `display_order` | SMALLINT | No | Sort order. | — |
@@ -1024,7 +1035,7 @@ CREATE TABLE [booking].cancellation_reason (
 | Column | Type | Nullable | Description | Constraints |
 |--------|------|----------|--------------|-------------|
 | `cancellation_reason_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
-| `code` | NVARCHAR(30) | No | `CLIENTE`, `NO_ASISTIO`, `CLIMA`, `SIN_OPERARIO`, `ERROR_AGENDA`. | Unique |
+| `code` | NVARCHAR(30) | No | `CUSTOMER_REQUEST`, `SCHEDULE_CONFLICT`, `VEHICLE_ISSUE`, `SHOP_ISSUE`, `LATE_ARRIVAL` (customer fault), `OTHER` (seed `104`). | Unique |
 | `name` | NVARCHAR(60) | No | Label. | — |
 | `is_customer_fault` | BIT | No | Distinguishes reasons attributable to the customer, used for reporting and penalty decisions. | — |
 | `display_order` | SMALLINT | No | Sort order. | — |
@@ -1085,7 +1096,7 @@ CREATE TABLE [booking].booking (
 |--------|------|----------|--------------|-------------|
 | `booking_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
 | `customer_vehicle_id` | BIGINT | No | Which vehicle. | No FK — owned by `customer.customer_vehicle`, see the cross-service contract below. |
-| `service_bay_id` | SMALLINT | Yes | NULL while still `SCHEDULED`; assigned on confirmation. | FK → `booking.service_bay.service_bay_id` |
+| `service_bay_id` | SMALLINT | Yes | NULL while still `SCHEDULED`; assigned on confirmation (today every booking is confirmed with a bay when created). | FK → `booking.service_bay.service_bay_id` |
 | `scheduled_start` | DATETIME2(3) | No | Start of the slot, UTC. | — |
 | `scheduled_end` | DATETIME2(3) | No | End of the slot, UTC. | — |
 | `booking_status_id` | SMALLINT | No | Current status. | FK → `booking.booking_status.booking_status_id` |
@@ -2123,10 +2134,118 @@ CREATE TABLE [notification].notification (
 
 ---
 
+### Table: `device_token`
+
+**Purpose:** Phones that receive push notifications — one Expo push token per installed app (ADR-011).
+
+```sql
+CREATE TABLE [notification].device_token (
+    device_token_id BIGINT        IDENTITY(1,1) NOT NULL,
+    user_id         BIGINT        NOT NULL,   -- [security].app_user
+    token           NVARCHAR(200) NOT NULL,
+    platform        NVARCHAR(10)  NOT NULL,
+    is_active       BIT           NOT NULL CONSTRAINT df_dtoken_active DEFAULT 1,
+    last_seen_at    DATETIME2(3)  NOT NULL CONSTRAINT df_dtoken_seen DEFAULT SYSUTCDATETIME(),
+    created_at      DATETIME2(3)  NOT NULL CONSTRAINT df_dtoken_created DEFAULT SYSUTCDATETIME(),
+    created_by      BIGINT        NULL,
+    updated_at      DATETIME2(3)  NULL,
+    updated_by      BIGINT        NULL,
+    deleted_at      DATETIME2(3)  NULL,
+    deleted_by      BIGINT        NULL,
+    row_version     INT           NOT NULL CONSTRAINT df_dtoken_rv DEFAULT 1,
+    CONSTRAINT pk_device_token PRIMARY KEY (device_token_id),
+    CONSTRAINT uq_device_token_token UNIQUE (token),
+    CONSTRAINT ck_device_token_platform CHECK (platform IN (N'ANDROID', N'IOS'))
+);
+```
+
+**Modeling decisions:**
+
+1. A user can have several phones; a token that Expo reports as invalid is deactivated instead of deleted, so the history of who received what stays readable. Migration 016.
+
+---
+
+### Table: `processed_event`
+
+**Purpose:** Ids of the events already consumed, so a redelivered event creates nothing (idempotent consumer, ADR-011).
+
+```sql
+CREATE TABLE [notification].processed_event (
+    processed_event_id BIGINT       IDENTITY(1,1) NOT NULL,
+    event_id           NVARCHAR(64) NOT NULL,
+    event_type         NVARCHAR(60) NOT NULL,
+    processed_at       DATETIME2(3) NOT NULL CONSTRAINT df_pevent_processed DEFAULT SYSUTCDATETIME(),
+    created_at         DATETIME2(3) NOT NULL CONSTRAINT df_pevent_created DEFAULT SYSUTCDATETIME(),
+    created_by         BIGINT       NULL,
+    updated_at         DATETIME2(3) NULL,
+    updated_by         BIGINT       NULL,
+    deleted_at         DATETIME2(3) NULL,
+    deleted_by         BIGINT       NULL,
+    row_version        INT          NOT NULL CONSTRAINT df_pevent_rv DEFAULT 1,
+    CONSTRAINT pk_processed_event PRIMARY KEY (processed_event_id),
+    CONSTRAINT uq_processed_event_event UNIQUE (event_id)
+);
+```
+
+**Modeling decisions:**
+
+1. Written in the same transaction as the notifications the event produced; the unique `event_id` makes a concurrent duplicate fail and roll back. Migration 017.
+
+---
+
+### Table: `booking_reminder`
+
+**Purpose:** Booking reminders scheduled from `BookingConfirmed` — one per booking and lead time (24 h and 1 h by default). ADR-011 §7.
+
+```sql
+CREATE TABLE [notification].booking_reminder (
+    booking_reminder_id BIGINT       IDENTITY(1,1) NOT NULL,
+    booking_id          BIGINT       NOT NULL,   -- [booking].booking
+    user_id             BIGINT       NOT NULL,   -- [security].app_user (the client)
+    booking_code        NVARCHAR(20) NULL,
+    scheduled_start     DATETIME2(3) NOT NULL,
+    lead_minutes        INT          NOT NULL,
+    remind_at           DATETIME2(3) NOT NULL,
+    sent_at             DATETIME2(3) NULL,
+    created_at          DATETIME2(3) NOT NULL CONSTRAINT df_breminder_created DEFAULT SYSUTCDATETIME(),
+    created_by          BIGINT       NULL,
+    updated_at          DATETIME2(3) NULL,
+    updated_by          BIGINT       NULL,
+    deleted_at          DATETIME2(3) NULL,
+    deleted_by          BIGINT       NULL,
+    row_version         INT          NOT NULL CONSTRAINT df_breminder_rv DEFAULT 1,
+    CONSTRAINT pk_booking_reminder PRIMARY KEY (booking_reminder_id),
+    CONSTRAINT uq_booking_reminder_lead UNIQUE (booking_id, lead_minutes),
+    CONSTRAINT ck_booking_reminder_lead CHECK (lead_minutes > 0)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `booking_reminder_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `booking_id` | BIGINT | No | The booking. | No FK — owned by `booking.booking` |
+| `user_id` | BIGINT | No | The client to remind. | No FK — owned by `security.app_user` |
+| `booking_code` | NVARCHAR(20) | Yes | Shown in the message (`RES-000123`). | — |
+| `scheduled_start` | DATETIME2(3) | No | Booking start, UTC. | — |
+| `lead_minutes` | INT | No | How long before the start the reminder goes out. | > 0; unique with `booking_id` |
+| `remind_at` | DATETIME2(3) | No | `scheduled_start - lead_minutes`, UTC. | Indexed while pending |
+| `sent_at` | DATETIME2(3) | Yes | When it was sent (or discarded because the booking time had passed). | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block; `deleted_at` = cancelled booking. | — |
+
+**Modeling decisions:**
+
+1. notification-service does not query bookings: everything it needs travels in `BookingConfirmed`. A reschedule arrives as a new `BookingConfirmed` and reuses the same rows (unique `booking_id, lead_minutes`). Migration 019.
+2. The email address is not stored; it is read from security-service when the reminder is sent (ADR-011 §8).
+
+---
+
 ## Cross-service contract (no FK, by design)
 
-19 columns point at a table in another schema, and **17 of them point at a table owned by a
-different service**. That is one more than before ADR-009: `loyalty_transaction.customer_id`
+23 columns point at a table in another schema, and **21 of them point at a table owned by a
+different service** (four added after ADR-009: `customer.user_id`, and the `user_id` / `booking_id`
+references of the new notification tables). That is one more than before ADR-009: `loyalty_transaction.customer_id`
 used to stay inside `customer` and now crosses from `payment` to `customer-service`. None of them has a foreign key — integrity across the boundary is the
 application's job, validated before it writes (ADR-004). Every one of them is indexed so
 joins done in application code, or in reporting queries, stay fast.
@@ -2150,6 +2269,10 @@ joins done in application code, or in reporting queries, stay fast.
 | `payment.loyalty_transaction.customer_id` | `customer.customer` | `customer-service` |
 | `payment.loyalty_transaction.booking_id` | `booking.booking` | `booking-service` |
 | `notification.notification.user_id` | `security.app_user` | `security-service` |
+| `customer.customer.user_id` | `security.app_user` | `security-service` |
+| `notification.device_token.user_id` | `security.app_user` | `security-service` |
+| `notification.booking_reminder.booking_id` | `booking.booking` | `booking-service` |
+| `notification.booking_reminder.user_id` | `security.app_user` | `security-service` |
 
 The other two stay inside one service since ADR-009 and carry a real foreign key:
 
