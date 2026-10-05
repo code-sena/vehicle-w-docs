@@ -1,98 +1,37 @@
 # 12 — UX/UI
 
-> **What is this?** The user experience design: how the system looks, how it is navigated,
-> and how it behaves from the end user's perspective.
-
-## Why design comes before code
-
-Changing a wireframe takes 5 minutes. Changing the code takes hours.
-Changing the code in production with real users can cost days and reputation.
-
-**Design first → implement later.**
+> How LavaRápido looks and is navigated. The web app (Angular 21) is the reference
+> implementation; the mobile app follows the same three role areas.
 
 ---
 
-## What is here and how to fill it in
+## Contents
 
-### `navigation-map.md` ⭐ (Start here)
-The map of all screens/pages and how they connect.
-**Fill in:** navigation tree, from which screen you reach which, what role can access what.
+| Path | What it answers |
+|------|-----------------|
+| [`navigation-map.md`](./navigation-map.md) ⭐ | Every route, its role and guard, which backend service feeds each screen (API / Partial / Local), main flows, navigation rules and gaps |
+| [`design-system.md`](./design-system.md) | Colors and the 4 themes, typography, spacing, breakpoints, buttons, feedback, modals, error messages |
+| [`mockup/`](./mockup/) | Static HTML mockups made before the Angular app: auth, client and operator screens (see `mockup/README.md`) |
 
-**Format:**
-```markdown
-## Navigation map
-
-### Public area (no authentication)
-- / (home)
-  - /login
-  - /register
-  - /recover-password
-
-### Private area — Role: [Role 1]
-- /dashboard
-  - /[module-1]
-    - /[module-1]/list
-    - /[module-1]/{id}/detail
-  - /profile
-
-### Private area — Role: [Role 2]
-[...]
-
-## Access matrix
-| Screen | [Role 1] | [Role 2] | [Admin] |
-|--------|---------|---------|---------|
-| /dashboard | ✅ | ✅ | ✅ |
-| /admin | ❌ | ❌ | ✅ |
-```
-
-### `wireframes.md`
-Low-fidelity designs of the main screens.
-**Fill in:** wireframes in ASCII, Figma, or Balsamiq. Focus on structure, not colors.
-
-### `design-system.md`
-The project's design system: tokens, components, patterns.
-**Fill in:** color palette, typography, spacing, base components (buttons, forms, tables).
-
-**Format:**
-```markdown
-## Design tokens
-
-### Colors
-| Token | Value | Use |
-|-------|-------|-----|
-| --color-primary | #1976D2 | Primary buttons, links |
-| --color-error | #D32F2F | Error messages |
-| --color-success | #388E3C | Confirmations |
-
-### Typography
-| Level | Size | Weight | Use |
-|-------|------|--------|-----|
-| H1 | 32px | 700 | Page titles |
-| Body | 16px | 400 | General text |
-
-## Components
-### Primary button
-[description, variants, when to use it]
-
-### Data table
-[columns, pagination, search, inline actions]
-```
+The mockups are the original design reference; where they and the Angular app differ, the
+app wins and `navigation-map.md` describes the app.
 
 ---
 
-## Correlations with other sections
+## UX rules
 
-| This section is fed by... | And feeds into... |
-|---------------------------|-------------------|
-| `04-requirements/user-stories.md` → what flows exist | Screens implementing each HU |
-| `02-domain/entities-and-rules.md` → what data to display | Fields in wireframes |
-| `09-microservices/` → what APIs the frontend consumes | What data arrives at each screen |
+- Business rules live in the backend; screens show what the API answers.
+- Every backend error is shown through its translated `API_ERRORS.<code>` text, in 4 languages.
+- Destructive actions ask for confirmation.
+- Theme and language must belong to the **account**, not the device (RF-019/020) — today they are
+  stored per browser; fix tracked as TD-002 in `15-project-control/technical-backlog.md`.
 
 ---
 
-## Questions this section must answer
+## Correlations
 
-- How many screens does the system have?
-- How does each type of user navigate?
-- What visual components are repeated?
-- What is the system's visual language?
+| Fed by | Feeds |
+|---|---|
+| `04-requirements/user-stories.md` | Screens and flows |
+| `07-api/contracts/openapi/` | Data shown on each screen |
+| This section | `14-training/user-manual.md` |
