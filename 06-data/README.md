@@ -7,10 +7,10 @@ How the Vehicle Washing Service Management System stores, structures, and migrat
 > **Each microservice owns its data.** No service reaches into another service's tables
 > directly — it asks over an API, or reacts to an event.
 
-In practice, that means the 43 tables in this system are split across 9 SQL Server schemas
+In practice, that means the 47 tables in this system are split across 9 SQL Server schemas
 owned by 6 microservices (ADR-009) — **every schema has exactly one owning service**, and
 **no foreign key crosses from one service's schemas into another's**. Where one service
-genuinely needs another's data (17 places, listed at the end of `models.md`), it's a plain,
+genuinely needs another's data (21 columns, listed at the end of `models.md`), it's a plain,
 indexed column with no FK, validated by the application instead of the database. See
 `modeling-conventions.md` for why we run this as schemas inside one instance rather than six
 separate physical databases, and what that trade-off costs us.
@@ -21,7 +21,8 @@ separate physical databases, and what that trade-off costs us.
 The full schema, service by service: DB engine, every table's DDL, its data dictionary, its
 indexes, and the reasoning behind the non-obvious decisions (why a column is immutable, why a
 FK is missing on purpose, why a value is denormalized). This is the source of truth — if
-`schema_sqlserver.sql` and this file ever disagree, the SQL wins and this file is out of date.
+the services' Liquibase changelogs (or the global script `lavarapido-6-services-sqlserver.sql`) and
+this file ever disagree, the SQL wins and this file is out of date.
 
 ### [`data-dictionary.md`](./data-dictionary.md) ⭐
 The fields that are easy to get wrong across services: status codes with hard-coded IDs,
@@ -38,8 +39,9 @@ Where the model normalizes strictly (and why), and the handful of places it deli
 doesn't — each one named, with the reason and the guard that keeps it from drifting.
 
 ### [`migration-strategy.md`](./migration-strategy.md)
-How `schema_sqlserver.sql` turns into versioned Liquibase changesets, the two IDs that must
-never be re-seeded out of order, and how to make a breaking change without downtime.
+How each service versions its schema with Liquibase (one changelog per service, shared
+numbering), the two IDs that must never be re-seeded out of order, and how to make a breaking
+change without downtime.
 
 ## SQL or NoSQL?
 
@@ -47,7 +49,7 @@ All six services currently run on the same engine (SQL Server), not because ever
 needs a relational model, but because the data itself — accounts, bookings, payments,
 loyalty points — is relational by nature: fixed shape, real transactions, lots of joins within
 a service. If a future service needed something else (a document store for flexible product
-metadata, Redis for a cache or session store), nothing about the schema-per-service boundary
+metadata, or a cache), nothing about the schema-per-service boundary
 would need to change to add it — see `models.md`'s engine note for each service.
 
 ## How consistency works without a shared database
@@ -61,9 +63,10 @@ transactional. Two patterns cover the gap where it matters:
 - **Outbox pattern** to guarantee an event is published if and only if the transaction that
   triggered it actually committed.
 
-Today, `audit.audit_log` gives every service one shared place to record what changed and why;
-the Saga/Outbox implementation details for cross-service flows live in
-`05-architecture/pattern-guide.md`, not here.
+**Today neither is implemented**: events are published right after the commit (a crash between
+commit and publish can lose one event — accepted risk, ADR-004), consumers are idempotent
+(`notification.processed_event`, customer profile checks), and failed messages go to
+dead-letter queues. Details → `05-architecture/pattern-guide.md`.
 
 ## Correlations with other sections
 
@@ -72,7 +75,7 @@ the Saga/Outbox implementation details for cross-service flows live in
 | `02-domain/entities-and-rules.md` — the domain entities | The tables in `models.md` |
 | `05-architecture/` — engine decisions per service | The `DB Engine` line in each service section of `models.md` |
 | `models.md` | `07-api/contracts/openapi/` — what each service exposes over its API |
-| `models.md` | `08-uml/` — the DBML ER diagrams (`00-full-model.dbml` and one file per service) |
+| `models.md` | `08-uml/` — diagrams |
 | `models.md` | `09-microservices/services/<service>/data-model.md` |
 
 ## What this section answers
