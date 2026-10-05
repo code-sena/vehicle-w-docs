@@ -1,6 +1,6 @@
 # System Architecture Overview
 
-**Last updated:** 2026-09-24
+**Last updated:** 2026-10-04
 
 ## 1. Architectural style
 
@@ -19,9 +19,24 @@ The current decomposition is:
 
 The API Gateway is the single external entry point. It is infrastructure and is not counted as a seventh domain service.
 
+### Implementation status (2026-10-04)
+
+| Component | Port | State |
+|---|---|---|
+| `api-gateway` | 8080 | Built: routes the four built services, CORS; JWT checked by each service |
+| `security-service` | 3001 | Built |
+| `customer-service` | 3002 | Built |
+| `booking-service` | 3003 | Built (catalog, schedule, bays, availability, bookings) |
+| `operations-service` | — | In development by another team member; not routed yet |
+| `payment-service` | — | Incomplete; not routed yet |
+| `notification-service` | 3006 | Built (inbox, push tokens, email, booking reminders) |
+
+Screens whose service is not built still use local data in the web (see
+`12-ux-ui/navigation-map.md`).
+
 ## 2. Data ownership
 
-The system has one physical SQL Server database with nine schemas and 43 tables. Logical ownership is enforced by service boundaries and application validation:
+The system has one physical SQL Server database with nine schemas and 47 tables. Logical ownership is enforced by service boundaries and application validation:
 
 ```text
 SQL Server database
@@ -48,7 +63,7 @@ SQL Server database
     └── notification
 ```
 
-There are no foreign keys between schemas owned by different services. The current data model documents 17 cross-service references as indexed identifiers. Inside a service, normal relational constraints can be used; for example, `booking.booking_service.service_price_id` can reference `catalog.service_price` because both schemas belong to `booking-service`.
+There are no foreign keys between schemas owned by different services. The current data model documents 21 cross-service references as indexed identifiers. Inside a service, normal relational constraints can be used; for example, `booking.booking_service.service_price_id` can reference `catalog.service_price` because both schemas belong to `booking-service`.
 
 ## 3. C4 Level 1 — System context
 
@@ -60,12 +75,14 @@ C4Context
     Person(operator, "Operator", "Manages availability and updates assigned service execution")
     Person(admin, "Administrator", "Manages shop operation, assigns operators, reviews payments and reports")
     System(carwash, "Express car wash", "Web and Android platform for booking and managing vehicle washing at one shop")
-    System_Ext(smtp, "SMTP service", "Used only for password-recovery email; locally represented by Mailpit")
+    System_Ext(smtp, "SMTP service", "Gmail SMTP (or Mailpit locally): welcome, booking, reminder and password-recovery emails")
+    System_Ext(expo, "Expo Push", "Delivers push notifications to the Android app")
 
     Rel(customer, carwash, "Books, pays, rates", "HTTPS")
     Rel(operator, carwash, "Manages availability and execution", "HTTPS")
     Rel(admin, carwash, "Administers operation and payments", "HTTPS")
-    Rel(carwash, smtp, "Sends password-recovery code", "SMTP")
+    Rel(carwash, smtp, "Sends emails", "SMTP")
+    Rel(carwash, expo, "Sends push notifications", "HTTPS")
 ```
 
 The payment flow has no external gateway. The customer pays from their own banking application and the platform only receives the uploaded receipt. No card data is collected or transmitted.
@@ -83,16 +100,16 @@ C4Container
     System_Boundary(system, "Express car wash") {
         Container(web, "Web application", "Angular", "Customer and administrator interface")
         Container(mobile, "Android application", "React Native", "Customer and operator mobile interface")
-        Container(gateway, "API Gateway", "Spring Cloud Gateway", "External entry point and JWT validation")
+        Container(gateway, "API Gateway", "Spring Cloud Gateway (webmvc)", "External entry point, routing and CORS")
         Container(security, "security-service", "Java 21 / Spring Boot", "Identity, roles, sessions, preferences and audit")
         Container(customerSvc, "customer-service", "Java 21 / Spring Boot", "Customers, vehicles and loyalty display copy")
         Container(booking, "booking-service", "Java 21 / Spring Boot", "Catalog, prices, shop schedule and bookings")
         Container(operations, "operations-service", "Java 21 / Spring Boot", "Operators, assignment, execution and ratings")
         Container(payment, "payment-service", "Java 21 / Spring Boot", "Payments, receipts, promotions and loyalty ledger")
-        Container(notification, "notification-service", "Java 21 / Spring Boot", "In-app notifications")
+        Container(notification, "notification-service", "Java 21 / Spring Boot", "In-app notifications, push, email and booking reminders")
         ContainerDb(sqlserver, "SQL Server", "SQL Server 2016+", "One physical database with nine logical schemas")
         ContainerQueue(rabbit, "RabbitMQ", "RabbitMQ", "Asynchronous domain events")
-        Container(smtp, "Mailpit / SMTP", "SMTP", "Password-recovery email in local development")
+        Container(smtp, "Gmail SMTP / Mailpit", "SMTP", "Outgoing email")
     }
 
     Rel(customer, web, "Uses")
@@ -119,7 +136,11 @@ C4Container
     Rel(operations, rabbit, "Publishes/consumes operation events")
     Rel(payment, rabbit, "Publishes payment and loyalty events")
     Rel(notification, rabbit, "Consumes notification events")
-    Rel(security, smtp, "Password recovery only")
+    Rel(security, smtp, "Password-recovery code")
+    Rel(notification, smtp, "Welcome, booking and reminder emails")
+    Rel(booking, customerSvc, "Validates vehicles (REST, user token)")
+    Rel(customerSvc, security, "Reads the user's profile (REST, user token)")
+    Rel(notification, security, "Reads email/name (REST, internal key)")
 ```
 
 ## 5. Communication
@@ -128,11 +149,26 @@ C4Container
 
 REST is used when a caller needs an answer before continuing. Examples include validating a customer vehicle before creating a booking, validating a current service price, checking an operator's availability and validating a booking before creating a payment.
 
-Service-to-service calls do not pass through the API Gateway. The caller forwards the authenticated user's token and correlation id.
+Service-to-service calls do not pass through the API Gateway. Today there are three:
+
+| Caller → callee | Why | Credential |
+|---|---|---|
+| booking → customer | Validate the vehicle and its type before booking; plates for the admin list | The user's JWT, forwarded |
+| customer → security | Create the customer profile on first use from the user's data | The user's JWT, forwarded |
+| notification → security | Email and name of the user to email a notification (`/internal/v1/users/{id}/contact`) | `X-Internal-Key` (no user is involved; ADR-011 §8) |
+
+booking → customer forwards the caller's `X-Correlation-Id`; the other calls and the RabbitMQ events do not yet (gap in `13-operations/observability.md`).
 
 ### Asynchronous
 
-RabbitMQ is used for work that can happen after the original transaction. Examples include assignment after booking confirmation, notifications, execution state reactions, payment approval and loyalty updates.
+RabbitMQ (topic exchange `carwash.events`) is used for work that can happen after the original transaction. Built today:
+
+| Event | Publisher | Consumers |
+|---|---|---|
+| `security.user_registered` | security | customer (profile), notification (welcome) |
+| `booking.confirmed` (created or rescheduled), `booking.cancelled` | booking | notification (inbox, email, reminders) |
+
+customer-service raises `CustomerProvisioned` and vehicle events in its domain but only logs them (no consumer needs them yet). Planned: assignment after booking confirmation (operations), payment approval and loyalty updates (payment). Event names and payloads → `09-microservices/services/*/events.md`.
 
 Events are published after the database transaction commits. The current architecture accepts the risk of a failure between commit and publish; an Outbox implementation is **not adopted yet**.
 
