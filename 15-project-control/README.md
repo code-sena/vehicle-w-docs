@@ -1,85 +1,36 @@
 # 15 — Project Control
 
-> **What is this?** Project administration: risks, dependencies, unanswered questions,
-> and technical debt. The difference between a project that gets delivered and one that "keeps getting delayed".
+> What can go wrong, and what works but still needs fixing. Reviewed at each retrospective.
 
 ---
 
-## What is here and how to fill it in
+## Contents
 
-### `risks.md` ⭐
-Project risk register.
-**Fill in:** from the start of the project. Update each sprint.
+| File | What it answers |
+|------|-----------------|
+| [`risks.md`](./risks.md) | Active risks with level, strategy, mitigation and contingency; closed risks and lessons |
+| [`technical-backlog.md`](./technical-backlog.md) | Technical debt found while building the system, with effort and priority |
 
-**Format:**
-```markdown
-| ID | Risk | Probability | Impact | Severity | Strategy | Owner | Status |
-|----|------|------------|--------|---------|---------|-------|--------|
-| R-001 | [Description] | High/Medium/Low | High/Medium/Low | High | Mitigate/Accept/Transfer/Avoid | [Name] | Open |
-```
+## State at 2026-10-04
 
-**Severity = Probability × Impact:**
-- High × High = 🔴 Critical
-- High × Low or Low × High = 🟡 Moderate
-- Low × Low = 🟢 Low
+- Built: api-gateway, security, customer, booking, notification (286 backend tests green).
+- In progress by teammates: operations-service, mobile app. Incomplete: payment-service.
+- Highest risks: R-001 (operations integration), R-002 (payment), R-003 (no CI, web tests broken).
+- Top technical items: TD-001 (web specs), TD-002 (preferences per account), TD-004 (gateway repo).
 
-**Strategies:**
-- **Mitigate:** reduce probability or impact
-- **Accept:** record and monitor, do not act
-- **Transfer:** move the risk (insurance, contracts)
-- **Avoid:** change the plan to eliminate the risk
+## Rules
 
-### `dependencies.md`
-External project dependencies.
-**Fill in:** third-party services, external teams, pending decisions from stakeholders.
-
-**Format:**
-```markdown
-| Dependency | Type | Required for | External owner | Expected date | Status |
-|------------|------|-------------|----------------|--------------|--------|
-| [Third-party API] | External | [Feature X] | [Company/Team] | [Date] | Waiting |
-```
-
-### `open-questions.md` ⭐
-Unanswered questions that block or could block the project.
-**Fill in:** every time the team encounters something it does not know and that requires a decision.
-**Criticality:** when a question has an answer, turn it into an ADR (if architectural) or close it here.
-
-**Format:**
-```markdown
-| # | Question | Context | Required for | Who answers | Deadline | Status |
-|---|---------|---------|-------------|------------|---------|--------|
-| Q-001 | Do we use JWT or sessions? | Multiple services need auth | Sprint 2 | Tech Lead | [Date] | 🔴 Unanswered |
-```
-
-### `technical-backlog.md`
-Technical debt and technical improvements identified.
-**Fill in:** when the team identifies something that "works but not as it should".
-Clearly separate from product HUs.
-
-**Format:**
-```markdown
-| ID | Description | Impact if not resolved | Estimated effort | Priority | Sprint |
-|----|-------------|----------------------|-----------------|---------|--------|
-| TD-001 | Refactor module X | Increased maintenance difficulty | 3 SP | Medium | Sprint 5 |
-```
+- A risk has an owner role, a trigger and a contingency; a risk that occurred moves to "Closed
+  risks / lessons learned".
+- Technical items are not user stories: they go to the sprint when they block a story, a review
+  or the pipeline.
 
 ---
 
-## Correlations with other sections
+## Correlations
 
-| Fed by... | Why |
-|-----------|-----|
-| `05-architecture/` — difficult decisions | Technical risks |
-| `04-requirements/` — demanding NFRs | Performance risks |
-| Incidents in `13-operations/` | Post-incident technical debt |
-| `03-product/product-backlog.md` | Coordination of technical vs business priorities |
-
----
-
-## Questions this section must answer
-
-- What can go wrong and how prepared are we?
-- What external things do we depend on that we do not control?
-- What decisions are blocked waiting for information?
-- What code needs to be improved before it becomes a bigger problem?
+| Fed by | Why |
+|--------|-----|
+| `05-architecture/` | Accepted trade-offs (no Outbox, shared JWT secret) |
+| `04-requirements/traceability-matrix.md` | Requirement gaps |
+| `13-operations/` | Incidents that become lessons or technical items |
