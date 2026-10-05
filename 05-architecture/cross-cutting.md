@@ -27,7 +27,7 @@ EXEC sp_set_session_context @key = N'user_id', @value = @currentUserId;
 
 ## 2. Concurrency
 
-`row_version` is used for optimistic locking. An update includes the version read by the application; if another update already changed the row, the update affects no row and the application reports a conflict.
+`row_version` is used for optimistic locking. An update includes the version read by the application; if another update already changed the row, the update affects no row and the application reports a conflict. **Status (2026-10-04):** not enforced yet — no service maps `row_version` with `@Version`; booking-service relies on its schedule lock (`sp_getapplock`) for the only conflict that matters today (two bookings for one bay).
 
 Cross-service transactions are not used. A transaction stays inside the schemas owned by one service and is never kept open while waiting for another service.
 
@@ -39,7 +39,9 @@ Never log passwords, JWTs, password-reset tokens, receipt contents or unnecessar
 
 ## 4. Correlation id
 
-The API Gateway generates or accepts a correlation id and forwards it to downstream services. Service-to-service HTTP calls and RabbitMQ messages keep the same identifier so a request can be followed across the system.
+Target: the API Gateway generates or accepts a correlation id and forwards it; service-to-service HTTP calls and RabbitMQ messages keep the same identifier so a request can be followed across the system.
+
+**Status (2026-10-04):** each service reads `X-Correlation-Id` (or generates one), logs it and returns it (`CorrelationIdFilter`). The gateway forwards the header if the client sends one but does not generate it, booking-service forwards it on its calls to customer-service (since 2026-10-03); the other REST calls (customer → security, notification → security) and RabbitMQ messages do not carry it yet (`13-operations/observability.md`).
 
 The project does not currently include a distributed tracing platform.
 
@@ -135,7 +137,7 @@ information" list already given for that event in `domain-events.md`.
 | Acknowledgement | After successful processing |
 | Retry | Limited retries with backoff are proposed |
 | Dead letter | Failed messages should be retained for review |
-| Idempotency | A consumer checks `eventId` against its own processed-events record before acting, in the same transaction as the work it does |
+| Idempotency | A consumer checks `eventId` against its own processed-events record before acting, in the same transaction as the work it does (implemented in notification-service, `processed_event`; customer-service checks whether the profile exists) |
 | Outbox | Not adopted in this version |
 
 A new event should have a documented consumer and a reason to exist.
