@@ -1,314 +1,147 @@
 # Testing Strategy
 
-> Defines what, how much, and with which tools to test at each layer.
-> Complements the TDD guide (`tdd-guide.md`) that explains the process.
-> This document is the project's quality contract.
+> How LavaRápido is tested today, what each kind of test protects, how to run them, and the gaps.
+> Backend: JUnit 5 + Mockito + Spring Boot Test (`./mvnw test`). Web: Vitest through
+> `@angular/build:unit-test` (`ng test`).
 
 ---
 
 ## Project testing pyramid
 
 ```
-                 /\
-                /  \
-               /    \
-              /  E2E  \     ← Few, slow, expensive but high-value
-             /  [5%]   \
-            /────────────\
-           /  Integration  \
-          /    [25%]        \  ← Test real integration (DB, broker, external APIs)
-         /──────────────────\
-        /   Contract Tests    \
-       /      [20%]            \  ← Verify the OpenAPI contract is fulfilled
-      /────────────────────────\
-     /       Unit Tests         \
-    /          [50%]             \  ← Many, fast, test business logic
-   /────────────────────────────\
+                 ┌───────────────────────────┐
+                 │   End-to-end (manual)      │  Real flows against the running system
+                 ├───────────────────────────┤
+                 │   Web/API slice tests      │  HTTP contract + security of each service
+                 ├───────────────────────────┤
+                 │   Use case tests           │  Application rules with fakes/mocks
+                 ├───────────────────────────┤
+                 │   Domain unit tests        │  Aggregates, value objects, policies
+                 └───────────────────────────┘
 ```
 
-**Rule:** More tests at the bottom = more maintainable system at lower cost.
-Inverting the pyramid (more E2E than unit tests) makes CI slow and fragile.
+### Current numbers (2026-10-04, all green)
+
+| Service | Tests | Test classes |
+|---|---|---|
+| security-service | 106 | `UserAccountTest`, `ValueObjectsTest`, `PasswordPolicyTest`, `PasswordResetTokenTest`, `AccountRegistrationServiceTest`, `AuthenticationServiceTest`, `PasswordRecoveryServiceTest`, `UserProfileAndAdministrationTest`, `JwtTokenIssuerTest`, `EmailResetCodeNotifierTest`, `ApiSecurityWebTest` |
+| customer-service | 67 | `CustomerAccountTest`, `LicensePlateTest`, `LicensePlatePolicyTest`, `CustomerVehicleServiceTest`, `UserRegisteredListenerTest`, `CustomerApiWebTest` |
+| booking-service | 31 | `BookingTest`, `AvailabilityPolicyTest`, `BookingServiceTest`, `CatalogServiceTest`, `BookingApiWebTest` |
+| notification-service | 60 | `NotificationTest`, `DeviceTokenTest`, `NotificationFactoryTest`, `BookingReminderTest`, `NotificationUseCasesTest`, `BookingReminderServiceTest` |
+| api-gateway | 22 | `GatewayRoutesTest` |
+| **Total backend** | **286** | |
+| Web | — | 36 spec files; **the suite does not compile today** (see gaps) |
 
 ---
 
-## Tier 1: Unit Tests
+## Tier 1: Domain unit tests
 
-**Objective:** Test business logic in complete isolation.
+**What:** aggregates, value objects and domain policies, with no Spring and no database.
+**Examples:** `BookingTest` (a booking needs services, cannot change after it starts, valid status
+transitions), `AvailabilityPolicyTest` (grid, break, past times, alternatives),
+`LicensePlatePolicyTest` (plate format per vehicle type), `BookingReminderTest` (which reminders
+are still in the future, message in Colombian time).
+**Rule:** every invariant in `02-domain/entities-and-rules.md` that the code enforces has a test
+named after the behavior (booking, customer and notification use `@DisplayName` in Spanish to state the rule).
 
-| Aspect | Value |
-|--------|-------|
-| **What they test** | Aggregates, Value Objects, Domain Services, use cases |
-| **Isolation** | Complete — no real calls to DB or external services |
-| **Speed** | < 5ms per test |
-| **Target coverage** | ≥ 80% of lines (≥ 90% in `src/domain/`) |
-| **Tools** | Jest, Vitest, JUnit 5, pytest |
-| **Doubles** | Fakes, Stubs, Spies (see `tdd-guide.md`) |
-| **When they run** | On every `git commit` (pre-commit hook) and in CI |
+## Tier 2: Use case tests
 
-**Folder structure:**
+**What:** application services with their ports replaced by **in-memory fakes** (notification:
+`Fakes.java` in security and notification, in-memory repositories in security) or **Mockito mocks** (booking, customer). A fixed `Clock` makes
+time-based rules deterministic.
+**Examples:** `BookingServiceTest` (confirmed with a bay, full slot → alternatives, vehicle of
+another client → 404, vehicle already booked), `CustomerVehicleServiceTest` (profile created on
+first use), `BookingReminderServiceTest` (scheduled, sent, not repeated, cancelled, moved, emailed).
 
-```
-tests/
-└── unit/
-    ├── domain/
-    │   ├── [Aggregate].spec.ts
-    │   └── value-objects/
-    │       └── [VO].spec.ts
-    └── application/
-        └── [UseCase].spec.ts
-```
+## Tier 3: Web/API slice tests
 
-**Unit test example (see complete guide in `tdd-guide.md`):**
+**What:** `@WebMvcTest` with the service's **real security configuration**, use cases mocked, and
+JWTs signed in the test with the same algorithm (HS256). They protect the HTTP contract:
+public vs protected routes, 401 without token, 403 for the wrong role, status codes and the
+`code` of each error (RFC 9457).
+**Examples:** `ApiSecurityWebTest` (also `/internal/**` only with the internal key),
+`CustomerApiWebTest`, `BookingApiWebTest` (409 `SLOT_UNAVAILABLE` with alternatives).
 
-```typescript
-// tests/unit/domain/Order.spec.ts
-it('total should be the sum of items × quantity', () => {
-  const items = [
-    new OrderItem(prod1Id, 2, new Money(100, 'USD')),
-    new OrderItem(prod2Id, 1, new Money(50, 'USD')),
-  ];
-  const order = Order.create(customerId, items);
-  expect(order.total).toEqual(new Money(250, 'USD'));
-});
-```
+## Tier 4: Integration tests with fake neighbours
 
----
+**What:** the component running for real against fake external systems.
+**Examples:** `GatewayRoutesTest` starts the gateway and one fake HTTP server per service and
+checks every route, token forwarding, CORS and that `/internal/**` is not exposed.
+`UserRegisteredListenerTest` feeds raw RabbitMQ messages to the listener.
 
-## Tier 2: Integration Tests
+There are **no tests against a real SQL Server** yet: the database schema is validated at startup
+(`ddl-auto: validate` + Liquibase) and by the manual end-to-end runs.
 
-**Objective:** Verify that the adapters work correctly with real systems.
+## Tier 5: End-to-end (manual)
 
-| Aspect | Value |
-|--------|-------|
-| **What they test** | Repositories vs real DB, publishers vs real broker |
-| **Isolation** | Low — use real DB and broker in Docker |
-| **Speed** | 50ms – 2s per test |
-| **Target coverage** | Happy path + 2-3 error cases per adapter |
-| **Tools** | Jest + Testcontainers, Spring Boot Test |
-| **Setup** | `docker compose up -d test-db test-broker` |
-| **When they run** | In CI, NOT in pre-commit (too slow) |
+Run by hand against the whole system before each review session (`13-operations/README.md`):
+sign-up → welcome email → login → register vehicle → book (and a full slot) → booking email →
+reminder → admin moves the booking → cancellation. The last full run (2026-10-04) passed,
+including the reminder email to a real inbox.
 
-**Setup with Testcontainers:**
+## Contract tests
 
-```typescript
-// tests/integration/setup.ts
-import { PostgreSqlContainer } from '@testcontainers/postgresql';
+No consumer-driven contract tests. The **contracts are exported from the running services**
+(`07-api/contracts/openapi/*.yaml`, `GET /v3/api-docs`), so they never drift from the code; the
+web slice tests protect each provider's side.
 
-let pgContainer: StartedPostgreSqlContainer;
+## Performance tests
 
-beforeAll(async () => {
-  pgContainer = await new PostgreSqlContainer('postgres:15')
-    .withDatabase('test_db')
-    .withUsername('test')
-    .withPassword('test')
-    .start();
-
-  process.env.DATABASE_URL = pgContainer.getConnectionUri();
-
-  // Apply migrations
-  await runMigrations(process.env.DATABASE_URL);
-}, 60_000); // 60s timeout for image pull
-
-afterAll(async () => {
-  await pgContainer.stop();
-});
-```
+Not done. RNF-001 (p95 < 2 s) is checked by hand; availability queries read one day of bookings
+and are small.
 
 ---
 
-## Tier 3: Contract Tests (Consumer-Driven Contract Testing)
+## How to run
 
-**Objective:** Verify that the OpenAPI contract (what the service documents) matches what the service actually implements.
-
-| Aspect | Value |
-|--------|-------|
-| **What they test** | HTTP API vs OpenAPI contract |
-| **Tools** | Pact, Dredd, supertest + openapi-validator |
-| **When they run** | In CI before pushing to staging |
-
-**Validation with openapi-validator:**
-
-```typescript
-// tests/contract/api-contract.spec.ts
-import { createOpenAPIValidatorMiddleware } from 'express-openapi-validator';
-
-const app = buildApp();
-app.use(createOpenAPIValidatorMiddleware({
-  apiSpec: './07-api/contracts/openapi/[service].yaml',
-  validateRequests: true,
-  validateResponses: true,
-}));
-
-it('POST /orders returns 201 with the correct schema', async () => {
-  const response = await request(app)
-    .post('/orders')
-    .set('Authorization', `Bearer ${testJWT}`)
-    .send(validOrderPayload);
-
-  expect(response.status).toBe(201);
-  // Response schema validation is done by the OpenAPI middleware
-});
+```bash
+./mvnw test                      # one backend service (from its folder)
+npx ng test --watch=false        # web (blocked today, see gaps)
 ```
+
+Do not run `./mvnw clean` while that same service is running (it deletes the classes in use).
 
 ---
 
-## Tier 4: End-to-End Tests (E2E)
+## CI
 
-**Objective:** Verify complete user flows as the end user would experience them.
-
-| Aspect | Value |
-|--------|-------|
-| **What they test** | Critical business flows end-to-end |
-| **Isolation** | None — real environment (staging or dedicated E2E environment) |
-| **Speed** | 5s – 60s per test |
-| **Tools** | Playwright (UI), K6 (API E2E), Cypress |
-| **When they run** | In CI only in the staging pipeline, not on every PR |
-| **Scope** | Critical flows only — register + create order + confirm payment |
-
-**Priority E2E flows:**
-
-| # | Flow | Services involved |
-|---|------|------------------|
-| 1 | User registration and login | auth-service |
-| 2 | [Main business flow] | [services] |
-| 3 | [Critical error flow] | [services] |
+No pipeline yet. **Planned: Jenkins**, one `Jenkinsfile` per repository running `./mvnw verify`
+(services) or `npm ci`, `ng build` and `ng test --watch=false` (web) on every push/PR to `develop`.
+The web stage will fail until the 6 stale specs are fixed.
 
 ---
 
-## Performance Tests
+## Coverage
 
-**Objective:** Verify that NFR performance requirements are met under load.
-
-| Aspect | Value |
-|--------|-------|
-| **Tool** | k6 |
-| **When they run** | In the staging pipeline (not on every PR) |
-| **Failure criterion** | If P95 > 300ms or error rate > 1% |
-
-```javascript
-// tests/performance/load-test.js (k6)
-import http from 'k6/http';
-import { check } from 'k6';
-
-export const options = {
-  stages: [
-    { duration: '30s', target: 100 },  // Ramp up to 100 users
-    { duration: '60s', target: 100 },  // Hold 100 users
-    { duration: '30s', target: 0 },    // Ramp down
-  ],
-  thresholds: {
-    'http_req_duration': ['p(95)<300'],  // P95 < 300ms
-    'http_req_failed': ['rate<0.01'],    // < 1% errors
-  },
-};
-
-export default function () {
-  const res = http.get('http://localhost:8080/[critical-endpoint]', {
-    headers: { 'Authorization': `Bearer ${__ENV.TEST_TOKEN}` },
-  });
-  check(res, { 'status is 200': (r) => r.status === 200 });
-}
-```
+No coverage tool configured. Policy: every business rule and every endpoint's security has a test
+(this is what the pyramid above covers); JaCoCo can be added to report numbers.
 
 ---
 
-## CI configuration per pipeline
+## Test data
 
-```yaml
-# .github/workflows/ci.yml (simplified)
-jobs:
-  unit-tests:
-    steps:
-      - run: npm run test:unit -- --coverage
-      - run: npm run lint
-
-  integration-tests:
-    services:
-      postgres:
-        image: postgres:15
-      redis:
-        image: redis:7
-    steps:
-      - run: npm run test:integration
-
-  contract-tests:
-    steps:
-      - run: npm run test:contract
-
-  # Only on push to main/develop:
-  performance-tests:
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - run: k6 run tests/performance/load-test.js
-```
+| Need | How |
+|---|---|
+| Users with a role | JWT signed in the test (`NimbusJwtEncoder` with the test secret) |
+| Repositories | In-memory fakes or Mockito |
+| Time | `Clock.fixed(...)` |
+| Real database (manual runs) | Liquibase seeds + dev demo accounts (`admin@gmail.com`, `cliente@gmail.com`, `operador@gmail.com`) |
 
 ---
 
-## Code coverage — Thresholds per layer
+## Gaps
 
-```json
-// jest.config.json
-{
-  "coverageThreshold": {
-    "global": {
-      "lines": 80,
-      "branches": 75,
-      "functions": 80,
-      "statements": 80
-    },
-    "./src/domain/": {
-      "lines": 90,
-      "branches": 85
-    }
-  }
-}
-```
-
-**Coverage rule:** If a PR lowers the global coverage, CI fails.
-Coverage cannot go down — if there is uncovered code, tests must be added in the same PR.
-
----
-
-## Fixture and test data files
-
-```
-tests/
-├── fixtures/
-│   ├── order.fixture.ts       # Test object builders
-│   ├── user.fixture.ts
-│   └── db-seeds/
-│       └── test-data.sql       # Base data for integration tests
-├── helpers/
-│   ├── auth.helper.ts          # Generate test JWT
-│   └── database.helper.ts      # Reset DB between tests
-```
-
-**Fixture Builder pattern:**
-
-```typescript
-// tests/fixtures/order.fixture.ts
-export class OrderFixture {
-  static createValid(overrides: Partial<OrderData> = {}): Order {
-    return Order.create(
-      overrides.customerId ?? new CustomerId('customer-test-uuid'),
-      overrides.items ?? [OrderItemFixture.oneItem()],
-    );
-  }
-
-  static inConfirmedState(): Order {
-    const order = OrderFixture.createValid();
-    order.confirm();
-    return order;
-  }
-}
-```
+| Gap | Action |
+|---|---|
+| Web test suite does not compile: 6 scaffold specs point to classes that no longer exist (`features/*/viewmodels/*.spec.ts`, `settings-panel.spec.ts`, `stepper.spec.ts`) | Fix or delete those specs, then add tests for the booking form and stores |
+| No automated test across services | Automate registration → booking → notification |
+| No CI | Add a workflow per repository |
+| No test against a real SQL Server | Testcontainers for the persistence adapters of booking (locking, triggers) |
 
 ---
 
 ## Correlations
 
-- Complete TDD guide → `11-quality/tdd-guide.md`
-- Definition of Done (required coverage) → `00-governance/definition-of-done.md`
-- OpenAPI contracts to validate → `07-api/contracts/openapi/`
-- Hexagonal Architecture (facilitates testing) → `05-architecture/hexagonal-architecture.md`
-- CI/CD pipeline → `10-devops/README.md`
+- TDD guide and test doubles → `11-quality/tdd-guide.md`
+- Traceability RF → test → `04-requirements/traceability-matrix.md`
+- Domain invariants → `02-domain/entities-and-rules.md`
