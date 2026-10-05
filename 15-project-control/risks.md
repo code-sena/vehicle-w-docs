@@ -1,132 +1,111 @@
 # Risk Register
 
-> Unmitigated risks become problems. This register allows the team to
-> anticipate, not just react.
-> Review and update at each retrospective or when there is a significant project change.
+> Risks that can stop LavaRápido from being delivered or demonstrated. Reviewed at each
+> retrospective and whenever a service is merged. Last review: **2026-10-04**.
+
+Level = probability × impact (Low / Medium / High → Low, Medium, High, Critical).
+Owner is a role; the team assigns the person in the sprint board.
 
 ---
 
-## Probability × impact matrix
+## Active risks
 
-```
-IMPACT
-  │
-  │ HIGH  │  [Mitigate]    │  [Avoid]       │
-  │       │  Low           │  High          │
-  │       │  Probability   │  Probability   │
-  │───────────────────────────────────────
-  │ MEDIUM│  [Accept]      │  [Mitigate]    │
-  │       │  with monitoring│              │
-  │───────────────────────────────────────
-  │ LOW   │  [Accept]      │  [Accept]      │
-  │       │                │               │
-  └───────────────────────────────────────
-              LOW              HIGH
-                      PROBABILITY
-```
-
-**Response strategies:**
-- **Avoid:** Change the plan so the risk cannot materialize
-- **Mitigate:** Reduce the probability or impact
-- **Transfer:** Pass the risk to another party (insurance, provider, contract)
-- **Accept:** Acknowledge the risk and have a contingency plan
+| ID | Risk | Category | Prob. | Impact | Level | Strategy | Owner |
+|----|------|----------|-------|--------|-------|----------|-------|
+| R-001 | operations-service arrives late or does not match the booking/notification contracts | Team / Technical | Medium | High | High | Mitigate | operations-service owner |
+| R-002 | payment-service stays incomplete: payment screens keep local data | Technical | High | Medium | High | Mitigate | payment-service owner |
+| R-003 | Regressions reach `develop` unnoticed: no CI yet and the web test suite does not compile | Technical | High | Medium | High | Mitigate | Team lead |
+| R-004 | Secrets leak (`.env`: DB password, `JWT_SECRET`, `INTERNAL_API_KEY`, Gmail app password) | Security | Low | High | Medium | Avoid | Every developer |
+| R-005 | An event is lost between commit and publish (no Outbox): missing welcome/booking notification or profile | Technical | Low | Medium | Low | Accept | notification-service owner |
+| R-006 | Work stays uncommitted in several repositories or collides with a teammate's (mobile, web) | Team | Medium | Medium | Medium | Mitigate | Each repository owner |
+| R-007 | Review finds requirement gaps already known: per-account preferences (RF-019/020), login attempt limit (RF-004b), 404 page | Business | Medium | Medium | Medium | Mitigate | Team lead |
+| R-008 | Data loss on a developer machine (`docker compose down -v`, broken volume) before a demo | Technical | Low | High | Medium | Mitigate | Whoever runs the demo |
+| R-009 | Gmail SMTP stops (app password revoked, sending limit) | External | Low | Low | Low | Accept | notification-service owner |
+| R-010 | Documentation drifts from the code again | Team | Medium | Medium | Medium | Mitigate | Author of each PR |
 
 ---
 
-## Active risk register
+## Details
 
-### R-001 — [Risk name]
+### R-001 — operations-service integration
 
-| Field | Value |
-|-------|-------|
-| **ID** | R-001 |
-| **Category** | [Technical / Business / Team / External] |
-| **Description** | [What could go wrong] |
-| **Probability** | [High / Medium / Low] |
-| **Impact** | [High / Medium / Low] |
-| **Risk level** | [Critical / High / Medium / Low] |
-| **Strategy** | [Mitigate / Avoid / Transfer / Accept] |
-| **Mitigation plan** | [What we do to reduce probability or impact] |
-| **Contingency plan** | [What we do if the risk materializes] |
-| **Trigger** | [Warning signal that the risk is about to occur] |
-| **Owner** | [Name of the person responsible for monitoring this risk] |
-| **Review date** | [date] |
-| **Status** | [Active / Mitigated / Occurred / Closed] |
+- **Trigger:** operations PR without the events notification already listens for
+  (`execution.operator_assigned`, `execution.service_started`, `execution.service_completed`).
+- **Mitigation:** the contracts are fixed in `02-domain/domain-events.md` and
+  `09-microservices/services/07-notification-service/events.md`; booking publishes
+  `booking.confirmed` with `serviceBayId` and `scheduledStart` for assignment; add the gateway
+  route and the `proxy.conf.json` entry in the same PR.
+- **Contingency:** demo the operator area with its current local data.
+
+### R-002 — payment-service incomplete
+
+- **Mitigation:** keep payment out of the demo's critical path; the booking flow ends at the
+  booking summary.
+- **Contingency:** show the payment screens as prototype (documented as Local in
+  `12-ux-ui/navigation-map.md`).
+
+### R-003 — No automated safety net
+
+- **Trigger:** a merge breaks a flow that worked.
+- **Mitigation:** run `./mvnw test` before every PR (286 backend tests); fix the 6 stale web
+  specs; build the Jenkins pipeline (`10-devops/ci-cd.md`).
+- **Contingency:** manual end-to-end run before each review session (`13-operations/README.md`).
+
+### R-004 — Secrets
+
+- **Mitigation:** `.env` is git-ignored; `.env.example` only has names; logs never print secrets;
+  secrets are never pasted into chats or issues.
+- **Contingency:** rotate the leaked value in `.env` (new Gmail app password, new `JWT_SECRET` —
+  which logs everyone out — or new `INTERNAL_API_KEY`) and restart the services.
+
+### R-005 — Lost event
+
+- **Mitigation:** consumers are idempotent and failures go to dead-letter queues, so a retry is
+  safe; customer-service also creates the profile on first use if the event never arrived.
+- **Contingency:** re-create the missing notification manually from the admin notifications
+  screen.
+
+### R-006 — Uncommitted or colliding work
+
+- **Mitigation:** small commits per repository; nobody changes the mobile app while a teammate is
+  working on it; the api-gateway repository must be created on GitHub and pushed.
+- **Contingency:** resolve conflicts keeping both changes, then run the tests.
+
+### R-007 — Known requirement gaps
+
+- **Mitigation:** gaps are listed openly in `04-requirements/traceability-matrix.md`; the
+  per-account preferences fix is small (load/save through `GET/PUT /users/me/preferences`, extend
+  the allowed themes in security-service).
+
+### R-008 — Data loss before a demo
+
+- **Mitigation:** backup command in `13-operations/README.md`; the seeds and dev demo accounts
+  rebuild a usable database in minutes.
+
+### R-009 — Email provider
+
+- **Contingency:** notifications still reach the inbox and push; switch `MAIL_HOST` to Mailpit to
+  show the emails locally.
+
+### R-010 — Documentation drift
+
+- **Mitigation:** the review checklist (`11-quality/README.md`) requires updating `models.md`,
+  OpenAPI exports and the service docs in the same PR.
 
 ---
 
-### R-002 — [Risk name]
-
-| Field | Value |
-|-------|-------|
-| **ID** | R-002 |
-| **Category** | [Technical] |
-| **Description** | [E.g.: Dependency X may not be available by the integration date] |
-| **Probability** | [Medium] |
-| **Impact** | [High] |
-| **Risk level** | [High] |
-| **Strategy** | [Mitigate] |
-| **Mitigation plan** | [Start conversation with provider 6 weeks ahead; design mock/stub just in case] |
-| **Contingency plan** | [Develop with mock, launch without the integration, add it in the next iteration] |
-| **Trigger** | [No response from provider in 2 weeks] |
-| **Owner** | [Name] |
-| **Review date** | [date] |
-| **Status** | [Active] |
-
----
-
-## Common technical risks in microservices
-
-These risks apply to almost all microservices projects. Evaluate which ones apply:
-
-| Risk | Typical probability | Standard mitigation |
-|------|--------------------|--------------------|
-| Failure cascade (one service down brings everything down) | Medium | Circuit Breaker, timeout, fallback |
-| Data inconsistency between services | High | Saga, Outbox, idempotent events |
-| Network latency in synchronous calls | High | gRPC, cache, async where possible |
-| Lost messages in the broker | Medium | At-least-once + idempotent consumers |
-| Schema evolution breaks consumers | High | Version events, compatible changes first |
-| Technical debt accumulation | High | DoD with minimum coverage, regular reviews |
-| Premature over-engineering | Medium | Start simple, YAGNI, measure before optimizing |
-| Sensitive data exposure in logs | Medium | Logging policy, PII masking, SAST |
-| Configuration drift between environments | High | Infrastructure as Code, environment variables |
-
----
-
-## Closed risks / Lessons learned
+## Closed risks / lessons learned
 
 | ID | Risk | Outcome | Lesson |
 |----|------|---------|--------|
-| R-00X | [name] | [Occurred / Did not occur] | [What we learned] |
-
----
-
-## Template for adding a new risk
-
-```markdown
-### R-00X — [Name]
-
-| Field | Value |
-|-------|-------|
-| **ID** | R-00X |
-| **Category** | |
-| **Description** | |
-| **Probability** | |
-| **Impact** | |
-| **Risk level** | |
-| **Strategy** | |
-| **Mitigation plan** | |
-| **Contingency plan** | |
-| **Trigger** | |
-| **Owner** | |
-| **Review date** | |
-| **Status** | Active |
-```
+| C-001 | Booking times shifted 5 hours | Occurred, fixed (JVM in UTC, `BOOKING_ZONE=America/Bogota`) | Store UTC, convert only at the edges |
+| C-002 | Services failing at startup after `docker compose up` | Occurred, understood | Wait for SQL Server to be healthy before starting services |
+| C-003 | Two booking implementations of the same service | Occurred, resolved by rebuilding from the SQL model | Agree on the data model before coding a service |
 
 ---
 
 ## Correlations
 
-- External dependencies → `15-project-control/dependencies.md`
-- Related open questions → `15-project-control/open-questions.md`
-- Architectural decisions that mitigated risks → `05-architecture/decisions/`
+- Architectural decisions that mitigate risks → `05-architecture/decisions/`
+- Known gaps → `04-requirements/traceability-matrix.md`
+- Incident handling → `13-operations/incident-management.md`
