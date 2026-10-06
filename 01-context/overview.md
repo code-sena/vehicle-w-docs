@@ -50,10 +50,10 @@ the risks to validate before trusting this hypothesis, in
 
 ## Current status
 
-- **Phase:** Implementation (status at 2026-10-04). Design complete (`02-domain` to `06-data`, 11 ADRs). Built, tested and running together with Docker Compose: **api-gateway, security, customer, booking and notification** (286 backend tests). The web client uses the API for sign-up, login, profile, vehicles, catalog, schedule, bays, bookings and notifications; booking emails and reminders reach the customer's inbox. In progress: **operations-service** and the Android app (teammates); **payment-service** is incomplete, so the receipt upload and the operator screens still use local data (the client dashboard, history and payment amount already come from booking-service). The Android app already calls security, customer and booking. Jenkins CI is planned, not built yet
+- **Phase:** Implementation (status at 2026-10-06). Design complete (`02-domain` to `06-data`, 14 ADRs). Built, tested and running together with Docker Compose: **api-gateway (8080), security (3001), customer (3002), booking (3003), operations (3004) and notification (3006)**. **payment-service (3005, .NET 8)** covers payment accounts with QR, payments with receipt and admin review; promotions, loyalty points and its events are pending, and it is not in Docker Compose yet. The web client goes through the gateway to all six services; booking emails and reminders reach the customer's inbox. The Android app (teammates) is in progress and already calls security, customer, booking, operations and payment. Jenkins CI is planned, not built yet
 - **Current version:** N/A — the project does not use release versioning yet
 - **Last release:** N/A
-- **Next milestone:** merge operations-service (assignment, execution, rating) and payment-service (QR payment and approval) to close the end-to-end flow; then the Jenkins pipeline. Pending gaps: `04-requirements/traceability-matrix.md`
+- **Next milestone:** finish payment-service (publish `payment.confirmed` / `payment.rejected`, promotions, loyalty points, container in Docker Compose); then the Jenkins pipeline. Pending gaps: `04-requirements/traceability-matrix.md`
 
 ## Project contacts
 
