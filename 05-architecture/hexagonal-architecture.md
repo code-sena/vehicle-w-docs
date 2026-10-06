@@ -1,8 +1,8 @@
 # Hexagonal Architecture
 
-**Last updated:** 2026-10-04
+**Last updated:** 2026-10-06
 
-The six backend services use the same internal architectural style: **hexagonal architecture (ports and adapters)** with Java 21 and Spring Boot.
+The six backend services use the same internal architectural style: **hexagonal architecture (ports and adapters)**. Five of them are Java 21 and Spring Boot; `payment-service` is .NET 8 and applies the same idea in four projects (see section 13 and ADR-013).
 
 The goal is simple: business rules should not depend on Spring, JPA, SQL Server or RabbitMQ.
 
@@ -187,8 +187,8 @@ The same structure is used across all six services, but the amount of domain log
 | `security-service` | Medium: authentication, roles, password rules and preferences |
 | `customer-service` | Medium: customer/vehicle ownership rules |
 | `booking-service` | High: slot conflicts, booking lifecycle, price freezing |
-| `operations-service` | High: availability, assignment, execution and rating rules |
-| `payment-service` | High: payment review, promotion and loyalty rules |
+| `operations-service` | High: availability, assignment, execution and rating rules (`AssignmentPolicy`, `ServiceExecution`) |
+| `payment-service` | High: payment review today (`Payment` aggregate); promotion and loyalty rules still to come |
 | `notification-service` | Thin: notification creation and read state |
 
 ## 11. Testing consequence
@@ -201,8 +201,28 @@ The project should not create abstractions only to make the diagram look hexagon
 
 The current architecture does not adopt CQRS, Event Sourcing or a shared domain library. These would require a concrete problem before being introduced.
 
+## 13. payment-service (.NET 8)
+
+`payment-service` keeps the dependency rule (everything points to the domain) with four projects
+instead of Java packages (ADR-013):
+
+```text
+PaymentService.Api ──► PaymentService.Application ──► PaymentService.Domain
+        └─────────► PaymentService.Infrastructure ──► PaymentService.Application
+```
+
+| Java services (sections 1–9) | payment-service |
+|---|---|
+| `domain` package (model, ports) | `PaymentService.Domain`: `Payment` aggregate, `PaymentAccount`, `PaymentReceipt`, domain events. No NuGet package |
+| `application` (use cases) + input ports `...UseCase` | `PaymentService.Application`: `PaymentApplicationService`, output ports `IPaymentRepository`, `IPaymentAccountRepository`, `IBookingDirectory`. No input-port interfaces |
+| `infrastructure/adapter/out` (JPA entities, REST clients, RabbitMQ) | `PaymentService.Infrastructure`: EF Core repositories that map the **domain classes directly** (`IEntityTypeConfiguration`), `BookingServiceDirectory` (HTTP). No RabbitMQ yet |
+| `infrastructure/adapter/in/web` | `PaymentService.Api`: controllers, JWT, `GlobalExceptionHandler`, composition root |
+
+Domain tests use xUnit (`tests/PaymentService.Domain.UnitTests`) without EF or ASP.NET.
+
 ## References
 
 - Internal service decision → `decisions/records/ADR-007-internal-service-architecture.md`
 - Domain rules → `02-domain/entities-and-rules.md`
 - Java/Spring stack → `_stacks/java-spring.md`
+- payment-service in .NET → `decisions/records/ADR-013-payment-service-dotnet-stack.md`

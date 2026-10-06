@@ -1,6 +1,6 @@
 # System Architecture Overview
 
-**Last updated:** 2026-10-04
+**Last updated:** 2026-10-06
 
 ## 1. Architectural style
 
@@ -19,20 +19,20 @@ The current decomposition is:
 
 The API Gateway is the single external entry point. It is infrastructure and is not counted as a seventh domain service.
 
-### Implementation status (2026-10-04)
+### Implementation status (2026-10-06)
 
 | Component | Port | State |
 |---|---|---|
-| `api-gateway` | 8080 | Built: routes the four built services, CORS; JWT checked by each service |
+| `api-gateway` | 8080 | Built: routes the six services, CORS; JWT checked by each service |
 | `security-service` | 3001 | Built |
 | `customer-service` | 3002 | Built |
 | `booking-service` | 3003 | Built (catalog, schedule, bays, availability, bookings) |
-| `operations-service` | — | In development by another team member; not routed yet |
-| `payment-service` | — | Incomplete; not routed yet |
+| `operations-service` | 3004 | Built (operators, shifts, absences, assignment, execution, ratings) |
+| `payment-service` | 3005 | Partial, .NET 8: payment accounts with QR, payments with receipt and admin review. Promotions, loyalty and events pending; not in Docker Compose yet |
 | `notification-service` | 3006 | Built (inbox, push tokens, email, booking reminders) |
 
-Screens whose service is not built still use local data in the web (see
-`12-ux-ui/navigation-map.md`).
+The web reaches all six services through the gateway; the screens still on local data are listed in
+`12-ux-ui/navigation-map.md`.
 
 ## 2. Data ownership
 
@@ -105,7 +105,7 @@ C4Container
         Container(customerSvc, "customer-service", "Java 21 / Spring Boot", "Customers, vehicles and loyalty display copy")
         Container(booking, "booking-service", "Java 21 / Spring Boot", "Catalog, prices, shop schedule and bookings")
         Container(operations, "operations-service", "Java 21 / Spring Boot", "Operators, assignment, execution and ratings")
-        Container(payment, "payment-service", "Java 21 / Spring Boot", "Payments, receipts, promotions and loyalty ledger")
+        Container(payment, "payment-service", ".NET 8 / ASP.NET Core", "Payments, receipts, promotions and loyalty ledger")
         Container(notification, "notification-service", "Java 21 / Spring Boot", "In-app notifications, push, email and booking reminders")
         ContainerDb(sqlserver, "SQL Server", "SQL Server 2016+", "One physical database with nine logical schemas")
         ContainerQueue(rabbit, "RabbitMQ", "RabbitMQ", "Asynchronous domain events")
@@ -133,14 +133,17 @@ C4Container
     Rel(security, rabbit, "Publishes events when needed")
     Rel(customerSvc, rabbit, "Publishes/consumes events when needed")
     Rel(booking, rabbit, "Publishes/consumes booking events")
-    Rel(operations, rabbit, "Publishes/consumes operation events")
-    Rel(payment, rabbit, "Publishes payment and loyalty events")
+    Rel(operations, rabbit, "Publishes execution events")
+    Rel(payment, rabbit, "Payment and loyalty events (planned)")
     Rel(notification, rabbit, "Consumes notification events")
     Rel(security, smtp, "Password-recovery code")
     Rel(notification, smtp, "Welcome, booking and reminder emails")
     Rel(booking, customerSvc, "Validates vehicles (REST, user token)")
     Rel(customerSvc, security, "Reads the user's profile (REST, user token)")
     Rel(notification, security, "Reads email/name (REST, internal key)")
+    Rel(operations, booking, "Reads bookings, moves their status (REST, user token)")
+    Rel(operations, security, "Reads operator accounts (REST, admin token)")
+    Rel(payment, booking, "Reads booking total and status (REST, user token)")
 ```
 
 ## 5. Communication
@@ -149,15 +152,18 @@ C4Container
 
 REST is used when a caller needs an answer before continuing. Examples include validating a customer vehicle before creating a booking, validating a current service price, checking an operator's availability and validating a booking before creating a payment.
 
-Service-to-service calls do not pass through the API Gateway. Today there are three:
+Service-to-service calls do not pass through the API Gateway. Today there are six:
 
 | Caller → callee | Why | Credential |
 |---|---|---|
 | booking → customer | Validate the vehicle and its type before booking; plates for the admin list | The user's JWT, forwarded |
 | customer → security | Create the customer profile on first use from the user's data | The user's JWT, forwarded |
 | notification → security | Email and name of the user to email a notification (`/internal/v1/users/{id}/contact`) | `X-Internal-Key` (no user is involved; ADR-011 §8) |
+| operations → booking | Read bookings to assign; move them to `IN_PROGRESS` / `COMPLETED`; check the client's booking before rating | The user's JWT, forwarded |
+| operations → security | Operator accounts and names (`/admin/users?role=OPERATOR`) | The admin's JWT, forwarded |
+| payment → booking | Booking total, status and owner before reporting or approving a payment | The user's JWT, forwarded |
 
-booking → customer forwards the caller's `X-Correlation-Id`; the other calls and the RabbitMQ events do not yet (gap in `13-operations/observability.md`).
+booking → customer and operations → booking/security forward the caller's `X-Correlation-Id`; the other calls and the RabbitMQ events do not yet (gap in `13-operations/observability.md`).
 
 ### Asynchronous
 
@@ -167,8 +173,9 @@ RabbitMQ (topic exchange `carwash.events`) is used for work that can happen afte
 |---|---|---|
 | `security.user_registered` | security | customer (profile), notification (welcome) |
 | `booking.confirmed` (created or rescheduled), `booking.cancelled` | booking | notification (inbox, email, reminders) |
+| `execution.operator_assigned`, `execution.service_started`, `execution.service_completed` | operations | notification (operator and client) |
 
-customer-service raises `CustomerProvisioned` and vehicle events in its domain but only logs them (no consumer needs them yet). Planned: assignment after booking confirmation (operations), payment approval and loyalty updates (payment). Event names and payloads → `09-microservices/services/*/events.md`.
+customer-service raises `CustomerProvisioned` and vehicle events in its domain but only logs them (no consumer needs them yet). payment-service raises `PaymentApproved`, `PaymentRejected` and `PaymentRefunded` in its domain but does not publish them yet. Planned: automatic assignment after booking confirmation (operations), payment approval and loyalty updates (payment). Event names and payloads → `09-microservices/services/*/events.md`.
 
 Events are published after the database transaction commits. The current architecture accepts the risk of a failure between commit and publish; an Outbox implementation is **not adopted yet**.
 
@@ -187,15 +194,15 @@ API Gateway
    ├── customer-service
    ├── booking-service ───── REST ─── customer-service
    │        │                         catalog data
-   │        └────────────── RabbitMQ ─────┐
-   │                                     ▼
-   ├── operations-service ◀──── events ───┘
+   │        └────────────── RabbitMQ ──► notification-service
+   │
+   ├── operations-service ── REST ─── booking-service (read, move status)
    │        │
    │        └────────────── RabbitMQ ──► notification-service
    │
-   └── payment-service ─── REST ─── booking-service
+   └── payment-service ───── REST ─── booking-service (total, status)
              │
-             └──────────── RabbitMQ ──► notification-service
+             └ ─ ─ ─ ─ ─ ─ RabbitMQ ─ ► notification-service (planned)
 ```
 
 ## 7. Architectural constraints
