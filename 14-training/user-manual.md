@@ -1,7 +1,7 @@
 # User Manual (web)
 
 > How to use LavaRápido in the browser. Covers the features connected to the backend on
-> 2026-10-04; screens still on sample data are marked. Screens: `12-ux-ui/navigation-map.md`.
+> 2026-10-06; screens still on sample data are marked. Screens: `12-ux-ui/navigation-map.md`.
 
 ---
 
@@ -42,11 +42,21 @@ From the dashboard or the booking detail: change date/time or services, or cance
 Only possible **before the service starts**. Prices of a booking do not change if the catalog
 changes later.
 
-### History and payment
-**History** shows your real bookings (active, completed, cancelled). **Pay** shows the real
-amount of the booking (with the points discount) and lets you cancel it; uploading the receipt
-still works only in the browser until the payment service is ready. Ratings arrive with the
-operations service.
+### History, rating and payment
+**History** shows your real bookings (active, completed, cancelled) and the operator assigned to
+each one. When a booking is **completed** you can rate it once: 1 to 5 stars and an optional
+comment (up to 500 characters).
+
+**Pay service** shows the amount of the booking (the points discount stays at 0 until the points
+program exists) and the shop's accounts (Nequi, Daviplata, transfer) with their QR and
+instructions:
+1. Pay from your bank app using the QR or the account number.
+2. Choose the account you paid to, type the transaction reference and attach the receipt image
+   (up to 8 MB).
+3. Send it. The payment stays **in review** until the administrator approves or rejects it.
+
+Only confirmed, in-progress or completed bookings can be paid, and a booking cannot have two
+payments in review. Cash is paid at the shop and registered by the administrator.
 
 ---
 
@@ -62,8 +72,25 @@ operations service.
 | Services and prices per vehicle type | **Management → Services** |
 | Users: create, change role, deactivate | **Management → Users** (accounts are deactivated, never deleted) |
 | Send a notification to users | **Notifications** |
+| Operators: active or not, weekly shift, absences | **Operators** (operators are the accounts with role Operator in **Management → Users**) |
+| Assign or change the operator of a booking | **Reservations** → booking detail → **Operator assignment**: each operator shows whether they are available or why not (inactive, not on shift, absent, busy). Only before the service starts |
+| Review payments | **Payments** → **Verify**: approve, or reject with a reason |
+| Register a cash payment | **Payments** → **Manual entry**: the amount is the booking total and it is approved at once |
+| Payment accounts and QR | **Settings → Payment methods** |
 
-Operators, payments, promotions, reports and business settings still use sample data.
+Promotions, part of the reports and the business data in Settings still use sample data.
+
+---
+
+## Operator
+
+| Task | Where |
+|---|---|
+| See today's services (or another range) | **assigned services**: booking code, services, vehicle, time and status |
+| Start a service | Service detail → **Start Service**. Only on the booking day; you cannot have two services in progress |
+| Finish a service | Service detail → **Finish Service**. The client is notified and can rate it |
+| See your shift | **My Schedule** (the administrator sets it) |
+| See your ratings | **Ratings**: stars and comments from clients, and your average |
 
 ---
 
@@ -73,4 +100,6 @@ Operators, payments, promotions, reports and business settings still use sample 
 |---|---|
 | "Session expired" | Sign in again |
 | A message that the time is no longer available | Pick one of the offered times |
+| An operator cannot be assigned | The message says why (not on shift, absent, busy, inactive); fix the shift in **Operators** or choose another operator |
+| A payment cannot be sent | The booking already has a payment in review or approved, or it is cancelled |
 | A generic error | Try again; if it repeats, tell the team with the time it happened |
