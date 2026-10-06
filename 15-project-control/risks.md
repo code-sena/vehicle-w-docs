@@ -12,8 +12,8 @@ Owner is a role; the team assigns the person in the sprint board.
 
 | ID | Risk | Category | Prob. | Impact | Level | Strategy | Owner |
 |----|------|----------|-------|--------|-------|----------|-------|
-| R-001 | operations-service arrives late or does not match the booking/notification contracts | Team / Technical | Medium | High | High | Mitigate | operations-service owner |
-| R-002 | payment-service stays incomplete: payment screens keep local data | Technical | High | Medium | High | Mitigate | payment-service owner |
+| R-001 | operations-service drifts from the booking/notification contracts (built on 2026-10-06; automatic assignment still missing) | Team / Technical | Low | High | Medium | Mitigate | operations-service owner |
+| R-002 | payment-service stays partial: no events (notification never tells the client), no promotions or points, not in Docker Compose | Technical | High | Medium | High | Mitigate | payment-service owner |
 | R-003 | Regressions reach `develop` unnoticed: no CI yet and the web test suite does not compile | Technical | High | Medium | High | Mitigate | Team lead |
 | R-004 | Secrets leak (`.env`: DB password, `JWT_SECRET`, `INTERNAL_API_KEY`, Gmail app password) | Security | Low | High | Medium | Avoid | Every developer |
 | R-005 | An event is lost between commit and publish (no Outbox): missing welcome/booking notification or profile | Technical | Low | Medium | Low | Accept | notification-service owner |
@@ -33,21 +33,25 @@ Owner is a role; the team assigns the person in the sprint board.
   (`execution.operator_assigned`, `execution.service_started`, `execution.service_completed`).
 - **Mitigation:** the contracts are fixed in `02-domain/domain-events.md` and
   `09-microservices/services/07-notification-service/events.md`; booking publishes
-  `booking.confirmed` with `serviceBayId` and `scheduledStart` for assignment; add the gateway
-  route and the `proxy.conf.json` entry in the same PR.
-- **Contingency:** demo the operator area with its current local data.
+  `booking.confirmed` with `serviceBayId` and `scheduledStart` for assignment. Status
+  2026-10-06: operations publishes the three events, the gateway routes it (`:3004`) and the web
+  uses it; the remaining gap is automatic assignment (RF-008).
+- **Contingency:** the admin assigns by hand with the candidates list.
 
-### R-002 — payment-service incomplete
+### R-002 — payment-service partial
 
-- **Mitigation:** keep payment out of the demo's critical path; the booking flow ends at the
-  booking summary.
-- **Contingency:** show the payment screens as prototype (documented as Local in
-  `12-ux-ui/navigation-map.md`).
+- **Status 2026-10-06:** payment accounts with QR, reported payments with receipt, admin review and
+  manual payments work through the gateway (`:3005`).
+- **Mitigation:** publish `payment.confirmed` / `payment.rejected` (the keys notification already
+  listens for); add a `payment-service` container and `ROUTE_PAYMENT_URL` to
+  `lavarapido-infra/docker-compose.yml`.
+- **Contingency:** run payment with `dotnet run` for the demo; leave promotions and points out of
+  the demo's critical path.
 
 ### R-003 — No automated safety net
 
 - **Trigger:** a merge breaks a flow that worked.
-- **Mitigation:** run `./mvnw test` before every PR (286 backend tests); fix the 6 stale web
+- **Mitigation:** run `./mvnw test` (or `dotnet test` in payment) before every PR (347 backend tests); fix the 6 stale web
   specs; build the Jenkins pipeline (`10-devops/ci-cd.md`).
 - **Contingency:** manual end-to-end run before each review session (`13-operations/README.md`).
 
