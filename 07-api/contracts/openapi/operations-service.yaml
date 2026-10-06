@@ -1,0 +1,576 @@
+# Generated from the running operations-service (springdoc, GET /v3/api-docs) on 2026-10-06.
+# Do not edit by hand: regenerate from the code so the contract never drifts.
+openapi: "3.1.0"
+info:
+  title: "LavaRápido operations-service API"
+  version: "v1"
+  description: "Contract of operations-service. Public paths are reached through the API gateway."
+servers:
+  - url: "http://localhost:8080"
+    description: "Through the API gateway (ADR-005)"
+  - url: "http://localhost:3004"
+    description: "operations-service directly (local development)"
+paths:
+  "/api/v1/admin/operators/{id}/availability":
+    put:
+      tags:
+        - "admin-operations-controller"
+      operationId: "setAvailability"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/AvailabilityRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/OperatorResponse"
+  "/api/v1/admin/assignments/{bookingId}":
+    put:
+      tags:
+        - "admin-operations-controller"
+      operationId: "assign"
+      parameters:
+        - name: "bookingId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/AssignRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/AssignmentResponse"
+  "/api/v1/ratings/{bookingId}":
+    post:
+      tags:
+        - "rating-controller"
+      operationId: "rate"
+      parameters:
+        - name: "bookingId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/RatingRequest"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/RatingResponse"
+  "/api/v1/operator/services/{bookingId}/start":
+    post:
+      tags:
+        - "operator-controller"
+      operationId: "start"
+      parameters:
+        - name: "bookingId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/OperatorServiceResponse"
+  "/api/v1/operator/services/{bookingId}/finish":
+    post:
+      tags:
+        - "operator-controller"
+      operationId: "finish"
+      parameters:
+        - name: "bookingId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/OperatorServiceResponse"
+  "/api/v1/admin/operators/{id}/absences":
+    get:
+      tags:
+        - "admin-operations-controller"
+      operationId: "absences"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+        - name: "from"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "to"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/AbsenceResponse"
+    post:
+      tags:
+        - "admin-operations-controller"
+      operationId: "addAbsence"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/AbsenceRequest"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/AbsenceResponse"
+  "/api/v1/admin/operators/{id}/status":
+    patch:
+      tags:
+        - "admin-operations-controller"
+      operationId: "setActive"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ActiveRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/OperatorResponse"
+  "/api/v1/ratings/me":
+    get:
+      tags:
+        - "rating-controller"
+      operationId: "mine"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/RatingResponse"
+  "/api/v1/operator/services":
+    get:
+      tags:
+        - "operator-controller"
+      operationId: "services"
+      parameters:
+        - name: "from"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "to"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/OperatorServiceResponse"
+  "/api/v1/operator/ratings":
+    get:
+      tags:
+        - "operator-controller"
+      operationId: "ratings"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/RatingResponse"
+  "/api/v1/admin/operators":
+    get:
+      tags:
+        - "admin-operations-controller"
+      operationId: "operators"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/OperatorResponse"
+  "/api/v1/admin/assignments":
+    get:
+      tags:
+        - "admin-operations-controller"
+      operationId: "assignments"
+      parameters:
+        - name: "from"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "to"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/AssignmentResponse"
+  "/api/v1/admin/assignments/{bookingId}/candidates":
+    get:
+      tags:
+        - "admin-operations-controller"
+      operationId: "candidates"
+      parameters:
+        - name: "bookingId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/CandidateResponse"
+  "/api/v1/admin/operators/{id}/absences/{absenceId}":
+    delete:
+      tags:
+        - "admin-operations-controller"
+      operationId: "removeAbsence"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+        - name: "absenceId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      responses:
+        "204":
+          description: "No Content"
+components:
+  schemas:
+    AvailabilityRequest:
+      type: "object"
+      properties:
+        week:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/ShiftRequest"
+      required:
+        - "week"
+    ShiftRequest:
+      type: "object"
+      properties:
+        dayOfWeek:
+          type: "integer"
+          format: "int32"
+          maximum: 7
+          minimum: 1
+        startsAt:
+          type: "string"
+        endsAt:
+          type: "string"
+      required:
+        - "dayOfWeek"
+        - "endsAt"
+        - "startsAt"
+    OperatorResponse:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+        userId:
+          type: "integer"
+          format: "int64"
+        fullName:
+          type: "string"
+        email:
+          type: "string"
+        phone:
+          type: "string"
+        active:
+          type: "boolean"
+        hiredOn:
+          type: "string"
+          format: "date"
+        week:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/ShiftResponse"
+        completedServices:
+          type: "integer"
+          format: "int32"
+        averageRating:
+          type: "number"
+          format: "double"
+        ratingsCount:
+          type: "integer"
+          format: "int32"
+    ShiftResponse:
+      type: "object"
+      properties:
+        dayOfWeek:
+          type: "integer"
+          format: "int32"
+        startsAt:
+          type: "string"
+        endsAt:
+          type: "string"
+    AssignRequest:
+      type: "object"
+      properties:
+        operatorId:
+          type: "integer"
+          format: "int32"
+      required:
+        - "operatorId"
+    AssignmentResponse:
+      type: "object"
+      properties:
+        bookingId:
+          type: "integer"
+          format: "int64"
+        operatorId:
+          type: "integer"
+          format: "int32"
+        operatorName:
+          type: "string"
+        status:
+          type: "string"
+    RatingRequest:
+      type: "object"
+      properties:
+        rating:
+          type: "integer"
+          format: "int32"
+          maximum: 5
+          minimum: 1
+        comment:
+          type: "string"
+          maxLength: 500
+          minLength: 0
+      required:
+        - "rating"
+    RatingResponse:
+      type: "object"
+      properties:
+        bookingId:
+          type: "integer"
+          format: "int64"
+        bookingCode:
+          type: "string"
+        date:
+          type: "string"
+          format: "date"
+        services:
+          type: "string"
+        vehicle:
+          type: "string"
+        plate:
+          type: "string"
+        rating:
+          type: "integer"
+          format: "int32"
+        comment:
+          type: "string"
+        ratedAt:
+          type: "string"
+          format: "date-time"
+        operatorName:
+          type: "string"
+    OperatorServiceResponse:
+      type: "object"
+      properties:
+        bookingId:
+          type: "integer"
+          format: "int64"
+        code:
+          type: "string"
+        bookingStatus:
+          type: "string"
+        date:
+          type: "string"
+          format: "date"
+        startTime:
+          type: "string"
+        endTime:
+          type: "string"
+        services:
+          type: "string"
+        vehicle:
+          type: "string"
+        plate:
+          type: "string"
+        total:
+          type: "number"
+        status:
+          type: "string"
+        startedAt:
+          type: "string"
+          format: "date-time"
+        finishedAt:
+          type: "string"
+          format: "date-time"
+        rating:
+          type: "integer"
+          format: "int32"
+        comment:
+          type: "string"
+        startable:
+          type: "boolean"
+    AbsenceRequest:
+      type: "object"
+      properties:
+        startsAt:
+          type: "string"
+          format: "date-time"
+        endsAt:
+          type: "string"
+          format: "date-time"
+        reason:
+          type: "string"
+          maxLength: 120
+          minLength: 0
+      required:
+        - "endsAt"
+        - "reason"
+        - "startsAt"
+    AbsenceResponse:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+        startsAt:
+          type: "string"
+          format: "date-time"
+        endsAt:
+          type: "string"
+          format: "date-time"
+        reason:
+          type: "string"
+    ActiveRequest:
+      type: "object"
+      properties:
+        active:
+          type: "boolean"
+      required:
+        - "active"
+    CandidateResponse:
+      type: "object"
+      properties:
+        operatorId:
+          type: "integer"
+          format: "int32"
+        fullName:
+          type: "string"
+        averageRating:
+          type: "number"
+          format: "double"
+        ratingsCount:
+          type: "integer"
+          format: "int32"
+        assigned:
+          type: "boolean"
+        available:
+          type: "boolean"
+        unavailableReason:
+          type: "string"

@@ -1,0 +1,513 @@
+# Generated from the running payment-service (Swashbuckle, GET /swagger/v1/swagger.json) on 2026-10-06.
+# Do not edit by hand: regenerate from the code so the contract never drifts.
+openapi: "3.0.1"
+info:
+  title: "LavaRápido payment-service API"
+  version: "v1"
+  description: "Contract of payment-service. Public paths are reached through the API gateway."
+servers:
+  - url: "http://localhost:8080"
+    description: "Through the API gateway (ADR-005)"
+  - url: "http://localhost:3005"
+    description: "payment-service directly (local development)"
+paths:
+  "/api/v1/admin/payments":
+    get:
+      tags:
+        - "AdminPayments"
+      parameters:
+        - name: "status"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentView"
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentView"
+            "text/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentView"
+    post:
+      tags:
+        - "AdminPayments"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ManualPaymentRequest"
+          "text/json":
+            schema:
+              "$ref": "#/components/schemas/ManualPaymentRequest"
+          "application/*+json":
+            schema:
+              "$ref": "#/components/schemas/ManualPaymentRequest"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PaymentView"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentView"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentView"
+  "/api/v1/admin/payments/{id}/approve":
+    post:
+      tags:
+        - "AdminPayments"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PaymentView"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentView"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentView"
+  "/api/v1/admin/payments/{id}/reject":
+    post:
+      tags:
+        - "AdminPayments"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/RejectPaymentRequest"
+          "text/json":
+            schema:
+              "$ref": "#/components/schemas/RejectPaymentRequest"
+          "application/*+json":
+            schema:
+              "$ref": "#/components/schemas/RejectPaymentRequest"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PaymentView"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentView"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentView"
+  "/api/v1/admin/payments/{id}/refund":
+    post:
+      tags:
+        - "AdminPayments"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/payment-accounts":
+    get:
+      tags:
+        - "AdminPayments"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentAccountDto"
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentAccountDto"
+            "text/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentAccountDto"
+    post:
+      tags:
+        - "AdminPayments"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SaveAccountRequest"
+          "text/json":
+            schema:
+              "$ref": "#/components/schemas/SaveAccountRequest"
+          "application/*+json":
+            schema:
+              "$ref": "#/components/schemas/SaveAccountRequest"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PaymentAccountDto"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentAccountDto"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentAccountDto"
+  "/api/v1/admin/payment-methods":
+    get:
+      tags:
+        - "AdminPayments"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentMethodDto"
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentMethodDto"
+            "text/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentMethodDto"
+  "/api/v1/admin/payment-accounts/{id}":
+    put:
+      tags:
+        - "AdminPayments"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SaveAccountRequest"
+          "text/json":
+            schema:
+              "$ref": "#/components/schemas/SaveAccountRequest"
+          "application/*+json":
+            schema:
+              "$ref": "#/components/schemas/SaveAccountRequest"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PaymentAccountDto"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentAccountDto"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentAccountDto"
+  "/api/v1/payment-accounts":
+    get:
+      tags:
+        - "Payments"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentAccountDto"
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentAccountDto"
+            "text/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentAccountDto"
+  "/api/v1/payments":
+    post:
+      tags:
+        - "Payments"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ReportPaymentRequest"
+          "text/json":
+            schema:
+              "$ref": "#/components/schemas/ReportPaymentRequest"
+          "application/*+json":
+            schema:
+              "$ref": "#/components/schemas/ReportPaymentRequest"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PaymentView"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentView"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentView"
+  "/api/v1/payments/me":
+    get:
+      tags:
+        - "Payments"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentView"
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentView"
+            "text/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentView"
+  "/health":
+    get:
+      tags:
+        - "PaymentService.Api"
+      responses:
+        "200":
+          description: "OK"
+  "/actuator/health":
+    get:
+      tags:
+        - "PaymentService.Api"
+      responses:
+        "200":
+          description: "OK"
+components:
+  schemas:
+    BookingInfo:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+        code:
+          type: "string"
+          nullable: true
+        status:
+          type: "string"
+          nullable: true
+        total:
+          type: "number"
+          format: "double"
+        date:
+          type: "string"
+          nullable: true
+        startTime:
+          type: "string"
+          nullable: true
+        services:
+          type: "string"
+          nullable: true
+        vehicle:
+          type: "string"
+          nullable: true
+        plate:
+          type: "string"
+          nullable: true
+        ownerUserId:
+          type: "integer"
+          format: "int64"
+          nullable: true
+      additionalProperties: false
+    ManualPaymentRequest:
+      type: "object"
+      properties:
+        bookingId:
+          type: "integer"
+          format: "int64"
+        paymentAccountId:
+          type: "integer"
+          format: "int32"
+        transactionReference:
+          type: "string"
+          nullable: true
+      additionalProperties: false
+    PaymentAccountDto:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+        methodCode:
+          type: "string"
+          nullable: true
+        methodName:
+          type: "string"
+          nullable: true
+        accountHolder:
+          type: "string"
+          nullable: true
+        accountNumber:
+          type: "string"
+          nullable: true
+        qrImageUrl:
+          type: "string"
+          nullable: true
+        instructions:
+          type: "string"
+          nullable: true
+        active:
+          type: "boolean"
+        requiresReceipt:
+          type: "boolean"
+      additionalProperties: false
+    PaymentMethodDto:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+        code:
+          type: "string"
+          nullable: true
+        name:
+          type: "string"
+          nullable: true
+        requiresReceipt:
+          type: "boolean"
+      additionalProperties: false
+    PaymentView:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+        status:
+          type: "string"
+          nullable: true
+        amount:
+          type: "number"
+          format: "double"
+        processedAtUtc:
+          type: "string"
+          format: "date-time"
+          nullable: true
+        rejectionReason:
+          type: "string"
+          nullable: true
+        transactionReference:
+          type: "string"
+          nullable: true
+        receiptImage:
+          type: "string"
+          nullable: true
+        reportedAtUtc:
+          type: "string"
+          format: "date-time"
+          nullable: true
+        reportedBy:
+          type: "integer"
+          format: "int64"
+          nullable: true
+        account:
+          "$ref": "#/components/schemas/PaymentAccountDto"
+        booking:
+          "$ref": "#/components/schemas/BookingInfo"
+      additionalProperties: false
+    RejectPaymentRequest:
+      type: "object"
+      properties:
+        reason:
+          type: "string"
+          nullable: true
+      additionalProperties: false
+    ReportPaymentRequest:
+      type: "object"
+      properties:
+        bookingId:
+          type: "integer"
+          format: "int64"
+        paymentAccountId:
+          type: "integer"
+          format: "int32"
+        transactionReference:
+          type: "string"
+          nullable: true
+        receiptImage:
+          type: "string"
+          nullable: true
+      additionalProperties: false
+    SaveAccountRequest:
+      type: "object"
+      properties:
+        methodCode:
+          type: "string"
+          nullable: true
+        accountHolder:
+          type: "string"
+          nullable: true
+        accountNumber:
+          type: "string"
+          nullable: true
+        qrImageUrl:
+          type: "string"
+          nullable: true
+        instructions:
+          type: "string"
+          nullable: true
+        active:
+          type: "boolean"
+      additionalProperties: false
