@@ -2,8 +2,9 @@
 
 > The screen structure of the web app (Angular 21, `Web/src/app`), how screens connect, and which
 > backend service feeds each one. Source of truth: `app.routes.ts` and each feature's
-> `*-routing-module.ts`. The mobile app (React Native / Expo) mirrors the same three role areas and calls security,
-customer and booking directly (ports 3001–3003, configurable with `EXPO_PUBLIC_*` variables).
+> `*-routing-module.ts`. The mobile app (React Native / Expo) mirrors the same three role areas and calls
+the API Gateway (`:8080`, `EXPO_PUBLIC_API_URL`); each service can be pointed at directly while
+debugging (`EXPO_PUBLIC_CUSTOMER_API_URL`, `…_BOOKING_…`, `…_OPERATIONS_…`, `…_PAYMENT_…`, `…_NOTIFICATION_…`).
 
 ---
 
@@ -69,22 +70,22 @@ Status: **API** = reads and writes the backend · **Partial** = some data still 
 | Client dashboard | `/client` | CLIENT | customer (vehicles), booking (stats, next booking, establishment) | API |
 | Book a wash | `/client/reserve` | CLIENT | customer (vehicles), booking (catalog, availability, booking) | API |
 | My vehicles | `/client/vehicles` | CLIENT | customer | API |
-| Service history | `/client/history` | CLIENT | booking (active, completed, cancelled bookings) | API (ratings wait for operations) |
-| Pay a booking | `/client/payment` | CLIENT | booking (amount, points discount, cancel); payment (incomplete) | Partial — the receipt upload and payment state are still local until payment-service |
+| Service history | `/client/history` | CLIENT | booking (bookings), operations (ratings) | API |
+| Pay a booking | `/client/payment` | CLIENT | booking (amount, points discount, cancel); payment (accounts with QR, report with receipt, my payments) | API (the points discount stays 0 until the loyalty ledger exists) |
 | Notifications (all roles) | `*/notifications` | any | notification | API |
 | Profile (all roles) | `*/profile` | any | security | API |
 | Preferences — theme, language | `*/configuration`, `*/settings` | any | — (browser `localStorage`) | Local — **gap**: stored per browser, not per account, so a second account on the same device inherits them. Required: load/save through `/users/me/preferences` (RF-019/020) |
-| Operator area | `/operator/**` | OPERATOR | operations (planned) | Local (except notifications and profile) |
-| Admin dashboard | `/admin` | ADMIN | booking (bookings, bays) | Partial (operator and payment widgets local) |
-| Bookings | `/admin/reservations` | ADMIN | booking, customer (plate lookup), security (client names) | API (operator assignment local) |
+| Operator area | `/operator/**` | OPERATOR | operations (services, start/finish, ratings), notification, security | API (the `tasks` page is still an empty placeholder) |
+| Admin dashboard | `/admin` | ADMIN | booking (bookings, bays), operations, payment | API |
+| Bookings | `/admin/reservations` | ADMIN | booking, customer (plate lookup), security (client names), operations (assignment, candidates) | API |
 | Schedule and bays | `/admin/schedule` | ADMIN | booking | API |
 | Management — users | `/admin/management` | ADMIN | security | API |
 | Management — services | `/admin/management` | ADMIN | booking (catalog, prices per vehicle type) | API |
-| Management — roles, promotions | `/admin/management` | ADMIN | — / payment (planned) | Local (roles are fixed, ADR-010) |
-| Operators, calendar | `/admin/operators/**` | ADMIN | operations (planned) | Local |
-| Payments | `/admin/payments` | ADMIN | payment (incomplete) | Local |
-| Reports | `/admin/reports` | ADMIN | booking | Partial |
-| Settings — business data | `/admin/settings` | ADMIN | booking (establishment, fields pending ADR-010) | Local |
+| Management — roles, promotions | `/admin/management` | ADMIN | — / payment (promotions not built) | Local (roles are fixed, ADR-010; promotions wait for payment-service) |
+| Operators, calendar | `/admin/operators/**` | ADMIN | operations (operators, shifts, absences) | API |
+| Payments | `/admin/payments` | ADMIN | payment (review, approve/reject, manual payment) | API |
+| Reports | `/admin/reports` | ADMIN | booking, payment | Partial |
+| Settings — business data | `/admin/settings` | ADMIN | booking (establishment, fields pending ADR-010); payment (payment accounts and QR) | Partial (business data local; payment accounts API) |
 
 ---
 
