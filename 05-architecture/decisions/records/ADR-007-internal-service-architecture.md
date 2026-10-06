@@ -28,6 +28,14 @@ The domain layer does not import Spring or JPA. Persistence entities are separat
 
 The structure adds mapping and interface code, but keeps business rules testable and avoids coupling the domain model to infrastructure.
 
+## Implementation note (2026-10-06)
+
+The five Java services (security, customer, booking, operations, notification) follow this ADR.
+`payment-service` is .NET 8 and uses the same idea in four projects (Domain, Application,
+Infrastructure, Api), with three accepted differences: EF Core maps the domain classes directly,
+there are no input-port interfaces, and one application service holds all use cases. See
+**ADR-013**.
+
 ## Alternatives
 
 | Alternative | Result |

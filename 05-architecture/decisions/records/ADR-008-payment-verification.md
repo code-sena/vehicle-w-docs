@@ -56,6 +56,29 @@ The flow is possible in the local academic environment without a public payment 
 - Accepted image formats and maximum size.
 - Whether service execution may start before payment approval.
 
+## Implementation note (2026-10-06)
+
+Built in `payment-service` (.NET 8, ADR-013):
+
+| Point of this ADR | As built |
+|---|---|
+| Methods | Seed `EFECTIVO`, `NEQUI`, `DAVIPLATA`, `TRANSFERENCIA`; the admin manages one account per method with QR and instructions |
+| Client flow | `POST /payments` creates the payment, attaches the receipt and moves it to `IN_REVIEW` in one step. The amount is the booking total read from booking-service; the browser never sends it |
+| Cash / verified transfer | `POST /admin/payments`: the admin registers it and it is approved at once |
+| Review | Approve, reject with a reason (max 200), refund an approved payment |
+| One approved payment per booking | ✅ Filtered unique index `ux_payment_one_approved_per_booking` + check in the use case |
+| One open payment per booking | ✅ 409 `PAYMENT_ALREADY_REPORTED` |
+| Declared amount stored apart from the amount due | ✅ `payment_receipt.reported_amount` vs `payment.amount` (today both get the booking total) |
+| Transaction reference not reused | ❌ **Not enforced yet** (RF-016) |
+| Rejected attempts kept in history | ✅ A new payment can be reported after a rejection |
+
+Pending decisions, as answered for now:
+
+- **Receipt storage:** temporary — the receipt and the account QR are stored as images (data
+  URLs) in `NVARCHAR(MAX)` columns (migration 016). Request body limit 8 MB. Final file storage
+  is still open.
+- **Execution before payment approval:** not blocked; operations does not check payments.
+
 ## References
 
 - Payment requirements → `04-requirements/functional.md` RF-013 to RF-016
