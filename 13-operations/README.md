@@ -11,14 +11,14 @@
 | Indicator (SLI) | Objective (SLO) |
 |---|---|
 | Every service answers `UP` on `/actuator/health` | During every review session and demo |
-| The core flows work end to end: sign-up → login → vehicle → booking → notification | Verified before every review session |
+| The core flows work end to end: sign-up → login → vehicle → booking → notification → operator assignment → start/finish → rating → payment with receipt → admin approval | Verified before every review session |
 
 There is no SLA with an external customer: the project is academic.
 
 **Before a review session (checklist):**
-1. `docker compose up -d` and wait for `lavarapido-sqlserver` to be healthy.
-2. Start the services; all health checks `UP` (see `observability.md`).
-3. Run the core flow once with a demo account.
+1. `docker compose up -d` and wait for `lavarapido-sqlserver` to be healthy (`payment-migrate` must end with exit code 0).
+2. Start the services (payment-service with `dotnet run`, it is not in the compose file yet); all health checks `UP` on 3001–3006 and 8080 (see `observability.md`).
+3. Run the core flow once with the demo accounts (client, admin and operator). The operator needs a weekly shift that covers the booking time, or the assignment fails with `OPERATOR_NOT_ON_SHIFT`.
 4. RabbitMQ dead-letter queues empty.
 
 ---
