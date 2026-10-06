@@ -12,6 +12,7 @@
 | Git | any recent | `git --version` |
 | Docker Desktop | 24+ | `docker --version` |
 | JDK | **21+** (the team uses 21; 24 also works) | `java -version` |
+| .NET SDK | **8** (only for payment-service; Visual Studio 2022 17.8+ also works) | `dotnet --version` |
 | Node.js | 20.19+ / 22.12+ / 24 (Angular 21) | `node -v` |
 | Angular CLI (optional, comes with `npx`) | 21 | `npx ng version` |
 
@@ -51,6 +52,8 @@ LavadoVehicular-Movil/                React Native (Expo) app
 | 3001 | security-service |
 | 3002 | customer-service |
 | 3003 | booking-service |
+| 3004 | operations-service (`OPERATIONS_PORT`) |
+| 3005 | payment-service, .NET (`PAYMENT_PORT`) |
 | 3006 | notification-service |
 | 8080 | api-gateway |
 | 4200 | Web (`ng serve`) |
@@ -101,27 +104,34 @@ run automatically at startup.
 cd Backend/lavarapido-security-service     && ./mvnw spring-boot:run
 cd Backend/lavarapido-customer-service     && ./mvnw spring-boot:run
 cd Backend/lavarapido-booking-service      && ./mvnw spring-boot:run
+cd Backend/lavarapido-operations-service   && ./mvnw spring-boot:run
+cd Backend/lavarapido-payment-service      && dotnet run --project src/PaymentService.Api   # .NET 8
 cd Backend/lavarapido-notification-service && ./mvnw spring-boot:run
-cd Backend/lavarapido-api-gateway          && ./mvnw spring-boot:run   # optional in dev
+cd Backend/lavarapido-api-gateway          && ./mvnw spring-boot:run   # required: the web goes through it
 ```
 
-Alternative (everything in Docker): `docker compose --profile app up -d --build`.
+payment-service does not create its tables on startup: `docker compose up -d` runs the
+`payment-migrate` container (Liquibase) once. It reads the same `lavarapido-infra/.env`.
+
+Alternative (everything in Docker): `docker compose --profile app up -d --build`. payment-service
+is not in the compose file yet: run it with `dotnet run` (see `05-architecture/deployment.md`).
 
 ### Step 4: Start the web
 
 ```bash
 cd Web
 npm install
-npx ng serve                # http://localhost:4200 — proxy.conf.json routes /api/v1/** to each service
+npx ng serve                # http://localhost:4200 — proxy.conf.json sends /api to the gateway (:8080)
 ```
 
 ### Step 5: Verify it works
 
 ```bash
-curl http://localhost:3001/actuator/health   # {"status":"UP"} — same for 3002, 3003, 3006, 8080
+curl http://localhost:3001/actuator/health   # {"status":"UP"} — same for 3002–3006 and 8080
 ```
 
-Swagger UI (dev profile): `http://localhost:300N/swagger-ui.html`.
+Swagger UI (dev profile): `http://localhost:300N/swagger-ui.html`; payment-service:
+`http://localhost:3005/swagger`.
 Demo accounts (seeded by security-service in dev): `admin@gmail.com`, `operador@gmail.com`,
 `cliente@gmail.com`.
 
