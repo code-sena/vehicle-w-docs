@@ -1,7 +1,7 @@
 # Runbook — API Gateway
 
 **Service:** api-gateway · **Port:** 8080 · **Repository:** `lavarapido-api-gateway`
-**Last updated:** 2026-10-04
+**Last updated:** 2026-10-06
 
 ---
 
@@ -11,7 +11,7 @@
 |---|---|
 | Start | `./mvnw spring-boot:run` (or the `api-gateway` service in `lavarapido-infra/docker-compose.yml`) |
 | Health | `GET http://localhost:8080/actuator/health` |
-| Depends on | The 4 services it routes to (it starts without them; their routes fail until they are up) |
+| Depends on | The 6 services it routes to (it starts without them; their routes fail until they are up) |
 | Database / broker | None |
 
 ---
@@ -21,7 +21,7 @@
 ```bash
 curl -s localhost:8080/actuator/health                 # {"status":"UP",...}
 curl -s localhost:8080/api/v1/catalog/services         # public route through booking-service
-for p in 3001 3002 3003 3006; do echo "$p $(curl -s localhost:$p/actuator/health)"; done
+for p in 3001 3002 3003 3004 3005 3006; do echo "$p $(curl -s localhost:$p/actuator/health)"; done
 ```
 
 ---
@@ -43,7 +43,7 @@ for p in 3001 3002 3003 3006; do echo "$p $(curl -s localhost:$p/actuator/health
 
 | Task | How |
 |---|---|
-| Point the web to the gateway | Today the web `proxy.conf.json` targets each service directly (3001–3006). To go through the gateway, replace those entries with one `/api` entry targeting `http://localhost:8080` |
+| Web through the gateway | Already done: the web `proxy.conf.json` has one `/api` entry targeting `http://localhost:8080`. If every API call fails from `ng serve`, check that the gateway is running |
 | Add a service | New route block in `application.yml` + test in `GatewayRoutesTest` |
 | Run the tests | `./mvnw test` (22 tests; starts fake HTTP servers, no other service needed) |
 

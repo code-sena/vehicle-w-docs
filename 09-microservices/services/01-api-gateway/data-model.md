@@ -26,6 +26,8 @@ store). See `decisions.md`.
 | security-service URL | route `security-service` | `ROUTE_SECURITY_URL` | `http://localhost:3001` |
 | customer-service URL | route `customer-service` | `ROUTE_CUSTOMER_URL` | `http://localhost:3002` |
 | booking-service URL | route `booking-service` | `ROUTE_BOOKING_URL` | `http://localhost:3003` |
+| operations-service URL | route `operations-service` | `ROUTE_OPERATIONS_URL` | `http://localhost:3004` |
+| payment-service URL | route `payment-service` | `ROUTE_PAYMENT_URL` | `http://localhost:3005` |
 | notification-service URL | route `notification-service` | `ROUTE_NOTIFICATION_URL` | `http://localhost:3006` |
 | Allowed web origins | `app.cors.allowed-origins` | `CORS_ALLOWED_ORIGINS` | `http://localhost:4200` |
 

@@ -14,8 +14,8 @@
 | Repository | `lavarapido-api-gateway` |
 | Stack | Spring Boot 4 + Spring Cloud Gateway 2025.1 (webmvc) · Java 21 |
 | DB engine | — (stateless, no own DB) |
-| Communicates with | security-service, customer-service, booking-service, notification-service |
-| Consumed by | Web frontend (production build), mobile app |
+| Communicates with | security-service, customer-service, booking-service, operations-service, payment-service, notification-service |
+| Consumed by | Web frontend (`proxy.conf.json` in dev), mobile app |
 
 ---
 
@@ -43,15 +43,19 @@
 |---|---|
 | `/api/v1/auth/**`, `/api/v1/users/**`, `/api/v1/admin/users/**` | security-service :3001 |
 | `/api/v1/vehicles/**`, `/api/v1/vehicle-types`, `/api/v1/admin/vehicles` | customer-service :3002 |
-| `/api/v1/catalog/**`, `/api/v1/schedule/**`, `/api/v1/establishment`, `/api/v1/bookings/**`, `/api/v1/admin/bookings/**`, `/api/v1/admin/catalog/**`, `/api/v1/admin/schedule/**`, `/api/v1/admin/bays/**` | booking-service :3003 |
+| `/api/v1/catalog/**`, `/api/v1/schedule/**`, `/api/v1/establishment`, `/api/v1/bookings/**`, `/api/v1/admin/bookings/**`, `/api/v1/admin/catalog/**`, `/api/v1/admin/schedule/**`, `/api/v1/admin/bays/**`, `/api/v1/operator/bookings/**` | booking-service :3003 |
+| `/api/v1/admin/operators/**`, `/api/v1/admin/assignments/**`, `/api/v1/operator/services/**`, `/api/v1/operator/ratings`, `/api/v1/ratings/**` | operations-service :3004 |
+| `/api/v1/payments/**`, `/api/v1/payment-accounts`, `/api/v1/admin/payments/**`, `/api/v1/admin/payment-accounts/**`, `/api/v1/admin/payment-methods` | payment-service :3005 |
 | `/api/v1/notifications/**`, `/api/v1/admin/notifications/**` | notification-service :3006 |
 
 Routing configuration: `lavarapido-api-gateway/src/main/resources/application.yml`. In local
-development the web still uses `Web/proxy.conf.json`, which has the same table: a new route must
-be added in both places.
+development the web's `Web/proxy.conf.json` sends all of `/api` to the gateway (`:8080`), so a new
+route only has to be added here.
 
 Service URLs: `ROUTE_SECURITY_URL`, `ROUTE_CUSTOMER_URL`, `ROUTE_BOOKING_URL`,
-`ROUTE_NOTIFICATION_URL` (default `http://localhost:300N`; container names in Docker).
+`ROUTE_OPERATIONS_URL`, `ROUTE_PAYMENT_URL`, `ROUTE_NOTIFICATION_URL` (default
+`http://localhost:3001`…`3006`; container names in Docker). The compose file does not set
+`ROUTE_PAYMENT_URL` yet (see `05-architecture/deployment.md`).
 
 ---
 

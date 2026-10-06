@@ -40,8 +40,9 @@
 ## Out of scope (what it does NOT do)
 
 - Does not store vehicles or personal data: it asks customer-service.
-- Does not assign operators or track the wash itself (operations-service, planned).
-- Does not charge or redeem points (payment-service, planned); the points columns exist but stay 0.
+- Does not assign operators or track the wash itself (operations-service, :3004); it only exposes
+  `/operator/bookings` so operations can read bookings and move them to `IN_PROGRESS` / `COMPLETED`.
+- Does not charge or redeem points (payment-service, :3005); the points columns exist but stay 0.
 - Does not send notifications: notification-service reacts to its events.
 
 ---
@@ -63,6 +64,8 @@
 | PUT | `/api/v1/admin/schedule/business-hours` | ADMIN |
 | POST · PUT · DELETE | `/api/v1/admin/schedule/exceptions[/{id}]` | ADMIN |
 | GET · POST · PUT · DELETE | `/api/v1/admin/bays[/{id}]` | ADMIN |
+| GET | `/api/v1/operator/bookings` · `/operator/bookings/{id}` | OPERATOR, ADMIN (used by operations-service) |
+| PATCH | `/api/v1/operator/bookings/{id}/status` | OPERATOR, ADMIN (used by operations-service) |
 
 Full contract: [`07-api/contracts/openapi/booking-service.yaml`](../../../07-api/contracts/openapi/booking-service.yaml).
 Dates are local shop dates (`yyyy-MM-dd`) and times `HH:mm` in `America/Bogota`; responses also
