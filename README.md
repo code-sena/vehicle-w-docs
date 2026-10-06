@@ -17,18 +17,19 @@
 | Know what is done and what is missing | [`04-requirements/traceability-matrix.md`](./04-requirements/traceability-matrix.md), [`15-project-control/`](./15-project-control/README.md) |
 | Join the team | [`14-training/technical-onboarding.md`](./14-training/technical-onboarding.md) |
 
-## Status (2026-10-04)
+## Status (2026-10-06)
 
 | Component | State |
 |---|---|
-| api-gateway (8080), security (3001), customer (3002), booking (3003), notification (3006) | Built, tested (286 tests), running with Docker Compose |
-| Web (Angular 21) | Connected to the built services (client dashboard, history and payment amount included); receipt upload and operator screens still local |
-| operations-service, Android app | In development by teammates (the app already uses security, customer and booking) |
-| payment-service | Incomplete |
+| api-gateway (8080), security (3001), customer (3002), booking (3003), notification (3006) | Built, tested, running with Docker Compose |
+| operations-service (3004) | Built: operators, shifts, absences, assignment, execution, ratings. In Docker Compose |
+| payment-service (3005, .NET 8) | Partial: payment accounts with QR, payments with receipt, admin review and manual payments. Promotions, loyalty and events pending; not in Docker Compose yet |
+| Web (Angular 21) | Connected through the gateway to all six services |
+| Android app | In development by teammates (already calls operations and payment too) |
 | CI | Jenkins planned |
 
-Stack: Java 21 · Spring Boot 4 · Spring Cloud Gateway · SQL Server 2022 · Liquibase · RabbitMQ ·
-Angular 21 · React Native (Expo) · Docker.
+Stack: Java 21 · Spring Boot 4 · Spring Cloud Gateway · .NET 8 (payment) · SQL Server 2022 ·
+Liquibase · RabbitMQ · Angular 21 · React Native (Expo) · Docker.
 
 ---
 
