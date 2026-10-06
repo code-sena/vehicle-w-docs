@@ -22,12 +22,15 @@
 | SEQ-01 | Sign-up and welcome | [`source/seq-registration.md`](./diagrams/source/seq-registration.md) | RF-001, RF-018 |
 | SEQ-02 | Book a wash (and full slot) | [`source/seq-booking.md`](./diagrams/source/seq-booking.md) | RF-005, RF-006 |
 | SEQ-03 | Booking reminder | [`source/seq-reminder.md`](./diagrams/source/seq-reminder.md) | ADR-011 §7 |
+| SEQ-04 | Operator assignment, execution and rating | [`source/seq-assignment-execution.md`](./diagrams/source/seq-assignment-execution.md) | RF-009, RF-011, RF-012, RF-012b, ADR-014 |
+| SEQ-05 | Payment by receipt, review and manual payment | [`source/seq-payment.md`](./diagrams/source/seq-payment.md) | RF-013, RF-013b, RF-014, ADR-008 |
 
 ### State
 
 | ID | Name | Source | Covers |
 |----|------|--------|--------|
 | ST-01 | Booking lifecycle | [`source/state-booking.md`](./diagrams/source/state-booking.md) | RF-006, RF-007 |
+| ST-02 | Payment lifecycle | [`source/state-payment.md`](./diagrams/source/state-payment.md) | RF-013b, RF-014, ADR-008 |
 
 ### Data
 
@@ -36,13 +39,12 @@ column, index and constraint) and the executable script `lavarapido-6-services-s
 
 ---
 
-## Missing (add when the service exists)
+## Missing
 
 | Diagram | Waits for |
 |---|---|
-| Sequence: operator assignment and execution | operations-service |
-| Sequence: payment by receipt and review | payment-service |
-| State: payment lifecycle | payment-service |
+| Sequence: automatic operator assignment on `booking.confirmed` | RF-008 (TD-020) |
+| Sequence: promotion and loyalty points | payment-service promotions and loyalty |
 
 ---
 

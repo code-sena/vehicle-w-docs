@@ -13,8 +13,8 @@
 | `diagrams/source/` | Diagram sources (Mermaid in Markdown, rendered by GitHub) |
 | `diagrams/exports/` | Exported images, only when a document outside GitHub needs one |
 
-Current diagrams: containers (C4-02), sign-up, booking, reminder sequences, and the booking
-state machine.
+Current diagrams: containers (C4-02); sign-up, booking, reminder, operator assignment/execution and
+payment sequences; booking and payment state machines.
 
 ---
 
