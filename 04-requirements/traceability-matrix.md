@@ -1,13 +1,14 @@
 # Traceability Matrix
 
 > Connects `04-requirements/functional.md` (RF) → `04-requirements/user-stories.md` (HU) → tests → service.
-> Status as of 2026-10-04. The microservices security, customer, booking and notification are built,
+> Status as of 2026-10-06. The microservices security, customer, booking and notification are built,
 > merged into `develop`, connected to the web and verified end to end against the real database
 > (registration → welcome email, vehicle, booking → confirmation, reminder by email).
-> operations-service is being built by another team member and payment-service is incomplete:
-> their rows reference no test because no repository contains them yet.
-> Tests per service: `./mvnw test` in each repository (security 106, customer 67, booking 31,
-> notification 60, api-gateway 22).
+> operations-service (3004) is built and connected to the web. payment-service (3005, .NET 8) covers
+> payment accounts, receipts and review; promotions and loyalty are pending.
+> Tests per service: `./mvnw test` in each Java repository (security 106, customer 67, booking 31,
+> notification 60, api-gateway 22 — counts at 2026-10-04; operations 22 — run on 2026-10-06).
+> payment: `dotnet test`, 39 green on 2026-10-06 (domain tests only: `PaymentTests`, `AggregateRootTests`).
 
 ---
 
@@ -36,27 +37,27 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RF-005 | Request booking (date, time, type) | HU-BOOK-001 | `BookingServiceTest`, `BookingTest`, `BookingApiWebTest` | `booking-service` | ✅ Done |
 | RF-006 | Slot availability validation | HU-BOOK-001 | `AvailabilityPolicyTest`, `BookingServiceTest` (full slot → alternatives) | `booking-service` | ✅ Done |
 | RF-007 | Modify/cancel booking before start | HU-BOOK-002 | `BookingTest` (reschedule, cancel, blocked after start), `BookingServiceTest` | `booking-service` | ✅ Done |
-| RF-008 | Automatic operator assignment | HU-BOOK-003 | — | `operations-service` | 🟡 In development (another team member) |
-| RF-009 | Assignment/reassignment by Administrator | HU-BOOK-006 | — | `operations-service` | 🟡 In development (web screen works locally, no backend yet) |
-| RF-010 | Operator selection by customer | HU-BOOK-004 | — | `operations-service` | 🔴 Pending |
-| RF-011 | Operator views assigned bookings | HU-BOOK-007 | — | `operations-service` | 🟡 In development |
-| RF-012 | Rate a completed service | HU-BOOK-005 | — | `operations-service` | 🟡 In development |
-| RF-012b | Operator updates service status | HU-BOOK-007 | — | `operations-service` | 🟡 In development (admin can already move a booking to IN_PROGRESS / COMPLETED in booking-service) |
-| RF-013 | Show QR (digital methods only) and payment instructions | HU-PAY-001 | — | `payment-service` | 🔴 Pending (service incomplete) |
-| RF-013b | Upload payment receipt (digital methods only) | HU-PAY-001 | — | `payment-service` | 🔴 Pending |
-| RF-014 | Admin reviews digital receipt or confirms cash payment | HU-PAY-003 | — | `payment-service` | 🔴 Pending |
-| RF-015 | Payment history by date/service | HU-PAY-002 | — | `payment-service` | 🔴 Pending |
-| RF-016 | No card data collected; reject reused transaction reference | HU-PAY-001 | — | `payment-service` | 🔴 Pending |
-| RF-017 | Role-based dashboard | HU-UI-001 | — | Frontend | 🟡 In progress (admin dashboard fed by real bookings; operator and payment widgets still local) |
+| RF-008 | Automatic operator assignment | HU-BOOK-003 | — | `operations-service` | 🟡 Partial — the admin assigns with a candidates list (`AssignmentPolicy`); automatic assignment on `booking.confirmed` is not built |
+| RF-009 | Assignment/reassignment by Administrator | HU-BOOK-006 | `AssignmentPolicyTest`, `OperationsServiceTest`, `ServiceExecutionTest` (reassign only while pending) | `operations-service` | ✅ Done |
+| RF-010 | Operator selection by customer | HU-BOOK-004 | — | `operations-service` | 🔴 Pending (no client endpoint to choose the operator) |
+| RF-011 | Operator views assigned bookings | HU-BOOK-007 | `OperationsServiceTest`, `OperationsApiWebTest` | `operations-service` | ✅ Done |
+| RF-012 | Rate a completed service | HU-BOOK-005 | `ServiceExecutionTest` (1–5, once, only completed), `OperationsServiceTest` | `operations-service` | ✅ Done (one rating per booking, applied to all its lines) |
+| RF-012b | Operator updates service status | HU-BOOK-007 | `ServiceExecutionTest`, `OperationsServiceTest` | `operations-service` | ✅ Done (start only on the booking day; booking moves to `IN_PROGRESS` / `COMPLETED`) |
+| RF-013 | Show QR (digital methods only) and payment instructions | HU-PAY-001 | — (no Application/Api tests yet) | `payment-service` | ✅ Done (`GET /payment-accounts`: active accounts of methods that require a receipt) |
+| RF-013b | Upload payment receipt (digital methods only) | HU-PAY-001 | `PaymentTests` (receipt, submit for review) | `payment-service` | ✅ Done (image stored as data URL until there is file storage) |
+| RF-014 | Admin reviews digital receipt or confirms cash payment | HU-PAY-003 | `PaymentTests` (approve, reject, refund) | `payment-service` | ✅ Done (approve / reject with reason / manual payment) |
+| RF-015 | Payment history by date/service | HU-PAY-002 | — | `payment-service` | 🟡 Partial — `GET /payments/me` lists the client’s payments; no date/service filter in the API |
+| RF-016 | No card data collected; reject reused transaction reference | HU-PAY-001 | — | `payment-service` | 🟡 Partial — no card data; a reused transaction reference is **not** rejected yet |
+| RF-017 | Role-based dashboard | HU-UI-001 | — | Frontend | ✅ Done (admin dashboard reads bookings, operators and payments; operator home reads its services) |
 | RF-018 | Notifications with read/unread state | HU-UI-002 | `NotificationUseCasesTest`, `NotificationFactoryTest`, `BookingReminderServiceTest`, `BookingReminderTest` | `notification-service` | ✅ Done (inbox, push, welcome and booking emails); reminders by email pending merge |
 | RF-019 | Theme customisation, per account | HU-UI-003 | Manual check | `security-service` (preferences) | 🟡 In progress — gap: the web keeps the theme in browser `localStorage` (shared by every account on the device); `GET/PUT /users/me/preferences` exists but is not called, and it only accepts `light`/`dark` while the web has 4 palettes |
 | RF-020 | Language switch (4 languages), per account | HU-UI-003 | Manual check | `security-service` (preferences) | 🟡 In progress — same gap as RF-019 (language in `localStorage`) |
 | RF-021 | Configure business hours and exceptions | HU-ADMIN-001 | `AvailabilityPolicyTest` (break, closed day), `BookingApiWebTest` | `booking-service` | ✅ Done |
-| RF-022 | Operator availability registration/adjustment | HU-ADMIN-001 | — | `operations-service` | 🟡 In development |
-| RF-023 | Operational reports | HU-ADMIN-001 | — | `booking-service`, `operations-service`, `payment-service` | 🟡 In progress (web reports read real bookings; revenue needs payment) |
-| RF-024 | Manage promotions (create/edit/deactivate) | HU-PROMO-001 | — | `payment-service` | 🔴 Pending |
+| RF-022 | Operator availability registration/adjustment | HU-ADMIN-001 | `AssignmentPolicyTest` (shift, absence), `OperationsServiceTest` | `operations-service` | ✅ Done (weekly shift and absences, set by the admin) |
+| RF-023 | Operational reports | HU-ADMIN-001 | — | `booking-service`, `operations-service`, `payment-service` | 🟡 In progress (web reports read real bookings and payments) |
+| RF-024 | Manage promotions (create/edit/deactivate) | HU-PROMO-001 | — | `payment-service` | 🔴 Pending (tables exist in `promotion`, no endpoints) |
 | RF-025 | Apply promotion at payment | HU-PROMO-002 | — | `payment-service` | 🔴 Pending |
-| RF-026 | Earn/redeem loyalty points | HU-PROMO-002 | — | `payment-service` | 🔴 Pending (columns exist in `booking`, ledger not built) |
+| RF-026 | Earn/redeem loyalty points | HU-PROMO-002 | — | `payment-service` | 🔴 Pending (`payment.loyalty_transaction` exists, no endpoints; booking points columns stay 0) |
 
 ---
 
