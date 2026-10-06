@@ -15,6 +15,8 @@ independently in the shared `LavaRapido` database:
 | security-service | `DATABASECHANGELOG_SECURITY`, `DATABASECHANGELOGLOCK_SECURITY` |
 | customer-service | `DATABASECHANGELOG_CUSTOMER`, `DATABASECHANGELOGLOCK_CUSTOMER` |
 | booking-service | `DATABASECHANGELOG_BOOKING`, `DATABASECHANGELOGLOCK_BOOKING` |
+| operations-service | `DATABASECHANGELOG_OPERATIONS`, `DATABASECHANGELOGLOCK_OPERATIONS` |
+| payment-service | `DATABASECHANGELOG_PAYMENT`, `DATABASECHANGELOGLOCK_PAYMENT` |
 | notification-service | `DATABASECHANGELOG_NOTIFICATION`, `DATABASECHANGELOGLOCK_NOTIFICATION` |
 
 ## File numbering (shared across services)
@@ -28,7 +30,7 @@ touches and in which order the global script (`lavarapido-6-services-sqlserver.s
 | `014`+ | Later changes, numbered in the order they were made |
 | `101`–`109` | Seed data (`seed/` folder) |
 
-Current files (2026-10-04):
+Current files (2026-10-06):
 
 ```
 security-service       001-create-security-schemas · 002-create-security-and-audit-core
@@ -42,8 +44,20 @@ booking-service        005-create-booking-schemas (catalog + booking, triggers)
 notification-service   010-create-notification-schema · 016-create-notification-device-token
                        017-create-notification-processed-event
                        019-create-notification-booking-reminder · seed/108-seed-notification-type
-operations / payment   007, 008, 009, 105–107 reserved (in the global script, not yet in a service)
+operations-service     007-create-execution-schema (5 tables + triggers) · seed/105-seed-execution-status
+payment-service        db/changelog/changes/001 … 016 (own numbering, see below)
 ```
+
+**payment-service is different** (.NET, ADR-013):
+
+- Its changelogs live in `lavarapido-payment-service/db/changelog/` (YAML master, plain-SQL files
+  in `changes/`), not in `src/main/resources`.
+- The service does not apply them at startup: the `payment-migrate` container
+  (`liquibase/liquibase:4.29` in `lavarapido-infra/docker-compose.yml`) runs `update` once.
+- It uses its **own numbering** `001`–`016` (`001-create-schema-promotion` … `015-seed-reference-data`,
+  `016-payment-images-as-data`). Those numbers repeat the global ones above; the changeset ids
+  (`pay-0NN-…`) and the changelog table `DATABASECHANGELOG_PAYMENT` keep them apart, but a new
+  payment file should not be read as part of the global sequence.
 
 `db.changelog-master.xml` of each service lists its files with `<include>`; Liquibase runs them in
 that order (schema first, then later changes, then seeds).
