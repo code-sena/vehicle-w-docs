@@ -5,11 +5,11 @@
 
 ---
 
-## State today (2026-10-04)
+## State today (2026-10-06)
 
 | Item | State |
 |---|---|
-| Backend automated tests | 286, all green (security 106, customer 67, booking 31, notification 60, api-gateway 22) |
+| Backend automated tests | 347, all green: Java 308 (security 106, customer 67, booking 31, operations 22, notification 60, api-gateway 22) + payment .NET 39. Operations and payment run on 2026-10-06; the others on 2026-10-04 |
 | Web automated tests | 36 Vitest spec files; the suite **does not compile** (6 stale scaffold specs) |
 | End-to-end | Manual, full flow passed 2026-10-04 |
 | CI | None yet — Jenkins planned |
@@ -32,7 +32,7 @@ Details, tiers, tools and gaps → [`testing-strategy.md`](./testing-strategy.md
 
 A reviewer checks, besides "it works":
 
-1. `./mvnw test` (or `ng build`) passes locally; new rules have a test.
+1. `./mvnw test` (payment: `dotnet test`; web: `ng build`) passes locally; new rules have a test.
 2. Business rules live in the backend domain/use cases, not in the frontend.
 3. Identifiers in English, code comments in Spanish, docs in English (ADR-001).
 4. No secrets in the diff (`.env`, passwords, keys); new variables added to `.env.example`.
