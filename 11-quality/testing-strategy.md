@@ -1,7 +1,7 @@
 # Testing Strategy
 
 > How LavaRápido is tested today, what each kind of test protects, how to run them, and the gaps.
-> Backend: JUnit 5 + Mockito + Spring Boot Test (`./mvnw test`). Web: Vitest through
+> Backend: JUnit 5 + Mockito + Spring Boot Test (`./mvnw test`); payment-service: xUnit (`dotnet test`). Web: Vitest through
 > `@angular/build:unit-test` (`ng test`).
 
 ---
@@ -20,16 +20,18 @@
                  └───────────────────────────┘
 ```
 
-### Current numbers (2026-10-04, all green)
+### Current numbers (all green; operations and payment run on 2026-10-06, the rest on 2026-10-04)
 
 | Service | Tests | Test classes |
 |---|---|---|
 | security-service | 106 | `UserAccountTest`, `ValueObjectsTest`, `PasswordPolicyTest`, `PasswordResetTokenTest`, `AccountRegistrationServiceTest`, `AuthenticationServiceTest`, `PasswordRecoveryServiceTest`, `UserProfileAndAdministrationTest`, `JwtTokenIssuerTest`, `EmailResetCodeNotifierTest`, `ApiSecurityWebTest` |
 | customer-service | 67 | `CustomerAccountTest`, `LicensePlateTest`, `LicensePlatePolicyTest`, `CustomerVehicleServiceTest`, `UserRegisteredListenerTest`, `CustomerApiWebTest` |
 | booking-service | 31 | `BookingTest`, `AvailabilityPolicyTest`, `BookingServiceTest`, `CatalogServiceTest`, `BookingApiWebTest` |
+| operations-service | 22 | `AssignmentPolicyTest` (5), `ServiceExecutionTest` (4), `OperationsServiceTest` (9), `OperationsApiWebTest` (4) |
 | notification-service | 60 | `NotificationTest`, `DeviceTokenTest`, `NotificationFactoryTest`, `BookingReminderTest`, `NotificationUseCasesTest`, `BookingReminderServiceTest` |
 | api-gateway | 22 | `GatewayRoutesTest` |
-| **Total backend** | **286** | |
+| payment-service (.NET, xUnit, `dotnet test`) | 39 | `PaymentTests`, `AggregateRootTests` — domain only; no Application, Infrastructure or Api tests yet |
+| **Total backend** | **347** | Java 308 + .NET 39 |
 | Web | — | 36 spec files; **the suite does not compile today** (see gaps) |
 
 ---
@@ -96,6 +98,7 @@ and are small.
 
 ```bash
 ./mvnw test                      # one backend service (from its folder)
+dotnet test                      # payment-service (from lavarapido-payment-service)
 npx ng test --watch=false        # web (blocked today, see gaps)
 ```
 
@@ -137,6 +140,8 @@ No coverage tool configured. Policy: every business rule and every endpoint's se
 | No automated test across services | Automate registration → booking → notification |
 | No CI | Add a workflow per repository |
 | No test against a real SQL Server | Testcontainers for the persistence adapters of booking (locking, triggers) |
+| payment-service only tests its domain | Add use-case tests (`PaymentApplicationService` with fake ports) and API tests (roles, 409 codes) |
+| operations-service has no test with booking-service down | Add a test for 503 `BOOKING_SERVICE_UNAVAILABLE` in `OperationsServiceTest` |
 
 ---
 
