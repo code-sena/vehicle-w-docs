@@ -1,0 +1,96 @@
+# Operations Service
+
+> Owner of the **operators, their shifts and absences, the assignment of an operator to a booking,
+> the execution of the wash and the client's rating**. It owns the `execution` schema (ADR-009).
+
+---
+
+## Location in the architecture
+
+| Field | Value |
+|-------|-------|
+| Number in catalog | 05 |
+| Local port | 3004 (`OPERATIONS_PORT`) |
+| Repository | `lavarapido-operations-service` |
+| Stack | Spring Boot 4 · Java 21 · Maven · hexagonal (ADR-007) |
+| DB engine | SQL Server — schema `execution` (Liquibase, changelog table `DATABASECHANGELOG_OPERATIONS`) |
+| Communicates with | booking-service (REST, with the caller's token), security-service (REST, admin token), RabbitMQ (publishes execution events) |
+| Consumed by | Web, mobile, notification-service (through events) |
+
+---
+
+## Responsibilities (what this service DOES)
+
+- **Operators:** every account with role `OPERATOR` in security-service gets a row in
+  `execution.operator` the first time it is listed or calls the service. The admin can activate
+  or deactivate it.
+- **Shifts and absences:** one weekly shift per day (`operator_availability`, replaced as a whole)
+  and dated absences (`operator_absence`) that cannot overlap.
+- **Assignment (RF-008/009):** the admin assigns or changes the operator of a booking while it is
+  `SCHEDULED` or `CONFIRMED`. `AssignmentPolicy` checks: operator active, on shift for the whole
+  booking, not absent, and not busy with another booking at the same time. The candidates endpoint
+  returns every operator with the reason that blocks them, if any.
+- **Execution (RF-010/011):** the operator starts the service only on the booking day and finishes
+  it; the service moves the booking to `IN_PROGRESS` / `COMPLETED` in booking-service. An operator
+  cannot run two services at once.
+- **Ratings (RF-012):** the client rates a completed booking once (1 to 5 stars, comment up to 500
+  characters); the operator sees their ratings and the average.
+- Publish `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` after commit.
+
+## Out of scope (what it does NOT do)
+
+- Does not store bookings, bays or prices: it reads them from booking-service.
+- Does not create accounts or store names: names and contact come from security-service.
+- Does not charge (payment-service) or send notifications (notification-service reacts to its events).
+- Automatic assignment by availability is not built yet: today the admin assigns.
+
+---
+
+## Endpoints
+
+| Method | Path | Access |
+|---|---|---|
+| GET | `/api/v1/admin/operators` | ADMIN |
+| PATCH | `/api/v1/admin/operators/{id}/status` | ADMIN |
+| PUT | `/api/v1/admin/operators/{id}/availability` (whole week) | ADMIN |
+| GET · POST | `/api/v1/admin/operators/{id}/absences` (`?from=&to=`) | ADMIN |
+| DELETE | `/api/v1/admin/operators/{id}/absences/{absenceId}` | ADMIN |
+| GET | `/api/v1/admin/assignments` (`?from=&to=`, default today) | ADMIN |
+| PUT | `/api/v1/admin/assignments/{bookingId}` | ADMIN |
+| GET | `/api/v1/admin/assignments/{bookingId}/candidates` | ADMIN |
+| GET | `/api/v1/operator/services` (`?from=&to=`, default today) | OPERATOR |
+| POST | `/api/v1/operator/services/{bookingId}/start` · `/finish` | OPERATOR |
+| GET | `/api/v1/operator/ratings` | OPERATOR |
+| GET | `/api/v1/ratings/me` | CLIENT |
+| POST | `/api/v1/ratings/{bookingId}` | CLIENT |
+
+Through the gateway these paths are routed to `:3004` (`ROUTE_OPERATIONS_URL`).
+Full contract: [`07-api/contracts/openapi/operations-service.yaml`](../../../07-api/contracts/openapi/operations-service.yaml)
+(Swagger UI in the `dev` profile: `/swagger-ui.html`).
+
+---
+
+## How to run it locally
+
+```bash
+cd lavarapido-operations-service
+./mvnw spring-boot:run           # http://localhost:3004 — Swagger: /swagger-ui.html (dev profile)
+```
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `OPERATIONS_PORT` | `3004` | HTTP port (note: not `PORT` like the other Java services) |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | — | SQL Server |
+| `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE` | — | Verify tokens |
+| `BOOKING_SERVICE_URL` | `http://localhost:3003/api/v1` | Read bookings and move their status |
+| `SECURITY_SERVICE_URL` | `http://localhost:3001/api/v1` | Operator names (`/admin/users?role=OPERATOR`) |
+| `BOOKING_SERVICE_TIMEOUT`, `SECURITY_SERVICE_TIMEOUT` | `3s` | REST timeouts |
+| `BOOKING_ZONE` | `America/Bogota` | Shifts, absences and dates are read in this zone |
+| `MESSAGING_ENABLED`, `RABBITMQ_*` | `false` | Publish execution events |
+
+---
+
+## Related documents
+
+- [data-model.md](./data-model.md) · [events.md](./events.md) · [decisions.md](./decisions.md) · [runbook.md](./runbook.md)
+- ADR-014 (booking integration, operator provisioning, manual assignment), ADR-004 (communication), ADR-009 (decomposition)
