@@ -213,4 +213,4 @@ public record CreateBookingRequest(
 - Security non-functional requirements → `04-requirements/non-functional.md`
 - ADR on authentication → `05-architecture/decisions/`
 - Security event observability → `13-operations/observability.md`
-- RBAC implemented in → `security-service` (roles and JWT) and in every service (`@PreAuthorize` + ownership checks)
+- RBAC implemented in → `security-service` (roles and JWT) and in every service: role rules per path in each `SecurityConfig` (Java), `[Authorize(Roles = …)]` in payment-service (.NET), plus ownership checks in the use cases
