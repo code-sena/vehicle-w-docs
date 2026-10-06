@@ -14,16 +14,18 @@
 
 ### Start everything (details: `10-devops/local-setup.md`)
 
-1. Clone `lavarapido-infra`, the four services, `lavarapido-api-gateway` and the web, side by side.
+1. Clone `lavarapido-infra`, the six services, `lavarapido-api-gateway` and the web, side by side.
 2. In `lavarapido-infra`: copy `.env.example` to `.env` and ask a teammate for the real values
    **in private** (`DB_PASSWORD`, `JWT_SECRET`, `INTERNAL_API_KEY`, mail). Never commit `.env`.
 3. `docker compose up -d` → wait until `lavarapido-sqlserver` is healthy.
-4. Each service: `./mvnw spring-boot:run` (security 3001, customer 3002, booking 3003,
-   notification 3006, gateway 8080). Liquibase creates the tables on first start.
+4. Each Java service: `./mvnw spring-boot:run` (security 3001, customer 3002, booking 3003,
+   operations 3004, notification 3006, gateway 8080). Liquibase creates the tables on first start.
+   payment (.NET 8, port 3005): `dotnet run --project src/PaymentService.Api`; its tables are
+   created by the `payment-migrate` container of step 3.
 5. Web: `npm install`, then `npm start` (port 4200).
 6. Check:
    ```bash
-   for p in 3001 3002 3003 3006 8080; do echo "$p $(curl -s localhost:$p/actuator/health)"; done
+   for p in 3001 3002 3003 3004 3005 3006 8080; do echo "$p $(curl -s localhost:$p/actuator/health)"; done
    ```
 7. Sign in with a demo account seeded by the `dev` profile (`admin@gmail.com`,
    `operador@gmail.com`, `cliente@gmail.com`; ask for the password) and book a wash.
