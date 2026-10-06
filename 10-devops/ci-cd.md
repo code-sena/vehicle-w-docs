@@ -1,6 +1,6 @@
 # CI/CD
 
-> **Status (2026-10-04): planned, not built.** The team will use **Jenkins**. No `Jenkinsfile`
+> **Status (2026-10-06): planned, not built.** The team will use **Jenkins**. No `Jenkinsfile`
 > exists yet in any repository. This page fixes what each pipeline must do so the first
 > `Jenkinsfile` follows it.
 
@@ -13,13 +13,15 @@
 | `lavarapido-security-service` | `./mvnw -B verify` | Docker image (`Dockerfile` exists) |
 | `lavarapido-customer-service` | `./mvnw -B verify` | Docker image (`Dockerfile` exists) |
 | `lavarapido-booking-service` | `./mvnw -B verify` | Docker image (`Dockerfile` exists) |
+| `lavarapido-operations-service` | `./mvnw -B verify` | Docker image (`Dockerfile` exists) |
+| `lavarapido-payment-service` (.NET 8) | `dotnet restore`, `dotnet build -c Release`, `dotnet test` | Docker image (**no `Dockerfile` yet**); Liquibase changelogs in `db/` run by `payment-migrate` |
 | `lavarapido-notification-service` | `./mvnw -B verify` | Docker image (`Dockerfile` exists) |
 | `lavarapido-api-gateway` | `./mvnw -B verify` | Docker image (`Dockerfile` exists) |
 | Web (Angular) | `npm ci`, `npx ng build`, `npx ng test --watch=false` | `dist/` (no `Dockerfile` yet) |
 | `lavarapido-infra` | `docker compose config` (syntax check) | — |
 
 Backend tests need neither SQL Server nor RabbitMQ (fakes, mocks and web slices; see
-`11-quality/testing-strategy.md`), so the agent only needs JDK 21 and Docker.
+`11-quality/testing-strategy.md`), so the agent only needs JDK 21, the .NET 8 SDK (payment) and Docker.
 
 ---
 
@@ -52,6 +54,12 @@ pipeline {
     }
 }
 ```
+
+### payment-service pipeline (.NET)
+
+`dotnet restore` → `dotnet build -c Release --no-restore` → `dotnet test --no-build -c Release
+--logger trx` (publish the `.trx` results). The image stage waits for a `Dockerfile`
+(ADR-013). A Liquibase `validate` against a throwaway SQL Server is optional.
 
 ### Web pipeline
 
