@@ -12,7 +12,7 @@
 | Level | Definition | Example | Response |
 |-------|------------|---------|----------|
 | **P0** | Nothing works | SQL Server down, every service fails at startup, login impossible | Stop everything else |
-| **P1** | A core flow is broken | Booking fails, "My vehicles" fails, notifications not created | Same day, before the next review |
+| **P1** | A core flow is broken | Booking fails, "My vehicles" fails, notifications not created, an operator cannot be assigned or start a service, a payment cannot be reported or approved | Same day, before the next review |
 | **P2** | Secondary feature broken, workaround exists | Emails not arriving but the inbox works; push not sent | Within the sprint |
 | **P3** | Cosmetic | Untranslated text, wrong icon color | Backlog |
 
@@ -36,7 +36,7 @@
 - Check the health of everything:
   ```bash
   docker ps                                             # sqlserver / rabbitmq / mailpit healthy?
-  for p in 3001 3002 3003 3006 8080; do echo "$p $(curl -s localhost:$p/actuator/health)"; done
+  for p in 3001 3002 3003 3004 3005 3006 8080; do echo "$p $(curl -s localhost:$p/actuator/health)"; done
   ```
 
 ### 2. Classify and tell the team
@@ -65,6 +65,10 @@ Frequent causes already seen in this project:
 | Times shifted 5 hours | JVM time zone (fixed in booking-service: JVM runs in UTC) |
 | Booking emails only in the inbox | `INTERNAL_API_KEY` missing or different |
 | `./mvnw` cannot read `distributionUrl` | `maven-wrapper.properties` without final newline |
+| Payment screens fail, every other screen works | payment-service not running (it is not in the compose file; start it with `dotnet run`) or its tables missing (`payment-migrate` did not run) |
+| Payment routes fail only with `--profile app` | The `api-gateway` container has no `ROUTE_PAYMENT_URL` and falls back to `localhost:3005` inside the container |
+| Operator list empty / cannot assign | No account with role `OPERATOR`, or the operator has no shift for that time (`OPERATOR_NOT_ON_SHIFT`) |
+| 503 `BOOKING_SERVICE_UNAVAILABLE` from operations or payment | booking-service down or `BOOKING_SERVICE_URL` wrong |
 
 ### 4. Mitigate
 
