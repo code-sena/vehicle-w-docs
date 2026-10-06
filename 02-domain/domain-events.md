@@ -533,8 +533,8 @@ payload fields) are in `09-microservices/services/<NN-service>/events.md`.
 | `BookingConfirmed` | Published | Also published when a booking is rescheduled |
 | `BookingModified` | Covered by `BookingConfirmed` | A reschedule republishes `BookingConfirmed` with the new start time; consumers treat it as "the booking is now at this time" |
 | `BookingCancelled` | Published | Includes the cancellation reason |
-| Operator, execution and rating events | Pending | `operations-service` in development; notification already listens for `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` |
-| Payment, promotion and loyalty events | Pending | `payment-service` incomplete; notification already listens for `PaymentConfirmed`, `PaymentRejected` |
+| `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` | Published | By `operations-service` (`execution.*`); consumed by notification. A reassignment republishes `OperatorAssigned`; `OperatorReassigned` and `RatingSubmitted` are not emitted |
+| Payment, promotion and loyalty events | Pending | `payment-service` raises `PaymentApproved`, `PaymentRejected`, `PaymentRefunded` in its domain but does not publish them; notification already listens for `payment.confirmed`, `payment.rejected` |
 | `NotificationCreated` | Not emitted | Notifications are read through the inbox API |
 | `CustomerProvisioned`, vehicle events | Raised, only logged | Raised by the customer domain; no consumer needs them yet |
 
