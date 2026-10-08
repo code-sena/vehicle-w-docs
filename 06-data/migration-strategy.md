@@ -30,23 +30,37 @@ touches and in which order the global script (`lavarapido-6-services-sqlserver.s
 | `014`+ | Later changes, numbered in the order they were made |
 | `101`–`109` | Seed data (`seed/` folder) |
 
-Current files (2026-10-06):
+Current files (2026-10-07):
 
 ```
 security-service       001-create-security-schemas · 002-create-security-and-audit-core
                        003-create-security-user-preference · seed/101-seed-security-role
+                       020-security-user-preference-palettes
+                       023-security-custom-role (created and dropped again in the same
+                         session by 026 — see ADR-015: replaced before any other
+                         environment pulled it, so it never shipped as real history)
+                       026-security-role-permissions (drops custom_role, seeds
+                         security.permission and default security.role_permission rows)
 customer-service       004-create-customer-schema · 014-add-customer-user-id
                        015-add-customer-vehicle-model · seed/102-seed-customer-catalogs
 booking-service        005-create-booking-schemas (catalog + booking, triggers)
                        018-booking-adr-010 (bay_status, bay state, business-hour break)
+                       021-booking-schedule-history (audit log for schedule/bay changes)
+                       022-booking-catalog-loyalty-points (catalog.service.loyalty_points)
+                       024-booking-revert-bay-operator (drops service_bay.operator_id —
+                         ADR-015 reaffirms ADR-010's per-booking pairing, not per-shift)
                        seed/103-seed-catalog · seed/104-seed-booking-catalogs
                        seed/109-seed-establishment-schedule
 notification-service   010-create-notification-schema · 016-create-notification-device-token
                        017-create-notification-processed-event
                        019-create-notification-booking-reminder · seed/108-seed-notification-type
+                       025-notification-promotion-redeemed-type (PROMOTION_REDEEMED)
 operations-service     007-create-execution-schema (5 tables + triggers) · seed/105-seed-execution-status
-payment-service        db/changelog/changes/001 … 016 (own numbering, see below)
+payment-service        db/changelog/changes/001 … 018 (own numbering, see below)
 ```
+
+Current global high-water mark: **026** (security-service). The next new changeset in any Java
+service's shared numbering starts at **027**.
 
 **payment-service is different** (.NET, ADR-013):
 
@@ -54,10 +68,11 @@ payment-service        db/changelog/changes/001 … 016 (own numbering, see belo
   in `changes/`), not in `src/main/resources`.
 - The service does not apply them at startup: the `payment-migrate` container
   (`liquibase/liquibase:4.29` in `lavarapido-infra/docker-compose.yml`) runs `update` once.
-- It uses its **own numbering** `001`–`016` (`001-create-schema-promotion` … `015-seed-reference-data`,
-  `016-payment-images-as-data`). Those numbers repeat the global ones above; the changeset ids
-  (`pay-0NN-…`) and the changelog table `DATABASECHANGELOG_PAYMENT` keep them apart, but a new
-  payment file should not be read as part of the global sequence.
+- It uses its **own numbering** `001`–`018` (`001-create-schema-promotion` … `015-seed-reference-data`,
+  `016-payment-images-as-data`, `017-promotion-package-fields`, `018-promotion-required-points`).
+  Those numbers repeat the global ones above; the changeset ids (`pay-0NN-…`) and the changelog
+  table `DATABASECHANGELOG_PAYMENT` keep them apart, but a new payment file should not be read as
+  part of the global sequence.
 
 `db.changelog-master.xml` of each service lists its files with `<include>`; Liquibase runs them in
 that order (schema first, then later changes, then seeds).
