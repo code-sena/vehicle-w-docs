@@ -74,5 +74,12 @@
 >   up to five alternative start times of that day are returned.
 > - RF-008: the eligible operator (schedule covers the slot, no absence) with the fewest open
 >   jobs is chosen; ties go to the lowest operator id.
-> - RF-026: points are credited when the booking's payment is approved — one point per
->   COP 1,000, to be confirmed with the product owner. Redemption is not implemented yet.
+> - RF-026 (implemented 2026-10-07, ADR-015): each catalog service has its own loyalty-point value
+>   (`catalog.service.loyalty_points`, admin-editable in Gestión > Servicios), not a flat rate.
+>   Points are credited to `payment.loyalty_transaction` when the booking's payment is approved,
+>   summing the points of every service on the booking. Redemption is not a direct points-to-cash
+>   conversion: accumulated points **unlock promotions** (`promotion.promotion.required_points`);
+>   once unlocked, the customer redeems the promotion's own coupon code on the payment screen for
+>   a real percentage discount (`discount_type_id` = `PERCENT`, `discount_value` = the percent,
+>   20/30/50/100 = free), recorded in `promotion.booking_promotion`. A successful redemption
+>   notifies the customer in-app and by email (`PromotionRedeemed`, ADR-011).
