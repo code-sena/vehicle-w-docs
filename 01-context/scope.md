@@ -25,10 +25,12 @@ What the system **DOES build and maintain**:
 
 ### Included integrations
 
-The only external system is an **SMTP mail server**, used for a single purpose: sending the
-6-digit password-recovery code (RF-003). Locally it is Mailpit, a mail catcher that runs in
-Docker Compose; for a real delivery it is any SMTP account (for example, Gmail with an app
-password). No other e-mail is sent.
+The only external system is an **SMTP mail server**. Locally it is Mailpit, a mail catcher that
+runs in Docker Compose; for a real delivery it is any SMTP account (for example, Gmail with an
+app password). It is used for the 6-digit password-recovery code (RF-003) and for the booking
+e-mails `notification-service` sends on top of the in-app inbox (RF-018): welcome on sign-up,
+booking confirmation/cancellation, and reminders before the scheduled time. The recipient's
+address is read from `security-service` at send time through `/internal/**` (ADR-011 §8).
 
 Payment is a manual QR transfer verified by an administrator against a customer-uploaded
 receipt — there is no payment gateway in the loop, and no card data is ever collected or
@@ -52,7 +54,6 @@ What the system **does NOT build** in this version:
 | 3 | Electronic invoicing (DIAN) | Requires the business to be legally registered with the tax authority | No |
 | 4 | Supplies and inventory management | Outside the booking domain | No |
 | 5 | Staging and production deployment | Academic project, not deployed for real users | Yes — if the project continues |
-| 6 | Email notifications (booking, assignment, payment) | Notifications are in-app only (RF-018); the mail server is used just for the password-recovery code | Yes |
 
 ### What another system / team handles (and why not us)
 
