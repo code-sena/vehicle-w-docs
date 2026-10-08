@@ -81,7 +81,7 @@ Status: **API** = reads and writes the backend · **Partial** = some data still 
 | Schedule and bays | `/admin/schedule` | ADMIN | booking | API |
 | Management — users | `/admin/management` | ADMIN | security | API |
 | Management — services | `/admin/management` | ADMIN | booking (catalog, prices per vehicle type) | API |
-| Management — roles, promotions | `/admin/management` | ADMIN | — / payment (promotions not built) | Local (roles are fixed, ADR-010; promotions wait for payment-service) |
+| Management — roles, promotions | `/admin/management` | ADMIN | security (role permissions); payment (promotions, loyalty) | API (ADR-015: roles fixed with editable permissions; promotions are redeemable coupons gated by loyalty points) |
 | Operators, calendar | `/admin/operators/**` | ADMIN | operations (operators, shifts, absences) | API |
 | Payments | `/admin/payments` | ADMIN | payment (review, approve/reject, manual payment) | API |
 | Reports | `/admin/reports` | ADMIN | booking, payment | Partial |
