@@ -2,7 +2,7 @@
 
 - **ID:** ADR-010
 - **Date:** 2026-09-29
-- **Status:** Accepted
+- **Status:** Accepted (promotions section amended by ADR-015, 2026-10-07; bays and roles sections reaffirmed and implemented by ADR-015)
 - **Authors:** Development team
 
 ---
@@ -54,9 +54,9 @@ expresses it better, the frontend changes.
 | Gap | Change |
 |---|---|
 | One fixed price per service (`SERVICE_PRICES`) | Price depends on the vehicle type chosen in the booking (`catalog.service_price`) |
-| Promotions modelled as packages (price, duration, icon, feature list) | Combos become catalog services in a "Packages" category; promotions stay discount coupons |
+| Promotions modelled as packages (price, duration, icon, feature list) | Combos become catalog services in a "Packages" category; promotions stay discount coupons. **Amended by ADR-015 (2026-10-07):** the package-style display (price, duration, icon, featured, benefits) is kept after all — the team asked to keep those screens — but the coupon now applies a real percentage discount gated by accumulated loyalty points, instead of being a display-only price |
 | Email editable in the profile | **Amended 2026-09-30:** the email (the login) can be changed from the profile, confirmed with the current password (`PUT /users/me/email`); the new email is used to sign in from then on. A code sent to the new address may be added later to catch typos |
-| Custom roles can be created | The three roles are fixed; roles and permissions are shown read-only |
+| Custom roles can be created | The three roles are fixed; roles and permissions are shown read-only. **Implemented by ADR-015 (2026-10-07):** permissions per fixed role became editable (`security.permission`/`role_permission`), not just read-only display; the roles themselves are still exactly the three fixed ones — no create/delete |
 | User invitations | The administrator creates the account with a temporary password |
 | Delete account (profile) / delete user (admin) | Accounts are **deactivated**, never deleted: the person can no longer sign in and all their sessions are closed, while bookings, payments and ratings are kept. Profile: `POST /users/me/deactivate` (asks for the password). Admin: `PATCH /admin/users/{id}/status` |
 | Operator tags, certifications and weekly goal | Removed (no business rule behind them); specialty stays |
