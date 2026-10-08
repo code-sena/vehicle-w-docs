@@ -197,6 +197,7 @@ CREATE TABLE [security].role_permission (
 **Modeling decisions:**
 
 1. A plain join table instead of a comma-separated list on `role`: 1NF forbids repeating groups, and this shape lets the app query "does this role have permission X" with an index instead of string parsing.
+2. **Both tables existed since the original schema but had no code reading or writing them until ADR-015 (changeset `026`, 2026-10-07).** A short-lived parallel catalog (`security.custom_role`, free-text name + comma-separated permission text, changeset `023`) was built and then removed in the same development session once this was noticed — see ADR-015. `permission` is seeded with four generic codes (`VIEW_PANELS`, `CREATE_RECORDS`, `EDIT_DATA`, `DELETE`; the `booking.cancel`-style code above is illustrative of the column's intended shape, not what is actually seeded) and `role_permission` with sensible per-role defaults. The admin screen (Gestión > Roles) picks one of the three fixed roles and edits its permission set; **this has no effect yet on real authorization**, which still comes from the JWT's role claim alone (ADR-006).
 
 ---
 
@@ -513,7 +514,7 @@ CREATE TABLE [customer].[customer] (
 | `customer_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
 | `person_id` | BIGINT | No | The underlying human. | Unique, No FK — owned by `security.person`, see the cross-service contract below. |
 | `user_id` | BIGINT | Yes | The login account (`security.app_user`), equal to the JWT `sub`. Added by customer-service changeset 014. | Unique (filtered), No FK |
-| `loyalty_points` | INT | No | Display copy of the balance. The source of truth is `payment.loyalty_transaction` (`payment-service`); this copy is updated from `LoyaltyPointsEarned` / `LoyaltyPointsRedeemed` events. | — |
+| `loyalty_points` | INT | No | Display copy of the balance, as originally planned. **Not kept in sync as of ADR-015 (2026-10-07):** the implemented balance is always read live from `payment.loyalty_transaction.balance_after` (`GET /api/v1/loyalty/balance`, payment-service); no event consumer updates this column, so it stays at its default `0` and should not be read by any screen. See the Modeling decisions note below. | — |
 | `customer_since` | DATE | No | Date they became a customer. | — |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
@@ -521,7 +522,7 @@ CREATE TABLE [customer].[customer] (
 
 1. Does not repeat name or phone — those already live in `security.person`. Duplicating them would violate 3NF and guarantee that, sooner or later, a phone number gets updated in one table and goes stale in the other.
 2. `loyalty_points` is a controlled denormalization: it could always be derived by summing `loyalty_transaction`, but doing that on every screen would be slow. The cached value must stay reconcilable against the ledger.
-3. **`loyalty_points` is a display copy since ADR-009.** The ledger moved to `payment-service`, so this column is updated by `customer-service` from loyalty events and can lag a few seconds behind. A redemption is always validated against the ledger (`payment.loyalty_transaction.balance_after`), never against this copy: the copy is for display, never for decisions.
+3. **`loyalty_points` is a display copy since ADR-009; as implemented (ADR-015), it is simply unused.** The plan was for `customer-service` to update it from loyalty events (`LoyaltyPointsEarned` / `LoyaltyPointsRedeemed`) and for every screen to read the ledger only for redemption decisions. In practice, both the client dashboard's balance and the redemption check read `payment.loyalty_transaction.balance_after` directly (live, via payment-service's own endpoint) — there turned out to be no case where the cached copy would have saved a real round trip, so the event plumbing to keep it in sync was never built. The column stays in the schema (dropping it needs its own two-phase migration per the rules below) but always reads `0`.
 4. **`user_id` (changeset 014):** the token carries the user id, not the person id, so the profile is found by `user_id`. It is nullable only because rows created before the change had none.
 
 ---
@@ -639,6 +640,7 @@ CREATE TABLE [catalog].[service] (
     [description]       NVARCHAR(MAX)  NULL,
     service_category_id SMALLINT       NOT NULL,
     is_active           BIT            NOT NULL CONSTRAINT df_service_active DEFAULT 1,
+    loyalty_points      INT            NOT NULL CONSTRAINT df_service_loyalty_points DEFAULT 0,   -- ADR-015, changeset 022
     created_at          DATETIME2(3)   NOT NULL CONSTRAINT df_service_created DEFAULT SYSUTCDATETIME(),
     created_by          BIGINT         NULL,
     updated_at          DATETIME2(3)   NULL,
@@ -662,11 +664,13 @@ CREATE TABLE [catalog].[service] (
 | `description` | NVARCHAR(MAX) | Yes | Longer description. | — |
 | `service_category_id` | SMALLINT | No | Which category it belongs to. | FK → `catalog.service_category.service_category_id` |
 | `is_active` | BIT | No | Soft on/off switch. | — |
+| `loyalty_points` | INT | No | Points the customer earns per unit of this service when its booking's payment is approved (ADR-015). Admin-editable in Gestión > Servicios; not a flat COP-based rate. | `>= 0` |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
 **Modeling decisions:**
 
 1. Deliberately has no `price` column. Price depends on the service *and* the vehicle type — washing a motorcycle and washing a truck are the same service at different prices. Putting price here would force three separate services ("Basic wash — motorcycle", "— car", "— SUV") instead of one service with three tariffs.
+2. **`loyalty_points` (ADR-015, changeset `022`) lives here, not on `service_price`.** Unlike price, it does not vary by vehicle type, so one column per service is enough. There is no historical row to freeze it against (no `service_price`-like immutable row exists for points): `booking-service` reads the live value when it builds each booking line, the same way it already reads the line's `code`/`name` live from `catalog.service` rather than from a frozen copy. A later change to a service's points can change what an already-placed, still-unpaid booking is worth; this is accepted as a minor, low-stakes inconsistency rather than adding a second immutable-row mechanism just for this field.
 
 ---
 
@@ -1481,6 +1485,15 @@ CREATE TABLE [promotion].promotion (
     max_redemptions              INT            NULL,
     max_redemptions_per_customer INT            NULL,
     is_active                    BIT            NOT NULL CONSTRAINT df_promo_active DEFAULT 1,
+    -- package display (ADR-010 amended, ADR-015 — changeset 017): marketing copy for the card,
+    -- no effect on the discount actually applied
+    price                         DECIMAL(12,2)  NULL,
+    duration_minutes              INT            NULL,
+    icon                          NVARCHAR(40)   NULL,
+    featured                      BIT            NOT NULL CONSTRAINT df_promo_featured DEFAULT 0,
+    benefits                      NVARCHAR(600)  NULL,
+    -- loyalty gate (ADR-015 — changeset 018, payment-service numbering)
+    required_points               INT            NOT NULL CONSTRAINT df_promo_required_points DEFAULT 0,
     created_at                   DATETIME2(3)   NOT NULL CONSTRAINT df_promo_created DEFAULT SYSUTCDATETIME(),
     created_by                   BIGINT         NULL,
     updated_at                   DATETIME2(3)   NULL,
@@ -1501,7 +1514,8 @@ CREATE TABLE [promotion].promotion (
     -- added (not in 06-data)
     CONSTRAINT ck_promo_max_per_customer CHECK (max_redemptions_per_customer IS NULL OR max_redemptions_per_customer > 0),
     -- added (not in 06-data)
-    CONSTRAINT ck_promo_per_customer_le_total CHECK (max_redemptions IS NULL OR max_redemptions_per_customer IS NULL OR max_redemptions_per_customer <= max_redemptions)
+    CONSTRAINT ck_promo_per_customer_le_total CHECK (max_redemptions IS NULL OR max_redemptions_per_customer IS NULL OR max_redemptions_per_customer <= max_redemptions),
+    CONSTRAINT ck_promo_required_points CHECK (required_points >= 0)
 );
 ```
 
@@ -1513,8 +1527,8 @@ CREATE TABLE [promotion].promotion (
 | `code` | NVARCHAR(30) | No | Machine-readable code. | Unique |
 | `name` | NVARCHAR(100) | No | Label. | — |
 | `description` | NVARCHAR(300) | Yes | Longer description. | — |
-| `discount_type_id` | SMALLINT | No | Percentage or fixed. | FK → `promotion.discount_type.discount_type_id` |
-| `discount_value` | DECIMAL(12,2) | No | The discount amount or percentage. | — |
+| `discount_type_id` | SMALLINT | No | Percentage or fixed (`PERCENT`/`FIXED`, seed `015`). The real discount applied at redemption, independent of `price` below. | FK → `promotion.discount_type.discount_type_id` |
+| `discount_value` | DECIMAL(12,2) | No | The discount amount, or the percentage (1–100; 100 = free) when `discount_type_id` is `PERCENT`. | `> 0` |
 | `max_discount_amount` | DECIMAL(12,2) | Yes | Cap on a percentage discount, optional. | — |
 | `min_purchase_amount` | DECIMAL(12,2) | No | Minimum spend to qualify. | — |
 | `is_public` | BIT | No | `1` = open to eligible customers automatically; `0` = only customers listed in `promotion_customer`. | — |
@@ -1524,6 +1538,12 @@ CREATE TABLE [promotion].promotion (
 | `max_redemptions` | INT | Yes | Overall usage cap, optional. | — |
 | `max_redemptions_per_customer` | INT | Yes | Per-customer usage cap, optional. | — |
 | `is_active` | BIT | No | Soft on/off switch. | — |
+| `price` | DECIMAL(12,2) | Yes | Marketing price shown on the package card. Display only — never used to compute what the customer is charged. | — |
+| `duration_minutes` | INT | Yes | Marketing duration shown on the card. | — |
+| `icon` | NVARCHAR(40) | Yes | Icon name for the card (rendered as an actual icon in the picker, not shown as text — ADR-015). | — |
+| `featured` | BIT | No | Shows the "Destacada" badge. | — |
+| `benefits` | NVARCHAR(600) | Yes | One line per benefit (`\n`-joined); display text only, no rules of its own. | — |
+| `required_points` | INT | No | Loyalty-point threshold (`payment.loyalty_transaction.balance_after`) the customer must have accumulated before this coupon is redeemable. `0` = no point gate (ADR-015). | `>= 0` |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
 **Modeling decisions:**
@@ -1531,6 +1551,8 @@ CREATE TABLE [promotion].promotion (
 1. Eligibility is resolved by combining `is_public` and `min_completed_booking`: public + 0 reaches everyone; public + N unlocks only for customers who've already finished N bookings; private (`is_public = 0`) reaches only the customers explicitly listed in `promotion_customer`. This is how the same mechanism covers both "everyone gets 10% off this month" and "loyal customers get a better deal".
 2. No usage counter here — it's derived by counting `booking_promotion` rows, to avoid a second number that can drift from the source of truth.
 3. Four checks were added with ADR-009 so that a limit, when present, is meaningful: `max_discount_amount`, `max_redemptions` and `max_redemptions_per_customer` must be positive, and the per-customer limit can't exceed the total limit.
+4. **`price`/`duration_minutes`/`icon`/`featured`/`benefits` (ADR-010 amended, ADR-015) are purely cosmetic**, added so the admin screen can show a promotion as a package-style card. They coexist with `discount_type_id`/`discount_value`, which are the columns that actually get applied — nothing in the schema keeps the two in sync (a promotion's displayed price and its real percentage discount can say different things), which ADR-015 accepts as a known trade-off.
+5. **`required_points` (ADR-015) gates redemption, it does not spend points.** A customer's loyalty points are never debited for redeeming a promotion; accumulating them past this threshold is what makes the coupon redeemable at all.
 
 ---
 
@@ -1977,7 +1999,7 @@ CREATE TABLE [payment].loyalty_movement_type (
 ```sql
 CREATE TABLE [payment].loyalty_transaction (
     loyalty_transaction_id   BIGINT        IDENTITY(1,1) NOT NULL,
-    customer_id              BIGINT        NOT NULL,   -- [customer].customer (cross-service since ADR-009)
+    customer_id              BIGINT        NOT NULL,   -- security.app_user.user_id, not customer.customer_id — see note below (ADR-015)
     loyalty_movement_type_id SMALLINT      NOT NULL,
     booking_id               BIGINT        NULL,   -- [booking].booking
     points                   INT           NOT NULL,
@@ -2010,7 +2032,7 @@ CREATE TABLE [payment].loyalty_transaction (
 | Column | Type | Nullable | Description | Constraints |
 |--------|------|----------|--------------|-------------|
 | `loyalty_transaction_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
-| `customer_id` | BIGINT | No | Owning customer. | No FK — owned by `customer.customer` (`customer-service`), see the cross-service contract below. |
+| `customer_id` | BIGINT | No | Owning customer. **As implemented (ADR-015), this holds `security.app_user.user_id`** (the same id booking-service already exposes as `ownerUserId`), not `customer.customer_id` — see Modeling decision 4 below. | No FK — cross-service. |
 | `loyalty_movement_type_id` | SMALLINT | No | What kind of movement this was. | FK → `customer.loyalty_movement_type.loyalty_movement_type_id` |
 | `booking_id` | BIGINT | Yes | The booking that generated it, when there is one. | No FK — owned by `booking.booking`; NULL for manual adjustments and expirations, see the cross-service contract below. |
 | `points` | INT | No | Signed amount of this single movement. | — |
@@ -2024,6 +2046,7 @@ CREATE TABLE [payment].loyalty_transaction (
 1. Without this table, `customer.loyalty_points` would be a number with no origin — if a customer disputes their balance, there is nothing to point to. `balance_after` turns the ledger into an audit trail, not just a sum.
 2. **Moved from `customer` to `payment` (ADR-009), and it is the source of truth for every loyalty balance.** Only `payment-service` writes it. The current balance of a customer is the `balance_after` of their latest row.
 3. `customer_id` lost its foreign key in the move: `customer.customer` now belongs to another service. It keeps its index, like every other cross-service reference.
+4. **`customer_id` holds `user_id`, not `customer.customer_id` (ADR-015, 2026-10-07).** Every other cross-service contract a customer appears in (`booking.booking.customer_vehicle_id` → vehicle → owner, exposed as `ownerUserId`; the whole `customer-service` vehicle API, keyed by `userId` from the JWT) already identifies the customer by their security `user_id`, and no endpoint anywhere exposes `customer.customer_id` to another service. Requiring the "correct" id here would need a new customer-service lookup endpoint for an id nothing else needs; `payment-service` uses the id it can already get from `booking-service`'s `BookingResponse.ownerUserId` instead. `customer.customer.user_id` (added by changeset `014`) is the column that would back that lookup if it is ever built.
 
 ---
 
@@ -2266,7 +2289,7 @@ joins done in application code, or in reporting queries, stay fast.
 | `payment.payment.approved_by` | `security.app_user` | `security-service` |
 | `payment.payment_receipt.uploaded_by` | `security.app_user` | `security-service` |
 | `payment.payment_receipt.reviewed_by` | `security.app_user` | `security-service` |
-| `payment.loyalty_transaction.customer_id` | `customer.customer` | `customer-service` |
+| `payment.loyalty_transaction.customer_id` | `security.app_user` (not `customer.customer` — ADR-015) | `security-service` |
 | `payment.loyalty_transaction.booking_id` | `booking.booking` | `booking-service` |
 | `notification.notification.user_id` | `security.app_user` | `security-service` |
 | `customer.customer.user_id` | `security.app_user` | `security-service` |
@@ -2285,10 +2308,14 @@ Business rules the database can't enforce on its own, that the application must:
 
 - A service line can be rated only once its `service_execution` is `FINALIZADA`, at most once,
   and only by the customer who owns the booking (INV-007). Rating is optional.
-- `booking.points_discount_amount` must match that booking's `REDEEMED` movement in
-  `payment.loyalty_transaction`, written by `payment-service` after validating the balance.
-- `customer.loyalty_points` is a display copy of the latest `balance_after` in
-  `payment.loyalty_transaction`. Redemptions validate against the ledger, never against the copy.
+- `booking.points_discount_amount` would match that booking's `REDEEMED` movement in
+  `payment.loyalty_transaction` if a direct points-to-cash redemption were ever built; as of
+  ADR-015 it is not — it stays `0` on every booking. Points instead gate which promotions a
+  customer can redeem (`promotion.promotion.required_points`), recorded in `promotion.booking_promotion`
+  with an `EARNED` movement crediting the ledger, never a `REDEEMED` one that debits it.
+- `customer.loyalty_points` was planned as a display copy of the latest `balance_after` in
+  `payment.loyalty_transaction`, but as implemented (ADR-015) nothing writes it — every screen
+  reads the ledger live via payment-service instead. See Modeling decision 3 on `customer.customer`.
 - A booking can't fall outside `business_hour` (accounting for `business_hour_exception`).
 - The assigned operator must be available per `operator_availability`, with no overlapping
   row in `operator_absence`.
