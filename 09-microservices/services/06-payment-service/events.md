@@ -2,18 +2,20 @@
 
 ## Published
 
-None yet. The `Payment` aggregate raises domain events, but there is no RabbitMQ publisher:
+On `carwash.events` (ADR-004) with the common envelope, after the unit of work commits and only
+with `MESSAGING_ENABLED=true`. notification-service consumes all of them (ADR-011).
 
-| Domain event | When | Status |
-|---|---|---|
-| `PaymentApproved` | The admin approves a payment (or registers a manual one) | Raised, not published |
-| `PaymentRejected` | The admin rejects a payment | Raised, not published |
-| `PaymentRefunded` | The admin refunds an approved payment | Raised, not published |
+| Event | Routing key | When | Payload |
+|---|---|---|---|
+| `PaymentConfirmed` | `payment.confirmed` | The admin approves a payment or registers an in-person one | `customerUserId`, `paymentId`, `amount` |
+| `PaymentRejected` | `payment.rejected` | The admin rejects a payment | `customerUserId`, `paymentId`, `amount`, `reason` |
+| `PaymentRefunded` | `payment.refunded` | The admin refunds an approved payment | `customerUserId`, `paymentId`, `amount` |
+| `PromotionRedeemed` | `payment.promotion_redeemed` | The customer redeems a coupon on a booking | `customerUserId`, `bookingId`, `bookingCode`, `promotionName`, `discountAmount` |
+| `LoyaltyPointsEarned` | `payment.loyalty_points_earned` | Right after `payment.confirmed`, when that payment credits loyalty points | `customerUserId`, `bookingId`, `bookingCode`, `points`, `balance`, `unlockedPromotions[]` (`code`, `name`, `discountPercent`, `requiredPoints`) |
 
-Pending: publish them on `carwash.events` (ADR-004) so notification-service can tell the client,
-and loyalty points can be earned on `PaymentApproved`. notification-service is already bound to
-the routing keys **`payment.confirmed`** and **`payment.rejected`**, so the publisher must use
-those keys (not `payment.approved`).
+`unlockedPromotions` holds the promotions available today whose `requiredPoints` this credit has
+just reached (`Promotion.IsUnlockedBy`); it is empty when no coupon unlocks. A booking whose
+services carry no points publishes no `LoyaltyPointsEarned` (ADR-015 section 5).
 
 ## Consumed
 
