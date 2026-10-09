@@ -30,7 +30,7 @@ touches and in which order the global script (`lavarapido-6-services-sqlserver.s
 | `014`+ | Later changes, numbered in the order they were made |
 | `101`–`109` | Seed data (`seed/` folder) |
 
-Current files (2026-10-07):
+Current files (2026-10-08):
 
 ```
 security-service       001-create-security-schemas · 002-create-security-and-audit-core
@@ -41,6 +41,8 @@ security-service       001-create-security-schemas · 002-create-security-and-au
                          environment pulled it, so it never shipped as real history)
                        026-security-role-permissions (drops custom_role, seeds
                          security.permission and default security.role_permission rows)
+                       030-security-user-preference-notification-channels
+                         (email_reminders_enabled, promotions_enabled — ADR-011 §12)
 customer-service       004-create-customer-schema · 014-add-customer-user-id
                        015-add-customer-vehicle-model · seed/102-seed-customer-catalogs
 booking-service        005-create-booking-schemas (catalog + booking, triggers)
@@ -55,12 +57,16 @@ notification-service   010-create-notification-schema · 016-create-notification
                        017-create-notification-processed-event
                        019-create-notification-booking-reminder · seed/108-seed-notification-type
                        025-notification-promotion-redeemed-type (PROMOTION_REDEEMED)
+                       027-notification-staff-notifications (staff types + booking_tracking)
+                       028-notification-payment-refunded-type (PAYMENT_REFUNDED)
+                       029-notification-loyalty-and-inspection-types
+                         (LOYALTY_POINTS_EARNED, INSPECTION_REPORT)
 operations-service     007-create-execution-schema (5 tables + triggers) · seed/105-seed-execution-status
 payment-service        db/changelog/changes/001 … 018 (own numbering, see below)
 ```
 
-Current global high-water mark: **026** (security-service). The next new changeset in any Java
-service's shared numbering starts at **027**.
+Current global high-water mark: **030** (security-service). The next new changeset in any Java
+service's shared numbering starts at **031**.
 
 **payment-service is different** (.NET, ADR-013):
 
