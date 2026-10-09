@@ -45,7 +45,7 @@ flowchart TB
 
     booking -- "REST (user JWT)<br/>vehicle check" --> customer
     customer -- "REST (user JWT)<br/>/users/me" --> security
-    notification -- "REST (X-Internal-Key)<br/>/internal/v1/users/{id}/contact" --> security
+    notification -- "REST (X-Internal-Key)<br/>/internal/v1/users/{id}/contact, /admins" --> security
     operations -- "REST (user JWT)<br/>bookings, status" --> booking
     operations -- "REST (admin JWT)<br/>operator accounts" --> security
     payment -- "REST (user JWT)<br/>booking total" --> booking
