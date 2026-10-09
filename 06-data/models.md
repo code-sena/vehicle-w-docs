@@ -323,15 +323,19 @@ CREATE TABLE [security].password_reset_token (
 
 ### Table: `user_preference`
 
-**Purpose:** Per-user interface preferences: theme, language, notification opt-in.
+**Purpose:** Per-user preferences: theme, language and the notification channels the user wants
+(push, booking-reminder email, promotions). notification-service reads the channels through the
+internal contact endpoint and applies them when sending (ADR-011 §12).
 
 ```sql
 CREATE TABLE [security].user_preference (
     user_preference_id    BIGINT       IDENTITY(1,1) NOT NULL,
     user_id               BIGINT       NOT NULL,   -- same schema since ADR-009: real FK
-    theme                 NVARCHAR(20) NOT NULL CONSTRAINT df_pref_theme DEFAULT N'light',
+    theme                 NVARCHAR(20) NOT NULL CONSTRAINT df_pref_theme DEFAULT N'green-light',
     [language]            NVARCHAR(5)  NOT NULL CONSTRAINT df_pref_lang DEFAULT N'es',
     notifications_enabled BIT          NOT NULL CONSTRAINT df_pref_notif DEFAULT 1,
+    email_reminders_enabled BIT        NOT NULL CONSTRAINT df_pref_email_reminders DEFAULT 1,  -- migration 030
+    promotions_enabled    BIT          NOT NULL CONSTRAINT df_pref_promotions DEFAULT 1,       -- migration 030
     created_at            DATETIME2(3) NOT NULL CONSTRAINT df_pref_created DEFAULT SYSUTCDATETIME(),
     created_by            BIGINT       NULL,
     updated_at            DATETIME2(3) NULL,
@@ -342,7 +346,7 @@ CREATE TABLE [security].user_preference (
     CONSTRAINT pk_user_preference PRIMARY KEY (user_preference_id),
     CONSTRAINT uq_user_preference_user UNIQUE (user_id),
     CONSTRAINT fk_user_preference_user FOREIGN KEY (user_id) REFERENCES [security].app_user(user_id),
-    CONSTRAINT ck_pref_theme CHECK (theme IN (N'light', N'dark')),
+    CONSTRAINT ck_pref_theme CHECK (theme IN (N'green-light', N'green-dark', N'pink', N'pink-dark')),  -- migration 020
     CONSTRAINT ck_pref_language CHECK ([language] IN (N'es', N'en', N'fr', N'pt'))
 );
 ```
@@ -353,9 +357,11 @@ CREATE TABLE [security].user_preference (
 |--------|------|----------|--------------|-------------|
 | `user_preference_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
 | `user_id` | BIGINT | No | Owning account. | Unique, FK → `security.app_user.user_id` |
-| `theme` | NVARCHAR(20) | No | `light` or `dark`. | — |
+| `theme` | NVARCHAR(20) | No | One of the four palettes: `green-light`, `green-dark`, `pink`, `pink-dark` (migration 020). | `ck_pref_theme` |
 | `language` | NVARCHAR(5) | No | `es`, `en`, `fr` or `pt` — the four languages RF-020 asks for. | `ck_pref_language` |
-| `notifications_enabled` | BIT | No | Whether this user wants notifications at all. | — |
+| `notifications_enabled` | BIT | No | Push notifications to the user's phones ("Notificaciones push"). The in-app inbox is always filled. | — |
+| `email_reminders_enabled` | BIT | No | Booking reminders by email ("Recordatorios por email"). Default 1 (migration 030). | — |
+| `promotions_enabled` | BIT | No | Promotion alerts — unlocked coupons — by email and push ("Promociones y ofertas"). Default 1 (migration 030). | — |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
 **Modeling decisions:**
