@@ -321,6 +321,25 @@ paths:
                 type: "array"
                 items:
                   "$ref": "#/components/schemas/PaymentView"
+  "/api/v1/payments/me/bookings":
+    get:
+      tags:
+        - "Payments"
+      summary: "Each booking of the caller with its latest payment status and whether it can still be paid"
+      description: "payable applies the same rule as reporting a payment (PaymentPolicy.CanReportPayment): payable booking status, no approved payment and no pending or in-review one. The web and the app show Pay with it instead of repeating the rule."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/BookingPaymentState"
+        "401":
+          description: "Without a token"
+        "403":
+          description: "The caller is not a CLIENT"
   "/health":
     get:
       tags:
@@ -337,6 +356,24 @@ paths:
           description: "OK"
 components:
   schemas:
+    BookingPaymentState:
+      type: "object"
+      properties:
+        bookingId:
+          type: "integer"
+          format: "int64"
+        paymentStatus:
+          type: "string"
+          nullable: true
+          enum:
+            - "PENDING"
+            - "IN_REVIEW"
+            - "APPROVED"
+            - "REJECTED"
+            - "REFUNDED"
+        payable:
+          type: "boolean"
+      additionalProperties: false
     BookingInfo:
       type: "object"
       properties:

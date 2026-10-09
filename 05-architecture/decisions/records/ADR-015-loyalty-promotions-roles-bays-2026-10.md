@@ -1,7 +1,7 @@
 # ADR-015 — Loyalty Points, Promotions, Fixed-Role Permissions and Per-Booking Bays
 
 - **ID:** ADR-015
-- **Date:** 2026-10-07
+- **Date:** 2026-10-07 (amended 2026-10-08: section 5)
 - **Status:** Accepted
 - **Authors:** Development team
 
@@ -94,7 +94,7 @@ ADR is that formula:
   Gestión > Servicios — not a flat COP-based rate). `BookingLine` snapshots the service's points at
   booking time (same pattern as price); `Booking.totalLoyaltyPoints()` sums them, exposed on
   `BookingResponse.totalLoyaltyPoints`. When payment-service approves a payment
-  (`PaymentApplicationService.ApproveAsync` / `RegisterManualAsync`), it credits that many points as
+  (`PaymentCommandService.ApproveAsync` / `RegisterInPersonAsync`), it credits that many points as
   an `EARNED` row in `payment.loyalty_transaction`, idempotent per `(customerId, bookingId)`.
 - **Balance:** the customer's current balance is always the `balance_after` of their latest ledger
   row (0 if none) — read live, never cached on a customer table.
@@ -110,6 +110,47 @@ ADR is that formula:
 - `payment-service` gained its first RabbitMQ producer (`RabbitMQ.Client`, `IDomainEventPublisher`)
   for the `PromotionRedeemed` event, gated by `MESSAGING_ENABLED` exactly like the Java services'
   `app.messaging.enabled`, so it is a no-op until that flag and RabbitMQ are actually turned on.
+
+### 5. Amendment 2026-10-08 — visible points, "coupon unlocked" notice, simpler promotion form
+
+Instructor review and team request after section 4 went live:
+
+- **Points are visible end to end.** The administrator sets each service's points in the service
+  form (web `ServiceModal`, mobile `ServiceFormModal`); both frontends always send
+  `ServiceRequest.loyaltyPoints`, because booking-service binds it to a primitive `int` and an
+  omitted field would silently reset the points to 0 on every edit. The customer sees each service's
+  points when booking ("Suma N puntos") and in the booking summary, on web and mobile.
+- **The customer is told when points arrive and when a coupon unlocks.** When an approval
+  (`ApproveAsync`) or an in-person payment (`RegisterInPersonAsync`) credits points,
+  `LoyaltyRewardService` also returns the promotions that this credit unlocks
+  (`Promotion.IsUnlockedBy(pointsBefore, pointsAfter, today)`: available today, not reached before,
+  reached now), and payment-service publishes `LoyaltyPointsEarned`
+  (`payment.loyalty_points_earned`) right after `payment.confirmed`. notification-service turns it
+  into "Ganaste N puntos" (inbox only) plus one "¡Tienes un cupón canjeable!" per unlocked coupon,
+  with its code (inbox and email). Contract and email rule: ADR-011 section 11.
+- **Points are credited when the payment is approved, not when the operator finishes the service.**
+  Section 4 already tied earning to the payment because payment-service is the only place that knows
+  the booking was paid; crediting at completion would let an unpaid booking earn points. The notice
+  therefore reaches the customer when the administrator approves the payment (or registers it in
+  person).
+- **The promotion form only asks for what has an effect.** "Promotional price", "duration" and
+  "status" are removed from the web and mobile forms: the coupon is a percentage discount on the
+  booking (section 3), and the status is computed by payment-service from the start date and the
+  pause flag (paused or resumed from the promotion card). `price` and `duration_minutes` become
+  optional in the API (`SavePromotionRequest`, `PromotionDefinition`; validated only when sent); the
+  columns were already nullable since migration `017`, so no migration is needed. The promotion card
+  now shows the discount and the points needed instead of a price.
+
+- **"Pay" is offered only when payment-service would accept the payment.** The customer's history
+  asked for "Pay" on bookings that were already paid or under review. payment-service now answers,
+  per booking of the caller, the latest payment status and `payable`
+  (`GET /api/v1/payments/me/bookings`, `PaymentPolicy.CanReportPayment`: payable booking status, no
+  approved payment and no pending or in-review one, the same rule `BookingPaymentGuard` applies when
+  reporting). The web and the app show the button with that flag and do not repeat the rule; if
+  payment-service does not answer, the button is hidden, because paying would fail anyway.
+
+This amendment resolves the "display price vs. real discount" trade-off listed under Consequences
+and its risk row: the display price is no longer entered or shown.
 
 ---
 
@@ -177,4 +218,5 @@ ADR is that formula:
   ADR-011 (notification events), ADR-014 (operations/booking integration)
 - `02-domain/domain-map.md` (Promotions & Loyalty bounded context, written before this ADR and
   already consistent with it)
-- Team decision captured in chat, 2026-10-07
+- Team decision captured in chat, 2026-10-07; amendment requested after the instructor's review,
+  2026-10-08

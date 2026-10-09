@@ -57,6 +57,7 @@ reads `lavarapido-infra/.env`.
 | GET | `/api/v1/payment-accounts` | token |
 | POST | `/api/v1/payments` (report payment with receipt) | CLIENT |
 | GET | `/api/v1/payments/me` | CLIENT |
+| GET | `/api/v1/payments/me/bookings` (each booking: latest payment status and `payable`, so the screens do not repeat the rule) | CLIENT |
 | GET | `/api/v1/admin/payments` (`?status=PENDING\|IN_REVIEW\|APPROVED\|REJECTED\|REFUNDED`) | ADMIN |
 | POST | `/api/v1/admin/payments` (manual payment) | ADMIN |
 | POST | `/api/v1/admin/payments/{id}/approve` · `/reject` · `/refund` | ADMIN |
