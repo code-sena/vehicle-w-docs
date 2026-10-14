@@ -34,9 +34,12 @@ and a plate cannot be registered twice. You can edit or remove your vehicles.
 2. Choose one or more services: you see price, duration and the **loyalty points** each one adds
    ("Adds N points"); the summary shows the total points you will earn.
 3. Choose a date: you see the free times (closed days show none).
-4. Confirm. The booking is **confirmed immediately** with a free bay, and you get a notification
+4. Optionally choose an **operator** among the ones free at that time (first name and rating). With
+   **No preference** the shop assigns one; if the one you chose is no longer free when we confirm,
+   another free operator is assigned.
+5. Confirm. The booking is **confirmed immediately** with a free bay, and you get a notification
    and an email.
-5. If someone took that time a second before you, you are offered other free times of the same day.
+6. If someone took that time a second before you, you are offered other free times of the same day.
 
 You receive reminders **24 hours and 1 hour before** (inbox, push and, if you keep that switch on,
 email). Once your service starts, the pending reminders stop.
@@ -93,7 +96,7 @@ rating shows who served you ("Served by Juan Camilo").
 | Users and roles: create, change role, deactivate; permissions per role | **Management → Users / Roles** (accounts are deactivated, never deleted) |
 | Send a notification to users | **Notifications** |
 | Operators: active or not, weekly shift, absences | **Operators** (operators are the accounts with role Operator in **Management → Users**) |
-| Assign or change the operator of a booking | **Reservations** → booking detail → **Operator assignment**: each operator shows whether they are available or why not (inactive, not on shift, absent, busy). Only before the service starts and while its time has not passed |
+| Assign or change the operator of a booking | New bookings are **assigned automatically** to the operator the client chose or to the free one with fewest bookings that day. To change it: **Reservations** → booking detail → **Operator assignment**: each operator shows whether they are available or why not (inactive, not on shift, absent, busy). Only before the service starts and while its time has not passed |
 | Review payments | **Payments** → **Verify**: you see the amount due and the amount the client reports; approve, or reject with a reason. Approving credits the client's points |
 | Refund a payment | **Payments** → an approved payment → **Refund**. The money is returned outside the system (same account or cash); the client is notified and the points are reversed |
 | Register a cash payment | **Payments** → **Manual entry**: the amount is the booking total and it is approved at once |
