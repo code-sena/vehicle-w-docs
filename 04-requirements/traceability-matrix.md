@@ -4,7 +4,7 @@
 > Status as of 2026-10-13. The six microservices (security, customer, booking, operations, payment,
 > notification) and the api-gateway are built, merged into `develop`, connected to the web and the
 > Android app and verified end to end against the real database with real accounts.
-> Tests per service: `./mvnw test` in each Java repository (security 123, customer 68, booking 37,
+> Tests per service: `./mvnw test` in each Java repository (security 129, customer 68, booking 37,
 > operations 37, notification 100, api-gateway 33) and `dotnet test` in payment (domain 113,
 > application 23; 7 integration tests skipped by design because they need a separate database).
 > Web: `ng test`, 36 tests in 35 files.
@@ -31,7 +31,7 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RF-002 | Login with role-based redirect | HU-AUTH-002 | `AuthenticationServiceTest`, `JwtTokenIssuerTest`, `ApiSecurityWebTest`, `auth.spec.ts` (web) | `security-service` | ✅ Done |
 | RF-003 | Password recovery via email | HU-AUTH-003 | `PasswordRecoveryServiceTest`, `PasswordResetTokenTest`, `EmailResetCodeNotifierTest` | `security-service` | ✅ Done |
 | RF-004 | Change password (authenticated) | HU-AUTH-004 | `UserProfileAndAdministrationTest`, `PasswordPolicyTest` | `security-service` | ✅ Done |
-| RF-004b | Account lockout after failed logins | HU-AUTH-002 | — | `security-service` | 🔴 Pending (not in the current service, see gaps) |
+| RF-004b | Account lockout after failed logins | HU-AUTH-002 | `AuthenticationServiceTest` (lock, window, reset), `PasswordRecoveryServiceTest` (reset lifts it), `ApiSecurityWebTest` (423) | `security-service` | ✅ Done (5 failures in 15 min → 15-min lock, `login_lockout`, migration 034) |
 | RF-005 | Request booking (date, time, type) | HU-BOOK-001 | `BookingServiceTest`, `BookingTest`, `BookingApiWebTest` | `booking-service` | ✅ Done |
 | RF-006 | Slot availability validation | HU-BOOK-001 | `AvailabilityPolicyTest`, `BookingServiceTest` (full slot → alternatives) | `booking-service` | ✅ Done |
 | RF-007 | Modify/cancel booking before start | HU-BOOK-002 | `BookingTest` (reschedule, cancel, blocked after start), `BookingServiceTest` | `booking-service` | ✅ Done |
@@ -120,7 +120,6 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | Gap type | Description | Required action | Owner |
 |----------|-------------|------------------|-------|
 | HU without integration test | Each service has unit and web tests, but no flow across services is automated; end-to-end checks were run by hand against the real database | Automate at least registration → booking → notification | Whole team |
-| RF-004b not implemented | An earlier version of this matrix listed a lockout test (`LoginLockoutTest`), but no such code exists in `security-service` | Implement 5 failed attempts in 15 minutes → 15-minute lock in `security-service` | security-service owner |
 | RF-008 / RF-010 | No automatic assignment and no operator choice by the client | Consume `booking.confirmed` and reuse `AssignmentPolicy` to pick the first candidate | operations-service owner |
 | RF-016 without test | The reused-reference rule has no automated test | Add a case to `PaymentCommandServiceTests` | payment-service owner |
 
