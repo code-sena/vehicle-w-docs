@@ -130,6 +130,34 @@ could still assign it, and the operator received "new service assigned for 02/10
 end time has already passed (`scheduledEnd <= now`). A booking that is running right now can still be
 assigned. The screens translate the code and tell the admin to mark it as no-show or cancel it.
 Closing old bookings automatically (no-show) is a pending improvement.
+
+### 9. The vehicle inspection report lives in operations-service (added 2026-10-14)
+
+**Problem:** the inspection report of long services (phases, findings and photos) was kept in the
+administrator's browser (localStorage and IndexedDB). The public link only opened in that browser,
+the client could only get a text summary, and the rules (which bookings allow a report, when it can
+be edited, the summary) were written in the web screen.
+
+**Decision:** an `InspectionReport` aggregate in operations-service, next to the execution of the
+same booking. Migration 033 adds `inspection_report`, `inspection_phase`, `inspection_finding` and
+`inspection_photo` (photos as `VARBINARY`, JPEG or PNG up to 2 MB, at most 5 per finding).
+
+- The aggregate owns the rules: only bookings of 180 minutes or more that are confirmed, in progress
+  or completed; it is edited only while the booking is confirmed or in progress (409
+  `INSPECTION_NOT_EDITABLE`); a finding on a pending phase moves it to in progress; the summary and the
+  masked plate of the public link are computed here.
+- The booking status comes from booking-service with the admin's token, as for assignments (§1).
+- The public link uses a random 32-byte token. `GET /api/v1/public/inspections/{token}` and its
+  photos need no session and answer 404 while the report is not published; a photo is only served
+  through the report it belongs to.
+- **Notify the client:** `POST /admin/inspections/{bookingId}/share` (published report only) publishes
+  `InspectionShared` (`execution.inspection_shared`) with the summary and the token. notification-service
+  writes the `INSPECTION_REPORT` notice (inbox, push and email) with the public link
+  (`WEB_URL` + `/report/{token}`). The text is no longer built by the web screen.
+
+**Consequences:** the link works from any device; reports created before this change stay only in
+the browser that created them (they were never on a server). Photos make the database grow: about
+200 KB each after the screen compresses them.
 ---
 
 ## Evaluated alternatives
