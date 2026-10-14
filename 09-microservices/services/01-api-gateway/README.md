@@ -44,7 +44,7 @@
 | `/api/v1/auth/**`, `/api/v1/users/**`, `/api/v1/admin/users/**` | security-service :3001 |
 | `/api/v1/vehicles/**`, `/api/v1/vehicle-types`, `/api/v1/admin/vehicles` | customer-service :3002 |
 | `/api/v1/catalog/**`, `/api/v1/schedule/**`, `/api/v1/establishment`, `/api/v1/bookings/**`, `/api/v1/admin/bookings/**`, `/api/v1/admin/catalog/**`, `/api/v1/admin/schedule/**`, `/api/v1/admin/bays/**`, `/api/v1/admin/establishment`, `/api/v1/operator/bookings/**` | booking-service :3003 |
-| `/api/v1/admin/operators/**`, `/api/v1/admin/assignments/**`, `/api/v1/operator/services/**`, `/api/v1/operator/ratings`, `/api/v1/ratings/**` | operations-service :3004 |
+| `/api/v1/admin/operators/**`, `/api/v1/admin/inspections/**`, `/api/v1/public/inspections/**`, `/api/v1/admin/assignments/**`, `/api/v1/operator/services/**`, `/api/v1/operator/ratings`, `/api/v1/ratings/**` | operations-service :3004 |
 | `/api/v1/payments/**`, `/api/v1/payment-accounts`, `/api/v1/admin/payments/**`, `/api/v1/admin/payment-accounts/**`, `/api/v1/admin/payment-methods` | payment-service :3005 |
 | `/api/v1/notifications/**`, `/api/v1/admin/notifications/**` | notification-service :3006 |
 
