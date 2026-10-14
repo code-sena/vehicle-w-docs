@@ -7,13 +7,14 @@ booking is still saved and the error is logged (the Outbox pattern is not adopte
 
 | Event | Routing key | When | Payload |
 |---|---|---|---|
-| `BookingConfirmed` | `booking.confirmed` | A booking is created, or rescheduled | `bookingId`, `bookingCode`, `customerUserId`, `customerVehicleId`, `scheduledStart` (UTC), `serviceBayId` |
+| `BookingConfirmed` | `booking.confirmed` | A booking is created, or rescheduled | `bookingId`, `bookingCode`, `customerUserId`, `customerVehicleId`, `scheduledStart` (UTC), `serviceBayId`, and `preferredOperatorId` when the client chose one (RF-010, only on creation) |
 | `BookingCancelled` | `booking.cancelled` | Cancelled by the client or the admin | same + `reason` |
 
 `customerUserId` is the client (the caller, or the vehicle owner when the admin books), so
 notification-service knows whom to notify without asking booking.
 
-Consumers: notification-service (inbox, push and email; schedules and cancels reminders).
+Consumers: notification-service (inbox, push and email; schedules and cancels reminders) and
+operations-service (`booking.confirmed`: automatic assignment, ADR-014 §10).
 
 ## Consumed
 
