@@ -492,6 +492,37 @@ paths:
                 type: "array"
                 items:
                   "$ref": "#/components/schemas/BusinessHourDto"
+  "/api/v1/admin/establishment":
+    get:
+      tags:
+        - "schedule-controller"
+      operationId: "businessData"
+      description: "All the business data for the admin Settings, including legal and tax data."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BusinessDataDto"
+    put:
+      tags:
+        - "schedule-controller"
+      operationId: "updateBusinessData"
+      description: "Saves the business data. 400 ESTABLISHMENT_REQUIRED_FIELD, ESTABLISHMENT_INVALID_PHONE, ESTABLISHMENT_INVALID_EMAIL or ESTABLISHMENT_INVALID_FOUNDATION_DATE when a rule fails. An empty tradeName keeps the current one."
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/BusinessDataDto"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BusinessDataDto"
   "/api/v1/establishment":
     get:
       tags:
@@ -956,6 +987,64 @@ components:
           type: "string"
         logoUrl:
           type: "string"
+        website:
+          type: "string"
+        instagram:
+          type: "string"
+        facebook:
+          type: "string"
+        supportLine:
+          type: "string"
+        serviceHoursNote:
+          type: "string"
+    BusinessDataDto:
+      type: "object"
+      properties:
+        tradeName:
+          type: "string"
+        legalName:
+          type: "string"
+        taxId:
+          type: "string"
+        businessType:
+          type: "string"
+        foundedOn:
+          type: "string"
+          format: "date"
+        legalRepresentative:
+          type: "string"
+        legalRepresentativeDocument:
+          type: "string"
+        address:
+          type: "string"
+        phone:
+          type: "string"
+        email:
+          type: "string"
+        website:
+          type: "string"
+        taxRegime:
+          type: "string"
+        ciiuActivity:
+          type: "string"
+        dianResolution:
+          type: "string"
+        invoicePrefix:
+          type: "string"
+        invoiceRange:
+          type: "string"
+        instagram:
+          type: "string"
+        facebook:
+          type: "string"
+        supportLine:
+          type: "string"
+        serviceHoursNote:
+          type: "string"
+      required:
+        - "legalName"
+        - "taxId"
+        - "address"
     AvailabilityResponse:
       type: "object"
       properties:
