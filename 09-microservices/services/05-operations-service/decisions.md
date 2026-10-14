@@ -21,6 +21,11 @@ Reassigning is only allowed while every line is `PENDING`.
 assignment (409 with the reason) and the candidates list, so the admin sees in advance who can
 take a booking.
 
+## A booking in the past cannot be assigned
+
+**Decision:** Assigning answers 409 `BOOKING_IN_PAST` once the booking's end time has passed, so an
+operator never gets a "new service" for a date that is already gone (ADR-014 §8).
+
 ## Booking status is moved by booking-service
 
 **Decision:** Starting and finishing a service call booking-service

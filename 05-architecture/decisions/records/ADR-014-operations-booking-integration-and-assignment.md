@@ -1,7 +1,7 @@
 # ADR-014 — Operations: Booking Integration by REST, Operator Provisioning and Manual Assignment
 
 - **ID:** ADR-014
-- **Date:** 2026-10-06 (updated 2026-10-09: sections 6 and 7)
+- **Date:** 2026-10-06 (updated 2026-10-09: sections 6 to 8)
 - **Status:** Proposed — in use: operations-service is built this way
 - **Authors:** Development team
 
@@ -120,6 +120,16 @@ the operator sees next to the plate). Each name is asked once per request, not o
   to the plate; the ratings are never blocked.
 - New variables: `SECURITY_INTERNAL_URL` (default `http://localhost:3001`, outside `/api/v1` and not
   routed by the gateway) and `INTERNAL_API_KEY`.
+
+### 8. A booking whose time has passed cannot be assigned (added 2026-10-09)
+
+**Problem:** a booking that nobody started or closed stays `CONFIRMED` after its date. The admin
+could still assign it, and the operator received "new service assigned for 02/10" a week later.
+
+**Decision:** `PUT /admin/assignments/{bookingId}` answers 409 `BOOKING_IN_PAST` when the booking's
+end time has already passed (`scheduledEnd <= now`). A booking that is running right now can still be
+assigned. The screens translate the code and tell the admin to mark it as no-show or cancel it.
+Closing old bookings automatically (no-show) is a pending improvement.
 ---
 
 ## Evaluated alternatives

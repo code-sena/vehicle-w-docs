@@ -27,7 +27,7 @@
 - **Shifts and absences:** one weekly shift per day (`operator_availability`, replaced as a whole)
   and dated absences (`operator_absence`) that cannot overlap.
 - **Assignment (RF-008/009):** the admin assigns or changes the operator of a booking while it is
-  `SCHEDULED` or `CONFIRMED`. `AssignmentPolicy` checks: operator active, on shift for the whole
+  `SCHEDULED` or `CONFIRMED` and its time has not passed (409 `BOOKING_IN_PAST`, ADR-014 §8). `AssignmentPolicy` checks: operator active, on shift for the whole
   booking, not absent, and not busy with another booking at the same time. The candidates endpoint
   returns every operator with the reason that blocks them, if any.
 - **Execution (RF-010/011):** the operator starts the service only from 15 minutes before the

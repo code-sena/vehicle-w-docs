@@ -61,6 +61,8 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/AssignmentResponse"
+        "409":
+          description: "BOOKING_NOT_ASSIGNABLE (already started, finished or cancelled), BOOKING_IN_PAST (its time has passed) or the AssignmentPolicy reason: OPERATOR_INACTIVE, OPERATOR_NOT_ON_SHIFT, OPERATOR_ABSENT, OPERATOR_BUSY"
   "/api/v1/ratings/{bookingId}":
     post:
       tags:
