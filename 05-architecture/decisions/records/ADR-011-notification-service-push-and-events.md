@@ -255,6 +255,25 @@ like every staff notification).
 - Without administrators (or with security-service down) nothing is marked and the next round
   retries. notification-service still queries no other service's data: it uses its own projection.
 
+### 15. Each notification is written in the language of the account that receives it (added 2026-10-14)
+
+**Problem:** the account stores its language (RF-020: Spanish, English, French or Portuguese), but
+every notice — inbox, push and email — was written in Spanish.
+
+**Decision:** the texts are templates in `i18n/notifications_{es,en,fr,pt}.properties`
+(`NotificationTexts`). The factories build each notice as a key plus its data (`LocalizedText`): booking
+code, date, amount, optional pieces such as the reason. Right before sending, notification-service reads
+the recipient's language from the internal contact of security-service (the same call it already makes
+for the email and the channel switches, §8 and §12; it now carries `language`) and writes the title and
+the message in that language. Dates use each language's format (`01/10/2026 a las 10:00`,
+`10/01/2026 at 10:00 AM`…). The email greeting, footer and subject follow the same language.
+
+- What is stored is still the rendered text (06-data, decision 1): a notification keeps saying what it
+  said when it was sent, even if the user changes language later.
+- Without a language, or with security-service down, the notice goes out in Spanish.
+- Messages written by an administrator (`SYSTEM_MESSAGE`) are sent as typed.
+- A test checks that the 4 files have the same keys and the same parameters.
+
 ---
 
 ## Consequences
