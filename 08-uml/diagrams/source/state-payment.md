@@ -18,7 +18,7 @@ stateDiagram-v2
 
 | Rule | Where |
 |---|---|
-| A client payment goes `PENDING → IN_REVIEW` in the same request; a manual payment goes straight to `APPROVED` | `PaymentApplicationService` |
+| A client payment goes `PENDING → IN_REVIEW` in the same request; an in-person (cash) payment goes straight to `APPROVED` | `PaymentCommandService.ReportAsync` / `RegisterInPersonAsync` |
 | One approved payment per booking (`APPROVED` must be id 3) | `ux_payment_one_approved_per_booking` + use-case check |
 | One open (`PENDING` / `IN_REVIEW`) payment per booking | `HasOpenPaymentAsync` → 409 `PAYMENT_ALREADY_REPORTED` |
 | After `REJECTED` the client can report a new payment for the same booking | No open payment remains |
