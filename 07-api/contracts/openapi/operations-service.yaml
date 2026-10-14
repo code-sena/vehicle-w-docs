@@ -210,6 +210,33 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/OperatorResponse"
+  "/api/v1/admin/operators/{id}/metrics":
+    get:
+      tags:
+        - "admin-operations-controller"
+      operationId: "metrics"
+      description: "Weekly metrics of the operator (Monday to Sunday). Null values mean there is no data to compute them."
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+        - name: "week"
+          in: "query"
+          required: false
+          description: "Any date of the week to compute; default is the current week."
+          schema:
+            type: "string"
+            format: "date"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/OperatorMetricsResponse"
   "/api/v1/ratings/me":
     get:
       tags:
@@ -375,6 +402,51 @@ components:
         - "dayOfWeek"
         - "endsAt"
         - "startsAt"
+    OperatorMetricsResponse:
+      type: "object"
+      properties:
+        weekStart:
+          type: "string"
+          format: "date"
+        weekEnd:
+          type: "string"
+          format: "date"
+        completedServices:
+          type: "integer"
+          format: "int32"
+        previousWeekServices:
+          type: "integer"
+          format: "int32"
+        servicesTrendPercent:
+          type: "integer"
+          format: "int32"
+          nullable: true
+          description: "Change against the previous week; null when the previous week had 0."
+        punctualityPercent:
+          type: "integer"
+          format: "int32"
+          nullable: true
+          description: "Bookings started at most 10 minutes late; null when none was started."
+        punctualityLevel:
+          type: "string"
+          enum:
+            - "EXCELLENT"
+            - "GOOD"
+            - "NEEDS_IMPROVEMENT"
+            - "NO_DATA"
+        revenue:
+          type: "number"
+        workedHours:
+          type: "number"
+          format: "double"
+        availableHours:
+          type: "number"
+          format: "double"
+        occupancyPercent:
+          type: "integer"
+          format: "int32"
+          nullable: true
+          description: "Worked hours over the hours of the weekly shift; null without a shift."
     OperatorResponse:
       type: "object"
       properties:
