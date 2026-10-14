@@ -44,6 +44,10 @@
   is pure domain code; it counts per booking, not per service line, and returns `null` instead of
   inventing a value (no previous week, nothing started, no shift). No table of its own: it reads the
   executions and the bookings it already has.
+- **Team summary:** for the operators list, `TeamSummaryCalculator` adds up the team: operators and
+  active ones, available today (active, on shift today and with no absence touching the day), absent
+  today, bookings finished this week with the change against the previous week, and the weighted average
+  rating. The screens only show it.
 - Publish `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` after commit.
 
 ## Out of scope (what it does NOT do)
@@ -61,6 +65,7 @@
 |---|---|---|
 | GET | `/api/v1/admin/operators` | ADMIN |
 | PATCH | `/api/v1/admin/operators/{id}/status` | ADMIN |
+| GET | `/api/v1/admin/operators/summary` (`?week=`, default this week) | ADMIN |
 | GET | `/api/v1/admin/operators/{id}/metrics` (`?week=` any date of the week, default this week) | ADMIN |
 | PUT | `/api/v1/admin/operators/{id}/availability` (whole week) | ADMIN |
 | GET · POST | `/api/v1/admin/operators/{id}/absences` (`?from=&to=`) | ADMIN |
