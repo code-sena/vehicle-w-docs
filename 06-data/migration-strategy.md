@@ -53,6 +53,8 @@ booking-service        005-create-booking-schemas (catalog + booking, triggers)
                          ADR-015 reaffirms ADR-010's per-booking pairing, not per-shift)
                        seed/103-seed-catalog · seed/104-seed-booking-catalogs
                        seed/109-seed-establishment-schedule
+                       032-booking-establishment-business-data (legal, tax and channel columns)
+                       seed/110-seed-establishment-business-data (example values for them)
 notification-service   010-create-notification-schema · 016-create-notification-device-token
                        017-create-notification-processed-event
                        019-create-notification-booking-reminder · seed/108-seed-notification-type
@@ -67,8 +69,8 @@ operations-service     007-create-execution-schema (5 tables + triggers) · seed
 payment-service        db/changelog/changes/001 … 018 (own numbering, see below)
 ```
 
-Current global high-water mark: **031** (notification-service). The next new changeset in any Java
-service's shared numbering starts at **032**.
+Current global high-water mark: **032** (booking-service); seeds go up to **110**. The next new
+changeset in any Java service's shared numbering starts at **033**, and the next seed at **111**.
 
 **payment-service is different** (.NET, ADR-013):
 
