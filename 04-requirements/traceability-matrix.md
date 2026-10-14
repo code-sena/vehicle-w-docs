@@ -4,8 +4,8 @@
 > Status as of 2026-10-13. The six microservices (security, customer, booking, operations, payment,
 > notification) and the api-gateway are built, merged into `develop`, connected to the web and the
 > Android app and verified end to end against the real database with real accounts.
-> Tests per service: `./mvnw test` in each Java repository (security 129, customer 68, booking 37,
-> operations 37, notification 100, api-gateway 33) and `dotnet test` in payment (domain 113,
+> Tests per service: `./mvnw test` in each Java repository (security 129, customer 68, booking 38,
+> operations 45, notification 100, api-gateway 34) and `dotnet test` in payment (domain 113,
 > application 23; 7 integration tests skipped by design because they need a separate database).
 > Web: `ng test`, 36 tests in 35 files.
 ---
@@ -35,9 +35,9 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RF-005 | Request booking (date, time, type) | HU-BOOK-001 | `BookingServiceTest`, `BookingTest`, `BookingApiWebTest` | `booking-service` | ✅ Done |
 | RF-006 | Slot availability validation | HU-BOOK-001 | `AvailabilityPolicyTest`, `BookingServiceTest` (full slot → alternatives) | `booking-service` | ✅ Done |
 | RF-007 | Modify/cancel booking before start | HU-BOOK-002 | `BookingTest` (reschedule, cancel, blocked after start), `BookingServiceTest` | `booking-service` | ✅ Done |
-| RF-008 | Automatic operator assignment | HU-BOOK-003 | — | `operations-service` | 🟡 Partial — the admin assigns with a candidates list (`AssignmentPolicy`); automatic assignment on `booking.confirmed` is not built. Administrators are alerted when a booking starts in less than 2 h without operator (`UnassignedBookingAlertTest`, ADR-011 §14) |
+| RF-008 | Automatic operator assignment | HU-BOOK-003 | `AutoAssignmentPolicyTest`, `OperationsServiceTest` (auto-assign, disabled account) | `operations-service`, `booking-service` | ✅ Done (on `booking.confirmed`: client's choice if free, else fewest bookings that day; ADR-014 §10) |
 | RF-009 | Assignment/reassignment by Administrator | HU-BOOK-006 | `AssignmentPolicyTest`, `OperationsServiceTest` (incl. `pastBookingIsNotAssignable`), `ServiceExecutionTest` (reassign only while pending) | `operations-service` | ✅ Done (a booking whose time has passed answers 409 `BOOKING_IN_PAST`, ADR-014 §8) |
-| RF-010 | Operator selection by customer | HU-BOOK-004 | — | `operations-service` | 🔴 Pending (no client endpoint to choose the operator) |
+| RF-010 | Operator selection by customer | HU-BOOK-004 | `OperationsServiceTest` (free operators), `OperationsApiWebTest` | `operations-service`, `booking-service` | ✅ Done (`GET /operators/available`; optional `preferredOperatorId` on the booking, web and app) |
 | RF-011 | Operator views assigned bookings | HU-BOOK-007 | `OperationsServiceTest`, `OperationsApiWebTest` | `operations-service` | ✅ Done |
 | RF-012 | Rate a completed service | HU-BOOK-005 | `ServiceExecutionTest` (1–5, once, only completed), `OperationsServiceTest` (incl. `ratingShowsFirstNames`) | `operations-service` | ✅ Done (one rating per booking, applied to all its lines; the client sees the operator's first name and the operator the client's, ADR-014 §7) |
 | RF-012b | Operator updates service status | HU-BOOK-007 | `StartPolicyTest`, `ServiceExecutionTest`, `OperationsServiceTest` | `operations-service` | ✅ Done (start only from 15 minutes before the booking, 409 `SERVICE_TOO_EARLY`, ADR-014 §6; booking moves to `IN_PROGRESS` / `COMPLETED`; pending reminders are cancelled) |
@@ -120,7 +120,6 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | Gap type | Description | Required action | Owner |
 |----------|-------------|------------------|-------|
 | HU without integration test | Each service has unit and web tests, but no flow across services is automated; end-to-end checks were run by hand against the real database | Automate at least registration → booking → notification | Whole team |
-| RF-008 / RF-010 | No automatic assignment and no operator choice by the client | Consume `booking.confirmed` and reuse `AssignmentPolicy` to pick the first candidate | operations-service owner |
 | RF-016 without test | The reused-reference rule has no automated test | Add a case to `PaymentCommandServiceTests` | payment-service owner |
 
 ---
