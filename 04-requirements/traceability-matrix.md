@@ -5,7 +5,7 @@
 > notification) and the api-gateway are built, merged into `develop`, connected to the web and the
 > Android app and verified end to end against the real database with real accounts.
 > Tests per service: `./mvnw test` in each Java repository (security 123, customer 68, booking 36,
-> operations 31, notification 93, api-gateway 31) and `dotnet test` in payment (domain 113,
+> operations 37, notification 95, api-gateway 33) and `dotnet test` in payment (domain 113,
 > application 23; 7 integration tests skipped by design because they need a separate database).
 > Web: `ng test`, 36 tests in 35 files.
 ---
@@ -123,7 +123,6 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RF-004b not implemented | An earlier version of this matrix listed a lockout test (`LoginLockoutTest`), but no such code exists in `security-service` | Implement 5 failed attempts in 15 minutes → 15-minute lock in `security-service` | security-service owner |
 | RF-008 / RF-010 | No automatic assignment and no operator choice by the client | Consume `booking.confirmed` and reuse `AssignmentPolicy` to pick the first candidate | operations-service owner |
 | RF-016 without test | The reused-reference rule has no automated test | Add a case to `PaymentCommandServiceTests` | payment-service owner |
-| Data kept on the device | The vehicle inspection report is stored in the administrator's browser (the business data moved to booking-service, `GET/PUT /admin/establishment`, migration 032) | An `InspectionReport` aggregate in operations-service | operations owner |
 | RF-020 notification texts | Notifications are written in Spanish by notification-service | Store type and parameters and translate in the clients | notification-service owner |
 
 ---
