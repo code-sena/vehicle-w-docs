@@ -748,7 +748,7 @@ CREATE TABLE [catalog].service_price (
 
 ### Table: `establishment`
 
-**Purpose:** The wash shop's own business data: what goes on the receipt header, the logo, and the contact screen.
+**Purpose:** The wash shop's own business data: what goes on the receipt header, the logo, the contact screen, and the legal, tax and channel data the admin edits in **Settings → Business data** (migration 032).
 
 ```sql
 CREATE TABLE [booking].establishment (
@@ -760,6 +760,21 @@ CREATE TABLE [booking].establishment (
     phone            NVARCHAR(20)  NULL,
     email            NVARCHAR(120) NULL,
     logo_url         NVARCHAR(500) NULL,
+    -- migration 032
+    business_type                 NVARCHAR(100) NULL,
+    founded_on                    DATE          NULL,
+    legal_representative          NVARCHAR(150) NULL,
+    legal_representative_document NVARCHAR(30)  NULL,
+    website                       NVARCHAR(200) NULL,
+    tax_regime                    NVARCHAR(150) NULL,
+    ciiu_activity                 NVARCHAR(150) NULL,
+    dian_resolution               NVARCHAR(60)  NULL,
+    invoice_prefix                NVARCHAR(10)  NULL,
+    invoice_range                 NVARCHAR(30)  NULL,
+    instagram                     NVARCHAR(100) NULL,
+    facebook                      NVARCHAR(150) NULL,
+    support_line                  NVARCHAR(30)  NULL,
+    service_hours_note            NVARCHAR(150) NULL,
     singleton        BIT           NOT NULL CONSTRAINT df_establishment_singleton DEFAULT 1,
     created_at       DATETIME2(3)  NOT NULL CONSTRAINT df_establishment_created DEFAULT SYSUTCDATETIME(),
     created_by       BIGINT        NULL,
@@ -786,6 +801,14 @@ CREATE TABLE [booking].establishment (
 | `phone` | NVARCHAR(20) | Yes | Contact phone. | — |
 | `email` | NVARCHAR(120) | Yes | Contact email. | — |
 | `logo_url` | NVARCHAR(500) | Yes | Logo shown in the admin panel and the customer app. | — |
+| `business_type` | NVARCHAR(100) | Yes | Kind of business, e.g. "Lavado y Detailing Automotriz". | — |
+| `founded_on` | DATE | Yes | Foundation date. | Not in the future (app rule) |
+| `legal_representative` / `legal_representative_document` | NVARCHAR(150) / NVARCHAR(30) | Yes | Legal representative and their ID document. Admin only, never public. | — |
+| `website` | NVARCHAR(200) | Yes | Website. | — |
+| `tax_regime` / `ciiu_activity` / `dian_resolution` | NVARCHAR(150) / NVARCHAR(150) / NVARCHAR(60) | Yes | Tax information for invoices. Admin only. | — |
+| `invoice_prefix` / `invoice_range` | NVARCHAR(10) / NVARCHAR(30) | Yes | Invoice numbering authorized by DIAN. Admin only. | — |
+| `instagram` / `facebook` / `support_line` | NVARCHAR(100) / NVARCHAR(150) / NVARCHAR(30) | Yes | Official channels, shown to customers. | — |
+| `service_hours_note` | NVARCHAR(150) | Yes | Free text for the hours shown on the contact screen; the real hours that drive availability are `business_hour`. | — |
 | `singleton` | BIT | No | Always `1`. Exists purely so the CHECK constraint below can enforce a single row. | Unique |
 
 **Modeling decisions:**
@@ -793,6 +816,7 @@ CREATE TABLE [booking].establishment (
 1. `singleton UNIQUE` + `CHECK (singleton = 1)` makes "exactly one establishment" a database guarantee, not an app convention — a second `INSERT` fails outright instead of relying on someone remembering not to add one.
 2. Optional in principle: this data could live in a config file instead. It's a table so an admin can change the logo or phone from the panel without a redeploy.
 3. **Moved from `settings` to `booking` (ADR-009).** The establishment is the shop itself: its business hours, their exceptions and its wash bays already live in this schema. `payment-service` reads the tax id and logo for receipts, but reading a value does not make it the owner.
+4. **Legal, tax and channel columns (migration 032).** Until then the admin's **Business data** form lived only in the browser or the phone. All new columns are nullable; the rules (legal name, tax id and address required, phone with at least 7 digits, valid email, foundation date not in the future) live in the `Establishment` domain record, not in the screens. The public `GET /establishment` exposes only the contact and channel columns; the legal representative and the tax data are read through `GET /admin/establishment`. The example values are seeded by `seed/110`.
 
 ---
 
