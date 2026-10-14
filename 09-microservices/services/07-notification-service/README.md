@@ -33,6 +33,10 @@
   the due ones to the inbox, push and email.
 - Let the administrator send a manual notification.
 
+**Language (ADR-011 §15):** every notice is written in the language of the account that receives it
+(Spanish, English, French or Portuguese; templates in `src/main/resources/i18n/`). The language comes
+from security-service's internal contact; without it the notice goes out in Spanish.
+
 ## Out of scope (what it does NOT do)
 
 - Does not store emails or personal data (only `user_id`).
