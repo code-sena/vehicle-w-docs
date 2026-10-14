@@ -44,6 +44,12 @@
   is pure domain code; it counts per booking, not per service line, and returns `null` instead of
   inventing a value (no previous week, nothing started, no shift). No table of its own: it reads the
   executions and the bookings it already has.
+- **Automatic assignment (RF-008, ADR-014 §10):** on `booking.confirmed` the booking gets the operator
+  the client chose (RF-010) if still free, otherwise the free one with the fewest bookings that day.
+  Reads the booking through booking-service's internal routes (`INTERNAL_API_KEY`); skips accounts
+  disabled in security. `AUTO_ASSIGN_ENABLED=false` leaves it to the admin.
+- **Free operators for the client (RF-010):** `GET /api/v1/operators/available` with only the first name
+  and the rating.
 - **Vehicle inspection report (ADR-014 §9):** for bookings of 3 hours or more the admin records 5
   phases with findings and photos, publishes the report and shares it with the client. The public
   link (`/report/{token}`) needs no session. Sharing publishes `InspectionShared`; notification-service
@@ -59,7 +65,6 @@
 - Does not store bookings, bays or prices: it reads them from booking-service.
 - Does not create accounts or store names: names and contact come from security-service.
 - Does not charge (payment-service) or send notifications (notification-service reacts to its events).
-- Automatic assignment by availability is not built yet: today the admin assigns.
 
 ---
 
@@ -83,6 +88,7 @@
 | POST | `/api/v1/admin/inspections/{bookingId}/publish` · `/share` | ADMIN |
 | GET | `/api/v1/admin/inspections/{bookingId}/photos/{photoId}` | ADMIN |
 | GET | `/api/v1/public/inspections/{token}` · `/public/inspections/{token}/photos/{photoId}` | public (published reports only) |
+| GET | `/api/v1/operators/available` (`?date=&time=HH:mm&minutes=`) | any signed-in user |
 | GET | `/api/v1/operator/services` (`?from=&to=`, default today) | OPERATOR |
 | POST | `/api/v1/operator/services/{bookingId}/start` · `/finish` | OPERATOR |
 | GET | `/api/v1/operator/ratings` | OPERATOR |
