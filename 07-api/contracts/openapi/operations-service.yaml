@@ -551,6 +551,49 @@ paths:
                 type: "array"
                 items:
                   "$ref": "#/components/schemas/RatingResponse"
+  "/api/v1/operators/available":
+    get:
+      tags:
+        - "available-operators-controller"
+      operationId: "availableOperators"
+      description: "RF-010: operators free for the slot (active, on shift, not absent, not busy), first name and rating only."
+      parameters:
+        - name: "date"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            format: "date"
+        - name: "time"
+          in: "query"
+          required: true
+          description: "HH:mm"
+          schema:
+            type: "string"
+        - name: "minutes"
+          in: "query"
+          required: true
+          schema:
+            type: "integer"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    operatorId:
+                      type: "integer"
+                    firstName:
+                      type: "string"
+                    averageRating:
+                      type: "number"
+                      nullable: true
+                    ratingsCount:
+                      type: "integer"
   "/api/v1/admin/operators":
     get:
       tags:
