@@ -25,6 +25,9 @@
 - Authenticate with email + password (BCrypt) and issue an **HS256 JWT valid for 1 hour**.
   Claims: `sub` (user id), `roles`, `sid` (session id), `iss`, `aud`, `iat`, `nbf`, `exp`, `jti`.
 - Record sessions (`user_session`); logout stores the session end.
+- Lock an account for 15 minutes after 5 wrong passwords within 15 minutes (RF-004b, `login_lockout`):
+  the login answers `423 ACCOUNT_LOCKED`, even with the right password, until it expires; a password
+  reset lifts it.
 - Password recovery with a 6-digit code by email (BCrypt-hashed, 15 min, single use, 5 failed attempts burn it).
 - Profile: read/update name and phone, change email (asks for the password), change password,
   deactivate the own account, notification preferences.
