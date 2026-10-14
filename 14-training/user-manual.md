@@ -17,7 +17,7 @@
 | Change your email | **Profile → Email**, confirmed with your current password. From then on you sign in with the new email; the old one no longer works |
 | Notifications | Bell / **Notifications**: unread first; filter by type or date; mark one or all as read; delete |
 | Notification channels | **Settings → Notifications**: **Push** (phone notifications), **Booking reminders by email** and **Promotions** (unlocked coupons by email and push). They are saved in your account; the inbox always receives everything |
-| Theme and language | **Settings**: 4 palettes and Spanish, English, French, Portuguese. Saved in your account, so they follow you to any device |
+| Theme and language | **Settings**: 4 palettes and Spanish, English, French, Portuguese. Saved in your account, so they follow you to any device. Notifications and emails also arrive in that language (the ones already received keep their original language) |
 | Sign out | Menu → **Sign out**. The session also ends after 1 hour |
 
 ---
