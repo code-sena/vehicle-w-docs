@@ -1,7 +1,7 @@
 # ADR-013 — Payment Service: .NET Stack and Layered (Clean) Architecture
 
 - **ID:** ADR-013
-- **Date:** 2026-10-06
+- **Date:** 2026-10-06 (updated 2026-10-13: sections 1 and 3 match the current code)
 - **Status:** Proposed — in use: payment-service is built this way
 - **Authors:** Development team
 
@@ -43,9 +43,9 @@ PaymentService.Api ──► PaymentService.Application ──► PaymentService
 
 | Project | Content | References |
 |---|---|---|
-| `Domain` | `Payment` aggregate (state machine `PENDING → IN_REVIEW → APPROVED / REJECTED`, `APPROVED → REFUNDED`), `PaymentAccount`, `PaymentReceipt`, domain events, `AggregateRoot` / `Entity` | Nothing (no NuGet package) |
-| `Application` | Use cases (`PaymentApplicationService`) and **output ports**: `IPaymentRepository`, `IPaymentAccountRepository`, `IBookingDirectory` | Domain |
-| `Infrastructure` | **Output adapters**: EF Core repositories (SQL Server), `BookingServiceDirectory` (HTTP to booking-service) | Application, EF Core |
+| `Domain` | `Payment` aggregate (state machine `PENDING → IN_REVIEW → APPROVED / REJECTED`, `APPROVED → REFUNDED`) and `PaymentPolicy`, `PaymentAccount`, `PaymentReceipt`, `Promotion` aggregate with its discount strategies (`Discounts/`), `LoyaltyTransaction` ledger, domain events, `AggregateRoot` / `Entity` | Nothing (no NuGet package) |
+| `Application` | **Input ports** (`IPaymentCommandUseCases`, `IPaymentQueryUseCases`, `IPaymentAccountUseCases`, `IPromotionAdminUseCases`, `ICustomerPromotionUseCases`, `ILoyaltyUseCases`) implemented by `PaymentCommandService`, `PaymentQueryService`, `PaymentAccountService`, `PromotionAdminService`, `CustomerPromotionService`, `LoyaltyService`; helpers `BookingPaymentGuard`, `AmountDueCalculator`, `LoyaltyRewardService`; **output ports** `IPaymentRepository`, `IPaymentAccountRepository`, `IPromotionRepository`, `IPromotionRedemptionRepository`, `ILoyaltyLedgerRepository`, `IBookingDirectory`, `IUnitOfWork`, `IIntegrationEventPublisher` | Domain |
+| `Infrastructure` | **Output adapters**: EF Core repositories and `EfUnitOfWork` (SQL Server), `BookingServiceDirectory` (HTTP to booking-service), `RabbitMqIntegrationEventPublisher` (events after commit; `NullIntegrationEventPublisher` when messaging is off) | Application, EF Core, RabbitMQ client |
 | `Api` | **Input adapter**: controllers, JWT bearer, CORS, `GlobalExceptionHandler`, `EnvFile`, Swagger | Application, Infrastructure (composition root) |
 
 ### 2. Shared contract, .NET implementation
@@ -63,8 +63,7 @@ PaymentService.Api ──► PaymentService.Application ──► PaymentService
 | ADR-007 (Java services) | payment-service | Why it is accepted |
 |---|---|---|
 | Persistence entities separate from domain objects | EF Core maps the domain classes directly (`IEntityTypeConfiguration`), with a private parameterless constructor for EF | Fluent configuration keeps attributes out of the domain; a second model would only add mapping code |
-| Input ports (`...UseCase` interfaces) | Controllers call `PaymentApplicationService` directly | One adapter (HTTP) uses it; the interface would have one implementation and one caller |
-| One use case per class or per port | One application service with all the payment and account use cases | Small service; it can be split when promotions and loyalty are added |
+| One use case per class or per port | One service per area and side: commands and queries of payments are split (`PaymentCommandService` / `PaymentQueryService`), promotions are split into admin and customer services | Keeps each class small without one class per method; the input ports (`I...UseCases`) are the same idea as ADR-007's `...UseCase` interfaces |
 
 ---
 
