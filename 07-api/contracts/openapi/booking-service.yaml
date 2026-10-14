@@ -492,6 +492,37 @@ paths:
                 type: "array"
                 items:
                   "$ref": "#/components/schemas/BusinessHourDto"
+  "/api/v1/admin/bookings/day-summary":
+    get:
+      tags:
+        - "admin-booking-controller"
+      operationId: "daySummary"
+      description: "Bookings dated that day (any status, shop time zone) against the day before. Default: today."
+      parameters:
+        - name: "date"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "object"
+                properties:
+                  date:
+                    type: "string"
+                    format: "date"
+                  bookings:
+                    type: "integer"
+                  previousDayBookings:
+                    type: "integer"
+                  difference:
+                    type: "integer"
+                    description: "bookings - previousDayBookings (negative when there are fewer)"
   "/api/v1/admin/establishment":
     get:
       tags:
