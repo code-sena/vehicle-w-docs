@@ -210,6 +210,27 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/OperatorResponse"
+  "/api/v1/admin/operators/summary":
+    get:
+      tags:
+        - "admin-operations-controller"
+      operationId: "teamSummary"
+      description: "Summary of the operators team for the admin list. Null values mean there is no data to compute them."
+      parameters:
+        - name: "week"
+          in: "query"
+          required: false
+          description: "Any date of the week to compute; default is the current week."
+          schema:
+            type: "string"
+            format: "date"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/TeamSummaryResponse"
   "/api/v1/admin/operators/{id}/metrics":
     get:
       tags:
@@ -447,6 +468,47 @@ components:
           format: "int32"
           nullable: true
           description: "Worked hours over the hours of the weekly shift; null without a shift."
+    TeamSummaryResponse:
+      type: "object"
+      properties:
+        weekStart:
+          type: "string"
+          format: "date"
+        weekEnd:
+          type: "string"
+          format: "date"
+        totalOperators:
+          type: "integer"
+          format: "int32"
+        activeOperators:
+          type: "integer"
+          format: "int32"
+        availableToday:
+          type: "integer"
+          format: "int32"
+          description: "Active, on shift today and with no absence touching the day."
+        absentToday:
+          type: "integer"
+          format: "int32"
+        completedServices:
+          type: "integer"
+          format: "int32"
+        previousWeekServices:
+          type: "integer"
+          format: "int32"
+        servicesTrendPercent:
+          type: "integer"
+          format: "int32"
+          nullable: true
+          description: "Change against the previous week; null when the previous week had 0."
+        averageRating:
+          type: "number"
+          format: "double"
+          nullable: true
+          description: "Weighted by the number of ratings; null when there is none."
+        ratingsCount:
+          type: "integer"
+          format: "int32"
     OperatorResponse:
       type: "object"
       properties:
