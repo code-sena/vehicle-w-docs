@@ -16,7 +16,9 @@ Consumers: notification-service (notifies the operator and the client).
 
 ## Consumed
 
-None.
+| Routing key | Event | What operations does |
+|---|---|---|
+| `booking.confirmed` | `BookingConfirmed` | Assigns a free operator when the booking has none (RF-008), honouring `preferredOperatorId` (RF-010). Queue `operations-service.events`; never requeues (ADR-014 §10) |
 
 ## Synchronous calls
 
