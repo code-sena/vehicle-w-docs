@@ -10,7 +10,7 @@ section 3 (11 tables), plus the ADR-010 changes below.
 | `catalog.service_category` | `LAVADO`, `POLICHADO`, `DETALLADO`, `INTERIOR`, `PAQUETES` (combos are services in "Paquetes", ADR-010) |
 | `catalog.service` | Service without price (2NF): code, name, description, category, active |
 | `catalog.service_price` | Price + estimated minutes per (service, vehicle type), `valid_from`/`valid_to`. **Immutable** (trigger `tr_service_price_immutable`) |
-| `booking.establishment` | The shop (single row) |
+| `booking.establishment` | The shop (single row): contact data plus legal, tax and channel data edited in Settings (032) |
 | `booking.business_hour` | One row per weekday (1 = Monday … 7 = Sunday), `is_active`, optional `break_starts_at`/`break_ends_at` |
 | `booking.business_hour_exception` | Holiday (closed) or special day (other hours) |
 | `booking.bay_status` | `ACTIVE`, `MAINTENANCE`, `INACTIVE` (ADR-010) |
@@ -40,4 +40,5 @@ Liquibase, changelog table `DATABASECHANGELOG_BOOKING`:
 `005-create-booking-schemas` (tables + triggers) · `018-booking-adr-010` ·
 seeds `103-seed-catalog` (categories, BASIC/PREMIUM/FULL with prices for the 6 vehicle types),
 `104-seed-booking-catalogs` (statuses, cancellation reasons), `109-seed-establishment-schedule`
-(shop, weekly hours, 4 bays).
+(shop, weekly hours, 4 bays), `032-booking-establishment-business-data` (legal, tax and channel
+columns of the shop) and `110-seed-establishment-business-data` (their example values).
