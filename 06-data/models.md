@@ -2270,11 +2270,50 @@ CREATE TABLE [notification].booking_reminder (
 
 ---
 
+### Table: `booking_tracking`
+
+**Purpose:** The last known state of each booking, as the events told it — used to notify staff (operator and admin) without querying booking-service or operations-service. ADR-011 §13–14.
+
+```sql
+CREATE TABLE [notification].booking_tracking (
+    booking_id          BIGINT       NOT NULL,   -- [booking].booking
+    booking_code        NVARCHAR(20) NULL,
+    customer_user_id    BIGINT       NULL,       -- [security].app_user (the client)
+    operator_user_id    BIGINT       NULL,       -- [security].app_user (the assigned operator)
+    scheduled_start     DATETIME2(3) NULL,
+    is_cancelled        BIT          NOT NULL CONSTRAINT df_btracking_cancelled DEFAULT 0,
+    updated_at          DATETIME2(3) NOT NULL CONSTRAINT df_btracking_updated DEFAULT SYSUTCDATETIME(),
+    unassigned_alert_at DATETIME2(3) NULL,       -- migration 031
+    CONSTRAINT pk_booking_tracking PRIMARY KEY (booking_id)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `booking_id` | BIGINT | No | The booking; also the primary key (one row per booking). | PK; no FK — owned by `booking.booking` |
+| `booking_code` | NVARCHAR(20) | Yes | Shown in the messages (`RES-000123`). | — |
+| `customer_user_id` | BIGINT | Yes | The client who booked. | No FK — owned by `security.app_user` |
+| `operator_user_id` | BIGINT | Yes | User of the operator assigned last (`OperatorAssigned`); `NULL` while nobody is assigned. | No FK — owned by `security.app_user` |
+| `scheduled_start` | DATETIME2(3) | Yes | Booking start, UTC, from the last `BookingConfirmed`. | — |
+| `is_cancelled` | BIT | No | Set by `BookingCancelled`. | — |
+| `updated_at` | DATETIME2(3) | No | Last event applied to the row, UTC. | — |
+| `unassigned_alert_at` | DATETIME2(3) | Yes | When the admins were told the booking starts in less than 2 hours with no operator (`ADMIN_BOOKING_UNASSIGNED`); `NULL` = not alerted yet. | — |
+
+**Modeling decisions:**
+
+1. A read model fed only by events (`BookingConfirmed`, `BookingCancelled`, `OperatorAssigned`). Comparing a new `BookingConfirmed` with the stored `scheduled_start` tells a new booking from a rescheduled one, and `operator_user_id` says which operator to notify. Migration 027.
+2. No standard audit block: the row is overwritten by each event and carries no business history — the notifications it produced are the history.
+3. `unassigned_alert_at` keeps the scheduled task from repeating the alert on every run. Migration 031 (next global number: 032).
+
+---
+
 ## Cross-service contract (no FK, by design)
 
-23 columns point at a table in another schema, and **21 of them point at a table owned by a
-different service** (four added after ADR-009: `customer.user_id`, and the `user_id` / `booking_id`
-references of the new notification tables). That is one more than before ADR-009: `loyalty_transaction.customer_id`
+26 columns point at a table in another schema, and **24 of them point at a table owned by a
+different service** (seven added after ADR-009: `customer.user_id`, and the `user_id` / `booking_id`
+references of the new notification tables, `booking_tracking` included). That is one more than before ADR-009: `loyalty_transaction.customer_id`
 used to stay inside `customer` and now crosses from `payment` to `customer-service`. None of them has a foreign key — integrity across the boundary is the
 application's job, validated before it writes (ADR-004). Every one of them is indexed so
 joins done in application code, or in reporting queries, stay fast.
@@ -2302,6 +2341,9 @@ joins done in application code, or in reporting queries, stay fast.
 | `notification.device_token.user_id` | `security.app_user` | `security-service` |
 | `notification.booking_reminder.booking_id` | `booking.booking` | `booking-service` |
 | `notification.booking_reminder.user_id` | `security.app_user` | `security-service` |
+| `notification.booking_tracking.booking_id` | `booking.booking` | `booking-service` |
+| `notification.booking_tracking.customer_user_id` | `security.app_user` | `security-service` |
+| `notification.booking_tracking.operator_user_id` | `security.app_user` | `security-service` |
 
 The other two stay inside one service since ADR-009 and carry a real foreign key:
 
