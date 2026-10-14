@@ -35,7 +35,10 @@
   the start time (RF-007); the admin moves bookings through `IN_PROGRESS`, `COMPLETED`, `NO_SHOW`
   or `CANCELLED`.
 - **Establishment:** the shop's public data (name, address, contact).
-- Publish `BookingConfirmed` / `BookingCancelled` after commit.
+- Publish `BookingConfirmed` / `BookingCancelled` after commit. A new booking may carry the client's
+  `preferredOperatorId` (RF-010): it is not stored, it travels in the event for operations-service.
+- **Internal routes (ADR-014 §10):** `GET /internal/v1/bookings?from=&to=` and `/internal/v1/bookings/{id}`
+  for operations-service, only with `X-Internal-Key` (`INTERNAL_API_KEY`), not routed by the gateway.
 
 ## Out of scope (what it does NOT do)
 
