@@ -37,6 +37,13 @@
 - **Ratings (RF-012):** the client rates a completed booking once (1 to 5 stars, comment up to 500
   characters); the operator sees their ratings and the average. Each rating carries the client's
   and the operator's first name (security-service internal contact, ADR-014 §7).
+- **Operator metrics (RF-023):** for a week (Monday to Sunday) the admin sees how many bookings the
+  operator finished and the change against the previous week, punctuality (started at most 10 minutes
+  after the booked time; EXCELLENT ≥ 90 %, GOOD ≥ 70 %), revenue of the finished bookings, worked hours
+  (start to finish) against the hours of the weekly shift, and occupancy. `OperatorMetricsCalculator`
+  is pure domain code; it counts per booking, not per service line, and returns `null` instead of
+  inventing a value (no previous week, nothing started, no shift). No table of its own: it reads the
+  executions and the bookings it already has.
 - Publish `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` after commit.
 
 ## Out of scope (what it does NOT do)
@@ -54,6 +61,7 @@
 |---|---|---|
 | GET | `/api/v1/admin/operators` | ADMIN |
 | PATCH | `/api/v1/admin/operators/{id}/status` | ADMIN |
+| GET | `/api/v1/admin/operators/{id}/metrics` (`?week=` any date of the week, default this week) | ADMIN |
 | PUT | `/api/v1/admin/operators/{id}/availability` (whole week) | ADMIN |
 | GET · POST | `/api/v1/admin/operators/{id}/absences` (`?from=&to=`) | ADMIN |
 | DELETE | `/api/v1/admin/operators/{id}/absences/{absenceId}` | ADMIN |
