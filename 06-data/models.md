@@ -2240,7 +2240,7 @@ CREATE TABLE [notification].notification (
 
 **Modeling decisions:**
 
-1. Stores the title and message already rendered, not a template reference: if tomorrow's wording for "Payment approved" changes, yesterday's notifications should keep saying what they actually said. History is never rewritten.
+1. Stores the title and message already rendered, not a template reference: if tomorrow's wording for "Payment approved" changes, yesterday's notifications should keep saying what they actually said. History is never rewritten. Since ADR-011 §15 the text is rendered in the language of the recipient's account at sending time, so the table still has no language column.
 
 ---
 
