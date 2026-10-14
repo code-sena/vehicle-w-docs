@@ -5,7 +5,7 @@
 > notification) and the api-gateway are built, merged into `develop`, connected to the web and the
 > Android app and verified end to end against the real database with real accounts.
 > Tests per service: `./mvnw test` in each Java repository (security 123, customer 68, booking 36,
-> operations 37, notification 95, api-gateway 33) and `dotnet test` in payment (domain 113,
+> operations 37, notification 100, api-gateway 33) and `dotnet test` in payment (domain 113,
 > application 23; 7 integration tests skipped by design because they need a separate database).
 > Web: `ng test`, 36 tests in 35 files.
 ---
@@ -49,7 +49,7 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RF-017 | Role-based dashboard | HU-UI-001 | — | Frontend | ✅ Done (admin dashboard reads bookings, operators and payments; operator home reads its services) |
 | RF-018 | Notifications with read/unread state | HU-UI-002 | `NotificationUseCasesTest`, `NotificationFactoryTest`, `BookingReminderServiceTest`, `BookingReminderTest`, `StaffNotificationsTest`, `UnassignedBookingAlertTest`, `AdminNotificationControllerTest` | `notification-service` | ✅ Done (inbox, push, email for customer-relevant notices, reminders, staff notices, coupon and payment notices, user switches — ADR-011 §8 to §14) |
 | RF-019 | Theme customisation, per account | HU-UI-003 | `UserPreferenceTest`, `UserPreferenceServiceTest` | `security-service` (preferences) | ✅ Done (4 palettes stored in `security.user_preference`, migration 020; web and app read and save them through `/users/me/preferences`) |
-| RF-020 | Language switch (4 languages), per account | HU-UI-003 | `UserPreferenceTest`, `UserPreferenceServiceTest`, manual check per language | `security-service` (preferences) | ✅ Done (language stored per account; gap: notification texts are generated in Spanish only) |
+| RF-020 | Language switch (4 languages), per account | HU-UI-003 | `UserPreferenceTest`, `UserPreferenceServiceTest`, manual check per language | `security-service` (preferences) | ✅ Done (language stored per account; notifications — inbox, push and email — are written in the account language, `LocalizedNotificationsTest`, ADR-011 §15) |
 | RF-021 | Configure business hours and exceptions | HU-ADMIN-001 | `AvailabilityPolicyTest` (break, closed day), `BookingApiWebTest` | `booking-service` | ✅ Done |
 | RF-022 | Operator availability registration/adjustment | HU-ADMIN-001 | `AssignmentPolicyTest` (shift, absence), `OperationsServiceTest` | `operations-service` | ✅ Done (weekly shift and absences, set by the admin) |
 | RF-023 | Operational reports | HU-ADMIN-001 | — | `booking-service`, `operations-service`, `payment-service` | 🟡 In progress (web reports read real bookings and payments; operator weekly metrics — services and trend, punctuality, revenue, worked hours — computed in operations-service, `OperatorMetricsCalculatorTest`; average rating per operator already in ratings) |
@@ -123,7 +123,6 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RF-004b not implemented | An earlier version of this matrix listed a lockout test (`LoginLockoutTest`), but no such code exists in `security-service` | Implement 5 failed attempts in 15 minutes → 15-minute lock in `security-service` | security-service owner |
 | RF-008 / RF-010 | No automatic assignment and no operator choice by the client | Consume `booking.confirmed` and reuse `AssignmentPolicy` to pick the first candidate | operations-service owner |
 | RF-016 without test | The reused-reference rule has no automated test | Add a case to `PaymentCommandServiceTests` | payment-service owner |
-| RF-020 notification texts | Notifications are written in Spanish by notification-service | Store type and parameters and translate in the clients | notification-service owner |
 
 ---
 
