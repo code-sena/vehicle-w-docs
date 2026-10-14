@@ -50,10 +50,10 @@ the risks to validate before trusting this hypothesis, in
 
 ## Current status
 
-- **Phase:** Implementation (status at 2026-10-06). Design complete (`02-domain` to `06-data`, 14 ADRs). Built, tested and running together with Docker Compose: **api-gateway (8080), security (3001), customer (3002), booking (3003), operations (3004) and notification (3006)**. **payment-service (3005, .NET 8)** covers payment accounts with QR, payments with receipt and admin review; promotions, loyalty points and its events are pending, and it is not in Docker Compose yet. The web client goes through the gateway to all six services; booking emails and reminders reach the customer's inbox. The Android app (teammates) is in progress and already calls security, customer, booking, operations and payment. Jenkins CI is planned, not built yet
+- **Phase:** Implementation (status at 2026-10-13). Design complete (`02-domain` to `06-data`, 15 ADRs). The six services and the gateway are built, tested and run together with Docker Compose (SQL Server, RabbitMQ, Mailpit and the services): **api-gateway (8080), security (3001), customer (3002), booking (3003), operations (3004), payment (3005, .NET 8) and notification (3006)**. payment-service covers QR accounts, payments with receipt, admin review, refunds, in-person payments, promotions redeemed as coupons and loyalty points, and publishes its events. notification-service delivers inbox, push and email, booking reminders, staff notices (including the alert for bookings without operator) and respects each user's notification switches. The web client and the Android app go through the gateway to all six services. Known gaps: operator metrics (punctuality, revenue) are not computed yet, business data and the inspection report are still stored on the device, and notification texts are generated in Spanish only. Jenkins CI is planned, not built yet
 - **Current version:** N/A — the project does not use release versioning yet
 - **Last release:** N/A
-- **Next milestone:** finish payment-service (publish `payment.confirmed` / `payment.rejected`, promotions, loyalty points, container in Docker Compose); then the Jenkins pipeline. Pending gaps: `04-requirements/traceability-matrix.md`
+- **Next milestone:** close the known gaps above (operator metrics in operations-service, business data in booking-service, inspection report in the backend), the traceability matrix (`04-requirements/traceability-matrix.md`) and the Jenkins pipeline
 
 ## Project contacts
 
