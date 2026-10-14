@@ -43,6 +43,7 @@ security-service       001-create-security-schemas · 002-create-security-and-au
                          security.permission and default security.role_permission rows)
                        030-security-user-preference-notification-channels
                          (email_reminders_enabled, promotions_enabled — ADR-011 §12)
+                       034-security-login-lockout (RF-004b)
 customer-service       004-create-customer-schema · 014-add-customer-user-id
                        015-add-customer-vehicle-model · seed/102-seed-customer-catalogs
 booking-service        005-create-booking-schemas (catalog + booking, triggers)
@@ -70,8 +71,8 @@ operations-service     007-create-execution-schema (5 tables + triggers) · seed
 payment-service        db/changelog/changes/001 … 018 (own numbering, see below)
 ```
 
-Current global high-water mark: **033** (operations-service); seeds go up to **110**. The next new
-changeset in any Java service's shared numbering starts at **034**, and the next seed at **111**.
+Current global high-water mark: **034** (security-service); seeds go up to **110**. The next new
+changeset in any Java service's shared numbering starts at **035**, and the next seed at **111**.
 
 **payment-service is different** (.NET, ADR-013):
 
