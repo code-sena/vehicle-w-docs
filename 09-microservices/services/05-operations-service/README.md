@@ -44,6 +44,10 @@
   is pure domain code; it counts per booking, not per service line, and returns `null` instead of
   inventing a value (no previous week, nothing started, no shift). No table of its own: it reads the
   executions and the bookings it already has.
+- **Vehicle inspection report (ADR-014 §9):** for bookings of 3 hours or more the admin records 5
+  phases with findings and photos, publishes the report and shares it with the client. The public
+  link (`/report/{token}`) needs no session. Sharing publishes `InspectionShared`; notification-service
+  writes the notice with the link.
 - **Team summary:** for the operators list, `TeamSummaryCalculator` adds up the team: operators and
   active ones, available today (active, on shift today and with no absence touching the day), absent
   today, bookings finished this week with the change against the previous week, and the weighted average
@@ -73,6 +77,12 @@
 | GET | `/api/v1/admin/assignments` (`?from=&to=`, default today) | ADMIN |
 | PUT | `/api/v1/admin/assignments/{bookingId}` | ADMIN |
 | GET | `/api/v1/admin/assignments/{bookingId}/candidates` | ADMIN |
+| GET · POST | `/api/v1/admin/inspections/{bookingId}` (state · start) | ADMIN |
+| PATCH | `/api/v1/admin/inspections/{bookingId}/phases/{phase}` | ADMIN |
+| POST · DELETE | `/api/v1/admin/inspections/{bookingId}/findings[/{findingId}]` (multipart, up to 5 photos) | ADMIN |
+| POST | `/api/v1/admin/inspections/{bookingId}/publish` · `/share` | ADMIN |
+| GET | `/api/v1/admin/inspections/{bookingId}/photos/{photoId}` | ADMIN |
+| GET | `/api/v1/public/inspections/{token}` · `/public/inspections/{token}/photos/{photoId}` | public (published reports only) |
 | GET | `/api/v1/operator/services` (`?from=&to=`, default today) | OPERATOR |
 | POST | `/api/v1/operator/services/{bookingId}/start` · `/finish` | OPERATOR |
 | GET | `/api/v1/operator/ratings` | OPERATOR |
