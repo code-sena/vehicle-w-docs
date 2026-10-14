@@ -1,7 +1,7 @@
 # ADR-014 — Operations: Booking Integration by REST, Operator Provisioning and Manual Assignment
 
 - **ID:** ADR-014
-- **Date:** 2026-10-06 (updated 2026-10-09: section 6)
+- **Date:** 2026-10-06 (updated 2026-10-09: sections 6 and 7)
 - **Status:** Proposed — in use: operations-service is built this way
 - **Authors:** Development team
 
@@ -86,6 +86,7 @@ calls the service. Names and contact are always read from security, never stored
 | `OPERATIONS_PORT` | `3004` |
 | `BOOKING_SERVICE_URL`, `BOOKING_SERVICE_TIMEOUT` | `http://localhost:3003/api/v1`, `3s` |
 | `SECURITY_SERVICE_URL`, `SECURITY_SERVICE_TIMEOUT` | `http://localhost:3001/api/v1`, `3s` |
+| `SECURITY_INTERNAL_URL`, `INTERNAL_API_KEY` | `http://localhost:3001`, empty (section 7) |
 | `BOOKING_ZONE` | `America/Bogota` |
 
 
@@ -100,6 +101,25 @@ from `scheduledStart - 15 min` (`EARLY_START`, in case the client arrives a litt
 that, `POST /operator/services/{bookingId}/start` answers 409 `SERVICE_TOO_EARLY`. Every
 `OperatorServiceResponse` carries `startableAt` (UTC instant), so the web and the app disable the
 "Start" button and show "you can start it from HH:mm" without repeating the rule.
+
+### 7. First names in the ratings through the internal contact (added 2026-10-09)
+
+**Problem:** the operator's ratings showed only the plate as "client", and the client's own ratings
+showed no operator. Names live in security-service, and `GET /admin/users?role=OPERATOR` (section 2)
+only answers to an administrator's token, so with the operator's or the client's token the names
+came back empty.
+
+**Decision:** operations reads the **first name** of the client and of the operator from
+security-service's internal contact, `GET /internal/v1/users/{id}/contact`, with the shared key
+`X-Internal-Key` (`INTERNAL_API_KEY`), the same endpoint notification-service uses (ADR-011 §8).
+`RatingResponse` carries `operatorName` (what the client sees, "served by …") and `clientName` (what
+the operator sees next to the plate). Each name is asked once per request, not once per rating.
+
+- Only the first name: enough to recognise the person, without exposing more personal data.
+- Without the key, or with security-service down, the names come empty and the screens fall back
+  to the plate; the ratings are never blocked.
+- New variables: `SECURITY_INTERNAL_URL` (default `http://localhost:3001`, outside `/api/v1` and not
+  routed by the gateway) and `INTERNAL_API_KEY`.
 ---
 
 ## Evaluated alternatives

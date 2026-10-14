@@ -14,7 +14,7 @@
 | Repository | `lavarapido-operations-service` |
 | Stack | Spring Boot 4 · Java 21 · Maven · hexagonal (ADR-007) |
 | DB engine | SQL Server — schema `execution` (Liquibase, changelog table `DATABASECHANGELOG_OPERATIONS`) |
-| Communicates with | booking-service (REST, with the caller's token), security-service (REST, admin token), RabbitMQ (publishes execution events) |
+| Communicates with | booking-service (REST, with the caller's token), security-service (REST: admin token for operators, internal key for first names in ratings), RabbitMQ (publishes execution events) |
 | Consumed by | Web, mobile, notification-service (through events) |
 
 ---
@@ -35,7 +35,8 @@
   screens) and finishes it; the service moves the booking to `IN_PROGRESS` / `COMPLETED` in booking-service. An operator
   cannot run two services at once.
 - **Ratings (RF-012):** the client rates a completed booking once (1 to 5 stars, comment up to 500
-  characters); the operator sees their ratings and the average.
+  characters); the operator sees their ratings and the average. Each rating carries the client's
+  and the operator's first name (security-service internal contact, ADR-014 §7).
 - Publish `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` after commit.
 
 ## Out of scope (what it does NOT do)
@@ -85,6 +86,8 @@ cd lavarapido-operations-service
 | `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE` | — | Verify tokens |
 | `BOOKING_SERVICE_URL` | `http://localhost:3003/api/v1` | Read bookings and move their status |
 | `SECURITY_SERVICE_URL` | `http://localhost:3001/api/v1` | Operator names (`/admin/users?role=OPERATOR`) |
+| `SECURITY_INTERNAL_URL` | `http://localhost:3001` | Internal contact for first names in ratings (not routed by the gateway) |
+| `INTERNAL_API_KEY` | empty | Shared key for `/internal/**`; empty = ratings without names |
 | `BOOKING_SERVICE_TIMEOUT`, `SECURITY_SERVICE_TIMEOUT` | `3s` | REST timeouts |
 | `BOOKING_ZONE` | `America/Bogota` | Shifts, absences and dates are read in this zone |
 | `MESSAGING_ENABLED`, `RABBITMQ_*` | `false` | Publish execution events |

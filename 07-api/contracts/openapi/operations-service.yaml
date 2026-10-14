@@ -478,6 +478,10 @@ components:
           format: "date-time"
         operatorName:
           type: "string"
+          description: "First name of the operator who washed the vehicle (what the client sees). Empty if security-service could not be read."
+        clientName:
+          type: "string"
+          description: "First name of the client (what the operator sees next to the plate). Empty if security-service could not be read."
     OperatorServiceResponse:
       type: "object"
       properties:

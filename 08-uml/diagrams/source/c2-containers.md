@@ -48,6 +48,7 @@ flowchart TB
     notification -- "REST (X-Internal-Key)<br/>/internal/v1/users/{id}/contact, /admins" --> security
     operations -- "REST (user JWT)<br/>bookings, status" --> booking
     operations -- "REST (admin JWT)<br/>operator accounts" --> security
+    operations -- "REST (X-Internal-Key)<br/>/internal/v1/users/{id}/contact (names in ratings)" --> security
     payment -- "REST (user JWT)<br/>booking total" --> booking
 
     security -- user_registered --> rabbit

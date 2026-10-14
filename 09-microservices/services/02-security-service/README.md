@@ -57,7 +57,7 @@
 | PATCH | `/api/v1/admin/users/{userId}/status` | ADMIN |
 | GET | `/api/v1/admin/roles-permissions` | ADMIN (permission catalog and what each fixed role has) |
 | PUT | `/api/v1/admin/roles-permissions/{role}` | ADMIN (`400 UNKNOWN_PERMISSION` for ids outside the catalog) |
-| GET | `/internal/v1/users/{userId}/contact` (email, first name, active and the switches `pushEnabled`, `emailRemindersEnabled`, `promotionsEnabled`, ADR-011 §12) | internal key (`X-Internal-Key`), not routed by the gateway |
+| GET | `/internal/v1/users/{userId}/contact` (email, first name, active and the switches `pushEnabled`, `emailRemindersEnabled`, `promotionsEnabled`, ADR-011 §12). Used by notification-service and by operations-service (first names in ratings, ADR-014 §7) | internal key (`X-Internal-Key`), not routed by the gateway |
 | GET | `/internal/v1/users/admins` | internal key; ids of the active `ADMIN` accounts (staff notifications, ADR-011 §10) |
 
 Full contract: [`07-api/contracts/openapi/security-service.yaml`](../../../07-api/contracts/openapi/security-service.yaml).
