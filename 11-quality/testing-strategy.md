@@ -140,7 +140,7 @@ No coverage tool configured. Policy: every business rule and every endpoint's se
 | No automated test across services | Automate registration → booking → notification |
 | No CI | Add a workflow per repository |
 | No test against a real SQL Server | Testcontainers for the persistence adapters of booking (locking, triggers) |
-| payment-service only tests its domain | Add use-case tests (`PaymentApplicationService` with fake ports) and API tests (roles, 409 codes) |
+| payment-service has no API tests | Use-case tests exist (`PaymentCommandServiceTests`, `PaymentQueryServiceTests`, `CustomerPromotionServiceTests` with in-memory fakes); add API tests (roles, 409 codes) |
 | operations-service has no test with booking-service down | Add a test for 503 `BOOKING_SERVICE_UNAVAILABLE` in `OperationsServiceTest` |
 
 ---
