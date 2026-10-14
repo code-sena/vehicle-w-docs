@@ -14,6 +14,7 @@ Queue `notification-service.events` bound to `carwash.events` (DLQ `notification
 | `execution.operator_assigned` | `OperatorAssigned` | `OPERATOR_ASSIGNED` | no |
 | `execution.service_started` | `ServiceStarted` | `SERVICE_STARTED` (and cancels the pending reminders, ADR-011 §13) | no |
 | `execution.service_completed` | `ServiceCompleted` | `SERVICE_COMPLETED` (and cancels the pending reminders) | no |
+| `execution.inspection_shared` | `InspectionShared` | `INSPECTION_REPORT` to the client: summary and public link (`WEB_URL` + `/report/{token}`, ADR-014 §9) | yes |
 | `payment.confirmed` | `PaymentConfirmed` | `PAYMENT_CONFIRMED` | yes |
 | `payment.rejected` | `PaymentRejected` | `PAYMENT_REJECTED` | yes |
 | `payment.refunded` | `PaymentRefunded` | `PAYMENT_REFUNDED` | yes |
