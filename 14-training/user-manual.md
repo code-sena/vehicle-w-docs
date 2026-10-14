@@ -98,14 +98,14 @@ rating shows who served you ("Served by Juan Camilo").
 | Refund a payment | **Payments** → an approved payment → **Refund**. The money is returned outside the system (same account or cash); the client is notified and the points are reversed |
 | Register a cash payment | **Payments** → **Manual entry**: the amount is the booking total and it is approved at once |
 | Payment accounts and QR | **Settings → Payment methods** |
+| Operator's week | **Operators** → an operator: services finished this week and the change against last week, punctuality (started at most 10 minutes late), revenue of the finished services and worked hours against the weekly shift. "—" means there is no data yet |
 | Vehicle inspection | **Inspection**: fill the phases and findings, publish, then **Notify client** (inbox and email with the summary) |
 
 **Notices you receive** (inbox and push, never email): new, rescheduled and cancelled bookings, and
 **"Booking without operator"** when a booking starts in less than 2 hours — or started less than 1
 hour ago — and nobody is assigned.
 
-Still on sample or local data: the operator metrics on the operator detail (punctuality, weekly
-revenue, trend), the business data in **Settings** (kept in this browser or phone) and the inspection
+Still on local data: the business data in **Settings** (kept in this browser or phone) and the inspection
 report itself (kept in the administrator's browser; only the notice to the client goes through the
 system).
 
