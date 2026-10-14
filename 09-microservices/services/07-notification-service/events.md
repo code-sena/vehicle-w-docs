@@ -43,6 +43,7 @@ applies the same email rule as events. Only these two types are accepted; any ot
 | Trigger | Notification |
 |---|---|
 | Reminder task (every `REMINDER_CHECK_INTERVAL`) | `BOOKING_REMINDER` 24 h and 1 h before each booking (inbox, push, email) |
+| Same task | `ADMIN_BOOKING_UNASSIGNED` to every active administrator when a booking starts in less than `REMINDER_UNASSIGNED_LEAD` (2 h) — or started less than 1 hour ago — without operator; once per booking (inbox and push, ADR-011 §14) |
 
 ## Published
 

@@ -1,7 +1,7 @@
 # ADR-011 — Notification Service: Push Delivery and Event Contract
 
 - **ID:** ADR-011
-- **Date:** 2026-09-30 (updated 2026-10-09: sections 9 to 13)
+- **Date:** 2026-09-30 (updated 2026-10-09: sections 9 to 14)
 - **Status:** Accepted
 - **Authors:** Development team
 
@@ -232,6 +232,28 @@ section 8).
 **Decision:** `ServiceStarted` and `ServiceCompleted` (operations-service) also cancel the pending
 reminders of that booking, in the same idempotent consumer (`DomainEventConsumerService`). Together
 with the start window of ADR-014 §6, a client is never reminded of a service that already began.
+
+
+### 14. Alert to the administrators: a booking starts soon without an operator (added 2026-10-09)
+
+**Problem:** the administrator learns about each new booking (section 10) and the dashboard lists
+the bookings without operator, but nothing warns them when the time is close and the booking is
+still unassigned.
+
+**Decision:** the reminder task (every `REMINDER_CHECK_INTERVAL`, 5 min) also looks in
+`notification.booking_tracking` for bookings that are not cancelled, have no operator and start in
+less than `REMINDER_UNASSIGNED_LEAD` (default 2 h), or should have started less than 1 hour ago.
+Every active administrator (security-service `/internal/v1/users/admins`) receives
+`ADMIN_BOOKING_UNASSIGNED` "Reserva sin operario" (category `MESSAGE`, inbox and push, never email,
+like every staff notification).
+
+- Each booking is alerted once: `booking_tracking.unassigned_alert_at` (migration `031`). If the
+  booking is rescheduled the mark is cleared and the alert comes again before the new time; once an
+  operator is assigned it is not alerted.
+- Older bookings (more than 1 hour after their start) are not alerted, so an old booking that nobody
+  closed does not fill the inbox.
+- Without administrators (or with security-service down) nothing is marked and the next round
+  retries. notification-service still queries no other service's data: it uses its own projection.
 
 ---
 
