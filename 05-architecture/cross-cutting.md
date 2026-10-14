@@ -102,6 +102,7 @@ from.
 | `OperatorReassigned` | `execution.operator_reassigned` | `operations-service` |
 | `ServiceStarted` | `execution.service_started` | `operations-service` |
 | `ServiceCompleted` | `execution.service_completed` | `operations-service` |
+| `InspectionShared` | `execution.inspection_shared` | `operations-service` |
 | `RatingSubmitted` | `execution.rating_submitted` | `operations-service` |
 | `PaymentInitiated` | `payment.initiated` | `payment-service` |
 | `PaymentConfirmed` | `payment.confirmed` | `payment-service` |
