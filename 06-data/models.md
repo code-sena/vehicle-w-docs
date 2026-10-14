@@ -372,6 +372,41 @@ CREATE TABLE [security].user_preference (
 
 ---
 
+### Table: `login_lockout`
+
+**Purpose:** Failed logins of an account and its lockout (RF-004b, migration 034): 5 wrong passwords within 15 minutes lock the account for 15 minutes.
+
+```sql
+CREATE TABLE [security].login_lockout (
+    user_id         BIGINT       NOT NULL,
+    failed_count    INT          NOT NULL DEFAULT 0,
+    first_failed_at DATETIME2(3) NULL,
+    locked_until    DATETIME2(3) NULL,
+    updated_at      DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT pk_login_lockout PRIMARY KEY (user_id),
+    CONSTRAINT fk_login_lockout_user FOREIGN KEY (user_id) REFERENCES [security].app_user(user_id),
+    CONSTRAINT ck_login_lockout_count CHECK (failed_count >= 0 AND failed_count < 5)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `user_id` | BIGINT | No | The account. | PK, FK → `security.app_user` |
+| `failed_count` | INT | No | Wrong passwords inside the current 15-minute window. | 0–4 (the fifth locks and resets it) |
+| `first_failed_at` | DATETIME2(3) | Yes | Start of the window (first failure). | — |
+| `locked_until` | DATETIME2(3) | Yes | Until when the account is locked; NULL when it is not. | — |
+| `updated_at` | DATETIME2(3) | No | Last change. | — |
+
+**Modeling decisions:**
+
+1. Out of `app_user` so a failed attempt never touches the credentials row; the row only exists while there are recent failures or a lock, and it is deleted on a successful login or a password reset.
+2. While locked, not even the right password gets in (409-style answer `423 ACCOUNT_LOCKED`). An email that does not exist is never locked and keeps the generic `INVALID_CREDENTIALS`: the trade-off is that an attacker could tell a real account by its lock, accepted at this scale.
+3. Failures are saved even though the login answers an error (`@Transactional(noRollbackFor = …)`).
+
+---
+
 ## 02. audit
 
 **Owning service:** `security-service` (read-only: rows are written by database triggers)
