@@ -64,6 +64,7 @@
 | PUT | `/api/v1/admin/schedule/business-hours` | ADMIN |
 | POST · PUT · DELETE | `/api/v1/admin/schedule/exceptions[/{id}]` | ADMIN |
 | GET · POST · PUT · DELETE | `/api/v1/admin/bays[/{id}]` | ADMIN |
+| GET · PUT | `/api/v1/admin/establishment` (business data of Settings; the domain validates it) | ADMIN |
 | GET | `/api/v1/operator/bookings` · `/operator/bookings/{id}` | OPERATOR, ADMIN (used by operations-service) |
 | PATCH | `/api/v1/operator/bookings/{id}/status` | OPERATOR, ADMIN (used by operations-service) |
 
