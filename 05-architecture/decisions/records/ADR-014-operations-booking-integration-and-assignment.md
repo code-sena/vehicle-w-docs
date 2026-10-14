@@ -158,6 +158,35 @@ same booking. Migration 033 adds `inspection_report`, `inspection_phase`, `inspe
 **Consequences:** the link works from any device; reports created before this change stay only in
 the browser that created them (they were never on a server). Photos make the database grow: about
 200 KB each after the screen compresses them.
+
+### 10. Automatic assignment and the client's choice of operator (added 2026-10-14)
+
+**Problem:** RF-008 asks the system to assign an operator by availability and RF-010 lets the client
+choose one. Every booking waited for the administrator, and operations only read bookings with the
+token of the user calling it — a `booking.confirmed` event has no user behind it.
+
+**Decision:**
+
+- **Service-to-service reads:** booking-service exposes `GET /internal/v1/bookings?from=&to=` and
+  `GET /internal/v1/bookings/{id}`, outside `/api/v1` (the gateway does not route them) and protected
+  by the shared key `X-Internal-Key` (`INTERNAL_API_KEY`), the same mechanism as security-service
+  (ADR-011 §8). They return the booking without vehicle data, so customer-service is not called.
+- **RF-008:** operations consumes `booking.confirmed` (queue `operations-service.events`). If the
+  booking has no operator yet, it keeps the operators that `AssignmentPolicy` allows (active, on shift,
+  not absent, not busy) whose security account is still active, and `AutoAssignmentPolicy` picks the
+  client's choice if it is among them, otherwise the one with the fewest bookings that day, then the
+  lowest id. It then publishes `OperatorAssigned` as the admin assignment does. A rescheduled booking
+  keeps its operator. If nobody is free nothing is assigned and the "booking without operator" alert
+  (ADR-011 §14) still warns the admins. `AUTO_ASSIGN_ENABLED=false` turns it off.
+- **RF-010:** `GET /api/v1/operators/available?date=&time=&minutes=` lists, for any signed-in user, the
+  operators free for that slot with only their first name and rating. The client sends
+  `preferredOperatorId` when creating the booking; booking-service does not store it, it travels in
+  `BookingConfirmed` and operations honours it only if that operator is still free.
+- The administrator can still change the operator as before (§1).
+
+**Consequences:** most bookings get an operator without the admin; the listener never retries
+forever (it logs and leaves the booking unassigned); without `INTERNAL_API_KEY` there is no automatic
+assignment nor list of free operators.
 ---
 
 ## Evaluated alternatives
