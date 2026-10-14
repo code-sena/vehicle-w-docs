@@ -105,6 +105,8 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/OperatorServiceResponse"
+        "409":
+          description: "SERVICE_TOO_EARLY (more than 15 minutes before the booking), OPERATOR_BUSY (another service in progress) or EXECUTION_ALREADY_STARTED"
   "/api/v1/operator/services/{bookingId}/finish":
     post:
       tags:
@@ -514,8 +516,10 @@ components:
           format: "int32"
         comment:
           type: "string"
-        startable:
-          type: "boolean"
+        startableAt:
+          type: "string"
+          format: "date-time"
+          description: "First instant the operator can start the service: 15 minutes before the booking (StartPolicy, ADR-014 §6). The screens enable Start with it."
     AbsenceRequest:
       type: "object"
       properties:

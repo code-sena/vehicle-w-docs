@@ -25,7 +25,8 @@ take a booking.
 
 **Decision:** Starting and finishing a service call booking-service
 (`PATCH /operator/bookings/{id}/status`) with the operator's token; booking keeps ownership of the
-booking status. A service can only be started on its booking day (shop time zone).
+booking status. A service can only be started from 15 minutes before the booking time
+(`StartPolicy`, ADR-014 §6); before that the answer is 409 `SERVICE_TOO_EARLY`.
 
 ## Rating stored with the execution
 

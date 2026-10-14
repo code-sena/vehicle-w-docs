@@ -30,8 +30,9 @@
   `SCHEDULED` or `CONFIRMED`. `AssignmentPolicy` checks: operator active, on shift for the whole
   booking, not absent, and not busy with another booking at the same time. The candidates endpoint
   returns every operator with the reason that blocks them, if any.
-- **Execution (RF-010/011):** the operator starts the service only on the booking day and finishes
-  it; the service moves the booking to `IN_PROGRESS` / `COMPLETED` in booking-service. An operator
+- **Execution (RF-010/011):** the operator starts the service only from 15 minutes before the
+  booking time (`StartPolicy`, 409 `SERVICE_TOO_EARLY`; each service carries `startableAt` for the
+  screens) and finishes it; the service moves the booking to `IN_PROGRESS` / `COMPLETED` in booking-service. An operator
   cannot run two services at once.
 - **Ratings (RF-012):** the client rates a completed booking once (1 to 5 stars, comment up to 500
   characters); the operator sees their ratings and the average.

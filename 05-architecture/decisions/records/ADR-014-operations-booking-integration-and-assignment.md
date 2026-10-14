@@ -1,7 +1,7 @@
 # ADR-014 — Operations: Booking Integration by REST, Operator Provisioning and Manual Assignment
 
 - **ID:** ADR-014
-- **Date:** 2026-10-06
+- **Date:** 2026-10-06 (updated 2026-10-09: section 6)
 - **Status:** Proposed — in use: operations-service is built this way
 - **Authors:** Development team
 
@@ -73,8 +73,8 @@ calls the service. Names and contact are always read from security, never stored
 
 ### 4. Execution and rating
 
-- The operator starts a service only on its booking day (shop time zone) and cannot run two at
-  once; start and finish move the booking status in booking-service and publish
+- The operator starts a service only from 15 minutes before the booking time (section 6) and
+  cannot run two at once; start and finish move the booking status in booking-service and publish
   `ServiceStarted` / `ServiceCompleted`.
 - The client rates a `COMPLETED` booking once (1–5, comment up to 500); the rating is written on
   every line of the booking (`service_execution.quality_rating`), not in a separate table.
@@ -88,6 +88,18 @@ calls the service. Names and contact are always read from security, never stored
 | `SECURITY_SERVICE_URL`, `SECURITY_SERVICE_TIMEOUT` | `http://localhost:3001/api/v1`, `3s` |
 | `BOOKING_ZONE` | `America/Bogota` |
 
+
+### 6. Start window: from 15 minutes before the booking (added 2026-10-09)
+
+**Problem:** an operator could start a booking of another day or of hours later. The booking showed
+as "in progress" long before the car arrived, the timeline of the service was wrong and the client
+still received the reminder "your booking is in 1 hour" for a service that had already started.
+
+**Decision:** `StartPolicy` (pure domain code, `operations/domain/service`) allows the start only
+from `scheduledStart - 15 min` (`EARLY_START`, in case the client arrives a little early). Before
+that, `POST /operator/services/{bookingId}/start` answers 409 `SERVICE_TOO_EARLY`. Every
+`OperatorServiceResponse` carries `startableAt` (UTC instant), so the web and the app disable the
+"Start" button and show "you can start it from HH:mm" without repeating the rule.
 ---
 
 ## Evaluated alternatives
