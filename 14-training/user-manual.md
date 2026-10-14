@@ -133,4 +133,5 @@ hour ago — and nobody is assigned.
 | A payment cannot be sent | The booking already has a payment in review or approved, it is cancelled, or the reference was already used |
 | A coupon is rejected | It is not unlocked yet (not enough points), paused, not started, or already used on this booking |
 | No email arrives | Check spam; check the switches in **Settings → Notifications**. The notice is always in the inbox |
+| "Too many failed attempts" when logging in | After 5 wrong passwords in 15 minutes the account is locked for 15 minutes. Wait, or use **Forgot your password?**: resetting it unlocks the account at once |
 | A generic error | Try again; if it repeats, tell the team with the time it happened |
