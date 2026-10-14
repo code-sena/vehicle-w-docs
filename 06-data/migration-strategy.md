@@ -66,11 +66,12 @@ notification-service   010-create-notification-schema · 016-create-notification
                        031-notification-unassigned-booking-alert
                          (booking_tracking.unassigned_alert_at, ADMIN_BOOKING_UNASSIGNED — ADR-011 §14)
 operations-service     007-create-execution-schema (5 tables + triggers) · seed/105-seed-execution-status
+                       033-execution-inspection-report (inspection report, phases, findings, photos — ADR-014 §9)
 payment-service        db/changelog/changes/001 … 018 (own numbering, see below)
 ```
 
-Current global high-water mark: **032** (booking-service); seeds go up to **110**. The next new
-changeset in any Java service's shared numbering starts at **033**, and the next seed at **111**.
+Current global high-water mark: **033** (operations-service); seeds go up to **110**. The next new
+changeset in any Java service's shared numbering starts at **034**, and the next seed at **111**.
 
 **payment-service is different** (.NET, ADR-013):
 
