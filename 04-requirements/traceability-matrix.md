@@ -4,7 +4,7 @@
 > Status as of 2026-10-13. The six microservices (security, customer, booking, operations, payment,
 > notification) and the api-gateway are built, merged into `develop`, connected to the web and the
 > Android app and verified end to end against the real database with real accounts.
-> Tests per service: `./mvnw test` in each Java repository (security 123, customer 68, booking 36,
+> Tests per service: `./mvnw test` in each Java repository (security 123, customer 68, booking 37,
 > operations 37, notification 100, api-gateway 33) and `dotnet test` in payment (domain 113,
 > application 23; 7 integration tests skipped by design because they need a separate database).
 > Web: `ng test`, 36 tests in 35 files.
