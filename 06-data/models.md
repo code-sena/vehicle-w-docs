@@ -402,7 +402,7 @@ CREATE TABLE [security].login_lockout (
 **Modeling decisions:**
 
 1. Out of `app_user` so a failed attempt never touches the credentials row; the row only exists while there are recent failures or a lock, and it is deleted on a successful login or a password reset.
-2. While locked, not even the right password gets in (409-style answer `423 ACCOUNT_LOCKED`). An email that does not exist is never locked and keeps the generic `INVALID_CREDENTIALS`: the trade-off is that an attacker could tell a real account by its lock, accepted at this scale.
+2. While locked, not even the right password gets in (`423 ACCOUNT_LOCKED`). An email that does not exist is never locked and keeps the generic `INVALID_CREDENTIALS`: the trade-off is that an attacker could tell a real account by its lock, accepted at this scale.
 3. Failures are saved even though the login answers an error (`@Transactional(noRollbackFor = …)`).
 
 ---
