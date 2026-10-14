@@ -10,6 +10,7 @@ Exchange `carwash.events` (topic), ADR-004. Published **after commit**; with
 | `OperatorAssigned` | `execution.operator_assigned` | The admin assigns or changes the operator of a booking | `bookingId`, `bookingCode`, `customerUserId`, `operatorUserId`, `scheduledStart` (UTC), `occurredAt` |
 | `ServiceStarted` | `execution.service_started` | The operator starts the service | same |
 | `ServiceCompleted` | `execution.service_completed` | The operator finishes the service | same |
+| `InspectionShared` | `execution.inspection_shared` | The admin shares a published inspection report | `bookingId`, `bookingCode`, `customerUserId`, `plate`, `publicToken`, `phasesDone`, `phasesTotal`, `findings`, `majorFindings`, `areas`, `occurredAt` |
 
 Consumers: notification-service (notifies the operator and the client).
 
