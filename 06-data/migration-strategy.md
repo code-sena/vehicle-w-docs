@@ -30,7 +30,7 @@ touches and in which order the global script (`lavarapido-6-services-sqlserver.s
 | `014`+ | Later changes, numbered in the order they were made |
 | `101`–`109` | Seed data (`seed/` folder) |
 
-Current files (2026-10-08):
+Current files (2026-10-09):
 
 ```
 security-service       001-create-security-schemas · 002-create-security-and-audit-core
@@ -61,12 +61,14 @@ notification-service   010-create-notification-schema · 016-create-notification
                        028-notification-payment-refunded-type (PAYMENT_REFUNDED)
                        029-notification-loyalty-and-inspection-types
                          (LOYALTY_POINTS_EARNED, INSPECTION_REPORT)
+                       031-notification-unassigned-booking-alert
+                         (booking_tracking.unassigned_alert_at, ADMIN_BOOKING_UNASSIGNED — ADR-011 §14)
 operations-service     007-create-execution-schema (5 tables + triggers) · seed/105-seed-execution-status
 payment-service        db/changelog/changes/001 … 018 (own numbering, see below)
 ```
 
-Current global high-water mark: **030** (security-service). The next new changeset in any Java
-service's shared numbering starts at **031**.
+Current global high-water mark: **031** (notification-service). The next new changeset in any Java
+service's shared numbering starts at **032**.
 
 **payment-service is different** (.NET, ADR-013):
 
