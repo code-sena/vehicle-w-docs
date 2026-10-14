@@ -58,6 +58,7 @@
 | GET | `/api/v1/bookings/me` · `/bookings/{id}` · `/bookings/cancellation-reasons` | client |
 | PUT · POST | `/api/v1/bookings/{id}` (reschedule) · `/bookings/{id}/cancel` | client |
 | GET · POST | `/api/v1/admin/bookings` (`?from=&to=&status=`) | ADMIN |
+| GET | `/api/v1/admin/bookings/day-summary` (`?date=`, default today in the shop zone): bookings of the day vs the day before, for the admin home | ADMIN |
 | GET · PUT | `/api/v1/admin/bookings/{id}` | ADMIN |
 | PATCH | `/api/v1/admin/bookings/{id}/status` | ADMIN |
 | GET · POST · PUT · DELETE · PATCH | `/api/v1/admin/catalog/services[/{id}[/status]]` | ADMIN |
