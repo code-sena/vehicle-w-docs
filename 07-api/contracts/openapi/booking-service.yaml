@@ -974,6 +974,11 @@ components:
           type: "string"
           maxLength: 300
           minLength: 0
+        preferredOperatorId:
+          type: "integer"
+          format: "int32"
+          minimum: 1
+          description: "RF-010: operator chosen by the client (optional); operations assigns it if still free"
       required:
         - "date"
         - "serviceIds"
