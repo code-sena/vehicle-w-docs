@@ -213,9 +213,9 @@ PaymentService.Api ──► PaymentService.Application ──► PaymentService
 
 | Java services (sections 1–9) | payment-service |
 |---|---|
-| `domain` package (model, ports) | `PaymentService.Domain`: `Payment` aggregate, `PaymentAccount`, `PaymentReceipt`, domain events. No NuGet package |
-| `application` (use cases) + input ports `...UseCase` | `PaymentService.Application`: `PaymentApplicationService`, output ports `IPaymentRepository`, `IPaymentAccountRepository`, `IBookingDirectory`. No input-port interfaces |
-| `infrastructure/adapter/out` (JPA entities, REST clients, RabbitMQ) | `PaymentService.Infrastructure`: EF Core repositories that map the **domain classes directly** (`IEntityTypeConfiguration`), `BookingServiceDirectory` (HTTP). No RabbitMQ yet |
+| `domain` package (model, ports) | `PaymentService.Domain`: `Payment` aggregate and `PaymentPolicy`, `PaymentAccount`, `PaymentReceipt`, `Promotion` aggregate with discount strategies, `LoyaltyTransaction`, domain events. No NuGet package |
+| `application` (use cases) + input ports `...UseCase` | `PaymentService.Application`: input ports `I...UseCases` (payments command/query, accounts, promotions admin/customer, loyalty) implemented by `PaymentCommandService`, `PaymentQueryService`, `PaymentAccountService`, `PromotionAdminService`, `CustomerPromotionService`, `LoyaltyService`; output ports for repositories, `IBookingDirectory`, `IUnitOfWork` and `IIntegrationEventPublisher` |
+| `infrastructure/adapter/out` (JPA entities, REST clients, RabbitMQ) | `PaymentService.Infrastructure`: EF Core repositories that map the **domain classes directly** (`IEntityTypeConfiguration`), `EfUnitOfWork`, `BookingServiceDirectory` (HTTP), `RabbitMqIntegrationEventPublisher` (events published after commit) |
 | `infrastructure/adapter/in/web` | `PaymentService.Api`: controllers, JWT, `GlobalExceptionHandler`, composition root |
 
 Domain tests use xUnit (`tests/PaymentService.Domain.UnitTests`) without EF or ASP.NET.
