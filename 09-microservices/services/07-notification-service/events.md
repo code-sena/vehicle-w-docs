@@ -12,8 +12,8 @@ Queue `notification-service.events` bound to `carwash.events` (DLQ `notification
 | `booking.confirmed` | `BookingConfirmed` | `BOOKING_CONFIRMED` + schedules reminders | yes |
 | `booking.cancelled` | `BookingCancelled` | `BOOKING_CANCELLED` + cancels reminders | yes |
 | `execution.operator_assigned` | `OperatorAssigned` | `OPERATOR_ASSIGNED` | no |
-| `execution.service_started` | `ServiceStarted` | `SERVICE_STARTED` | no |
-| `execution.service_completed` | `ServiceCompleted` | `SERVICE_COMPLETED` | no |
+| `execution.service_started` | `ServiceStarted` | `SERVICE_STARTED` (and cancels the pending reminders, ADR-011 §13) | no |
+| `execution.service_completed` | `ServiceCompleted` | `SERVICE_COMPLETED` (and cancels the pending reminders) | no |
 | `payment.confirmed` | `PaymentConfirmed` | `PAYMENT_CONFIRMED` | yes |
 | `payment.rejected` | `PaymentRejected` | `PAYMENT_REJECTED` | yes |
 | `payment.refunded` | `PaymentRefunded` | `PAYMENT_REFUNDED` | yes |

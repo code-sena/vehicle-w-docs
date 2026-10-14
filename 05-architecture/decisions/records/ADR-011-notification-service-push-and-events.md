@@ -1,7 +1,7 @@
 # ADR-011 — Notification Service: Push Delivery and Event Contract
 
 - **ID:** ADR-011
-- **Date:** 2026-09-30 (updated 2026-10-08: sections 9 to 12)
+- **Date:** 2026-09-30 (updated 2026-10-09: sections 9 to 13)
 - **Status:** Accepted
 - **Authors:** Development team
 
@@ -222,6 +222,16 @@ section 8).
 - The push check asks security-service only when the user has registered phones. If the contact
   cannot be read, the push is sent anyway (better one notice too many than none); a missing switch
   in an older security-service response counts as on.
+
+
+### 13. Reminders stop when the service starts or finishes (added 2026-10-09)
+
+**Problem:** reminders were cancelled only by `BookingCancelled`. A service started early still sent
+"your booking is in 1 hour" to a client whose car was already being washed.
+
+**Decision:** `ServiceStarted` and `ServiceCompleted` (operations-service) also cancel the pending
+reminders of that booking, in the same idempotent consumer (`DomainEventConsumerService`). Together
+with the start window of ADR-014 §6, a client is never reminded of a service that already began.
 
 ---
 
