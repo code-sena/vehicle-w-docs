@@ -1,8 +1,8 @@
 # Sequence — Payment by receipt and review (RF-013, RF-013b, RF-014)
 
-Source: `payment-service` `PaymentApplicationService.ReportPaymentAsync / ApproveAsync /
-RejectAsync / RegisterManualAsync`, `Payment` aggregate, `BookingServiceDirectory` (ADR-008,
-ADR-013).
+Source: `payment-service` `PaymentCommandService.ReportAsync / ApproveAsync / RejectAsync /
+RegisterInPersonAsync` (input port `IPaymentCommandUseCases`), `Payment` aggregate,
+`BookingServiceDirectory` (ADR-008, ADR-013).
 
 ```mermaid
 sequenceDiagram
