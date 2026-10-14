@@ -1448,6 +1448,63 @@ CREATE TABLE [execution].service_execution (
 
 ---
 
+### Tables: `inspection_report`, `inspection_phase`, `inspection_finding`, `inspection_photo`
+
+**Purpose:** The vehicle inspection report of long services (ADR-014 §9, migration 033): one report per
+booking, its 5 phases, the findings of each phase and their photos. The client reads it through a
+public link with a random token.
+
+```sql
+CREATE TABLE [execution].inspection_report (
+    inspection_report_id BIGINT        IDENTITY(1,1) NOT NULL,
+    booking_id           BIGINT        NOT NULL,   -- booking.booking, no FK
+    booking_code         NVARCHAR(20)  NULL,
+    vehicle              NVARCHAR(120) NULL,
+    plate                NVARCHAR(15)  NULL,
+    services             NVARCHAR(300) NULL,
+    booking_date         DATE          NOT NULL,
+    booking_time         TIME(0)       NOT NULL,
+    duration_minutes     INT           NOT NULL,
+    public_token         NVARCHAR(64)  NOT NULL,
+    is_published         BIT           NOT NULL DEFAULT 0,
+    published_at         DATETIME2(3)  NULL,
+    created_at / created_by / updated_at / updated_by / row_version,
+    CONSTRAINT uq_inspection_report_booking UNIQUE (booking_id),
+    CONSTRAINT uq_inspection_report_token UNIQUE (public_token)
+);
+CREATE TABLE [execution].inspection_phase (      -- unique (inspection_report_id, phase)
+    inspection_phase_id, inspection_report_id, phase, [status], started_at, finished_at
+);
+CREATE TABLE [execution].inspection_finding (    -- soft delete (deleted_at)
+    inspection_finding_id, inspection_report_id, phase, area NVARCHAR(120), severity NVARCHAR(10),
+    note NVARCHAR(500), created_at, created_by, deleted_at, deleted_by
+);
+CREATE TABLE [execution].inspection_photo (
+    inspection_photo_id, inspection_finding_id, content_type NVARCHAR(30), content VARBINARY(MAX),
+    size_bytes INT, created_at, created_by
+);
+```
+
+**Data dictionary (main columns):**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `inspection_report.booking_id` | BIGINT | No | The booking. | Unique; no FK — owned by `booking.booking` |
+| `inspection_report.booking_code` … `duration_minutes` | — | — | Copy of the booking taken when the report starts, so the public link never asks booking-service. | — |
+| `inspection_report.public_token` | NVARCHAR(64) | No | Random 32-byte token (base64url) of the public link; never the booking id or code. | Unique |
+| `inspection_report.is_published` / `published_at` | BIT / DATETIME2(3) | No / Yes | The public link answers only when published. | Set together (`ck_inspreport_published`) |
+| `inspection_phase.phase` / `status` | NVARCHAR(20) | No | `RECEPTION`, `EXTERIOR`, `INTERIOR`, `ENGINE`, `DELIVERY` / `PENDING`, `IN_PROGRESS`, `DONE`. | CHECK |
+| `inspection_finding.severity` | NVARCHAR(10) | No | `INFO`, `MINOR`, `MAJOR`. | CHECK |
+| `inspection_photo.content_type` / `size_bytes` | NVARCHAR(30) / INT | No | `image/jpeg` or `image/png`, up to 2 MB. | CHECK |
+
+**Modeling decisions:**
+
+1. The report is an aggregate: phases and findings change only through `InspectionReport`, which owns the rules (long bookings only, editable while the vehicle is at the shop, the summary).
+2. Photos in the database (`VARBINARY(MAX)`) instead of a file store: one service, one backup, and the screens already compress them (~200 KB). They are read apart from the findings so listing a report never loads the binaries.
+3. `booking_id` is a cross-service reference without FK (ADR-004), like `service_execution.booking_service_id`.
+
+---
+
 ## 07. promotion
 
 **Owning service:** `payment-service` (together with `payment`)
