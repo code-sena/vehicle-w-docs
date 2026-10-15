@@ -66,7 +66,7 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RNF-001 | Performance (p95 < 2 s) | `lavarapido-infra/e2e/performance.js` (p95 of the main reads through the gateway) | ✅ Met on 2026-10-14 (slowest p95 686 ms, `/payments/me`) |
 | RNF-002 | Availability during review sessions | Manual check before each session | 🔴 Pending |
 | RNF-003 | Concurrency and data integrity | Integration tests on booking and payment | 🔴 Pending |
-| RNF-004 | Security (JWT, BCrypt, roles, lockout) | `ApiSecurityWebTest`, `CustomerApiWebTest`, `BookingApiWebTest` (401/403 per role), `PasswordPolicyTest`, `GatewayRoutesTest` (`/internal` not exposed) + web guards | 🟡 In progress (login lockout missing) |
+| RNF-004 | Security (JWT, BCrypt, roles, lockout) | `ApiSecurityWebTest`, `CustomerApiWebTest`, `BookingApiWebTest` (401/403 per role), `PasswordPolicyTest`, `GatewayRoutesTest` (`/internal` not exposed) + web guards | ✅ Done (lockout after 5 failed logins in 15 min, RF-004b; HTTPS is set up when deploying outside development) |
 | RNF-005 | Observability (service logs) | `/actuator/health` per service, `X-Correlation-Id` in every log line | 🟡 In progress |
 | RNF-006 | Maintainability (PRs, commits, migrations) | GitHub history + code review | 🟡 In progress |
 | RNF-007 | Portability (Docker, no OS dependency) | Local setup reproduced from scratch | 🟡 In progress |
@@ -126,7 +126,7 @@ If there is code without an HU: possible gold-plating, or a change made without 
 
 | Gap | How it was closed |
 |-----|-------------------|
-| No tie-breaker when several operators are equally available (RF-008) | Fewest open jobs, then lowest operator id (`AssignmentPolicy`, `AssignmentPolicyTest`) |
+| No tie-breaker when several operators are equally available (RF-008) | Fewest bookings that day, then lowest operator id (`AutoAssignmentPolicy`, `AutoAssignmentPolicyTest`) |
 | RF-003 blocked for lack of an email provider | SMTP added for this single e-mail (Mailpit locally, any SMTP account for the delivery) — `01-context/scope.md` |
 | Booking emails and reminders had no email address (RF-018) | Address read from security-service at send time through `/internal/**` (ADR-011 §8) |
 | RF-019/RF-020 theme and language only in the browser | Stored per account in `security.user_preference` (4 palettes, migration 020); web and app use `/users/me/preferences` |
