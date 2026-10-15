@@ -302,6 +302,26 @@ paths:
     get:
       tags:
         - "Payments"
+      description: "RF-015: the client's payment history, newest booking first. Optional filters by booking date and service name. 400 INVALID_DATE_RANGE when from is after to."
+      parameters:
+        - name: "from"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "to"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "service"
+          in: "query"
+          required: false
+          description: "Part of the service name, case-insensitive"
+          schema:
+            type: "string"
       responses:
         "200":
           description: "OK"
