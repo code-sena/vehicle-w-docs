@@ -13,7 +13,7 @@
 | Create an account (clients) | Home → **Register**. Fill your data; the password must meet the rules shown (8+ characters, an uppercase letter, a number, a special character). You receive a welcome email |
 | Sign in | Home → **Sign in** with email and password. You land on your area (client, operator or administrator) |
 | Forgot password | Sign in → **Forgot password** → enter your email → type the 6-digit code you receive (valid 15 minutes) → choose a new password. The code is burnt after 5 wrong attempts |
-| Profile | Menu → **Profile**: edit your data, change your password, deactivate your account (asks for your password) |
+| Profile | Menu → **Profile**: edit your data and your address (saved in your account, the same on the web and the app), change your password, deactivate your account (asks for your password) |
 | Change your email | **Profile → Email**, confirmed with your current password. From then on you sign in with the new email; the old one no longer works |
 | Notifications | Bell / **Notifications**: unread first; filter by type or date; mark one or all as read; delete |
 | Notification channels | **Settings → Notifications**: **Push** (phone notifications), **Booking reminders by email** and **Promotions** (unlocked coupons by email and push). They are saved in your account; the inbox always receives everything |
@@ -96,6 +96,7 @@ rating shows who served you ("Served by Juan Camilo").
 | Users and roles: create, change role, deactivate; permissions per role | **Management → Users / Roles** (accounts are deactivated, never deleted) |
 | Send a notification to users | **Notifications** |
 | Operators: active or not, weekly shift, absences | **Operators** (operators are the accounts with role Operator in **Management → Users**) |
+| Operator specialty and skills | **Operators** → an operator → **Skills and certifications → Edit**: specialty and up to 10 skills, each certified, expert or advanced. Saving replaces the list |
 | Assign or change the operator of a booking | New bookings are **assigned automatically** to the operator the client chose or to the free one with fewest bookings that day. To change it: **Reservations** → booking detail → **Operator assignment**: each operator shows whether they are available or why not (inactive, not on shift, absent, busy). Only before the service starts and while its time has not passed |
 | Review payments | **Payments** → **Verify**: you see the amount due and the amount the client reports; approve, or reject with a reason. Approving credits the client's points |
 | Refund a payment | **Payments** → an approved payment → **Refund**. The money is returned outside the system (same account or cash); the client is notified and the points are reversed |
