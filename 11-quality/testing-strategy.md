@@ -10,7 +10,7 @@
 
 ```
                  ┌───────────────────────────┐
-                 │   End-to-end (manual)      │  Real flows against the running system
+                 │   End-to-end               │  Real flows against the running system (e2e/)
                  ├───────────────────────────┤
                  │   Web/API slice tests      │  HTTP contract + security of each service
                  ├───────────────────────────┤
@@ -74,9 +74,15 @@ checks every route, token forwarding, CORS and that `/internal/**` is not expose
 There are **no tests against a real SQL Server** yet: the database schema is validated at startup
 (`ddl-auto: validate` + Liquibase) and by the manual end-to-end runs.
 
-## Tier 5: End-to-end (manual)
+## Tier 5: End-to-end
 
-Run by hand against the whole system before each review session (`13-operations/README.md`):
+**Automated** (`lavarapido-infra/e2e`, Node scripts through the gateway, 2026-10-14):
+`booking-flow.test.js` (`node --test "e2e/*.test.js"`): the client sees the free operators, books
+choosing one, operations assigns it on `booking.confirmed` (RabbitMQ), notification notifies the client,
+the admin home counts the booking, and `/internal` is not reachable through the gateway. It uses the team's
+real accounts (no new sign-ups, so no test emails) and deletes what it creates through SQL.
+
+**Manual**, against the whole system before each review session (`13-operations/README.md`):
 sign-up → welcome email → login → register vehicle → book (and a full slot) → booking email →
 reminder → admin moves the booking → cancellation. The last full run (2026-10-04) passed,
 including the reminder email to a real inbox.
@@ -89,8 +95,12 @@ web slice tests protect each provider's side.
 
 ## Performance tests
 
-Not done. RNF-001 (p95 < 2 s) is checked by hand; availability queries read one day of bookings
-and are small.
+`lavarapido-infra/e2e/performance.js` measures the p95 of the main reads through the gateway (30
+requests each, after a warm-up). Run of 2026-10-14 on the development PC: every endpoint under the
+2 s limit; the slowest p95 was `/payments/me` with 686 ms (it calls booking-service and customer-service).
+
+**Screen width (RNF-008):** `lavarapido-infra/e2e/width-360.js` opens 12 web screens (public, client,
+admin) at 360 px and fails if any has horizontal scroll; all passed on 2026-10-14.
 
 ---
 
@@ -137,7 +147,7 @@ No coverage tool configured. Policy: every business rule and every endpoint's se
 | Gap | Action |
 |---|---|
 | Web test suite does not compile: 6 scaffold specs point to classes that no longer exist (`features/*/viewmodels/*.spec.ts`, `settings-panel.spec.ts`, `stepper.spec.ts`) | Fix or delete those specs, then add tests for the booking form and stores |
-| No automated test across services | Automate registration → booking → notification |
+| The cross-service test does not cover sign-up and payment | Add them with a disposable account when a test mail domain is agreed |
 | No CI | Add a workflow per repository |
 | No test against a real SQL Server | Testcontainers for the persistence adapters of booking (locking, triggers) |
 | payment-service has no API tests | Use-case tests exist (`PaymentCommandServiceTests`, `PaymentQueryServiceTests`, `CustomerPromotionServiceTests` with in-memory fakes); add API tests (roles, 409 codes) |
