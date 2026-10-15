@@ -89,6 +89,10 @@ service migrates the shared SQL Server instance with its own changelog table):
 | Status codes in English (`SCHEDULED` … `NO_SHOW`), cancellation reasons in Spanish | seed `104` |
 | Catalog seeds: 5 categories, 3 example services (BASIC/PREMIUM/FULL) with per-vehicle-type prices | seed `103` |
 | Establishment singleton, 4 bays (BAY-04 starts in maintenance), weekly hours (Sunday inactive) | seed `109` |
+| `booking.establishment` legal, tax and channel columns | booking changeset `032` and seed `110` |
+| Three notification switches (push, email reminders, promotions) | security changeset `030` |
+| `security.person_address` | security changeset `035` |
+| Operator specialty | operations changeset `037`: own tables `operator_profile` and `operator_skill` instead of a column in `execution.operator`, because the skills need a child table |
 
 `catalog` and `booking` are recreated from scratch in dev by changeset `005` (approved reset in
 plan P2) so the schema always matches this ADR. `booking` intentionally keeps **no total column**:
