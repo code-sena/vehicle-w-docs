@@ -6,7 +6,7 @@
 > Android app and verified end to end against the real database with real accounts.
 > Tests per service: `./mvnw test` in each Java repository (security 129, customer 68, booking 38,
 > operations 45, notification 100, api-gateway 34) and `dotnet test` in payment (domain 113,
-> application 23, 28 in the review branch; 7 integration tests skipped by design because they need a separate database).
+> application 28; 7 integration tests skipped by design because they need a separate database).
 > Web: `ng test`, 36 tests in 35 files.
 ---
 
@@ -44,8 +44,8 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RF-013 | Show QR (digital methods only) and payment instructions | HU-PAY-001 | `PaymentQueryServiceTests` | `payment-service` | ✅ Done (`GET /payment-accounts`: active accounts of methods that require a receipt; the QR is the shop's own static image, it does not expire) |
 | RF-013b | Upload payment receipt (digital methods only) | HU-PAY-001 | `PaymentTests` (receipt, submit for review), `PaymentCommandServiceTests` | `payment-service` | ✅ Done (image stored as data URL until there is file storage; the client also reports the amount paid) |
 | RF-014 | Admin reviews digital receipt or confirms cash payment | HU-PAY-003 | `PaymentTests` (approve, reject, refund), `PaymentCommandServiceTests` (approve, in-person payment) | `payment-service` | ✅ Done (approve / reject with reason / refund; cash is recorded by the admin as an in-person payment, approved at once) |
-| RF-015 | Payment history by date/service | HU-PAY-002 | `PaymentQueryServiceTests` (`Mine_*`, `MyBookings_*`) | `payment-service` | ✅ Done in `feature/payment-history-and-reference-test`, pending review by the payment-service owner (`GET /payments/me?from=&to=&service=`, newest booking first) |
-| RF-016 | No card data collected; reject reused transaction reference | HU-PAY-001 | `PaymentCommandServiceTests` (`Report_WithAReferenceAlreadyUsedForAnotherBooking_IsRejected`, same booking after a rejection allowed) | `payment-service` | ✅ Done (no card data; a reused reference answers `TRANSACTION_REFERENCE_REUSED`; tests in `feature/payment-history-and-reference-test`, pending review by the payment-service owner) |
+| RF-015 | Payment history by date/service | HU-PAY-002 | `PaymentQueryServiceTests` (`Mine_*`, `MyBookings_*`) | `payment-service` | ✅ Done (`GET /payments/me?from=&to=&service=`, newest booking first) |
+| RF-016 | No card data collected; reject reused transaction reference | HU-PAY-001 | `PaymentCommandServiceTests` (`Report_WithAReferenceAlreadyUsedForAnotherBooking_IsRejected`, same booking after a rejection allowed) | `payment-service` | ✅ Done (no card data; a reused reference answers `TRANSACTION_REFERENCE_REUSED`; tests) |
 | RF-017 | Role-based dashboard | HU-UI-001 | — | Frontend | ✅ Done (admin dashboard reads bookings, operators and payments; operator home reads its services) |
 | RF-018 | Notifications with read/unread state | HU-UI-002 | `NotificationUseCasesTest`, `NotificationFactoryTest`, `BookingReminderServiceTest`, `BookingReminderTest`, `StaffNotificationsTest`, `UnassignedBookingAlertTest`, `AdminNotificationControllerTest` | `notification-service` | ✅ Done (inbox, push, email for customer-relevant notices, reminders, staff notices, coupon and payment notices, user switches — ADR-011 §8 to §14) |
 | RF-019 | Theme customisation, per account | HU-UI-003 | `UserPreferenceTest`, `UserPreferenceServiceTest` | `security-service` (preferences) | ✅ Done (4 palettes stored in `security.user_preference`, migration 020; web and app read and save them through `/users/me/preferences`) |
