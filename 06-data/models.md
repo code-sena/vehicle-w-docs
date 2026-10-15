@@ -1,6 +1,6 @@
 # Data Models per Service
 
-**Last updated:** 2026-10-04 — ADR-010 (bay status, daily break, vehicle model, customer user id) and ADR-011 (device tokens, processed events, booking reminders), as applied by the services' migrations.
+**Last updated:** 2026-10-15 — ADR-010 (bay status, daily break, vehicle model, customer user id, business data, address, operator specialty), ADR-011 (device tokens, processed events, booking reminders), the login lockout (RF-004b), the account registration date and the vehicle inspection report, as applied by the services' migrations.
 
 The system is split into **six microservices over nine schemas**, all inside a single SQL
 Server 2016+ instance. Every schema has exactly one owning service; a service may own more
@@ -24,14 +24,14 @@ below.
 
 | Service | Schemas it owns | Tables |
 |---------|-----------------|--------|
-| `security-service` | [`security`](#01-security), [`audit`](#02-audit) | 10 |
+| `security-service` | [`security`](#01-security), [`audit`](#02-audit) | 12 |
 | `customer-service` | [`customer`](#03-customer) | 3 |
-| `booking-service` | [`catalog`](#04-catalog), [`booking`](#05-booking) | 12 |
-| `operations-service` | [`execution`](#06-execution) | 5 |
+| `booking-service` | [`catalog`](#04-catalog), [`booking`](#05-booking) | 13 |
+| `operations-service` | [`execution`](#06-execution) | 11 |
 | `payment-service` | [`promotion`](#07-promotion), [`payment`](#08-payment) | 12 |
-| `notification-service` | [`notification`](#09-notification) | 5 |
+| `notification-service` | [`notification`](#09-notification) | 6 |
 
-47 tables in total. The `settings` schema no longer exists: `establishment` moved to
+57 tables in total. The `settings` schema no longer exists: `establishment` moved to
 `booking` and `user_preference` to `security`; the loyalty ledger moved from `customer` to
 `payment` (see each table's modeling decisions).
 
@@ -94,6 +94,7 @@ CREATE TABLE [security].app_user (
     password_hash NVARCHAR(255) NOT NULL,
     is_active     BIT           NOT NULL CONSTRAINT df_app_user_active DEFAULT 1,
     last_login    DATETIME2(3)  NULL,
+    created_at    DATETIME2(3)  NOT NULL DEFAULT SYSUTCDATETIME(),   -- migration 036
     CONSTRAINT pk_app_user PRIMARY KEY (user_id),
     CONSTRAINT uq_app_user_person UNIQUE (person_id),
     CONSTRAINT uq_app_user_username UNIQUE (username),
@@ -111,10 +112,12 @@ CREATE TABLE [security].app_user (
 | `password_hash` | NVARCHAR(255) | No | Hash only — the plaintext password is never stored or logged. | — |
 | `is_active` | BIT | No | Soft on/off switch for the account, independent of `person.deleted_at`. | — |
 | `last_login` | DATETIME2(3) | Yes | Last successful authentication, for activity checks. | — |
+| `created_at` | DATETIME2(3) | No | Registration date, shown in **Management → Users**. | Set once on insert, never updated |
 
 **Modeling decisions:**
 
 1. 1-to-1 with `person` by design, not by convention: `person_id` is `UNIQUE`, so the database itself rejects a second account for the same human.
+2. `created_at` came with migration 036. Before it the users list showed the last login as if it were the registration date. Accounts that already existed got their first session as registration date (or the migration date if they never signed in), because `audit_log` had no rows to recover the real one.
 
 ---
 
@@ -404,6 +407,34 @@ CREATE TABLE [security].login_lockout (
 1. Out of `app_user` so a failed attempt never touches the credentials row; the row only exists while there are recent failures or a lock, and it is deleted on a successful login or a password reset.
 2. While locked, not even the right password gets in (`423 ACCOUNT_LOCKED`). An email that does not exist is never locked and keeps the generic `INVALID_CREDENTIALS`: the trade-off is that an attacker could tell a real account by its lock, accepted at this scale.
 3. Failures are saved even though the login answers an error (`@Transactional(noRollbackFor = …)`).
+
+### Table: `person_address`
+
+**Purpose:** The contact address of a person (ADR-010, migration 035). Before it the profile kept the address only in the browser or the phone.
+
+```sql
+CREATE TABLE [security].person_address (
+    person_id  BIGINT        NOT NULL,
+    address    NVARCHAR(200) NOT NULL,
+    updated_at DATETIME2(3)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT pk_person_address PRIMARY KEY (person_id),
+    CONSTRAINT fk_person_address_person FOREIGN KEY (person_id) REFERENCES [security].person(person_id),
+    CONSTRAINT ck_person_address_not_blank CHECK (LEN(LTRIM(RTRIM(address))) > 0)
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `person_id` | BIGINT | No | The person. | PK, FK → `security.person` |
+| `address` | NVARCHAR(200) | No | Contact address, trimmed. | Not blank |
+| `updated_at` | DATETIME2(3) | No | Last change. | — |
+
+**Modeling decisions:**
+
+1. Its own table so `person`, part of the shared core, is not altered. One row per person; saving an empty address deletes the row instead of storing a blank value.
+2. Registration still does not ask for it: the service is given at the shop. It is an optional profile field read and written through `GET/PUT /api/v1/users/me/address`.
 
 ---
 
@@ -1537,6 +1568,50 @@ CREATE TABLE [execution].inspection_photo (
 1. The report is an aggregate: phases and findings change only through `InspectionReport`, which owns the rules (long bookings only, editable while the vehicle is at the shop, the summary).
 2. Photos in the database (`VARBINARY(MAX)`) instead of a file store: one service, one backup, and the screens already compress them (~200 KB). They are read apart from the findings so listing a report never loads the binaries.
 3. `booking_id` is a cross-service reference without FK (ADR-004), like `service_execution.booking_service_id`.
+
+---
+
+### Tables: `operator_profile`, `operator_skill`
+
+**Purpose:** The operator's specialty and skills shown in the operator's card (ADR-010, migration 037). The screens showed them empty because they were not stored.
+
+```sql
+CREATE TABLE [execution].operator_profile (
+    operator_id INT          NOT NULL,
+    specialty   NVARCHAR(80) NULL,
+    updated_at  DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+    updated_by  BIGINT       NULL,
+    CONSTRAINT pk_operator_profile PRIMARY KEY (operator_id),
+    CONSTRAINT fk_operator_profile_operator FOREIGN KEY (operator_id) REFERENCES [execution].operator(operator_id)
+);
+CREATE TABLE [execution].operator_skill (
+    operator_skill_id INT          IDENTITY(1,1) NOT NULL,
+    operator_id       INT          NOT NULL,
+    name              NVARCHAR(60) NOT NULL,
+    skill_level       NVARCHAR(12) NOT NULL,
+    display_order     SMALLINT     NOT NULL,
+    CONSTRAINT pk_operator_skill PRIMARY KEY (operator_skill_id),
+    CONSTRAINT fk_operator_skill_operator FOREIGN KEY (operator_id) REFERENCES [execution].operator(operator_id),
+    CONSTRAINT uq_operator_skill_name UNIQUE (operator_id, name),
+    CONSTRAINT ck_operator_skill_level CHECK (skill_level IN ('CERTIFIED', 'EXPERT', 'ADVANCED'))
+);
+```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `operator_profile.operator_id` | INT | No | The operator. | PK, FK → `execution.operator` |
+| `operator_profile.specialty` | NVARCHAR(80) | Yes | Specialty, e.g. "Detailing". | — |
+| `operator_profile.updated_by` | BIGINT | Yes | Administrator who saved it. | No FK — `security.app_user` |
+| `operator_skill.name` | NVARCHAR(60) | No | Skill name. | Unique per operator |
+| `operator_skill.skill_level` | NVARCHAR(12) | No | `CERTIFIED`, `EXPERT` or `ADVANCED`. | CHECK |
+| `operator_skill.display_order` | SMALLINT | No | Order in the card. | — |
+
+**Modeling decisions:**
+
+1. ADR-010 proposed a `specialty` column in `execution.operator`; it went to its own table so the operator row (created on the fly for every `OPERATOR` account) does not change, and the skills need a child table anyway.
+2. Saving replaces the whole list: the old skills are deleted before inserting the new ones, which keeps `uq_operator_skill_name` simple. At most 10 skills, checked by `OperatorProfile` in the domain.
 
 ---
 

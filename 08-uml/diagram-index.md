@@ -34,7 +34,7 @@
 
 ### Data
 
-The data model is documented as tables, not as an ER diagram: `06-data/models.md` (47 tables, every
+The data model is documented as tables, not as an ER diagram: `06-data/models.md` (57 tables, every
 column, index and constraint) and the executable script `lavarapido-6-services-sqlserver.sql`.
 
 ---

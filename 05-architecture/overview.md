@@ -36,7 +36,7 @@ The web reaches all six services through the gateway; the screens still on local
 
 ## 2. Data ownership
 
-The system has one physical SQL Server database with nine schemas and 47 tables. Logical ownership is enforced by service boundaries and application validation:
+The system has one physical SQL Server database with nine schemas and 57 tables. Logical ownership is enforced by service boundaries and application validation:
 
 ```text
 SQL Server database

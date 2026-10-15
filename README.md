@@ -13,7 +13,7 @@
 | Run everything locally | [`10-devops/local-setup.md`](./10-devops/local-setup.md) |
 | Work on a service | [`09-microservices/service-catalog.md`](./09-microservices/service-catalog.md) |
 | Call the API | [`07-api/`](./07-api/README.md) (guidelines, authentication, OpenAPI per service) |
-| Know the data | [`06-data/models.md`](./06-data/models.md) (47 tables) |
+| Know the data | [`06-data/models.md`](./06-data/models.md) (57 tables) |
 | Know what is done and what is missing | [`04-requirements/traceability-matrix.md`](./04-requirements/traceability-matrix.md), [`15-project-control/`](./15-project-control/README.md) |
 | Join the team | [`14-training/technical-onboarding.md`](./14-training/technical-onboarding.md) |
 

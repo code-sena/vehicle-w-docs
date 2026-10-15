@@ -7,7 +7,7 @@ How the Vehicle Washing Service Management System stores, structures, and migrat
 > **Each microservice owns its data.** No service reaches into another service's tables
 > directly — it asks over an API, or reacts to an event.
 
-In practice, that means the 47 tables in this system are split across 9 SQL Server schemas
+In practice, that means the 57 tables in this system are split across 9 SQL Server schemas
 owned by 6 microservices (ADR-009) — **every schema has exactly one owning service**, and
 **no foreign key crosses from one service's schemas into another's**. Where one service
 genuinely needs another's data (21 columns, listed at the end of `models.md`), it's a plain,
