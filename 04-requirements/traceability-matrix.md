@@ -63,15 +63,15 @@ If there is code without an HU: possible gold-plating, or a change made without 
 
 | RNF ID | Description | How it is validated | Status |
 |--------|-------------|----------------------|--------|
-| RNF-001 | Performance (p95 < 2 s) | Manual measurement with Postman | 🔴 Pending |
+| RNF-001 | Performance (p95 < 2 s) | `lavarapido-infra/e2e/performance.js` (p95 of the main reads through the gateway) | ✅ Met on 2026-10-14 (slowest p95 686 ms, `/payments/me`) |
 | RNF-002 | Availability during review sessions | Manual check before each session | 🔴 Pending |
 | RNF-003 | Concurrency and data integrity | Integration tests on booking and payment | 🔴 Pending |
 | RNF-004 | Security (JWT, BCrypt, roles, lockout) | `ApiSecurityWebTest`, `CustomerApiWebTest`, `BookingApiWebTest` (401/403 per role), `PasswordPolicyTest`, `GatewayRoutesTest` (`/internal` not exposed) + web guards | 🟡 In progress (login lockout missing) |
 | RNF-005 | Observability (service logs) | `/actuator/health` per service, `X-Correlation-Id` in every log line | 🟡 In progress |
 | RNF-006 | Maintainability (PRs, commits, migrations) | GitHub history + code review | 🟡 In progress |
 | RNF-007 | Portability (Docker, no OS dependency) | Local setup reproduced from scratch | 🟡 In progress |
-| RNF-008 | Compatibility (Android 8+, browsers, 360 px) | Manual tests on devices and browsers | 🔴 Pending |
-| RNF-009 | Usability (booking in ≤ 5 steps, form messages) | Flow and form review | 🔴 Pending |
+| RNF-008 | Compatibility (Android 8+, browsers, 360 px) | `lavarapido-infra/e2e/width-360.js` (12 web screens at 360 px); devices by hand | 🟡 In progress (web at 360 px passes; Android 8 device still to try) |
+| RNF-009 | Usability (booking in ≤ 5 steps, form messages) | Flow and form review | 🟡 In progress (booking takes 5 steps: vehicle, service, date, time, confirm — choosing the operator is optional; form messages reviewed in 4 languages) |
 | RNF-010 | Localisation (4 languages, COP, date formats) | Manual check per language | 🟡 In progress |
 
 ---
@@ -119,7 +119,6 @@ If there is code without an HU: possible gold-plating, or a change made without 
 
 | Gap type | Description | Required action | Owner |
 |----------|-------------|------------------|-------|
-| HU without integration test | Each service has unit and web tests, but no flow across services is automated; end-to-end checks were run by hand against the real database | Automate at least registration → booking → notification | Whole team |
 
 ---
 
@@ -131,6 +130,7 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RF-003 blocked for lack of an email provider | SMTP added for this single e-mail (Mailpit locally, any SMTP account for the delivery) — `01-context/scope.md` |
 | Booking emails and reminders had no email address (RF-018) | Address read from security-service at send time through `/internal/**` (ADR-011 §8) |
 | RF-019/RF-020 theme and language only in the browser | Stored per account in `security.user_preference` (4 palettes, migration 020); web and app use `/users/me/preferences` |
+| No flow across services was automated | `lavarapido-infra/e2e/booking-flow.test.js`: booking → automatic assignment → notifications → admin home, through the gateway |
 | RF-016 reused transaction reference accepted | `BookingPaymentGuard` rejects it with `TRANSACTION_REFERENCE_REUSED` |
 | RF-024 to RF-026 promotions and loyalty pending | Built in payment-service (ADR-015) and shown on web and mobile |
 | "Pay" offered on bookings already paid or under review | `GET /payments/me/bookings` returns `payable` (`PaymentPolicy.CanReportPayment`) and the screens only use that flag |
