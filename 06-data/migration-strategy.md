@@ -30,7 +30,7 @@ touches and in which order the global script (`lavarapido-6-services-sqlserver.s
 | `014`+ | Later changes, numbered in the order they were made |
 | `101`–`109` | Seed data (`seed/` folder) |
 
-Current files (2026-10-09):
+Current files (2026-10-15):
 
 ```
 security-service       001-create-security-schemas · 002-create-security-and-audit-core
@@ -44,6 +44,8 @@ security-service       001-create-security-schemas · 002-create-security-and-au
                        030-security-user-preference-notification-channels
                          (email_reminders_enabled, promotions_enabled — ADR-011 §12)
                        034-security-login-lockout (RF-004b)
+                       035-security-person-address (profile address, ADR-010)
+                       036-security-app-user-created-at (registration date)
 customer-service       004-create-customer-schema · 014-add-customer-user-id
                        015-add-customer-vehicle-model · seed/102-seed-customer-catalogs
 booking-service        005-create-booking-schemas (catalog + booking, triggers)
@@ -68,11 +70,12 @@ notification-service   010-create-notification-schema · 016-create-notification
                          (booking_tracking.unassigned_alert_at, ADMIN_BOOKING_UNASSIGNED — ADR-011 §14)
 operations-service     007-create-execution-schema (5 tables + triggers) · seed/105-seed-execution-status
                        033-execution-inspection-report (inspection report, phases, findings, photos — ADR-014 §9)
+                       037-execution-operator-profile (operator specialty and skills, ADR-010)
 payment-service        db/changelog/changes/001 … 018 (own numbering, see below)
 ```
 
-Current global high-water mark: **034** (security-service); seeds go up to **110**. The next new
-changeset in any Java service's shared numbering starts at **035**, and the next seed at **111**.
+Current global high-water mark: **037** (operations-service); seeds go up to **110**. The next new
+changeset in any Java service's shared numbering starts at **038**, and the next seed at **111**.
 
 **payment-service is different** (.NET, ADR-013):
 
