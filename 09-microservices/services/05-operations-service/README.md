@@ -49,7 +49,10 @@
   Reads the booking through booking-service's internal routes (`INTERNAL_API_KEY`); skips accounts
   disabled in security. `AUTO_ASSIGN_ENABLED=false` leaves it to the admin.
 - **Free operators for the client (RF-010):** `GET /api/v1/operators/available` with only the first name
-  and the rating.
+  and the rating. The client also sees who serves each of their bookings (`GET /api/v1/operators/my-bookings`,
+  first name only, bookings that already have an operator).
+- **Operator profile:** the admin edits the specialty and up to 10 skills, each `CERTIFIED`, `EXPERT` or
+  `ADVANCED` (`operator_profile`, `operator_skill`, migration 037). Saving replaces the whole list.
 - **Vehicle inspection report (ADR-014 §9):** for bookings of 3 hours or more the admin records 5
   phases with findings and photos, publishes the report and shares it with the client. The public
   link (`/report/{token}`) needs no session. Sharing publishes `InspectionShared`; notification-service
@@ -76,6 +79,8 @@
 | PATCH | `/api/v1/admin/operators/{id}/status` | ADMIN |
 | GET | `/api/v1/admin/operators/summary` (`?week=`, default this week) | ADMIN |
 | GET | `/api/v1/admin/operators/{id}/metrics` (`?week=` any date of the week, default this week) | ADMIN |
+| GET | `/api/v1/admin/operators/profiles` (specialty and skills of every operator) | ADMIN |
+| PUT | `/api/v1/admin/operators/{id}/profile` (`specialty`, `skills[{name, level}]`; replaces the list) | ADMIN |
 | PUT | `/api/v1/admin/operators/{id}/availability` (whole week) | ADMIN |
 | GET · POST | `/api/v1/admin/operators/{id}/absences` (`?from=&to=`) | ADMIN |
 | DELETE | `/api/v1/admin/operators/{id}/absences/{absenceId}` | ADMIN |
@@ -89,6 +94,7 @@
 | GET | `/api/v1/admin/inspections/{bookingId}/photos/{photoId}` | ADMIN |
 | GET | `/api/v1/public/inspections/{token}` · `/public/inspections/{token}/photos/{photoId}` | public (published reports only) |
 | GET | `/api/v1/operators/available` (`?date=&time=HH:mm&minutes=`) | any signed-in user |
+| GET | `/api/v1/operators/my-bookings` (operator first name per booking) | CLIENT |
 | GET | `/api/v1/operator/services` (`?from=&to=`, default today) | OPERATOR |
 | POST | `/api/v1/operator/services/{bookingId}/start` · `/finish` | OPERATOR |
 | GET | `/api/v1/operator/ratings` | OPERATOR |

@@ -1,7 +1,8 @@
 # Data model — Operations Service
 
 Schema `execution` in `LavaRapido`. Base DDL: `lavarapido-6-services-sqlserver.sql` and
-`06-data/models.md`, section 06 (5 tables, plus the 4 inspection tables of migration 033).
+`06-data/models.md`, section 06 (5 tables, plus the 4 inspection tables of migration 033 and the 2
+operator profile tables of migration 037).
 
 ## Tables
 
@@ -13,6 +14,7 @@ Schema `execution` in `LavaRapido`. Base DDL: `lavarapido-6-services-sqlserver.s
 | `execution.operator_absence` | Dated absence (`starts_at`, `ends_at` in UTC) with a reason |
 | `execution.inspection_report` | Inspection report of a long booking (one per booking): copy of the booking, random `public_token`, published or not |
 | `execution.inspection_phase` / `inspection_finding` / `inspection_photo` | Its 5 phases, the findings of each phase (soft delete) and their photos (JPEG/PNG up to 2 MB) |
+| `execution.operator_profile` / `operator_skill` | Operator specialty (one row per operator) and skills with their level (`CERTIFIED`, `EXPERT`, `ADVANCED`), unique name per operator |
 | `execution.service_execution` | One row per booking line (`booking_service_id`, unique): operator, status, `started_at`, `finished_at`, and the client's `quality_rating` (1–5), `quality_comment`, `rated_at` |
 
 The rating lives in `service_execution` and not in its own table: it cannot exist without the line
@@ -29,6 +31,7 @@ Database safety nets:
 
 Liquibase, changelog table `DATABASECHANGELOG_OPERATIONS`:
 `007-create-execution-schema` (tables + triggers) · seed `105-seed-execution-status` ·
-`033-execution-inspection-report` (inspection report, ADR-014 §9).
+`033-execution-inspection-report` (inspection report, ADR-014 §9) · `037-execution-operator-profile`
+(specialty and skills).
 Every changeset has a precondition, so it is marked as run when the full SQL script already
 created the object.
