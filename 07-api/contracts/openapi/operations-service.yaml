@@ -594,6 +594,80 @@ paths:
                       nullable: true
                     ratingsCount:
                       type: "integer"
+  "/api/v1/operators/my-bookings":
+    get:
+      tags:
+        - "client-booking-operator-controller"
+      operationId: "myBookingOperators"
+      description: "CLIENT only: first name of the operator of each of the caller's bookings that already has one."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    bookingId:
+                      type: "integer"
+                      format: "int64"
+                    operatorName:
+                      type: "string"
+  "/api/v1/admin/operators/profiles":
+    get:
+      tags:
+        - "operator-profile-controller"
+      operationId: "operatorProfiles"
+      description: "Specialty and skills of every operator; operators without a profile come empty."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/OperatorProfile"
+  "/api/v1/admin/operators/{id}/profile":
+    put:
+      tags:
+        - "operator-profile-controller"
+      operationId: "updateOperatorProfile"
+      description: "Replaces the specialty and the whole list of skills (at most 10, unique names)."
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              properties:
+                specialty:
+                  type: "string"
+                  maxLength: 80
+                skills:
+                  type: "array"
+                  maxItems: 10
+                  items:
+                    "$ref": "#/components/schemas/OperatorSkill"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/OperatorProfile"
+        "400":
+          description: "INVALID_OPERATOR_PROFILE"
+        "404":
+          description: "OPERATOR_NOT_FOUND"
   "/api/v1/admin/operators":
     get:
       tags:
@@ -679,6 +753,27 @@ paths:
           description: "No Content"
 components:
   schemas:
+    OperatorSkill:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+          maxLength: 60
+        level:
+          type: "string"
+          enum: ["CERTIFIED", "EXPERT", "ADVANCED"]
+    OperatorProfile:
+      type: "object"
+      properties:
+        operatorId:
+          type: "integer"
+        specialty:
+          type: "string"
+          nullable: true
+        skills:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/OperatorSkill"
     AvailabilityRequest:
       type: "object"
       properties:

@@ -49,6 +49,39 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/PreferencesResponse"
+  "/api/v1/users/me/address":
+    get:
+      tags:
+        - "My account"
+      operationId: "address"
+      description: "Contact address of the signed-in user (ADR-010). Empty string when there is none."
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/AddressDto"
+    put:
+      tags:
+        - "My account"
+      operationId: "updateAddress"
+      description: "Saves the address (trimmed, up to 200 characters). Empty or null deletes it."
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/AddressDto"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/AddressDto"
+        "400":
+          description: "INVALID_ADDRESS (more than 200 characters)"
   "/api/v1/users/me/password":
     put:
       tags:
@@ -390,6 +423,16 @@ components:
         personId:
           type: "integer"
           format: "int64"
+        createdAt:
+          type: "string"
+          format: "date-time"
+          description: "Registration date of the account (migration 036)"
+    AddressDto:
+      type: "object"
+      properties:
+        address:
+          type: "string"
+          maxLength: 200
     DeactivateAccountRequest:
       type: "object"
       properties:
@@ -586,6 +629,15 @@ components:
           type: "string"
         active:
           type: "boolean"
+        pushEnabled:
+          type: "boolean"
+        emailRemindersEnabled:
+          type: "boolean"
+        promotionsEnabled:
+          type: "boolean"
+        language:
+          type: "string"
+          description: "es, en, fr or pt: notification-service writes the notices in this language"
     PageResponseUserResponse:
       type: "object"
       properties:
