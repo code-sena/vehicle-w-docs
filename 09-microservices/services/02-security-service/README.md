@@ -29,8 +29,13 @@
   the login answers `423 ACCOUNT_LOCKED`, even with the right password, until it expires; a password
   reset lifts it.
 - Password recovery with a 6-digit code by email (BCrypt-hashed, 15 min, single use, 5 failed attempts burn it).
-- Profile: read/update name and phone, change email (asks for the password), change password,
-  deactivate the own account, notification preferences.
+  The new password cannot be the current one (`400 SAME_PASSWORD`, checked before the code is spent, so the
+  user can try again with another one).
+- Profile: read/update name and phone, the contact address (`security.person_address`, ADR-010; empty
+  deletes it), change email (asks for the password), change password, deactivate the own account,
+  notification preferences.
+- Keep each account's registration date (`app_user.created_at`, migration 036), returned in the users
+  list as `createdAt`.
 - Administration: list accounts (by role, paginated), create accounts, activate/deactivate.
 - Publish `UserRegistered` after commit (customer-service creates the client profile,
   notification-service sends the welcome email).
@@ -53,6 +58,7 @@
 | POST | `/api/v1/auth/logout` | token |
 | POST | `/api/v1/auth/password/forgot` · `/verify` · `/reset` | public |
 | GET · PATCH | `/api/v1/users/me` | token |
+| GET · PUT | `/api/v1/users/me/address` (`{ "address": "…" }`, up to 200 characters; empty deletes it) | token |
 | PUT | `/api/v1/users/me/email` · `/password` | token |
 | POST | `/api/v1/users/me/deactivate` | token |
 | GET · PUT | `/api/v1/users/me/preferences` (theme, language and the notification switches `notificationsEnabled` = push, `emailRemindersEnabled`, `promotionsEnabled`; PUT is partial: omitted fields keep their value) | token |
@@ -60,7 +66,7 @@
 | PATCH | `/api/v1/admin/users/{userId}/status` | ADMIN |
 | GET | `/api/v1/admin/roles-permissions` | ADMIN (permission catalog and what each fixed role has) |
 | PUT | `/api/v1/admin/roles-permissions/{role}` | ADMIN (`400 UNKNOWN_PERMISSION` for ids outside the catalog) |
-| GET | `/internal/v1/users/{userId}/contact` (email, first name, active and the switches `pushEnabled`, `emailRemindersEnabled`, `promotionsEnabled`, ADR-011 §12). Used by notification-service and by operations-service (first names in ratings, ADR-014 §7) | internal key (`X-Internal-Key`), not routed by the gateway |
+| GET | `/internal/v1/users/{userId}/contact` (email, first name, active, the switches `pushEnabled`, `emailRemindersEnabled`, `promotionsEnabled`, ADR-011 §12, and the account `language`). Used by notification-service (notices in the account's language) and by operations-service (first names in ratings, ADR-014 §7, and skipping disabled accounts in the automatic assignment) | internal key (`X-Internal-Key`), not routed by the gateway |
 | GET | `/internal/v1/users/admins` | internal key; ids of the active `ADMIN` accounts (staff notifications, ADR-011 §10) |
 
 Full contract: [`07-api/contracts/openapi/security-service.yaml`](../../../07-api/contracts/openapi/security-service.yaml).
