@@ -39,7 +39,14 @@
 - Administration: list accounts (by role, paginated), create accounts, activate/deactivate.
 - Publish `UserRegistered` after commit (customer-service creates the client profile,
   notification-service sends the welcome email).
-- Serve the internal contact endpoint for notification-service (ADR-011 §8).
+- Serve the internal contact endpoint for notification-service (ADR-011 §8). operations-service also
+  uses it to check that an operator account exists before creating its operator row (404 means it
+  does not).
+- **First administrator** (`AdministratorBootstrapRunner`): at startup, if there is no account with
+  role `ADMIN` and `ADMIN_EMAIL` / `ADMIN_PASSWORD` are set, it creates one through the same
+  create-account use case (password policy, unique email and document, `UserRegistered`). A production
+  database starts empty and public sign-up only creates clients, so this is how the first admin gets
+  in. A failure is logged and never stops the service (see `10-devops/production.md`).
 
 ## Out of scope (what it does NOT do)
 

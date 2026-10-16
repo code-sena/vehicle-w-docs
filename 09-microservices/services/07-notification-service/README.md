@@ -32,6 +32,12 @@
   the booking; `BookingCancelled` cancels them; a reschedule moves them. A scheduled task sends
   the due ones to the inbox, push and email.
 - Let the administrator send a manual notification.
+- **New app version** (`APP_UPDATE_AVAILABLE`, migration 038): `POST /internal/v1/notifications/app-update`
+  with `{ "versionCode": n }` and the internal key sends the notice (inbox and push) to every user with
+  the app installed, once per `versionCode` (`processed_event` with id `app-update-v<n>`). The server's
+  `deploy/publish-apk.sh` calls it after publishing an APK.
+- Push and email go out as delivery commands (`DeliveryPlanner` decides the channels, `DeliveryInvoker`
+  runs them), so a failing channel never stops the others (ADR-011, amended 15 Oct).
 
 **Language (ADR-011 §15):** every notice is written in the language of the account that receives it
 (Spanish, English, French or Portuguese; templates in `src/main/resources/i18n/`). The language comes
@@ -56,6 +62,7 @@ from security-service's internal contact; without it the notice goes out in Span
 | PUT | `/api/v1/notifications/devices` | token — register an Expo push token |
 | POST | `/api/v1/notifications/devices/unregister` | token |
 | POST | `/api/v1/admin/notifications` | ADMIN — manual notification |
+| POST | `/internal/v1/notifications/app-update` | `X-Internal-Key` only (never through the gateway) — announce a new APK |
 
 Full contract: [`07-api/contracts/openapi/notification-service.yaml`](../../../07-api/contracts/openapi/notification-service.yaml).
 
