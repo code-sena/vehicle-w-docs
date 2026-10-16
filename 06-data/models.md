@@ -95,6 +95,8 @@ CREATE TABLE [security].app_user (
     is_active     BIT           NOT NULL CONSTRAINT df_app_user_active DEFAULT 1,
     last_login    DATETIME2(3)  NULL,
     created_at    DATETIME2(3)  NOT NULL DEFAULT SYSUTCDATETIME(),   -- migration 036
+    terms_accepted_at       DATETIME2(3) NULL,                       -- migration 039
+    data_policy_accepted_at DATETIME2(3) NULL,                       -- migration 039
     CONSTRAINT pk_app_user PRIMARY KEY (user_id),
     CONSTRAINT uq_app_user_person UNIQUE (person_id),
     CONSTRAINT uq_app_user_username UNIQUE (username),
@@ -113,11 +115,14 @@ CREATE TABLE [security].app_user (
 | `is_active` | BIT | No | Soft on/off switch for the account, independent of `person.deleted_at`. | — |
 | `last_login` | DATETIME2(3) | Yes | Last successful authentication, for activity checks. | — |
 | `created_at` | DATETIME2(3) | No | Registration date, shown in **Management → Users**. | Set once on insert, never updated |
+| `terms_accepted_at` | DATETIME2(3) | Yes | When the person accepted the Terms and Conditions while signing up (web or app checkbox). | NULL for older and admin-created accounts |
+| `data_policy_accepted_at` | DATETIME2(3) | Yes | When the person accepted the Personal Data Processing Policy (Law 1581 of 2012 proof of authorization). | NULL for older and admin-created accounts |
 
 **Modeling decisions:**
 
 1. 1-to-1 with `person` by design, not by convention: `person_id` is `UNIQUE`, so the database itself rejects a second account for the same human.
-2. `created_at` came with migration 036. Before it the users list showed the last login as if it were the registration date. Accounts that already existed got their first session as registration date (or the migration date if they never signed in), because `audit_log` had no rows to recover the real one.
+2. `terms_accepted_at` and `data_policy_accepted_at` came with migration 039: the sign-up forms asked for both boxes but nothing was stored. They are columns of the account rather than a separate `user_consent` table because only one version of each document exists; a table with the document version is the step if the texts start changing.
+3. `created_at` came with migration 036. Before it the users list showed the last login as if it were the registration date. Accounts that already existed got their first session as registration date (or the migration date if they never signed in), because `audit_log` had no rows to recover the real one.
 
 ---
 
