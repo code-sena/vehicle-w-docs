@@ -22,6 +22,9 @@
 ## Responsibilities (what this service DOES)
 
 - Register clients and let the administrator create accounts (operator, admin) with a temporary password.
+  A self-registered account stores when the person accepted the Terms and the Data Processing Policy
+  (`acceptsTerms` and `acceptsDataPolicy` in `POST /api/v1/auth/register`, migration 039, Law 1581 of
+  2012). Both fields are optional so older app versions keep working.
 - Authenticate with email + password (BCrypt) and issue an **HS256 JWT valid for 1 hour**.
   Claims: `sub` (user id), `roles`, `sid` (session id), `iss`, `aud`, `iat`, `nbf`, `exp`, `jti`.
 - Record sessions (`user_session`); logout stores the session end.

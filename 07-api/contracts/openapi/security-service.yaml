@@ -470,6 +470,12 @@ components:
           type: "string"
           maxLength: 72
           minLength: 0
+        acceptsTerms:
+          type: "boolean"
+          description: "The person ticked the Terms and Conditions box. Optional for older app versions; when it and acceptsDataPolicy are true the acceptance date is stored (migration 039)."
+        acceptsDataPolicy:
+          type: "boolean"
+          description: "The person ticked the Personal Data Processing Policy box (Law 1581 of 2012)."
       required:
         - "documentNumber"
         - "email"
