@@ -274,6 +274,57 @@ the message in that language. Dates use each language's format (`01/10/2026 a la
 - Messages written by an administrator (`SYSTEM_MESSAGE`) are sent as typed.
 - A test checks that the 4 files have the same keys and the same parameters.
 
+### 16. Deliveries as commands, and push in the mobile app (added 2026-10-15)
+
+**Problem:** the backend already sent push through Expo (§2) and stored the phones, but the mobile app
+never asked for permission, never registered its token and did nothing when a push was tapped. On the
+backend, the push and email calls were written inline in the sending service, so a new channel meant
+editing it and one failing channel could stop the next.
+
+**Decision (backend):** the external deliveries follow the **Command** pattern.
+
+- `DeliveryCommand` (`channel()`, `execute()`), with `PushDeliveryCommand` and `EmailDeliveryCommand`.
+- `DeliveryPlanner` decides which channels apply (active phones + the user's switches, §12; email only
+  when the command carries an address) and builds one command per channel. It reads the contact from
+  security-service only when the user has phones.
+- `DeliveryInvoker` runs them one by one and isolates failures: a broken SMTP does not stop the push,
+  and the notification already saved in the inbox is never undone. The log line says by which channels
+  it went out and which failed.
+- The Expo message now carries `channelId` = category in lower case (`reminder`, `promotion`…),
+  `priority: high` and `data.category`, besides `notificationId`, `type` and the reference.
+
+**Decision (mobile, `expo-notifications`):** the same pattern on the app side.
+
+| Piece | Role |
+|---|---|
+| `pushGateway` | Adapter: the only file that uses `expo-notifications` (permission, Android channels, token, listeners, badge) |
+| `RegisterDeviceCommand` | On sign-in: permission → 6 Android channels (one per category, translated) → Expo token → `PUT /notifications/devices` |
+| `UnregisterDeviceCommand` | On sign-out, while the access token is still valid: `POST /notifications/devices/unregister` |
+| `MarkNotificationReadCommand`, `OpenNotificationCommand`, `RefreshInboxCommand` | Tapping a push: mark it read, open its screen, reload the inbox and the icon badge |
+| `CompositeCommand` | Groups the three above; if one fails the others still run |
+| `notificationCommandFactory` | Turns each event (sign-in, sign-out, push received, push tapped) into its command |
+| `NotificationCommandInvoker` | One queue for the whole app: register and unregister never overlap; errors are logged, never thrown to the screen |
+| `PushNotificationsSync` | Component that connects the above with the session and the navigation |
+
+- The screen each push opens depends on the role and the type (`notificationRoutes`); an unknown type
+  opens the inbox. This is navigation only: who is notified and the text are still decided by the backend.
+- The push data is validated before use (`PushPayload`): ids must be positive integers.
+- A push that opened the closed app is handled once the session is loaded.
+
+**Limits:**
+- Since SDK 53, **Expo Go on Android does not receive remote push**. Testing on a phone needs a
+  development build (`npx expo run:android` or `eas build --profile development`) and an EAS project id
+  (`eas init`, or `EXPO_PUBLIC_EAS_PROJECT_ID`). Without them the app skips the registration and keeps
+  working; the inbox still fills.
+- Web, emulators without Google services and Expo Go skip the registration in the same way.
+- Expo push receipts (the second step that confirms delivery to Firebase/Apple) are not read yet; only
+  the tickets (`DeviceNotRegistered` deactivates the token).
+
+**Verified on 2026-10-15:** 6 backend tests (`DeliveryCommandsTest`, 83 in the service); 11 checks of the
+mobile commands with test doubles; live run against a local fake Expo endpoint (message with channel,
+priority and data; a `DeviceNotRegistered` token deactivated; unregister on sign-out); the app in web mode
+signs in, opens the inbox and signs out with the new code.
+
 ---
 
 ## Consequences
