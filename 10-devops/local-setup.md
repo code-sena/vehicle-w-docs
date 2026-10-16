@@ -156,6 +156,9 @@ At the end: stop the services (Ctrl+C) and, if you want, `docker compose stop`.
 |---|---|
 | Service fails: TCP connection to `localhost:1433` failed | SQL Server still starting: wait for **healthy** and start again |
 | `Port XXXX was already in use` | Another instance is running: stop it or change `PORT` |
+| Login fails with "Invalid credentials" for accounts that exist, or the services see another database | A native Windows SQL Server (`MSSQLSERVER`) holds 1433 on IPv4 and answers instead of Docker. Stop it and set it to manual start (PowerShell as administrator: `Stop-Service MSSQLSERVER; Set-Service MSSQLSERVER -StartupType Manual`), then `docker compose up -d sqlserver` |
+| The mobile app opened with `expo start --web` cannot log in (CORS error in the browser console) | `CORS_ALLOWED_ORIGINS` in `.env` lacks `http://localhost:8081`: use the template value `http://localhost:4200,http://localhost:8081` and restart the gateway |
+| `ng build` or `tsc` fails with a missing module (`qrcode`, `expo-updates`…) after a pull | `node_modules` is older than `package-lock.json`: run `npm ci` |
 | Every request answers 401 | `JWT_SECRET` (or issuer/audience) differs between services |
 | Web shows `ECONNREFUSED` in the `ng serve` console | The target service is not running |
 | No welcome email / booking notifications | `MESSAGING_ENABLED=false` or RabbitMQ down |
