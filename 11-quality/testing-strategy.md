@@ -78,7 +78,8 @@ There are **no tests against a real SQL Server** yet: the database schema is val
 ## Tier 5: End-to-end
 
 **Automated** (`lavarapido-infra/e2e`, Node scripts through the gateway, with `E2E_ADMIN_ID`,
-`E2E_OPERATOR_ID` and `E2E_CLIENT_ID` set to the local accounts):
+`E2E_OPERATOR_ID` and `E2E_CLIENT_ID` set to the local accounts). Run of 2026-10-16 against the
+`develop` code: 19 of 19 checks green.
 
 | Script | What it checks |
 |---|---|
