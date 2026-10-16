@@ -2285,7 +2285,7 @@ CREATE TABLE [notification].notification_type (
 | Column | Type | Nullable | Description | Constraints |
 |--------|------|----------|--------------|-------------|
 | `notification_type_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
-| `code` | NVARCHAR(40) | No | E.g. `booking_CREADA`, `PAGO_APROBADO`. | Unique |
+| `code` | NVARCHAR(40) | No | E.g. `BOOKING_CREATED`, `PAYMENT_CONFIRMED`, `INSPECTION_REPORT`; `APP_UPDATE_AVAILABLE` comes from migration 038 (new APK published). | Unique |
 | `name` | NVARCHAR(80) | No | Label. | — |
 | `display_order` | SMALLINT | No | Sort order. | — |
 | `is_active` | BIT | No | Soft on/off switch. | — |

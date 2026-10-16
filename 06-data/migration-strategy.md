@@ -68,14 +68,16 @@ notification-service   010-create-notification-schema · 016-create-notification
                          (LOYALTY_POINTS_EARNED, INSPECTION_REPORT)
                        031-notification-unassigned-booking-alert
                          (booking_tracking.unassigned_alert_at, ADMIN_BOOKING_UNASSIGNED — ADR-011 §14)
+                       038-notification-app-update-type (APP_UPDATE_AVAILABLE: notice when a new APK
+                         is published, see 10-devops/production.md)
 operations-service     007-create-execution-schema (5 tables + triggers) · seed/105-seed-execution-status
                        033-execution-inspection-report (inspection report, phases, findings, photos — ADR-014 §9)
                        037-execution-operator-profile (operator specialty and skills, ADR-010)
 payment-service        db/changelog/changes/001 … 018 (own numbering, see below)
 ```
 
-Current global high-water mark: **037** (operations-service); seeds go up to **110**. The next new
-changeset in any Java service's shared numbering starts at **038**, and the next seed at **111**.
+Current global high-water mark: **038** (notification-service); seeds go up to **110**. The next new
+changeset in any Java service's shared numbering starts at **039**, and the next seed at **111**.
 
 **payment-service is different** (.NET, ADR-013):
 
