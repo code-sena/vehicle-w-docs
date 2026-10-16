@@ -20,19 +20,20 @@
                  └───────────────────────────┘
 ```
 
-### Current numbers (all green; operations and payment run on 2026-10-06, the rest on 2026-10-04)
+### Current numbers (all green, run on 2026-10-16)
 
 | Service | Tests | Test classes |
 |---|---|---|
-| security-service | 106 | `UserAccountTest`, `ValueObjectsTest`, `PasswordPolicyTest`, `PasswordResetTokenTest`, `AccountRegistrationServiceTest`, `AuthenticationServiceTest`, `PasswordRecoveryServiceTest`, `UserProfileAndAdministrationTest`, `JwtTokenIssuerTest`, `EmailResetCodeNotifierTest`, `ApiSecurityWebTest` |
-| customer-service | 67 | `CustomerAccountTest`, `LicensePlateTest`, `LicensePlatePolicyTest`, `CustomerVehicleServiceTest`, `UserRegisteredListenerTest`, `CustomerApiWebTest` |
-| booking-service | 31 | `BookingTest`, `AvailabilityPolicyTest`, `BookingServiceTest`, `CatalogServiceTest`, `BookingApiWebTest` |
-| operations-service | 22 | `AssignmentPolicyTest` (5), `ServiceExecutionTest` (4), `OperationsServiceTest` (9), `OperationsApiWebTest` (4) |
-| notification-service | 60 | `NotificationTest`, `DeviceTokenTest`, `NotificationFactoryTest`, `BookingReminderTest`, `NotificationUseCasesTest`, `BookingReminderServiceTest` |
-| api-gateway | 22 | `GatewayRoutesTest` |
-| payment-service (.NET, xUnit, `dotnet test`) | 39 | `PaymentTests`, `AggregateRootTests` — domain only; no Application, Infrastructure or Api tests yet |
-| **Total backend** | **347** | Java 308 + .NET 39 |
-| Web | — | 36 spec files; **the suite does not compile today** (see gaps) |
+| security-service | 145 | `UserAccountTest`, `ValueObjectsTest`, `PasswordPolicyTest`, `PasswordResetTokenTest`, `UserPreferenceTest`, `AccountRegistrationServiceTest`, `AuthenticationServiceTest`, `PasswordRecoveryServiceTest`, `UserProfileAndAdministrationTest`, `PersonAddressServiceTest`, `UserPreferenceServiceTest`, `RolePermissionAdministrationServiceTest`, `AdministratorBootstrapServiceTest`, `AdministratorBootstrapRunnerTest`, `JwtTokenIssuerTest`, `EmailResetCodeNotifierTest`, `ApiSecurityWebTest` |
+| customer-service | 69 | `CustomerAccountTest`, `LicensePlateTest`, `LicensePlatePolicyTest`, `CustomerVehicleServiceTest`, `UserRegisteredListenerTest`, `CustomerApiWebTest` |
+| booking-service | 40 | `BookingTest`, `EstablishmentTest`, `AvailabilityPolicyTest` (including the reason of an unavailable time), `BookingServiceTest`, `CatalogServiceTest`, `BookingApiWebTest` |
+| operations-service | 54 | `AssignmentPolicyTest`, `AutoAssignmentPolicyTest`, `StartPolicyTest`, `ServiceExecutionTest`, `InspectionReportTest`, `OperatorMetricsCalculatorTest`, `TeamSummaryCalculatorTest`, `OperationsServiceTest`, `OperatorProfileServiceTest`, `OperatorPersistenceAdapterTest` (operator row race), `OperationsApiWebTest` |
+| notification-service | 112 | `NotificationTest`, `DeviceTokenTest`, `BookingReminderTest`, `NotificationFactoryTest`, `LocalizedNotificationsTest`, `NotificationUseCasesTest`, `BookingReminderServiceTest`, `StaffNotificationsTest`, `UnassignedBookingAlertTest`, `AppUpdateNoticeTest`, `DeliveryCommandsTest`, `AdminNotificationControllerTest` |
+| api-gateway | 34 | `GatewayRoutesTest` |
+| payment-service (.NET, xUnit, `dotnet test`) | 141 (+7 skipped) | Domain 113 (`PaymentTests`, `PaymentPolicyTests`, `PromotionTests`, `LoyaltyTransactionTests`, `AggregateRootTests`), Application 28 (`PaymentCommandServiceTests`, `PaymentQueryServiceTests`, `CustomerPromotionServiceTests`); the 7 `PersistenceTests` need a real SQL Server and are skipped by default |
+| **Total backend** | **595** | Java 454 + .NET 141 |
+| Web (Angular, Vitest, `ng test`) | 41 | 36 spec files, including `api-error.spec.ts` (error codes and the slot reason) |
+| **Total** | **636** | |
 
 ---
 
@@ -76,11 +77,19 @@ There are **no tests against a real SQL Server** yet: the database schema is val
 
 ## Tier 5: End-to-end
 
-**Automated** (`lavarapido-infra/e2e`, Node scripts through the gateway, 2026-10-14):
-`booking-flow.test.js` (`node --test "e2e/*.test.js"`): the client sees the free operators, books
-choosing one, operations assigns it on `booking.confirmed` (RabbitMQ), notification notifies the client,
-the admin home counts the booking, and `/internal` is not reachable through the gateway. It uses the team's
-real accounts (no new sign-ups, so no test emails) and deletes what it creates through SQL.
+**Automated** (`lavarapido-infra/e2e`, Node scripts through the gateway, with `E2E_ADMIN_ID`,
+`E2E_OPERATOR_ID` and `E2E_CLIENT_ID` set to the local accounts):
+
+| Script | What it checks |
+|---|---|
+| `booking-flow.test.js` | The client sees the free operators, books choosing one, operations assigns it on `booking.confirmed` (RabbitMQ), notification notifies the client, the admin home counts the booking, `/internal` is not reachable through the gateway |
+| `full-flow.test.js` | Client books → automatic assignment → payment reported → admin approves (points earned) → operator starts and finishes → client rates, checking every notice; restores the client's points and coupons |
+| `inspection-flow.test.js` | Inspection report of a 200-minute booking: finding with photos (6 photos rejected), publish, share, public link without plate or emails, public photo, client notice |
+| `access-rules.test.js` | Role rules, internal routes, profile address, payment filters, tax data hidden from the public, operator profile validation, a time before opening answers `reason: OUTSIDE_HOURS`, a token of a missing account creates no operator row |
+
+They use the team's real accounts (no new sign-ups, so no test emails) and delete what they create
+through SQL. Local data they need: an operator with shifts covering 9:00, a payment method with
+receipt besides cash, and business hours opening before 9:00 (`e2e/README.md`).
 
 **Manual**, against the whole system before each review session (`13-operations/README.md`):
 sign-up → welcome email → login → register vehicle → book (and a full slot) → booking email →
@@ -96,11 +105,12 @@ web slice tests protect each provider's side.
 ## Performance tests
 
 `lavarapido-infra/e2e/performance.js` measures the p95 of the main reads through the gateway (30
-requests each, after a warm-up). Run of 2026-10-14 on the development PC: every endpoint under the
-2 s limit; the slowest p95 was `/payments/me` with 686 ms (it calls booking-service and customer-service).
+requests each, after a warm-up). Run of 2026-10-16 on the development PC: every endpoint under the
+2 s limit; the slowest p95 was the client's bookings with 90 ms (on 2026-10-14 it was `/payments/me`
+with 686 ms).
 
 **Screen width (RNF-008):** `lavarapido-infra/e2e/width-360.js` opens 12 web screens (public, client,
-admin) at 360 px and fails if any has horizontal scroll; all passed on 2026-10-14.
+admin) at 360 px and fails if any has horizontal scroll; all passed on 2026-10-14 and again on 2026-10-16.
 
 ---
 
@@ -146,8 +156,9 @@ No coverage tool configured. Policy: every business rule and every endpoint's se
 
 | Gap | Action |
 |---|---|
-| Web test suite does not compile: 6 scaffold specs point to classes that no longer exist (`features/*/viewmodels/*.spec.ts`, `settings-panel.spec.ts`, `stepper.spec.ts`) | Fix or delete those specs, then add tests for the booking form and stores |
-| The cross-service test does not cover sign-up and payment | Add them with a disposable account when a test mail domain is agreed |
+| The web suite is mostly "should create" specs | Add tests for the booking form, the payment page and the stores |
+| The cross-service tests do not cover sign-up | Add it with a disposable account when a test mail domain is agreed |
+| The mobile app has no automated tests | `tsc --noEmit`, `expo-doctor` and `expo export` are the current checks; add Jest for the view models |
 | No CI | Add a workflow per repository |
 | No test against a real SQL Server | Testcontainers for the persistence adapters of booking (locking, triggers) |
 | payment-service has no API tests | Use-case tests exist (`PaymentCommandServiceTests`, `PaymentQueryServiceTests`, `CustomerPromotionServiceTests` with in-memory fakes); add API tests (roles, 409 codes) |
