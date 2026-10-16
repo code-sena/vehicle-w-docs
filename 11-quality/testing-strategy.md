@@ -24,16 +24,16 @@
 
 | Service | Tests | Test classes |
 |---|---|---|
-| security-service | 145 | `UserAccountTest`, `ValueObjectsTest`, `PasswordPolicyTest`, `PasswordResetTokenTest`, `UserPreferenceTest`, `AccountRegistrationServiceTest`, `AuthenticationServiceTest`, `PasswordRecoveryServiceTest`, `UserProfileAndAdministrationTest`, `PersonAddressServiceTest`, `UserPreferenceServiceTest`, `RolePermissionAdministrationServiceTest`, `AdministratorBootstrapServiceTest`, `AdministratorBootstrapRunnerTest`, `JwtTokenIssuerTest`, `EmailResetCodeNotifierTest`, `ApiSecurityWebTest` |
+| security-service | 147 | `UserAccountTest`, `ValueObjectsTest`, `PasswordPolicyTest`, `PasswordResetTokenTest`, `UserPreferenceTest`, `AccountRegistrationServiceTest`, `AuthenticationServiceTest`, `PasswordRecoveryServiceTest`, `UserProfileAndAdministrationTest`, `PersonAddressServiceTest`, `UserPreferenceServiceTest`, `RolePermissionAdministrationServiceTest`, `AdministratorBootstrapServiceTest`, `AdministratorBootstrapRunnerTest`, `JwtTokenIssuerTest`, `EmailResetCodeNotifierTest`, `ApiSecurityWebTest` |
 | customer-service | 69 | `CustomerAccountTest`, `LicensePlateTest`, `LicensePlatePolicyTest`, `CustomerVehicleServiceTest`, `UserRegisteredListenerTest`, `CustomerApiWebTest` |
 | booking-service | 40 | `BookingTest`, `EstablishmentTest`, `AvailabilityPolicyTest` (including the reason of an unavailable time), `BookingServiceTest`, `CatalogServiceTest`, `BookingApiWebTest` |
 | operations-service | 54 | `AssignmentPolicyTest`, `AutoAssignmentPolicyTest`, `StartPolicyTest`, `ServiceExecutionTest`, `InspectionReportTest`, `OperatorMetricsCalculatorTest`, `TeamSummaryCalculatorTest`, `OperationsServiceTest`, `OperatorProfileServiceTest`, `OperatorPersistenceAdapterTest` (operator row race), `OperationsApiWebTest` |
 | notification-service | 112 | `NotificationTest`, `DeviceTokenTest`, `BookingReminderTest`, `NotificationFactoryTest`, `LocalizedNotificationsTest`, `NotificationUseCasesTest`, `BookingReminderServiceTest`, `StaffNotificationsTest`, `UnassignedBookingAlertTest`, `AppUpdateNoticeTest`, `DeliveryCommandsTest`, `AdminNotificationControllerTest` |
 | api-gateway | 34 | `GatewayRoutesTest` |
 | payment-service (.NET, xUnit, `dotnet test`) | 141 (+7 skipped) | Domain 113 (`PaymentTests`, `PaymentPolicyTests`, `PromotionTests`, `LoyaltyTransactionTests`, `AggregateRootTests`), Application 28 (`PaymentCommandServiceTests`, `PaymentQueryServiceTests`, `CustomerPromotionServiceTests`); the 7 `PersistenceTests` need a real SQL Server and are skipped by default |
-| **Total backend** | **595** | Java 454 + .NET 141 |
+| **Total backend** | **597** | Java 456 + .NET 141 |
 | Web (Angular, Vitest, `ng test`) | 41 | 36 spec files, including `api-error.spec.ts` (error codes and the slot reason) |
-| **Total** | **636** | |
+| **Total** | **638** | |
 
 ---
 
