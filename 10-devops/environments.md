@@ -11,7 +11,7 @@
 |-------------|--------|-------------|------|
 | **local (dev profile)** | 🟢 In use | Infra in Docker (`docker compose up -d`, includes `payment-migrate`), each Java service with `./mvnw spring-boot:run`, payment with `dotnet run`, web with `ng serve` (+ `proxy.conf.json` → gateway) | Liquibase seeds + demo accounts |
 | **local Docker (app profile)** | 🟢 Available | `docker compose --profile app up -d --build`: every service (payment included) and the API gateway in containers | Same database |
-| **production** | 🟡 Configured, server down on 16 Oct 2026 | `docker-compose.yml` + `docker-compose.prod.yml` on an Azure VM: Caddy on 80/443, web in nginx, SQL Server Express (see `production.md`) | Empty database plus the first administrator from `ADMIN_*` |
+| **production** | 🟢 In use, turned on on demand | `docker-compose.yml` + `docker-compose.prod.yml` on an Azure VM: Caddy on 80/443, web in nginx, SQL Server Express (see `production.md`) | Empty database plus the first administrator from `ADMIN_*` |
 | **staging** | 🔴 Not set up | — | — |
 | **CI** | 🔴 Not set up | No pipeline yet; tests run locally with `./mvnw test`, `dotnet test` and `ng build` | — |
 

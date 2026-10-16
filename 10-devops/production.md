@@ -135,10 +135,11 @@ Liquibase applies new changesets at startup.
 | `PUBLIC_URL/app/version.json` | The published APK version |
 | `docker compose ... ps` | Every service `healthy` |
 
-On 16 October 2026 the Azure host resolved (64.236.160.129) but did not answer on ports 80 or 443,
-so the VM was stopped or its network rules closed. While it is down, the published APK cannot reach
-the API. Starting the VM (or opening 80/443 in its network security group) and running
-`update-server.sh` brings it back with the data intact.
+The VM runs on an *Azure for Students* subscription, so the project lead turns it on for reviews,
+demos and tests and off the rest of the time to save credit. While it is off the host still resolves
+(64.236.160.129) but ports 80 and 443 do not answer and the installed app cannot reach the API; starting
+the VM brings everything back with the data intact (`restart: unless-stopped`). After pushing to
+`develop`, run `update-server.sh` so the server gets the new images.
 
 ---
 
