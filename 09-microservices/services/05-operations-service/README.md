@@ -23,7 +23,12 @@
 
 - **Operators:** every account with role `OPERATOR` in security-service gets a row in
   `execution.operator` the first time it is listed or calls the service. The admin can activate
-  or deactivate it.
+  or deactivate it. The row is created in its own transaction: when the app opens several screens at
+  once on the first login, the requests that lose the race on `uq_operator_user` reuse the row the
+  first one created instead of answering 409. Before creating it on a call, the service asks
+  security-service for the account (internal contact); a confirmed 404 answers 404
+  `OPERATOR_NOT_FOUND`, so a token of an account that does not exist leaves no rows behind. Without
+  the internal key or an answer it keeps creating the row as before.
 - **Shifts and absences:** one weekly shift per day (`operator_availability`, replaced as a whole)
   and dated absences (`operator_absence`) that cannot overlap.
 - **Assignment (RF-008/009):** the admin assigns or changes the operator of a booking while it is
@@ -33,7 +38,9 @@
 - **Execution (RF-010/011):** the operator starts the service only from 15 minutes before the
   booking time (`StartPolicy`, 409 `SERVICE_TOO_EARLY`; each service carries `startableAt` for the
   screens) and finishes it; the service moves the booking to `IN_PROGRESS` / `COMPLETED` in booking-service. An operator
-  cannot run two services at once.
+  cannot run two services at once. Each service the operator sees carries `clientName`, the client's
+  first name (security-service internal contact, like the ratings), so the screens no longer put the
+  plate in the client column.
 - **Ratings (RF-012):** the client rates a completed booking once (1 to 5 stars, comment up to 500
   characters); the operator sees their ratings and the average. Each rating carries the client's
   and the operator's first name (security-service internal contact, ADR-014 §7).

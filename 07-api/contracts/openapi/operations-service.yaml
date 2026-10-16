@@ -537,6 +537,8 @@ paths:
                 type: "array"
                 items:
                   "$ref": "#/components/schemas/OperatorServiceResponse"
+        "404":
+          description: "OPERATOR_NOT_FOUND: the token belongs to an account that security-service says does not exist, so no operator row is created."
   "/api/v1/operator/ratings":
     get:
       tags:
@@ -1172,6 +1174,9 @@ components:
           type: "string"
           format: "date-time"
           description: "First instant the operator can start the service: 15 minutes before the booking (StartPolicy, ADR-014 §6). The screens enable Start with it."
+        clientName:
+          type: "string"
+          description: "First name of the client of the booking (security-service internal contact). Empty when it could not be read."
     AbsenceRequest:
       type: "object"
       properties:
