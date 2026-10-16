@@ -50,6 +50,10 @@ reads `lavarapido-infra/.env`.
 
 ---
 
+**Correlation:** `CorrelationIdMiddleware` reads `X-Correlation-Id` from the gateway (or creates one),
+returns it in the response, adds it to the log scope and forwards it to booking-service with the user's
+token, like the Java services (`cross-cutting.md` §4).
+
 ## Endpoints
 
 | Method | Path | Access |
@@ -64,7 +68,7 @@ reads `lavarapido-infra/.env`.
 | GET · POST | `/api/v1/admin/payment-accounts` | ADMIN |
 | PUT | `/api/v1/admin/payment-accounts/{id}` | ADMIN |
 | GET | `/api/v1/admin/payment-methods` | ADMIN |
-| GET | `/health`, `/actuator/health` | public |
+| GET | `/health`, `/actuator/health` | public — check SQL Server and answer 503 `DOWN` within 3 s when it does not respond |
 
 Through the gateway these paths are routed to `:3005` (`ROUTE_PAYMENT_URL`).
 Full contract: [`07-api/contracts/openapi/payment-service.yaml`](../../../07-api/contracts/openapi/payment-service.yaml)
