@@ -254,6 +254,12 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/BookingResponse"
+        "409":
+          description: "SLOT_UNAVAILABLE: nothing is saved; the body carries up to 5 free times of the same day (alternatives) and why the requested time cannot be booked (reason). VEHICLE_ALREADY_BOOKED when the vehicle has an overlapping booking."
+          content:
+            "application/problem+json":
+              schema:
+                "$ref": "#/components/schemas/SlotUnavailableProblem"
   "/api/v1/bookings/{id}/cancel":
     post:
       tags:
@@ -670,6 +676,28 @@ paths:
                 "$ref": "#/components/schemas/AvailabilityResponse"
 components:
   schemas:
+    SlotUnavailableProblem:
+      type: "object"
+      description: "RFC 9457 problem of a time that cannot be booked (RF-006)."
+      properties:
+        status:
+          type: "integer"
+          example: 409
+        code:
+          type: "string"
+          example: "SLOT_UNAVAILABLE"
+        detail:
+          type: "string"
+          example: "The service does not fit in the business hours at the requested time"
+        alternatives:
+          type: "array"
+          items:
+            type: "string"
+            example: "08:00"
+        reason:
+          type: "string"
+          enum: ["CLOSED_DAY", "OUTSIDE_HOURS", "TIME_PASSED", "NO_FREE_BAY"]
+          description: "CLOSED_DAY: the shop does not open that date. OUTSIDE_HOURS: the service does not fit the opening hours at that time (opens later, closes before it ends, or crosses the break). TIME_PASSED: the time is already past today. NO_FREE_BAY: every active bay is taken. Clients that ignore it keep showing the generic SLOT_UNAVAILABLE message."
     RescheduleRequest:
       type: "object"
       properties:

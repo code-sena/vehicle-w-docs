@@ -30,7 +30,9 @@
   on a 30-minute grid, inside the opening hours, outside the break, not in the past, and with at
   least one active bay free for the whole duration.
 - **Bookings:** created already `CONFIRMED` with a bay when one is free; otherwise nothing is
-  saved and up to 5 alternative times of the same day are returned (409 `SLOT_UNAVAILABLE`).
+  saved and up to 5 alternative times of the same day are returned (409 `SLOT_UNAVAILABLE`) with
+  the `reason`: `CLOSED_DAY`, `OUTSIDE_HOURS`, `TIME_PASSED` or `NO_FREE_BAY`
+  (`AvailabilityPolicy.whyUnavailable`). The code stays the same so older apps keep working.
   A vehicle cannot hold two overlapping bookings. Clients can reschedule or cancel only before
   the start time (RF-007); the admin moves bookings through `IN_PROGRESS`, `COMPLETED`, `NO_SHOW`
   or `CANCELLED`.

@@ -45,14 +45,16 @@ Each path prefix belongs to exactly one service; the gateway routes by prefix
   "detail": "No service bay is free at the requested time",
   "instance": "/api/v1/bookings",
   "code": "SLOT_UNAVAILABLE",
-  "alternatives": ["10:30", "11:00", "14:00"]
+  "alternatives": ["10:30", "11:00", "14:00"],
+  "reason": "NO_FREE_BAY"
 }
 ```
 
 - `code` is stable and in English (`UPPER_SNAKE_CASE`); the web translates it with
   `API_ERRORS.<code>` in its 4 languages. `detail` is for developers, not for the screen.
 - Validation errors add `errors: { "<field>": "<message>" }`.
-- Extra fields only when the client can act on them (`alternatives`).
+- Extra fields only when the client can act on them (`alternatives`, and `reason` so the screen can
+  say "closed that day" or "outside the opening hours" instead of "that time was taken").
 - Never include stack traces (`server.error.include-stacktrace: never`).
 
 ## Bodies
