@@ -11,7 +11,7 @@
 ### Themes
 
 Colors are CSS custom properties on `body`, so a theme switch only changes the class of `body`.
-The user picks the theme in Configuration. **Requirement (RF-019):** the theme belongs to the account — each user (each email) gets their own theme back when signing in, even on a shared browser. **Today** it is stored in the browser (`localStorage`, key `theme`, shared by every account on that device) and security-service's `/users/me/preferences` is not used yet; it also only accepts `light`/`dark` while the web has `green-light`, `green-dark`, `pink`, `pink-dark` (TD-002).
+The user picks the theme in Configuration. **Requirement (RF-019):** the theme belongs to the account — each user (each email) gets their own theme back when signing in, even on a shared browser. The web loads it after login from security-service (`GET /api/v1/users/me/preferences`) and saves it there on change; `localStorage` only keeps the last value so the login page is painted with it. security-service accepts the four palettes `green-light`, `green-dark`, `pink`, `pink-dark` (changelog 020).
 
 | Theme class | Look |
 |---|---|
