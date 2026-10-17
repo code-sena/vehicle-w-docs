@@ -3,7 +3,8 @@
 > The screen structure of the web app (Angular 21, `Web/src/app`), how screens connect, and which
 > backend service feeds each one. Source of truth: `app.routes.ts` and each feature's
 > `*-routing-module.ts`. The mobile app (React Native / Expo) mirrors the same three role areas and calls
-the API Gateway (`:8080`, `EXPO_PUBLIC_API_URL`); each service can be pointed at directly while
+the API Gateway (`:8080`, `EXPO_PUBLIC_API_URL`), including the admin inspection report (`AdminInspection`
+screen, photos from the camera or the gallery); it has no landing or public report. Each service can be pointed at directly while
 debugging (`EXPO_PUBLIC_CUSTOMER_API_URL`, `…_BOOKING_…`, `…_OPERATIONS_…`, `…_PAYMENT_…`, `…_NOTIFICATION_…`).
 
 ---
@@ -11,7 +12,7 @@ debugging (`EXPO_PUBLIC_CUSTOMER_API_URL`, `…_BOOKING_…`, `…_OPERATIONS_�
 ## Frontend route structure
 
 ```
-/                                   → Landing (public): services and prices from the catalog
+/                                   → Landing (public): services and prices from the catalog, FAQ
 ├── /auth                           → (guestGuard: a signed-in user is sent to their home)
 │   ├── /                           → Login
 │   ├── /register                   → Client sign-up
@@ -41,7 +42,7 @@ debugging (`EXPO_PUBLIC_CUSTOMER_API_URL`, `…_BOOKING_…`, `…_OPERATIONS_�
 ├── /admin                          → (authGuard, role ADMIN)
 │   ├── /                           → Dashboard
 │   ├── /reservations               → Bookings
-│   ├── /reservations/:id/inspection→ Vehicle inspection with photos (in development, not merged)
+│   ├── /reservations/:id/inspection→ Vehicle inspection with photos (5 phases, findings, publish, share)
 │   ├── /schedule                   → Business hours, exceptions and bays
 │   ├── /management                 → Users, roles, services (catalog), promotions
 │   ├── /operators                  → Operators
@@ -53,7 +54,8 @@ debugging (`EXPO_PUBLIC_CUSTOMER_API_URL`, `…_BOOKING_…`, `…_OPERATIONS_�
 │   ├── /profile                    → Profile
 │   └── /settings                   → Business data, payment methods
 │
-└── /report/:token                  → Public read-only inspection report (in development, not merged)
+├── /report/:token                  → Public read-only inspection report (no session)
+└── /**                             → Not found page
 ```
 
 ---
@@ -74,10 +76,12 @@ Status: **API** = reads and writes the backend · **Partial** = some data still 
 | Pay a booking | `/client/payment` | CLIENT | booking (amount, points discount, cancel); payment (accounts with QR, report with receipt, my payments) | API (the points discount stays 0 until the loyalty ledger exists) |
 | Notifications (all roles) | `*/notifications` | any | notification | API |
 | Profile (all roles) | `*/profile` | any | security | API |
-| Preferences — theme, language | `*/configuration`, `*/settings` | any | — (browser `localStorage`) | Local — **gap**: stored per browser, not per account, so a second account on the same device inherits them. Required: load/save through `/users/me/preferences` (RF-019/020) |
+| Preferences — theme, language | `*/configuration`, `*/settings` | any | security (`/users/me/preferences`) | API (`localStorage` only remembers the last choice for screens without a session) |
 | Operator area | `/operator/**` | OPERATOR | operations (services, start/finish, ratings), notification, security | API (the `tasks` page is still an empty placeholder) |
 | Admin dashboard | `/admin` | ADMIN | booking (bookings, bays), operations, payment | API |
 | Bookings | `/admin/reservations` | ADMIN | booking, customer (plate lookup), security (client names), operations (assignment, candidates) | API |
+| Vehicle inspection | `/admin/reservations/:id/inspection` | ADMIN | operations (report, phases, findings with photos, publish, share) | API |
+| Public inspection report | `/report/:token` | Public | operations (published report and photos) | API |
 | Schedule and bays | `/admin/schedule` | ADMIN | booking | API |
 | Management — users | `/admin/management` | ADMIN | security | API |
 | Management — services | `/admin/management` | ADMIN | booking (catalog, prices per vehicle type) | API |
@@ -85,7 +89,15 @@ Status: **API** = reads and writes the backend · **Partial** = some data still 
 | Operators, calendar | `/admin/operators/**` | ADMIN | operations (operators, shifts, absences) | API |
 | Payments | `/admin/payments` | ADMIN | payment (review, approve/reject, manual payment) | API |
 | Reports | `/admin/reports` | ADMIN | booking, payment | Partial |
-| Settings — business data | `/admin/settings` | ADMIN | booking (establishment, fields pending ADR-010); payment (payment accounts and QR) | Partial (business data local; payment accounts API) |
+| Settings — business data | `/admin/settings` | ADMIN | booking (`/admin/establishment`); payment (payment accounts and QR) | API |
+
+---
+
+## Responsive design
+
+Every screen is checked at 360 px (phone) and 768 px (tablet) with no horizontal overflow
+(SCSS mixins `mobile` ≤ 768 px and `tablet` ≤ 1024 px). Check of 2026-10-17: 60 web screens and
+26 mobile screens, no overflow.
 
 ---
 
