@@ -80,7 +80,9 @@ Everything else under `/api/v1/**` needs a token; `/api/v1/admin/**` needs `ADMI
 - Password policy enforced by security-service (`PasswordPolicy`); hashes with BCrypt.
 - Recovery: a 6-digit code sent by email, valid 15 minutes, burnt after 5 wrong attempts.
 - Login answers the same error for unknown email and wrong password.
-- **Gap:** no limit on login attempts (RF-004b, `15-project-control/technical-backlog.md` TD-003).
+- Lockout (RF-004b): 5 failed logins within 15 minutes lock the account for 15 minutes (`LoginLockout`,
+  table `security.login_lockout`); login answers **423** `ACCOUNT_LOCKED` meanwhile. A successful login or a
+  password reset clears the counter.
 
 ---
 
