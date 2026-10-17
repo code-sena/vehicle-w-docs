@@ -12,7 +12,7 @@ Owner is a role; the team assigns the person in the sprint board.
 
 | ID | Risk | Category | Prob. | Impact | Level | Strategy | Owner |
 |----|------|----------|-------|--------|-------|----------|-------|
-| R-003 | Regressions reach `develop` unnoticed: there is still no CI, so the tests (640 unit, 19 end-to-end) depend on someone running them | Technical | Medium | Medium | Medium | Mitigate | Team lead |
+| R-003 | Regressions reach `develop` unnoticed: there is still no CI, so the tests (639 unit, 19 end-to-end) depend on someone running them | Technical | Medium | Medium | Medium | Mitigate | Team lead |
 | R-004 | Secrets leak (`.env`: DB password, `JWT_SECRET`, `INTERNAL_API_KEY`, Gmail app password) | Security | Low | High | Medium | Avoid | Every developer |
 | R-005 | An event is lost between commit and publish (no Outbox): missing welcome/booking notification or profile | Technical | Low | Medium | Low | Accept | notification-service owner |
 | R-006 | Work stays uncommitted in several repositories or collides with a teammate's (mobile, web) | Team | Medium | Medium | Medium | Mitigate | Each repository owner |
