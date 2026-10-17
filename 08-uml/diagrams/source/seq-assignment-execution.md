@@ -1,5 +1,8 @@
 # Sequence — Operator assignment and execution (RF-009, RF-011, RF-012, RF-012b)
 
+Manual assignment by the admin. The automatic assignment on `booking.confirmed` is drawn in
+`seq-auto-assignment.md`.
+
 Source: `operations-service` `OperationsService.candidates / assign / start / finish / rate`,
 `AssignmentPolicy`, `BookingServiceDirectory` (ADR-014).
 
@@ -34,7 +37,7 @@ sequenceDiagram
         OP-->>W: 409 OPERATOR_INACTIVE | OPERATOR_NOT_ON_SHIFT | OPERATOR_ABSENT | OPERATOR_BUSY
     end
 
-    O->>W: assigned services → Start Service (booking day only)
+    O->>W: assigned services → Start Service (from 15 min before the booked time)
     W->>OP: POST /api/v1/operator/services/{bookingId}/start
     OP->>B: PATCH /operator/bookings/{id}/status IN_PROGRESS (operator JWT)
     OP->>DB: lines → IN_PROGRESS, started_at
@@ -53,6 +56,6 @@ sequenceDiagram
     OP-->>W: 201 rating
 ```
 
-Errors not drawn: 409 `SERVICE_NOT_TODAY`, `EXECUTION_ALREADY_STARTED`, `ALREADY_RATED`,
+Errors not drawn: 409 `SERVICE_TOO_EARLY`, `EXECUTION_ALREADY_STARTED`, `ALREADY_RATED`,
 `SERVICE_NOT_COMPLETED`; 503 `BOOKING_SERVICE_UNAVAILABLE`. Paths and bodies:
 `07-api/contracts/openapi/operations-service.yaml`.

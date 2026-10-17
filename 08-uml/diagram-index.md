@@ -24,6 +24,7 @@
 | SEQ-03 | Booking reminder | [`source/seq-reminder.md`](./diagrams/source/seq-reminder.md) | ADR-011 §7 |
 | SEQ-04 | Operator assignment, execution and rating | [`source/seq-assignment-execution.md`](./diagrams/source/seq-assignment-execution.md) | RF-009, RF-011, RF-012, RF-012b, ADR-014 |
 | SEQ-05 | Payment by receipt, review and manual payment | [`source/seq-payment.md`](./diagrams/source/seq-payment.md) | RF-013, RF-013b, RF-014, ADR-008 |
+| SEQ-06 | Automatic operator assignment and operator choice | [`source/seq-auto-assignment.md`](./diagrams/source/seq-auto-assignment.md) | RF-008, RF-010, ADR-014 |
 
 ### State
 
@@ -43,7 +44,6 @@ column, index and constraint) and the executable script `lavarapido-6-services-s
 
 | Diagram | Waits for |
 |---|---|
-| Sequence: automatic operator assignment on `booking.confirmed` | RF-008 (TD-020) |
 | Sequence: promotion and loyalty points | payment-service promotions and loyalty |
 
 ---
