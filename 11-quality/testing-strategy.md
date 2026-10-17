@@ -32,8 +32,8 @@
 | api-gateway | 34 | `GatewayRoutesTest` |
 | payment-service (.NET, xUnit, `dotnet test`) | 141 (+7 skipped) | Domain 113 (`PaymentTests`, `PaymentPolicyTests`, `PromotionTests`, `LoyaltyTransactionTests`, `AggregateRootTests`), Application 28 (`PaymentCommandServiceTests`, `PaymentQueryServiceTests`, `CustomerPromotionServiceTests`); the 7 `PersistenceTests` need a real SQL Server and are skipped by default |
 | **Total backend** | **597** | Java 456 + .NET 141 |
-| Web (Angular, Vitest, `ng test`) | 41 | 36 spec files, including `api-error.spec.ts` (error codes and the slot reason) |
-| **Total** | **638** | |
+| Web (Angular, Vitest, `ng test`) | 43 | 37 spec files, including `api-error.spec.ts` (error codes and the slot reason) and `payment.spec.ts` (two accounts of the same method) |
+| **Total** | **640** | |
 
 ---
 
