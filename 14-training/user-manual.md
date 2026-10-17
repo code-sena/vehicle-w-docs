@@ -104,7 +104,7 @@ rating shows who served you ("Served by Juan Camilo").
 | Business data | **Settings → Business data**: legal name, tax ID, address, contact, tax information and official channels. Saved in the system, so the web and the app show the same data. Legal name, tax ID and address are required; the phone needs at least 7 digits |
 | Payment accounts and QR | **Settings → Payment methods** |
 | Operator's week | **Operators** → an operator: services finished this week and the change against last week, punctuality (started at most 10 minutes late), revenue of the finished services and worked hours against the weekly shift. "—" means there is no data yet |
-| Vehicle inspection | **Reservations** → a booking of 3 hours or more → **Inspection**: fill the 5 phases with findings and photos (up to 5 per finding), **Publish** and copy the link, then **Notify client** (inbox, push and email with the summary and the link). The client opens the link from any device without logging in; the plate shows masked |
+| Vehicle inspection | **Reservations** → a booking of 3 hours or more → **Inspection**: fill the 5 phases with findings and photos (up to 5 per finding), **Publish** and copy the link, then **Notify client** (inbox, push and email with the summary and the link). The client opens the link from any device without logging in; the plate shows masked. In the mobile app: booking detail → **Inspection**; photos come from the camera or the gallery, are shrunk on the phone before uploading, and the link is shared with the phone's share menu |
 
 **Notices you receive** (inbox and push, never email): new, rescheduled and cancelled bookings, and
 **"Booking without operator"** when a booking starts in less than 2 hours — or started less than 1
