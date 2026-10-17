@@ -11,14 +11,15 @@
 | [`risks.md`](./risks.md) | Active risks with level, strategy, mitigation and contingency; closed risks and lessons |
 | [`technical-backlog.md`](./technical-backlog.md) | Technical debt found while building the system, with effort and priority |
 
-## State at 2026-10-06
+## State at 2026-10-16
 
-- Built: api-gateway (8080), security (3001), customer (3002), booking (3003), operations (3004),
-  notification (3006).
-- Partial: payment-service (3005, .NET 8) — promotions, loyalty, events and its Docker Compose
-  container pending. In progress by teammates: mobile app.
-- Highest risks: R-002 (payment partial), R-003 (no CI, web tests broken); R-001 (operations) lowered to Medium.
-- Top technical items: TD-001 (web specs), TD-002 (preferences per account), TD-014 (payment in Docker Compose), TD-015 (payment events).
+- Built and running in Docker: api-gateway (8080), security (3001), customer (3002), booking (3003),
+  operations (3004), payment (3005, .NET 8) and notification (3006); web app and Android app (APK
+  published from the public server).
+- Tests: 638 unit and integration tests and 19 end-to-end tests pass (`11-quality/testing-strategy.md`).
+- Highest risks: R-003 (no CI yet), R-011 (public server turned on on demand), R-010 (documentation drift).
+- Open technical items: TD-022 (request rate limit), TD-006 (Jenkins), TD-007 (correlation id in the
+  last clients), TD-023 (audit log); see `technical-backlog.md`.
 
 ## Rules
 
