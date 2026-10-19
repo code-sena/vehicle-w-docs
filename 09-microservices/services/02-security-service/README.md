@@ -73,7 +73,8 @@
 | POST | `/api/v1/users/me/deactivate` | token |
 | GET · PUT | `/api/v1/users/me/preferences` (theme, language and the notification switches `notificationsEnabled` = push, `emailRemindersEnabled`, `promotionsEnabled`; PUT is partial: omitted fields keep their value) | token |
 | GET · POST | `/api/v1/admin/users` | ADMIN |
-| PATCH | `/api/v1/admin/users/{userId}/status` | ADMIN |
+| PATCH | `/api/v1/admin/users/{userId}/status` | ADMIN (`403 CANNOT_DISABLE_OWN_ACCOUNT` for their own account, `403 ADMIN_CANNOT_BE_DISABLED` for any admin account) |
+| PATCH | `/api/v1/admin/users/{userId}/role` (`{ "role": "CLIENT" \| "OPERATOR" \| "ADMIN" }`; the new role replaces the old one and closes the user's sessions) | ADMIN (`403 CANNOT_CHANGE_OWN_ROLE`) |
 | GET | `/api/v1/admin/roles-permissions` | ADMIN (permission catalog and what each fixed role has) |
 | PUT | `/api/v1/admin/roles-permissions/{role}` | ADMIN (`400 UNKNOWN_PERMISSION` for ids outside the catalog) |
 | GET | `/internal/v1/users/{userId}/contact` (email, first name, active, the switches `pushEnabled`, `emailRemindersEnabled`, `promotionsEnabled`, ADR-011 §12, and the account `language`). Used by notification-service (notices in the account's language) and by operations-service (first names in ratings, ADR-014 §7, and skipping disabled accounts in the automatic assignment) | internal key (`X-Internal-Key`), not routed by the gateway |
