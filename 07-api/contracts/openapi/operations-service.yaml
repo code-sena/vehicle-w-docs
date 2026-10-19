@@ -1,4 +1,4 @@
-# Generated from the running operations-service (springdoc, GET /v3/api-docs) on 2026-10-06.
+# Generated from the running operations-service (springdoc, GET /v3/api-docs) on 2026-10-19.
 # Do not edit by hand: regenerate from the code so the contract never drifts.
 openapi: "3.1.0"
 info:
@@ -11,6 +11,31 @@ servers:
   - url: "http://localhost:3004"
     description: "operations-service directly (local development)"
 paths:
+  "/api/v1/admin/operators/{id}/profile":
+    put:
+      tags:
+        - "operator-profile-controller"
+      operationId: "update"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ProfileRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/ProfileResponse"
   "/api/v1/admin/operators/{id}/availability":
     put:
       tags:
@@ -61,8 +86,6 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/AssignmentResponse"
-        "409":
-          description: "BOOKING_NOT_ASSIGNABLE (already started, finished or cancelled), BOOKING_IN_PAST (its time has passed) or the AssignmentPolicy reason: OPERATOR_INACTIVE, OPERATOR_NOT_ON_SHIFT, OPERATOR_ABSENT, OPERATOR_BUSY"
   "/api/v1/ratings/{bookingId}":
     post:
       tags:
@@ -107,8 +130,6 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/OperatorServiceResponse"
-        "409":
-          description: "SERVICE_TOO_EARLY (more than 15 minutes before the booking), OPERATOR_BUSY (another service in progress) or EXECUTION_ALREADY_STARTED"
   "/api/v1/operator/services/{bookingId}/finish":
     post:
       tags:
@@ -185,6 +206,137 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/AbsenceResponse"
+  "/api/v1/admin/inspections/{bookingId}":
+    get:
+      tags:
+        - "admin-inspection-controller"
+      operationId: "get"
+      parameters:
+        - name: "bookingId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/InspectionResponse"
+    post:
+      tags:
+        - "admin-inspection-controller"
+      operationId: "start_1"
+      parameters:
+        - name: "bookingId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/InspectionResponse"
+  "/api/v1/admin/inspections/{bookingId}/share":
+    post:
+      tags:
+        - "admin-inspection-controller"
+      operationId: "share"
+      parameters:
+        - name: "bookingId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "204":
+          description: "No Content"
+  "/api/v1/admin/inspections/{bookingId}/publish":
+    post:
+      tags:
+        - "admin-inspection-controller"
+      operationId: "publish"
+      parameters:
+        - name: "bookingId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/InspectionResponse"
+  "/api/v1/admin/inspections/{bookingId}/findings":
+    post:
+      tags:
+        - "admin-inspection-controller"
+      operationId: "addFinding"
+      parameters:
+        - name: "bookingId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "phase"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            enum:
+              - "RECEPTION"
+              - "EXTERIOR"
+              - "INTERIOR"
+              - "ENGINE"
+              - "DELIVERY"
+        - name: "area"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "severity"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            enum:
+              - "INFO"
+              - "MINOR"
+              - "MAJOR"
+        - name: "note"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          "multipart/form-data":
+            schema:
+              type: "object"
+              properties:
+                photos:
+                  type: "array"
+                  items:
+                    type: "string"
+                    format: "binary"
+      responses:
+        "201":
+          description: "Created"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/InspectionResponse"
   "/api/v1/admin/operators/{id}/status":
     patch:
       tags:
@@ -210,98 +362,11 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/OperatorResponse"
-  "/api/v1/admin/operators/summary":
-    get:
-      tags:
-        - "admin-operations-controller"
-      operationId: "teamSummary"
-      description: "Summary of the operators team for the admin list. Null values mean there is no data to compute them."
-      parameters:
-        - name: "week"
-          in: "query"
-          required: false
-          description: "Any date of the week to compute; default is the current week."
-          schema:
-            type: "string"
-            format: "date"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/TeamSummaryResponse"
-  "/api/v1/admin/operators/{id}/metrics":
-    get:
-      tags:
-        - "admin-operations-controller"
-      operationId: "metrics"
-      description: "Weekly metrics of the operator (Monday to Sunday). Null values mean there is no data to compute them."
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int32"
-        - name: "week"
-          in: "query"
-          required: false
-          description: "Any date of the week to compute; default is the current week."
-          schema:
-            type: "string"
-            format: "date"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/OperatorMetricsResponse"
-  "/api/v1/admin/inspections/{bookingId}":
-    get:
-      tags:
-        - "inspection-controllers"
-      operationId: "inspection"
-      description: "Whether the booking allows a report, whether it can be edited, and the report (null if not started)."
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/InspectionResponse"
-    post:
-      tags:
-        - "inspection-controllers"
-      operationId: "startInspection"
-      description: "Starts the report (409 INSPECTION_NOT_EDITABLE unless the booking is 180+ minutes and confirmed or in progress). Starting twice returns the same report."
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/InspectionResponse"
   "/api/v1/admin/inspections/{bookingId}/phases/{phase}":
     patch:
       tags:
-        - "inspection-controllers"
-      operationId: "setPhaseStatus"
+        - "admin-inspection-controller"
+      operationId: "phase"
       parameters:
         - name: "bookingId"
           in: "path"
@@ -314,16 +379,17 @@ paths:
           required: true
           schema:
             type: "string"
-            enum: ["RECEPTION", "EXTERIOR", "INTERIOR", "ENGINE", "DELIVERY"]
+            enum:
+              - "RECEPTION"
+              - "EXTERIOR"
+              - "INTERIOR"
+              - "ENGINE"
+              - "DELIVERY"
       requestBody:
         content:
           "application/json":
             schema:
-              type: "object"
-              properties:
-                status:
-                  type: "string"
-                  enum: ["PENDING", "IN_PROGRESS", "DONE"]
+              "$ref": "#/components/schemas/PhaseStatusRequest"
         required: true
       responses:
         "200":
@@ -332,136 +398,25 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/InspectionResponse"
-  "/api/v1/admin/inspections/{bookingId}/findings":
-    post:
-      tags:
-        - "inspection-controllers"
-      operationId: "addFinding"
-      description: "400 INVALID_FINDING, TOO_MANY_PHOTOS (more than 5) or INVALID_PHOTO (not JPEG/PNG or over 2 MB); 413 CONTENT_TOO_LARGE when the upload exceeds the limits."
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      requestBody:
-        content:
-          "multipart/form-data":
-            schema:
-              type: "object"
-              properties:
-                phase:
-                  type: "string"
-                area:
-                  type: "string"
-                severity:
-                  type: "string"
-                  enum: ["INFO", "MINOR", "MAJOR"]
-                note:
-                  type: "string"
-                photos:
-                  type: "array"
-                  items:
-                    type: "string"
-                    format: "binary"
-              required: ["phase", "area", "severity"]
-        required: true
-      responses:
-        "201":
-          description: "Created"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/InspectionResponse"
-  "/api/v1/admin/inspections/{bookingId}/findings/{findingId}":
-    delete:
-      tags:
-        - "inspection-controllers"
-      operationId: "removeFinding"
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-        - name: "findingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/InspectionResponse"
-  "/api/v1/admin/inspections/{bookingId}/publish":
-    post:
-      tags:
-        - "inspection-controllers"
-      operationId: "publishInspection"
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/InspectionResponse"
-  "/api/v1/admin/inspections/{bookingId}/share":
-    post:
-      tags:
-        - "inspection-controllers"
-      operationId: "shareInspection"
-      description: "Publishes InspectionShared; notification-service notifies the client with the summary and the public link. 409 INSPECTION_NOT_PUBLISHED."
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "204":
-          description: "No Content"
-  "/api/v1/admin/inspections/{bookingId}/photos/{photoId}":
+  "/api/v1/ratings/me":
     get:
       tags:
-        - "inspection-controllers"
-      operationId: "inspectionPhoto"
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-        - name: "photoId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
+        - "rating-controller"
+      operationId: "mine"
       responses:
         "200":
-          description: "The image (image/jpeg or image/png)"
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/RatingResponse"
   "/api/v1/public/inspections/{token}":
     get:
       tags:
-        - "inspection-controllers"
-      operationId: "publicInspection"
-      description: "No session. 404 INSPECTION_NOT_FOUND when the token does not exist or the report is not published."
-      security: []
+        - "public-inspection-controller"
+      operationId: "get_1"
       parameters:
         - name: "token"
           in: "path"
@@ -478,9 +433,8 @@ paths:
   "/api/v1/public/inspections/{token}/photos/{photoId}":
     get:
       tags:
-        - "inspection-controllers"
-      operationId: "publicInspectionPhoto"
-      security: []
+        - "public-inspection-controller"
+      operationId: "photo"
       parameters:
         - name: "token"
           in: "path"
@@ -495,12 +449,17 @@ paths:
             format: "int64"
       responses:
         "200":
-          description: "The image, only if it belongs to that published report"
-  "/api/v1/ratings/me":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "string"
+                format: "byte"
+  "/api/v1/operators/my-bookings":
     get:
       tags:
-        - "rating-controller"
-      operationId: "mine"
+        - "client-booking-operator-controller"
+      operationId: "myBookings"
       responses:
         "200":
           description: "OK"
@@ -509,7 +468,39 @@ paths:
               schema:
                 type: "array"
                 items:
-                  "$ref": "#/components/schemas/RatingResponse"
+                  "$ref": "#/components/schemas/BookingOperatorResponse"
+  "/api/v1/operators/available":
+    get:
+      tags:
+        - "available-operators-controller"
+      operationId: "available"
+      parameters:
+        - name: "date"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            format: "date"
+        - name: "time"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "minutes"
+          in: "query"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/AvailableOperatorView"
   "/api/v1/operator/services":
     get:
       tags:
@@ -537,8 +528,6 @@ paths:
                 type: "array"
                 items:
                   "$ref": "#/components/schemas/OperatorServiceResponse"
-        "404":
-          description: "OPERATOR_NOT_FOUND: the token belongs to an account that security-service says does not exist, so no operator row is created."
   "/api/v1/operator/ratings":
     get:
       tags:
@@ -553,123 +542,6 @@ paths:
                 type: "array"
                 items:
                   "$ref": "#/components/schemas/RatingResponse"
-  "/api/v1/operators/available":
-    get:
-      tags:
-        - "available-operators-controller"
-      operationId: "availableOperators"
-      description: "RF-010: operators free for the slot (active, on shift, not absent, not busy), first name and rating only."
-      parameters:
-        - name: "date"
-          in: "query"
-          required: true
-          schema:
-            type: "string"
-            format: "date"
-        - name: "time"
-          in: "query"
-          required: true
-          description: "HH:mm"
-          schema:
-            type: "string"
-        - name: "minutes"
-          in: "query"
-          required: true
-          schema:
-            type: "integer"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  type: "object"
-                  properties:
-                    operatorId:
-                      type: "integer"
-                    firstName:
-                      type: "string"
-                    averageRating:
-                      type: "number"
-                      nullable: true
-                    ratingsCount:
-                      type: "integer"
-  "/api/v1/operators/my-bookings":
-    get:
-      tags:
-        - "client-booking-operator-controller"
-      operationId: "myBookingOperators"
-      description: "CLIENT only: first name of the operator of each of the caller's bookings that already has one."
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  type: "object"
-                  properties:
-                    bookingId:
-                      type: "integer"
-                      format: "int64"
-                    operatorName:
-                      type: "string"
-  "/api/v1/admin/operators/profiles":
-    get:
-      tags:
-        - "operator-profile-controller"
-      operationId: "operatorProfiles"
-      description: "Specialty and skills of every operator; operators without a profile come empty."
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/OperatorProfile"
-  "/api/v1/admin/operators/{id}/profile":
-    put:
-      tags:
-        - "operator-profile-controller"
-      operationId: "updateOperatorProfile"
-      description: "Replaces the specialty and the whole list of skills (at most 10, unique names)."
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              type: "object"
-              properties:
-                specialty:
-                  type: "string"
-                  maxLength: 80
-                skills:
-                  type: "array"
-                  maxItems: 10
-                  items:
-                    "$ref": "#/components/schemas/OperatorSkill"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/OperatorProfile"
-        "400":
-          description: "INVALID_OPERATOR_PROFILE"
-        "404":
-          description: "OPERATOR_NOT_FOUND"
   "/api/v1/admin/operators":
     get:
       tags:
@@ -684,6 +556,90 @@ paths:
                 type: "array"
                 items:
                   "$ref": "#/components/schemas/OperatorResponse"
+  "/api/v1/admin/operators/{id}/metrics":
+    get:
+      tags:
+        - "admin-operations-controller"
+      operationId: "metrics"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+        - name: "week"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/OperatorMetricsResponse"
+  "/api/v1/admin/operators/summary":
+    get:
+      tags:
+        - "admin-operations-controller"
+      operationId: "teamSummary"
+      parameters:
+        - name: "week"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/TeamSummaryResponse"
+  "/api/v1/admin/operators/profiles":
+    get:
+      tags:
+        - "operator-profile-controller"
+      operationId: "profiles"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/ProfileResponse"
+  "/api/v1/admin/inspections/{bookingId}/photos/{photoId}":
+    get:
+      tags:
+        - "admin-inspection-controller"
+      operationId: "photo_1"
+      parameters:
+        - name: "bookingId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "photoId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "string"
+                format: "byte"
   "/api/v1/admin/assignments":
     get:
       tags:
@@ -753,29 +709,74 @@ paths:
       responses:
         "204":
           description: "No Content"
+  "/api/v1/admin/inspections/{bookingId}/findings/{findingId}":
+    delete:
+      tags:
+        - "admin-inspection-controller"
+      operationId: "removeFinding"
+      parameters:
+        - name: "bookingId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+        - name: "findingId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/InspectionResponse"
 components:
   schemas:
-    OperatorSkill:
+    ProfileRequest:
+      type: "object"
+      properties:
+        specialty:
+          type: "string"
+          maxLength: 80
+          minLength: 0
+        skills:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SkillDto"
+          maxItems: 10
+          minItems: 0
+    SkillDto:
       type: "object"
       properties:
         name:
           type: "string"
           maxLength: 60
+          minLength: 0
         level:
           type: "string"
-          enum: ["CERTIFIED", "EXPERT", "ADVANCED"]
-    OperatorProfile:
+          enum:
+            - "CERTIFIED"
+            - "EXPERT"
+            - "ADVANCED"
+      required:
+        - "level"
+        - "name"
+    ProfileResponse:
       type: "object"
       properties:
         operatorId:
           type: "integer"
+          format: "int32"
         specialty:
           type: "string"
-          nullable: true
         skills:
           type: "array"
           items:
-            "$ref": "#/components/schemas/OperatorSkill"
+            "$ref": "#/components/schemas/SkillDto"
     AvailabilityRequest:
       type: "object"
       properties:
@@ -801,228 +802,6 @@ components:
         - "dayOfWeek"
         - "endsAt"
         - "startsAt"
-    OperatorMetricsResponse:
-      type: "object"
-      properties:
-        weekStart:
-          type: "string"
-          format: "date"
-        weekEnd:
-          type: "string"
-          format: "date"
-        completedServices:
-          type: "integer"
-          format: "int32"
-        previousWeekServices:
-          type: "integer"
-          format: "int32"
-        servicesTrendPercent:
-          type: "integer"
-          format: "int32"
-          nullable: true
-          description: "Change against the previous week; null when the previous week had 0."
-        punctualityPercent:
-          type: "integer"
-          format: "int32"
-          nullable: true
-          description: "Bookings started at most 10 minutes late; null when none was started."
-        punctualityLevel:
-          type: "string"
-          enum:
-            - "EXCELLENT"
-            - "GOOD"
-            - "NEEDS_IMPROVEMENT"
-            - "NO_DATA"
-        revenue:
-          type: "number"
-        workedHours:
-          type: "number"
-          format: "double"
-        availableHours:
-          type: "number"
-          format: "double"
-        occupancyPercent:
-          type: "integer"
-          format: "int32"
-          nullable: true
-          description: "Worked hours over the hours of the weekly shift; null without a shift."
-    TeamSummaryResponse:
-      type: "object"
-      properties:
-        weekStart:
-          type: "string"
-          format: "date"
-        weekEnd:
-          type: "string"
-          format: "date"
-        totalOperators:
-          type: "integer"
-          format: "int32"
-        activeOperators:
-          type: "integer"
-          format: "int32"
-        availableToday:
-          type: "integer"
-          format: "int32"
-          description: "Active, on shift today and with no absence touching the day."
-        absentToday:
-          type: "integer"
-          format: "int32"
-        completedServices:
-          type: "integer"
-          format: "int32"
-        previousWeekServices:
-          type: "integer"
-          format: "int32"
-        servicesTrendPercent:
-          type: "integer"
-          format: "int32"
-          nullable: true
-          description: "Change against the previous week; null when the previous week had 0."
-        averageRating:
-          type: "number"
-          format: "double"
-          nullable: true
-          description: "Weighted by the number of ratings; null when there is none."
-        ratingsCount:
-          type: "integer"
-          format: "int32"
-    InspectionPhoto:
-      type: "object"
-      properties:
-        id:
-          type: "integer"
-          format: "int64"
-        url:
-          type: "string"
-          description: "Path relative to /api/v1"
-    InspectionFinding:
-      type: "object"
-      properties:
-        id:
-          type: "integer"
-          format: "int64"
-        phase:
-          type: "string"
-        area:
-          type: "string"
-        severity:
-          type: "string"
-        note:
-          type: "string"
-        createdAt:
-          type: "string"
-          format: "date-time"
-        photos:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/InspectionPhoto"
-    InspectionPhase:
-      type: "object"
-      properties:
-        phase:
-          type: "string"
-        status:
-          type: "string"
-        startedAt:
-          type: "string"
-          format: "date-time"
-        finishedAt:
-          type: "string"
-          format: "date-time"
-        findings:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/InspectionFinding"
-    InspectionSummary:
-      type: "object"
-      properties:
-        phasesDone:
-          type: "integer"
-        phasesTotal:
-          type: "integer"
-        findings:
-          type: "integer"
-        majorFindings:
-          type: "integer"
-        progressPercent:
-          type: "integer"
-    InspectionResponse:
-      type: "object"
-      properties:
-        available:
-          type: "boolean"
-        editable:
-          type: "boolean"
-        report:
-          type: "object"
-          nullable: true
-          properties:
-            bookingId:
-              type: "integer"
-              format: "int64"
-            booking:
-              type: "object"
-              properties:
-                code:
-                  type: "string"
-                vehicle:
-                  type: "string"
-                plate:
-                  type: "string"
-                services:
-                  type: "string"
-                date:
-                  type: "string"
-                  format: "date"
-                time:
-                  type: "string"
-                durationMinutes:
-                  type: "integer"
-            publicToken:
-              type: "string"
-            phases:
-              type: "array"
-              items:
-                "$ref": "#/components/schemas/InspectionPhase"
-            summary:
-              "$ref": "#/components/schemas/InspectionSummary"
-            published:
-              type: "boolean"
-            publishedAt:
-              type: "string"
-              format: "date-time"
-            updatedAt:
-              type: "string"
-              format: "date-time"
-    PublicReportResponse:
-      type: "object"
-      properties:
-        bookingCode:
-          type: "string"
-        vehicle:
-          type: "string"
-        maskedPlate:
-          type: "string"
-        services:
-          type: "string"
-        date:
-          type: "string"
-          format: "date"
-        time:
-          type: "string"
-        phases:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/InspectionPhase"
-        summary:
-          "$ref": "#/components/schemas/InspectionSummary"
-        publishedAt:
-          type: "string"
-          format: "date-time"
-        updatedAt:
-          type: "string"
-          format: "date-time"
     OperatorResponse:
       type: "object"
       properties:
@@ -1087,6 +866,18 @@ components:
           type: "string"
         status:
           type: "string"
+        bay:
+          "$ref": "#/components/schemas/BayResponse"
+    BayResponse:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+        code:
+          type: "string"
+        name:
+          type: "string"
     RatingRequest:
       type: "object"
       properties:
@@ -1128,10 +919,8 @@ components:
           format: "date-time"
         operatorName:
           type: "string"
-          description: "First name of the operator who washed the vehicle (what the client sees). Empty if security-service could not be read."
         clientName:
           type: "string"
-          description: "First name of the client (what the operator sees next to the plate). Empty if security-service could not be read."
     OperatorServiceResponse:
       type: "object"
       properties:
@@ -1173,10 +962,8 @@ components:
         startableAt:
           type: "string"
           format: "date-time"
-          description: "First instant the operator can start the service: 15 minutes before the booking (StartPolicy, ADR-014 §6). The screens enable Start with it."
         clientName:
           type: "string"
-          description: "First name of the client of the booking (security-service internal contact). Empty when it could not be read."
     AbsenceRequest:
       type: "object"
       properties:
@@ -1208,6 +995,122 @@ components:
           format: "date-time"
         reason:
           type: "string"
+    BookingDto:
+      type: "object"
+      properties:
+        code:
+          type: "string"
+        vehicle:
+          type: "string"
+        plate:
+          type: "string"
+        services:
+          type: "string"
+        date:
+          type: "string"
+          format: "date"
+        time:
+          type: "string"
+        durationMinutes:
+          type: "integer"
+          format: "int32"
+    FindingDto:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+        phase:
+          type: "string"
+        area:
+          type: "string"
+        severity:
+          type: "string"
+        note:
+          type: "string"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        photos:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PhotoDto"
+    InspectionResponse:
+      type: "object"
+      properties:
+        available:
+          type: "boolean"
+        editable:
+          type: "boolean"
+        report:
+          "$ref": "#/components/schemas/ReportDto"
+    PhaseDto:
+      type: "object"
+      properties:
+        phase:
+          type: "string"
+        status:
+          type: "string"
+        startedAt:
+          type: "string"
+          format: "date-time"
+        finishedAt:
+          type: "string"
+          format: "date-time"
+        findings:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/FindingDto"
+    PhotoDto:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+        url:
+          type: "string"
+    ReportDto:
+      type: "object"
+      properties:
+        bookingId:
+          type: "integer"
+          format: "int64"
+        booking:
+          "$ref": "#/components/schemas/BookingDto"
+        publicToken:
+          type: "string"
+        phases:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PhaseDto"
+        summary:
+          "$ref": "#/components/schemas/SummaryDto"
+        published:
+          type: "boolean"
+        publishedAt:
+          type: "string"
+          format: "date-time"
+        updatedAt:
+          type: "string"
+          format: "date-time"
+    SummaryDto:
+      type: "object"
+      properties:
+        phasesDone:
+          type: "integer"
+          format: "int32"
+        phasesTotal:
+          type: "integer"
+          format: "int32"
+        findings:
+          type: "integer"
+          format: "int32"
+        majorFindings:
+          type: "integer"
+          format: "int32"
+        progressPercent:
+          type: "integer"
+          format: "int32"
     ActiveRequest:
       type: "object"
       properties:
@@ -1215,6 +1118,137 @@ components:
           type: "boolean"
       required:
         - "active"
+    PhaseStatusRequest:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          enum:
+            - "PENDING"
+            - "IN_PROGRESS"
+            - "DONE"
+      required:
+        - "status"
+    PublicReportResponse:
+      type: "object"
+      properties:
+        bookingCode:
+          type: "string"
+        vehicle:
+          type: "string"
+        maskedPlate:
+          type: "string"
+        services:
+          type: "string"
+        date:
+          type: "string"
+          format: "date"
+        time:
+          type: "string"
+        phases:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PhaseDto"
+        summary:
+          "$ref": "#/components/schemas/SummaryDto"
+        publishedAt:
+          type: "string"
+          format: "date-time"
+        updatedAt:
+          type: "string"
+          format: "date-time"
+    BookingOperatorResponse:
+      type: "object"
+      properties:
+        bookingId:
+          type: "integer"
+          format: "int64"
+        operatorName:
+          type: "string"
+    AvailableOperatorView:
+      type: "object"
+      properties:
+        operatorId:
+          type: "integer"
+          format: "int32"
+        firstName:
+          type: "string"
+        averageRating:
+          type: "number"
+          format: "double"
+        ratingsCount:
+          type: "integer"
+          format: "int32"
+    OperatorMetricsResponse:
+      type: "object"
+      properties:
+        weekStart:
+          type: "string"
+          format: "date"
+        weekEnd:
+          type: "string"
+          format: "date"
+        completedServices:
+          type: "integer"
+          format: "int32"
+        previousWeekServices:
+          type: "integer"
+          format: "int32"
+        servicesTrendPercent:
+          type: "integer"
+          format: "int32"
+        punctualityPercent:
+          type: "integer"
+          format: "int32"
+        punctualityLevel:
+          type: "string"
+        revenue:
+          type: "number"
+        workedHours:
+          type: "number"
+          format: "double"
+        availableHours:
+          type: "number"
+          format: "double"
+        occupancyPercent:
+          type: "integer"
+          format: "int32"
+    TeamSummaryResponse:
+      type: "object"
+      properties:
+        weekStart:
+          type: "string"
+          format: "date"
+        weekEnd:
+          type: "string"
+          format: "date"
+        totalOperators:
+          type: "integer"
+          format: "int32"
+        activeOperators:
+          type: "integer"
+          format: "int32"
+        availableToday:
+          type: "integer"
+          format: "int32"
+        absentToday:
+          type: "integer"
+          format: "int32"
+        completedServices:
+          type: "integer"
+          format: "int32"
+        previousWeekServices:
+          type: "integer"
+          format: "int32"
+        servicesTrendPercent:
+          type: "integer"
+          format: "int32"
+        averageRating:
+          type: "number"
+          format: "double"
+        ratingsCount:
+          type: "integer"
+          format: "int32"
     CandidateResponse:
       type: "object"
       properties:

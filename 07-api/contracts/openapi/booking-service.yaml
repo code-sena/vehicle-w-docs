@@ -1,4 +1,4 @@
-# Generated from the running booking-service (springdoc, GET /v3/api-docs) on 2026-10-05.
+# Generated from the running booking-service (springdoc, GET /v3/api-docs) on 2026-10-19.
 # Do not edit by hand: regenerate from the code so the contract never drifts.
 openapi: "3.1.0"
 info:
@@ -115,6 +115,35 @@ paths:
                 type: "array"
                 items:
                   "$ref": "#/components/schemas/BusinessHourDto"
+  "/api/v1/admin/establishment":
+    get:
+      tags:
+        - "schedule-controller"
+      operationId: "businessData"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BusinessDataDto"
+    put:
+      tags:
+        - "schedule-controller"
+      operationId: "updateBusinessData"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/BusinessDataDto"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BusinessDataDto"
   "/api/v1/admin/catalog/services/{id}":
     put:
       tags:
@@ -254,12 +283,6 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/BookingResponse"
-        "409":
-          description: "SLOT_UNAVAILABLE: nothing is saved; the body carries up to 5 free times of the same day (alternatives) and why the requested time cannot be booked (reason). VEHICLE_ALREADY_BOOKED when the vehicle has an overlapping booking."
-          content:
-            "application/problem+json":
-              schema:
-                "$ref": "#/components/schemas/SlotUnavailableProblem"
   "/api/v1/bookings/{id}/cancel":
     post:
       tags:
@@ -413,6 +436,31 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/BayResponse"
+  "/api/v1/operator/bookings/{id}/status":
+    patch:
+      tags:
+        - "operator-booking-controller"
+      operationId: "advance"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/StatusRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BookingResponse"
   "/api/v1/admin/catalog/services/{id}/status":
     patch:
       tags:
@@ -463,6 +511,52 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/BookingResponse"
+  "/internal/v1/bookings":
+    get:
+      tags:
+        - "internal-booking-controller"
+      operationId: "list_1"
+      parameters:
+        - name: "from"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            format: "date"
+        - name: "to"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            format: "date"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/BookingResponse"
+  "/internal/v1/bookings/{id}":
+    get:
+      tags:
+        - "internal-booking-controller"
+      operationId: "get_2"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BookingResponse"
   "/api/v1/schedule/exceptions":
     get:
       tags:
@@ -498,14 +592,19 @@ paths:
                 type: "array"
                 items:
                   "$ref": "#/components/schemas/BusinessHourDto"
-  "/api/v1/admin/bookings/day-summary":
+  "/api/v1/operator/bookings":
     get:
       tags:
-        - "admin-booking-controller"
-      operationId: "daySummary"
-      description: "Bookings dated that day (any status, shop time zone) against the day before. Default: today."
+        - "operator-booking-controller"
+      operationId: "day"
       parameters:
         - name: "date"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "to"
           in: "query"
           required: false
           schema:
@@ -517,49 +616,28 @@ paths:
           content:
             "*/*":
               schema:
-                type: "object"
-                properties:
-                  date:
-                    type: "string"
-                    format: "date"
-                  bookings:
-                    type: "integer"
-                  previousDayBookings:
-                    type: "integer"
-                  difference:
-                    type: "integer"
-                    description: "bookings - previousDayBookings (negative when there are fewer)"
-  "/api/v1/admin/establishment":
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/BookingResponse"
+  "/api/v1/operator/bookings/{id}":
     get:
       tags:
-        - "schedule-controller"
-      operationId: "businessData"
-      description: "All the business data for the admin Settings, including legal and tax data."
+        - "operator-booking-controller"
+      operationId: "get_3"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
       responses:
         "200":
           description: "OK"
           content:
             "*/*":
               schema:
-                "$ref": "#/components/schemas/BusinessDataDto"
-    put:
-      tags:
-        - "schedule-controller"
-      operationId: "updateBusinessData"
-      description: "Saves the business data. 400 ESTABLISHMENT_REQUIRED_FIELD, ESTABLISHMENT_INVALID_PHONE, ESTABLISHMENT_INVALID_EMAIL or ESTABLISHMENT_INVALID_FOUNDATION_DATE when a rule fails. An empty tradeName keeps the current one."
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/BusinessDataDto"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/BusinessDataDto"
+                "$ref": "#/components/schemas/BookingResponse"
   "/api/v1/establishment":
     get:
       tags:
@@ -674,30 +752,41 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/AvailabilityResponse"
+  "/api/v1/admin/schedule/history":
+    get:
+      tags:
+        - "schedule-controller"
+      operationId: "history"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/HistoryEntryResponse"
+  "/api/v1/admin/bookings/day-summary":
+    get:
+      tags:
+        - "admin-booking-controller"
+      operationId: "daySummary"
+      parameters:
+        - name: "date"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/DaySummary"
 components:
   schemas:
-    SlotUnavailableProblem:
-      type: "object"
-      description: "RFC 9457 problem of a time that cannot be booked (RF-006)."
-      properties:
-        status:
-          type: "integer"
-          example: 409
-        code:
-          type: "string"
-          example: "SLOT_UNAVAILABLE"
-        detail:
-          type: "string"
-          example: "The service does not fit in the business hours at the requested time"
-        alternatives:
-          type: "array"
-          items:
-            type: "string"
-            example: "08:00"
-        reason:
-          type: "string"
-          enum: ["CLOSED_DAY", "OUTSIDE_HOURS", "TIME_PASSED", "NO_FREE_BAY"]
-          description: "CLOSED_DAY: the shop does not open that date. OUTSIDE_HOURS: the service does not fit the opening hours at that time (opens later, closes before it ends, or crosses the break). TIME_PASSED: the time is already past today. NO_FREE_BAY: every active bay is taken. Clients that ignore it keep showing the generic SLOT_UNAVAILABLE message."
     RescheduleRequest:
       type: "object"
       properties:
@@ -776,6 +865,9 @@ components:
           type: "number"
         total:
           type: "number"
+        totalLoyaltyPoints:
+          type: "integer"
+          format: "int32"
         cancellationReason:
           "$ref": "#/components/schemas/ReasonResponse"
         notes:
@@ -788,6 +880,9 @@ components:
     LineResponse:
       type: "object"
       properties:
+        lineId:
+          type: "integer"
+          format: "int64"
         serviceId:
           type: "integer"
           format: "int32"
@@ -801,6 +896,9 @@ components:
           type: "integer"
           format: "int32"
         quantity:
+          type: "integer"
+          format: "int32"
+        loyaltyPoints:
           type: "integer"
           format: "int32"
     ReasonResponse:
@@ -888,6 +986,92 @@ components:
         - "dayOfWeek"
         - "opensAt"
         - "working"
+    BusinessDataDto:
+      type: "object"
+      properties:
+        tradeName:
+          type: "string"
+          maxLength: 150
+          minLength: 0
+        legalName:
+          type: "string"
+          maxLength: 150
+          minLength: 0
+        taxId:
+          type: "string"
+          maxLength: 30
+          minLength: 0
+        businessType:
+          type: "string"
+          maxLength: 100
+          minLength: 0
+        foundedOn:
+          type: "string"
+          format: "date"
+        legalRepresentative:
+          type: "string"
+          maxLength: 150
+          minLength: 0
+        legalRepresentativeDocument:
+          type: "string"
+          maxLength: 30
+          minLength: 0
+        address:
+          type: "string"
+          maxLength: 200
+          minLength: 0
+        phone:
+          type: "string"
+          maxLength: 20
+          minLength: 0
+        email:
+          type: "string"
+          maxLength: 120
+          minLength: 0
+        website:
+          type: "string"
+          maxLength: 200
+          minLength: 0
+        taxRegime:
+          type: "string"
+          maxLength: 150
+          minLength: 0
+        ciiuActivity:
+          type: "string"
+          maxLength: 150
+          minLength: 0
+        dianResolution:
+          type: "string"
+          maxLength: 60
+          minLength: 0
+        invoicePrefix:
+          type: "string"
+          maxLength: 10
+          minLength: 0
+        invoiceRange:
+          type: "string"
+          maxLength: 30
+          minLength: 0
+        instagram:
+          type: "string"
+          maxLength: 100
+          minLength: 0
+        facebook:
+          type: "string"
+          maxLength: 150
+          minLength: 0
+        supportLine:
+          type: "string"
+          maxLength: 30
+          minLength: 0
+        serviceHoursNote:
+          type: "string"
+          maxLength: 150
+          minLength: 0
+      required:
+        - "address"
+        - "legalName"
+        - "taxId"
     PriceRequest:
       type: "object"
       properties:
@@ -923,6 +1107,9 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/PriceRequest"
+        loyaltyPoints:
+          type: "integer"
+          format: "int32"
       required:
         - "categoryId"
         - "name"
@@ -970,6 +1157,9 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/PriceResponse"
+        loyaltyPoints:
+          type: "integer"
+          format: "int32"
     BayRequest:
       type: "object"
       properties:
@@ -1005,8 +1195,6 @@ components:
         preferredOperatorId:
           type: "integer"
           format: "int32"
-          minimum: 1
-          description: "RF-010: operator chosen by the client (optional); operations assigns it if still free"
       required:
         - "date"
         - "serviceIds"
@@ -1017,13 +1205,6 @@ components:
       properties:
         reasonCode:
           type: "string"
-    ActiveRequest:
-      type: "object"
-      properties:
-        active:
-          type: "boolean"
-      required:
-        - "active"
     StatusRequest:
       type: "object"
       properties:
@@ -1034,6 +1215,13 @@ components:
           type: "string"
       required:
         - "status"
+    ActiveRequest:
+      type: "object"
+      properties:
+        active:
+          type: "boolean"
+      required:
+        - "active"
     EstablishmentResponse:
       type: "object"
       properties:
@@ -1061,54 +1249,6 @@ components:
           type: "string"
         serviceHoursNote:
           type: "string"
-    BusinessDataDto:
-      type: "object"
-      properties:
-        tradeName:
-          type: "string"
-        legalName:
-          type: "string"
-        taxId:
-          type: "string"
-        businessType:
-          type: "string"
-        foundedOn:
-          type: "string"
-          format: "date"
-        legalRepresentative:
-          type: "string"
-        legalRepresentativeDocument:
-          type: "string"
-        address:
-          type: "string"
-        phone:
-          type: "string"
-        email:
-          type: "string"
-        website:
-          type: "string"
-        taxRegime:
-          type: "string"
-        ciiuActivity:
-          type: "string"
-        dianResolution:
-          type: "string"
-        invoicePrefix:
-          type: "string"
-        invoiceRange:
-          type: "string"
-        instagram:
-          type: "string"
-        facebook:
-          type: "string"
-        supportLine:
-          type: "string"
-        serviceHoursNote:
-          type: "string"
-      required:
-        - "legalName"
-        - "taxId"
-        - "address"
     AvailabilityResponse:
       type: "object"
       properties:
@@ -1131,3 +1271,36 @@ components:
           type: "string"
         available:
           type: "boolean"
+    HistoryEntryResponse:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+        entityType:
+          type: "string"
+        title:
+          type: "string"
+        detail:
+          type: "string"
+        changedAt:
+          type: "string"
+          format: "date-time"
+        changedBy:
+          type: "integer"
+          format: "int64"
+    DaySummary:
+      type: "object"
+      properties:
+        date:
+          type: "string"
+          format: "date"
+        bookings:
+          type: "integer"
+          format: "int32"
+        previousDayBookings:
+          type: "integer"
+          format: "int32"
+        difference:
+          type: "integer"
+          format: "int32"
