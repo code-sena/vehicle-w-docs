@@ -1,4 +1,4 @@
-# Generated from the running security-service (springdoc, GET /v3/api-docs) on 2026-10-05.
+# Generated from the running security-service (springdoc, GET /v3/api-docs) on 2026-10-19.
 # Do not edit by hand: regenerate from the code so the contract never drifts.
 openapi: "3.1.0"
 info:
@@ -19,6 +19,8 @@ tags:
     description: "Perfil, contraseña y preferencias del usuario con sesión"
   - name: "Auth"
     description: "Registro, login, logout y recuperación de contraseña"
+  - name: "Admin - roles y permisos"
+    description: "Permisos de los 3 roles fijos (solo ADMIN)"
 paths:
   "/api/v1/users/me/preferences":
     get:
@@ -49,39 +51,6 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/PreferencesResponse"
-  "/api/v1/users/me/address":
-    get:
-      tags:
-        - "My account"
-      operationId: "address"
-      description: "Contact address of the signed-in user (ADR-010). Empty string when there is none."
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/AddressDto"
-    put:
-      tags:
-        - "My account"
-      operationId: "updateAddress"
-      description: "Saves the address (trimmed, up to 200 characters). Empty or null deletes it."
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/AddressDto"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/AddressDto"
-        "400":
-          description: "INVALID_ADDRESS (more than 200 characters)"
   "/api/v1/users/me/password":
     put:
       tags:
@@ -114,6 +83,63 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/UserResponse"
+  "/api/v1/users/me/address":
+    get:
+      tags:
+        - "user-address-controller"
+      operationId: "address"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/AddressDto"
+    put:
+      tags:
+        - "user-address-controller"
+      operationId: "updateAddress"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/AddressDto"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/AddressDto"
+  "/api/v1/admin/roles-permissions/{role}":
+    put:
+      tags:
+        - "Admin - roles y permisos"
+      operationId: "update"
+      parameters:
+        - name: "role"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+            enum:
+              - "ADMIN"
+              - "OPERATOR"
+              - "CLIENT"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/UpdateRolePermissionsRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/RolePermissionsResponse"
   "/api/v1/users/me/deactivate":
     post:
       tags:
@@ -321,6 +347,31 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/UserResponse"
+  "/api/v1/admin/users/{userId}/role":
+    patch:
+      tags:
+        - "Admin - users"
+      operationId: "changeRole"
+      parameters:
+        - name: "userId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/UpdateRoleRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/UserResponse"
   "/internal/v1/users/{userId}/contact":
     get:
       tags:
@@ -340,6 +391,33 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/ContactResponse"
+  "/internal/v1/users/admins":
+    get:
+      tags:
+        - "internal-user-controller"
+      operationId: "activeAdmins"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  type: "integer"
+                  format: "int64"
+  "/api/v1/admin/roles-permissions":
+    get:
+      tags:
+        - "Admin - roles y permisos"
+      operationId: "matrix"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/RolePermissionsMatrixResponse"
 components:
   schemas:
     PreferencesRequest:
@@ -347,16 +425,14 @@ components:
       properties:
         theme:
           type: "string"
-          minLength: 1
         language:
           type: "string"
-          minLength: 1
         notificationsEnabled:
           type: "boolean"
-      required:
-        - "language"
-        - "notificationsEnabled"
-        - "theme"
+        emailRemindersEnabled:
+          type: "boolean"
+        promotionsEnabled:
+          type: "boolean"
     PreferencesResponse:
       type: "object"
       properties:
@@ -365,6 +441,10 @@ components:
         language:
           type: "string"
         notificationsEnabled:
+          type: "boolean"
+        emailRemindersEnabled:
+          type: "boolean"
+        promotionsEnabled:
           type: "boolean"
     ChangePasswordRequest:
       type: "object"
@@ -426,13 +506,33 @@ components:
         createdAt:
           type: "string"
           format: "date-time"
-          description: "Registration date of the account (migration 036)"
     AddressDto:
       type: "object"
       properties:
         address:
           type: "string"
           maxLength: 200
+          minLength: 0
+    UpdateRolePermissionsRequest:
+      type: "object"
+      properties:
+        permissionIds:
+          type: "array"
+          items:
+            type: "integer"
+            format: "int32"
+      required:
+        - "permissionIds"
+    RolePermissionsResponse:
+      type: "object"
+      properties:
+        role:
+          type: "string"
+        permissionIds:
+          type: "array"
+          items:
+            type: "integer"
+            format: "int32"
     DeactivateAccountRequest:
       type: "object"
       properties:
@@ -472,10 +572,8 @@ components:
           minLength: 0
         acceptsTerms:
           type: "boolean"
-          description: "The person ticked the Terms and Conditions box. Optional for older app versions; when it and acceptsDataPolicy are true the acceptance date is stored (migration 039)."
         acceptsDataPolicy:
           type: "boolean"
-          description: "The person ticked the Personal Data Processing Policy box (Law 1581 of 2012)."
       required:
         - "documentNumber"
         - "email"
@@ -623,6 +721,17 @@ components:
           type: "boolean"
       required:
         - "active"
+    UpdateRoleRequest:
+      type: "object"
+      properties:
+        role:
+          type: "string"
+          enum:
+            - "ADMIN"
+            - "OPERATOR"
+            - "CLIENT"
+      required:
+        - "role"
     ContactResponse:
       type: "object"
       properties:
@@ -643,7 +752,6 @@ components:
           type: "boolean"
         language:
           type: "string"
-          description: "es, en, fr or pt: notification-service writes the notices in this language"
     PageResponseUserResponse:
       type: "object"
       properties:
@@ -663,6 +771,31 @@ components:
         totalPages:
           type: "integer"
           format: "int32"
+    PermissionResponse:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+        code:
+          type: "string"
+        name:
+          type: "string"
+        resource:
+          type: "string"
+        action:
+          type: "string"
+    RolePermissionsMatrixResponse:
+      type: "object"
+      properties:
+        permissions:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PermissionResponse"
+        roles:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/RolePermissionsResponse"
   securitySchemes:
     bearerAuth:
       type: "http"

@@ -1,4 +1,4 @@
-# Generated from the running notification-service (springdoc, GET /v3/api-docs) on 2026-10-05.
+# Generated from the running notification-service (springdoc, GET /v3/api-docs) on 2026-10-19.
 # Do not edit by hand: regenerate from the code so the contract never drifts.
 openapi: "3.1.0"
 info:
@@ -31,6 +31,24 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/DeviceResponse"
+  "/internal/v1/notifications/app-update":
+    post:
+      tags:
+        - "internal-app-update-controller"
+      operationId: "announce"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/AppUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/AppUpdateResponse"
   "/api/v1/notifications/read-all":
     post:
       tags:
@@ -233,6 +251,23 @@ components:
         lastSeenAt:
           type: "string"
           format: "date-time"
+    AppUpdateRequest:
+      type: "object"
+      properties:
+        versionCode:
+          type: "integer"
+          format: "int32"
+      required:
+        - "versionCode"
+    AppUpdateResponse:
+      type: "object"
+      properties:
+        versionCode:
+          type: "integer"
+          format: "int32"
+        notified:
+          type: "integer"
+          format: "int32"
     UnregisterDeviceRequest:
       type: "object"
       properties:
