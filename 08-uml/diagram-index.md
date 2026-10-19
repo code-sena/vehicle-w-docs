@@ -1,9 +1,10 @@
 # Diagram Index
 
 > Registry of the system's diagrams. Sources are Mermaid inside Markdown in
-> `08-uml/diagrams/source/`, so GitHub renders them without exports. Every diagram here was checked
-> against the code on 2026-10-19 (the ER diagrams were generated from the production database that
-> day); update it in the same PR that changes the behavior.
+> `08-uml/diagrams/source/`, so GitHub renders them directly. Every diagram also has a PNG with the
+> same name in [`diagrams/exports/`](./diagrams/exports/) for documents outside GitHub. Every diagram
+> here was checked against the code on 2026-10-19 (the ER diagrams were generated from the production
+> database that day); update the source and its image in the same PR that changes the behavior.
 
 ---
 
@@ -21,9 +22,9 @@
 | ID | Name | Source | Description |
 |----|------|--------|-------------|
 | C4-01 | System context | `05-architecture/overview.md` §3 | The system, its three roles, SMTP and Expo Push |
-| C4-02 | Containers (as built) | [`source/c2-containers.md`](./diagrams/source/c2-containers.md) | Front ends, gateway, services, SQL Server, RabbitMQ, REST, internal and event links |
+| C4-02 | Containers (as built) | [`source/c2-containers.md`](./diagrams/source/c2-containers.md) | Three views: overview (front ends, gateway, services, SQL Server, RabbitMQ), REST calls between services, and events |
 | C4-03 | booking-service components (hexagonal) | [`source/c3-booking-components.md`](./diagrams/source/c3-booking-components.md) | Adapters in, ports in, use cases, domain, ports out, adapters out |
-| DEP-01 | Production on Azure | [`source/deployment-production.md`](./diagrams/source/deployment-production.md) | VM, containers, Caddy, Portainer, SSH and GitHub Actions access |
+| DEP-01 | Production on Azure | [`source/deployment-production.md`](./diagrams/source/deployment-production.md) | VM, containers, Caddy, Portainer, SSH and GitHub Actions access, and the server data |
 
 ### Class (domain model)
 
