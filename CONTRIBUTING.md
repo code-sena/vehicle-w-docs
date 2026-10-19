@@ -47,7 +47,7 @@ chore/architecture-update-docs
 1. **Open the PR** against `develop` (`dev` in this documentation repository; never directly against `main`)
 2. **Fill in the PR template** completely (`/.github/pull_request_template.md`)
 3. **Assign reviewers:** at least 1 (preferably the Tech Lead or service owner)
-4. **Tests must be green** — `./mvnw test` or `ng build` locally until the Jenkins pipeline exists (`10-devops/ci-cd.md`)
+4. **Tests must be green** — locally and in the GitHub Actions check of the branch (`10-devops/ci-cd.md`)
 5. **Do not force-push** to a branch whose PR already has comments — create new commits
 
 ### What blocks a merge

@@ -82,7 +82,7 @@ chore(deps): upgrade Spring Boot to 3.2.0
 - **Reviewers:** minimum 1 approval before merging
 - **Review time:** reviewer has a maximum of 24 business hours
 - **Template:** use the template at `.github/pull_request_template.md`
-- **Green CI:** once the Jenkins pipeline exists (`10-devops/ci-cd.md`), merge only proceeds if it passes; until then run `./mvnw test` or `ng build` locally before opening the PR
+- **Green CI:** merge only proceeds if the GitHub Actions check of the branch passes (`10-devops/ci-cd.md`); run the tests locally before pushing to avoid a red check
 
 ---
 
