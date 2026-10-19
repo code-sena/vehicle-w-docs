@@ -6,7 +6,7 @@ because it has every kind of adapter. ADR-002, ADR-009.
 
 ```mermaid
 flowchart LR
-    subgraph IN["infrastructure/adapter/in/web (driving adapters)"]
+    subgraph IN["Adapters in (web)"]
         BC[BookingController<br/>/api/v1/bookings]
         ABC[AdminBookingController<br/>/api/v1/admin/bookings]
         OBC[OperatorBookingController<br/>/api/v1/operator/bookings]
@@ -16,26 +16,26 @@ flowchart LR
         EH[ApiExceptionHandler<br/>code + HTTP status]
     end
 
-    subgraph PIN["domain/port/in"]
+    subgraph PIN["Ports in"]
         BU{{BookingUseCase}}
         CU{{CatalogUseCase}}
         SU{{ScheduleUseCase}}
     end
 
-    subgraph APP["application/usecase"]
+    subgraph APP["Use cases"]
         BS[BookingService]
         CS[CatalogService]
         SS[ScheduleService]
     end
 
-    subgraph DOM["domain/model + domain/service"]
+    subgraph DOM["Domain"]
         B[Booking · BookingLine · BookingStatus]
         CAT[CatalogItem · ServicePrice]
         SCH[BusinessHour · HoursException · ServiceBay]
         AP[AvailabilityPolicy]
     end
 
-    subgraph POUT["domain/port/out"]
+    subgraph POUT["Ports out"]
         BR{{BookingRepository}}
         BAR{{BayRepository}}
         CR{{CatalogRepository}}
@@ -44,7 +44,7 @@ flowchart LR
         EP{{DomainEventPublisher}}
     end
 
-    subgraph OUT["infrastructure/adapter/out (driven adapters)"]
+    subgraph OUT["Adapters out"]
         BPA[BookingPersistenceAdapter<br/>JPA + sp_getapplock]
         BAPA[BayPersistenceAdapter]
         CPA[CatalogPersistenceAdapter]
@@ -79,6 +79,10 @@ flowchart LR
     CSD --> customer
     RP --> mq
 ```
+
+Folders: adapters in = `infrastructure/adapter/in/web`, ports in = `domain/port/in`, use cases =
+`application/usecase`, domain = `domain/model` and `domain/service`, ports out = `domain/port/out`,
+adapters out = `infrastructure/adapter/out`.
 
 | Rule of the layout | How it shows in the code |
 |---|---|
