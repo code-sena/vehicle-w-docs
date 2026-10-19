@@ -13,8 +13,8 @@
 
 | ID | Name | Source | Covers |
 |----|------|--------|--------|
-| UC-01 | Use cases by actor (CU01–CU30 of the SRS) and backend processes | [`source/uc-actors.md`](./diagrams/source/uc-actors.md) | Every actor |
-| UC-02 | Use cases → backend input ports | [`source/uc-backend-mapping.md`](./diagrams/source/uc-backend-mapping.md) | CU01–CU30 and the ports without a CU |
+| UC-01 | Use cases by actor (CU01–CU32 of the SRS) | [`source/uc-actors.md`](./diagrams/source/uc-actors.md) | Every actor |
+| UC-02 | Use cases → backend input ports | [`source/uc-backend-mapping.md`](./diagrams/source/uc-backend-mapping.md) | CU01–CU32 |
 
 ### Architecture (C4) and deployment
 

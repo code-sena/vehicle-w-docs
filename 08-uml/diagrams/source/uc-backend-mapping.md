@@ -1,6 +1,6 @@
 # Use cases → backend input ports
 
-The SRS use cases (CU01–CU30) describe what an actor wants to do. In the code each service exposes
+The SRS use cases (CU01–CU32) describe what an actor wants to do. In the code each service exposes
 that behavior as **input ports** of the hexagonal architecture (`domain/port/in` in Java,
 `Application/Ports/In` in .NET), implemented by an application service and called by a REST controller
 or an event listener. One use case can use several ports and services. Checked against the code on
@@ -40,19 +40,12 @@ or an event listener. One use case can use several ports and services. Checked a
 | CU28 | Manage payment accounts | payment | `IPaymentAccountUseCases.ListAllAsync`, `ListMethodsAsync`, `CreateAsync`, `UpdateAsync` |
 | CU29 | Manage bookings | booking, customer | `BookingUseCase.list`, `get`, `create` (for a client), `reschedule`, `changeStatus`; `LookupVehiclesUseCase` |
 | CU30 | Record inspection report | operations | `InspectionUseCase` (forBooking, start, setPhaseStatus, addFinding, removeFinding, publish, share; `published` for the client's link) |
+| CU31 | Manage own account | security | `GetUserProfileUseCase`, `UpdateUserProfileUseCase`, `ChangeEmailUseCase`, `PersonAddressUseCase`, `LogoutUseCase`, `DeactivateOwnAccountUseCase` |
+| CU32 | Run automatic processes | security, notification | `BootstrapAdministratorUseCase`, `ConsumeDomainEventUseCase`, `BookingReminderUseCase`, `UnassignedBookingAlertUseCase`, `AppUpdateNoticeUseCase` |
 
-## Ports with no use case in the SRS
+## Ports used only by other services
 
-| Port | Service | What it does | Started by |
+| Port | Service | What it does | Called by |
 |---|---|---|---|
-| `GetUserProfileUseCase`, `UpdateUserProfileUseCase`, `ChangeEmailUseCase`, `PersonAddressUseCase` | security | Own profile, email and address (RF-027) | Any user |
-| `DeactivateOwnAccountUseCase` | security | Close own account with the password (not admins) | Client, operator |
-| `BootstrapAdministratorUseCase` | security | Creates the first admin from environment variables when there is none | Start-up |
-| `BookingReminderUseCase` | notification | Plans, cancels and sends reminders | Events + scheduler |
-| `UnassignedBookingAlertUseCase` | notification | Warns the admins of a booking without an operator 2 h before | Scheduler |
-| `ConsumeDomainEventUseCase` | notification | Turns each event of `carwash.events` into notifications | RabbitMQ |
-| `AppUpdateNoticeUseCase` | notification | Announces a new APK once | `deploy/publish-apk.sh` |
 | `BookingUseCase.getForService`, `listForService` | booking | Booking data for other services (`/internal/v1/bookings`) | operations-service |
-
-Adding these to the SRS is optional: the profile and closing the account fit as a new use case
-("Manage own account"), and the scheduled processes as System use cases.
+| `SendNotificationUseCase` | notification | Sends one notification (inbox, push, email) | The other notification use cases and the admin message of CU17 |

@@ -1,7 +1,7 @@
-# Use cases by actor (CU01–CU30)
+# Use cases by actor (CU01–CU32)
 
-The same 30 use cases of the Requirements Specification (`lavarapido-docs`, SRS §7, Figures 3a–3d),
-with the same numbers. Mermaid has no use case diagram, so actors and use cases are drawn as a
+The same 32 use cases of the Requirements Specification (`lavarapido-docs`, SRS §7, Figures 3a–3d),
+with the same numbers (CU31 and CU32 were added on 2026-10-19). Mermaid has no use case diagram, so actors and use cases are drawn as a
 flowchart: rounded boxes are use cases, dotted arrows are `«include»` / `«extend»`. Which backend
 input port implements each one: [uc-backend-mapping](./uc-backend-mapping.md). Checked on 2026-10-19.
 
@@ -17,6 +17,7 @@ flowchart LR
     CU17(["CU17 Manage notifications"])
     CU18(["CU18 Customize visual theme"])
     CU19(["CU19 Select language"])
+    CU31(["CU31 Manage own account"])
     U --- CU01
     U --- CU03
     U --- CU04
@@ -24,6 +25,7 @@ flowchart LR
     U --- CU17
     U --- CU18
     U --- CU19
+    U --- CU31
     classDef actor fill:#08427b,color:#fff,stroke:#052e56
     class U actor
 ```
@@ -107,6 +109,7 @@ flowchart LR
         CU24(["CU24 Manage promotions"])
     end
     CU23(["CU23 View reports"])
+    CU32(["CU32 Run automatic processes"])
     A --- CU27
     A --- CU20
     A --- CU21
@@ -119,34 +122,33 @@ flowchart LR
     A --- CU24
     A --- CU23
     S --- CU08
+    S --- CU32
     classDef actor fill:#08427b,color:#fff,stroke:#052e56
     class A,S actor
 ```
 
-## Backend processes with no use case in the SRS
+## What CU31 and CU32 group
 
-They run without a person asking for them, or they are account actions that the SRS groups under
-other use cases. They are listed so the diagrams match the code; see the mapping for their ports.
+CU31 is the user's own account (profile, address, email, sign out, close the account). CU32 groups
+what runs without a person asking for it; the APK notice is started by a team member's script.
 
 ```mermaid
 flowchart LR
     S(["System (scheduler / events)"])
-    U(["Any user"])
     T(["Team member (deploy script)"])
+    CU32(["CU32 Run automatic processes"])
     P1(["Create the first admin at start-up"])
     P2(["Send booking reminders"])
     P3(["Alert admins of unassigned bookings"])
     P4(["Turn domain events into notifications"])
     P5(["Announce a new app version"])
-    P6(["Edit profile, email and address"])
-    P7(["Close own account"])
-    S --- P1
-    S --- P2
-    S --- P3
-    S --- P4
+    S --- CU32
     T --- P5
-    U --- P6
-    U --- P7
+    CU32 -. "«include»" .-> P1
+    CU32 -. "«include»" .-> P2
+    CU32 -. "«include»" .-> P3
+    CU32 -. "«include»" .-> P4
+    CU32 -. "«include»" .-> P5
     classDef actor fill:#08427b,color:#fff,stroke:#052e56
-    class S,U,T actor
+    class S,T actor
 ```
