@@ -16,9 +16,9 @@
 - Built and running in Docker: api-gateway (8080), security (3001), customer (3002), booking (3003),
   operations (3004), payment (3005, .NET 8) and notification (3006); web app and Android app (APK
   published from the public server).
-- Tests: 639 unit and integration tests and 19 end-to-end tests pass (`11-quality/testing-strategy.md`).
-- Highest risks: R-003 (no CI yet), R-011 (public server turned on on demand), R-010 (documentation drift).
-- Open technical items: TD-022 (request rate limit), TD-006 (Jenkins), TD-007 (correlation id in the
+- Tests: 644 unit and integration tests and 19 end-to-end tests pass (`11-quality/testing-strategy.md`).
+- Highest risks: R-011 (public server turned on on demand), R-010 (documentation drift), R-003 (end-to-end suite still run by hand; CI covers the unit tests since 2026-10-19).
+- Open technical items: TD-022 (request rate limit), TD-007 (correlation id in the
   last clients), TD-023 (audit log); see `technical-backlog.md`.
 
 ## Rules

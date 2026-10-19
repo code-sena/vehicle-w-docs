@@ -10,7 +10,7 @@
 | TD-003 | No login attempt limit | security-service | — | 3 SP | ✅ Resolved (`LoginLockout`: 5 failures in 15 min lock the account 15 min, 423 `ACCOUNT_LOCKED`, changelog 034) |
 | TD-004 | Create the `lavarapido-api-gateway` repository on GitHub and push it | api-gateway | — | 0.5 SP | ✅ Resolved (pushed, `develop` in sync with `origin`) |
 | TD-005 | Web calls the services directly through `proxy.conf.json`; switch to one `/api` entry pointing to the gateway (8080) | Web | — | 0.5 SP | ✅ Resolved (`proxy.conf.json` → `http://localhost:8080`) |
-| TD-006 | Jenkins pipeline per repository (`10-devops/ci-cd.md`) | All | Regressions found late | 3 SP | Medium |
+| TD-006 | CI pipeline per repository | All | — | 3 SP | ✅ Resolved (GitHub Actions `ci.yml` in the 10 repositories on 2026-10-19, plus the Azure deploy workflow; `10-devops/ci-cd.md`) |
 | TD-007 | Propagate `X-Correlation-Id` in the remaining REST clients (customer → security, notification → security) and in RabbitMQ messages; generate it in the gateway. Already done: booking → customer, operations → booking/security, payment → booking | customer, notification, api-gateway | One user action cannot be followed across every service | 1.5 SP | Low |
 | TD-008 | Map `row_version` with `@Version` (optimistic locking) in entities edited by admins | booking, customer, security | Last write wins on concurrent admin edits | 2 SP | Low |
 | TD-009 | No wildcard (`**`) route: unknown URLs rendered an empty page | Web | — | 0.5 SP | ✅ Resolved (`features/not-found`, route `**`) |

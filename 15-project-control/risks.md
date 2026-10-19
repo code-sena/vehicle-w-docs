@@ -12,7 +12,7 @@ Owner is a role; the team assigns the person in the sprint board.
 
 | ID | Risk | Category | Prob. | Impact | Level | Strategy | Owner |
 |----|------|----------|-------|--------|-------|----------|-------|
-| R-003 | Regressions reach `develop` unnoticed: there is still no CI, so the tests (639 unit, 19 end-to-end) depend on someone running them | Technical | Medium | Medium | Medium | Mitigate | Team lead |
+| R-003 | Regressions reach `develop` unnoticed: CI runs the unit tests of every repository, but the end-to-end suite still depends on someone running it | Technical | Low | Medium | Low | Mitigate | Team lead |
 | R-004 | Secrets leak (`.env`: DB password, `JWT_SECRET`, `INTERNAL_API_KEY`, Gmail app password) | Security | Low | High | Medium | Avoid | Every developer |
 | R-005 | An event is lost between commit and publish (no Outbox): missing welcome/booking notification or profile | Technical | Low | Medium | Low | Accept | notification-service owner |
 | R-006 | Work stays uncommitted in several repositories or collides with a teammate's (mobile, web) | Team | Medium | Medium | Medium | Mitigate | Each repository owner |
@@ -30,9 +30,9 @@ Owner is a role; the team assigns the person in the sprint board.
 ### R-003 — No automated safety net
 
 - **Trigger:** a merge breaks a flow that worked.
-- **Mitigation:** run `./mvnw test`, `dotnet test` or `ng test` before every PR, and the end-to-end suite
-  (`lavarapido-infra/e2e`, 19 tests against the containers) before merging to `develop`; build the
-  Jenkins pipeline (`10-devops/ci-cd.md`).
+- **Mitigation:** GitHub Actions runs `./mvnw verify`, `dotnet test`, `ng build`/`ng test` and `tsc` on
+  every push and pull request since 2026-10-19 (`10-devops/ci-cd.md`); merge only with the check green,
+  and run the end-to-end suite (`lavarapido-infra/e2e`, 19 tests against the containers) before a release.
 - **Contingency:** manual end-to-end run before each review session (`13-operations/README.md`).
 
 ### R-004 — Secrets
