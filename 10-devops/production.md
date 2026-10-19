@@ -124,6 +124,25 @@ bash ~/lavarapido/lavarapido-infra/deploy/update-server.sh web             # onl
 It pulls the repositories and rebuilds what changed; data in the `sqlserver-data` volume is kept and
 Liquibase applies new changesets at startup.
 
+The same update can be launched from GitHub without SSH: `lavarapido-infra` → **Actions → Desplegar
+en Azure → Run workflow** (`ci-cd.md`). Last update: 2026-10-19 at 03:20 (server time), which applied
+migration 039; the evidence is in the deployment document of `lavarapido-docs` (version 1.3).
+
+### Access with a personal key
+
+Each member creates their own key and shares only the public part; private keys are never sent or
+committed.
+
+```powershell
+ssh-keygen -t ed25519 -f $HOME\.ssh\lavarapido_azure      # on the member's PC
+ssh -i $HOME\.ssh\lavarapido_azure azureuser@<server IP>  # once the key is added
+```
+
+The project lead adds the `.pub` line once: Azure portal → `vehiclecarwash-vm` → **Reset password →
+Reset SSH public key** (user `azureuser`), or `echo "<public key>" >> ~/.ssh/authorized_keys` on the
+server. As of 2026-10-19, `authorized_keys` holds the project lead's key, Juan Camilo's key, and the
+restricted GitHub Actions key. Deleting a line revokes that access.
+
 ---
 
 ## Health and status
@@ -147,7 +166,7 @@ the VM brings everything back with the data intact (`restart: unless-stopped`). 
 
 1. A database user of its own instead of `sa`.
 2. Scheduled backups of the `sqlserver-data` volume.
-3. A CI pipeline that tests and builds the images before deploying (`ci-cd.md`).
+3. Building the images in CI and pushing them to a registry, so the server stops compiling (CI already tests every repository, `ci-cd.md`).
 4. Uptime monitoring of `PUBLIC_URL` so an outage like the one above is noticed at once.
 
 ---
