@@ -25,9 +25,8 @@ gateway (`http://localhost:8080`) and the direct port as servers:
 
 | Contract | Source | Date |
 |---|---|---|
-| security, customer, booking, notification | `GET /v3/api-docs` (springdoc, dev profile) | 2026-10-04/05 |
-| operations | `GET /v3/api-docs` (springdoc, dev profile) on `:3004` | 2026-10-06 — includes `OperatorServiceResponse.startable`, which was still uncommitted in `lavarapido-operations-service` that day |
-| payment | `GET /swagger/v1/swagger.json` (Swashbuckle, `Development`) on `:3005` | 2026-10-06 — OpenAPI 3.0.1; Swashbuckle does not declare the bearer security scheme, but every path except the health checks requires a JWT |
+| security, customer, booking, operations, notification | `GET /v3/api-docs` (springdoc, dev profile) on `:3001`–`:3006` | 2026-10-19 — `develop` of every repository after the pull of that day |
+| payment | `GET /swagger/v1/swagger.json` (Swashbuckle, `Development`) on `:3005` | 2026-10-19 — OpenAPI 3.0.1; Swashbuckle does not declare the bearer security scheme, but every path except the health checks requires a JWT |
 
 ---
 
