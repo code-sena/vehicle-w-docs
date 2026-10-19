@@ -12,7 +12,7 @@
 | Backend automated tests | 347, all green: Java 308 (security 106, customer 67, booking 31, operations 22, notification 60, api-gateway 22) + payment .NET 39. Operations and payment run on 2026-10-06; the others on 2026-10-04 |
 | Web automated tests | 36 Vitest spec files; the suite **does not compile** (6 stale scaffold specs) |
 | End-to-end | Manual, full flow passed 2026-10-04 |
-| CI | None yet — Jenkins planned |
+| CI | GitHub Actions in the 10 repositories (`10-devops/ci-cd.md`) |
 | Coverage tool | None yet |
 
 Details, tiers, tools and gaps → [`testing-strategy.md`](./testing-strategy.md).

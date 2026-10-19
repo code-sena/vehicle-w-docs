@@ -20,20 +20,20 @@
                  └───────────────────────────┘
 ```
 
-### Current numbers (all green, run on 2026-10-16)
+### Current numbers (all green, run on 2026-10-19)
 
 | Service | Tests | Test classes |
 |---|---|---|
-| security-service | 147 | `UserAccountTest`, `ValueObjectsTest`, `PasswordPolicyTest`, `PasswordResetTokenTest`, `UserPreferenceTest`, `AccountRegistrationServiceTest`, `AuthenticationServiceTest`, `PasswordRecoveryServiceTest`, `UserProfileAndAdministrationTest`, `PersonAddressServiceTest`, `UserPreferenceServiceTest`, `RolePermissionAdministrationServiceTest`, `AdministratorBootstrapServiceTest`, `AdministratorBootstrapRunnerTest`, `JwtTokenIssuerTest`, `EmailResetCodeNotifierTest`, `ApiSecurityWebTest` |
+| security-service | 148 | `UserAccountTest`, `ValueObjectsTest`, `PasswordPolicyTest`, `PasswordResetTokenTest`, `UserPreferenceTest`, `AccountRegistrationServiceTest`, `AuthenticationServiceTest`, `PasswordRecoveryServiceTest`, `UserProfileAndAdministrationTest`, `PersonAddressServiceTest`, `UserPreferenceServiceTest`, `RolePermissionAdministrationServiceTest`, `AdministratorBootstrapServiceTest`, `AdministratorBootstrapRunnerTest`, `JwtTokenIssuerTest`, `EmailResetCodeNotifierTest`, `ApiSecurityWebTest` |
 | customer-service | 68 | `CustomerAccountTest`, `LicensePlateTest`, `LicensePlatePolicyTest`, `CustomerVehicleServiceTest`, `UserRegisteredListenerTest`, `CustomerApiWebTest` |
-| booking-service | 40 | `BookingTest`, `EstablishmentTest`, `AvailabilityPolicyTest` (including the reason of an unavailable time), `BookingServiceTest`, `CatalogServiceTest`, `BookingApiWebTest` |
-| operations-service | 54 | `AssignmentPolicyTest`, `AutoAssignmentPolicyTest`, `StartPolicyTest`, `ServiceExecutionTest`, `InspectionReportTest`, `OperatorMetricsCalculatorTest`, `TeamSummaryCalculatorTest`, `OperationsServiceTest`, `OperatorProfileServiceTest`, `OperatorPersistenceAdapterTest` (operator row race), `OperationsApiWebTest` |
+| booking-service | 43 | `BookingTest`, `EstablishmentTest`, `ServiceBayTest` (a bay cannot be created in maintenance), `AvailabilityPolicyTest` (including the reason of an unavailable time), `BookingServiceTest`, `CatalogServiceTest`, `BookingApiWebTest` |
+| operations-service | 55 | `AssignmentPolicyTest`, `AutoAssignmentPolicyTest`, `StartPolicyTest`, `ServiceExecutionTest`, `InspectionReportTest`, `OperatorMetricsCalculatorTest`, `TeamSummaryCalculatorTest`, `OperationsServiceTest`, `OperatorProfileServiceTest`, `OperatorPersistenceAdapterTest` (operator row race), `OperationsApiWebTest` |
 | notification-service | 112 | `NotificationTest`, `DeviceTokenTest`, `BookingReminderTest`, `NotificationFactoryTest`, `LocalizedNotificationsTest`, `NotificationUseCasesTest`, `BookingReminderServiceTest`, `StaffNotificationsTest`, `UnassignedBookingAlertTest`, `AppUpdateNoticeTest`, `DeliveryCommandsTest`, `AdminNotificationControllerTest` |
 | api-gateway | 34 | `GatewayRoutesTest` |
 | payment-service (.NET, xUnit, `dotnet test`) | 141 (+7 skipped) | Domain 113 (`PaymentTests`, `PaymentPolicyTests`, `PromotionTests`, `LoyaltyTransactionTests`, `AggregateRootTests`), Application 28 (`PaymentCommandServiceTests`, `PaymentQueryServiceTests`, `CustomerPromotionServiceTests`); the 7 `PersistenceTests` need a real SQL Server and are skipped by default |
-| **Total backend** | **596** | Java 455 + .NET 141 |
+| **Total backend** | **601** | Java 460 + .NET 141 |
 | Web (Angular, Vitest, `ng test`) | 43 | 37 spec files, including `api-error.spec.ts` (error codes and the slot reason) and `payment.spec.ts` (two accounts of the same method) |
-| **Total** | **639** | |
+| **Total** | **644** | |
 
 ---
 
@@ -129,9 +129,10 @@ Do not run `./mvnw clean` while that same service is running (it deletes the cla
 
 ## CI
 
-No pipeline yet. **Planned: Jenkins**, one `Jenkinsfile` per repository running `./mvnw verify`
-(services) or `npm ci`, `ng build` and `ng test --watch=false` (web) on every push/PR to `develop`.
-The web stage will fail until the 6 stale specs are fixed.
+GitHub Actions since 2026-10-19 (`10-devops/ci-cd.md`): every push and pull request to `develop` and
+`main` runs `./mvnw verify` (Java services and gateway), `dotnet test` (payment), `ng build` and
+`ng test --watch=false` (web) and `tsc --noEmit` (mobile). The end-to-end suite is not in CI because
+it needs the whole system; it is run by hand before a release.
 
 ---
 
@@ -160,7 +161,7 @@ No coverage tool configured. Policy: every business rule and every endpoint's se
 | The web suite is mostly "should create" specs | Add tests for the booking form, the payment page and the stores |
 | The cross-service tests do not cover sign-up | Add it with a disposable account when a test mail domain is agreed |
 | The mobile app has no automated tests | `tsc --noEmit`, `expo-doctor` and `expo export` are the current checks; add Jest for the view models |
-| No CI | Add a workflow per repository |
+| End-to-end tests are not in CI | Start SQL Server, RabbitMQ and the services as job containers and run `e2e/*.test.js` |
 | No test against a real SQL Server | Testcontainers for the persistence adapters of booking (locking, triggers) |
 | payment-service has no API tests | Use-case tests exist (`PaymentCommandServiceTests`, `PaymentQueryServiceTests`, `CustomerPromotionServiceTests` with in-memory fakes); add API tests (roles, 409 codes) |
 | operations-service has no test with booking-service down | Add a test for 503 `BOOKING_SERVICE_UNAVAILABLE` in `OperationsServiceTest` |
