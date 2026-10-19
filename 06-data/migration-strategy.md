@@ -59,6 +59,8 @@ booking-service        005-create-booking-schemas (catalog + booking, triggers)
                        seed/109-seed-establishment-schedule
                        032-booking-establishment-business-data (legal, tax and channel columns)
                        seed/110-seed-establishment-business-data (example values for them)
+                       seed/111-clear-example-business-data (empties those example values again,
+                         so the real business fills them in from Settings)
 notification-service   010-create-notification-schema · 016-create-notification-device-token
                        017-create-notification-processed-event
                        019-create-notification-booking-reminder · seed/108-seed-notification-type
@@ -77,8 +79,8 @@ operations-service     007-create-execution-schema (5 tables + triggers) · seed
 payment-service        db/changelog/changes/001 … 018 (own numbering, see below)
 ```
 
-Current global high-water mark: **039** (security-service); seeds go up to **110**. The next new
-changeset in any Java service's shared numbering starts at **040**, and the next seed at **111**.
+Current global high-water mark: **039** (security-service); seeds go up to **111**. The next new
+changeset in any Java service's shared numbering starts at **040**, and the next seed at **112**.
 
 **payment-service is different** (.NET, ADR-013):
 
