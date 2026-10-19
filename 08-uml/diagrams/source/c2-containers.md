@@ -1,4 +1,4 @@
-# C4 Level 2 — Containers (as built, 2026-10-06)
+# C4 Level 2 — Containers (as built, 2026-10-19)
 
 > Source of truth: `lavarapido-infra/docker-compose.yml`, each service's `application.yml` and
 > REST clients. Dashed/"planned" elements are not built yet.
@@ -21,8 +21,8 @@ flowchart TB
         customer[customer-service :3002<br/>customers, vehicles]
         booking[booking-service :3003<br/>catalog, schedule, bays, bookings]
         notification[notification-service :3006<br/>inbox, push, email, reminders]
-        operations[operations-service :3004<br/>operators, assignment, execution, ratings]
-        payment[payment-service :3005 · .NET 8<br/>payment accounts, payments, receipts]
+        operations[operations-service :3004<br/>operators, assignment, execution, ratings,<br/>inspection report]
+        payment[payment-service :3005 · .NET 8<br/>payment accounts, payments, receipts,<br/>promotions, loyalty points]
     end
 
     sql[(SQL Server 2022 · :1433<br/>database LavaRapido<br/>one schema owner per service)]
@@ -47,15 +47,19 @@ flowchart TB
     customer -- "REST (user JWT)<br/>/users/me" --> security
     notification -- "REST (X-Internal-Key)<br/>/internal/v1/users/{id}/contact, /admins" --> security
     operations -- "REST (user JWT)<br/>bookings, status" --> booking
+    operations -- "REST (X-Internal-Key)<br/>/internal/v1/bookings (automatic assignment)" --> booking
     operations -- "REST (admin JWT)<br/>operator accounts" --> security
     operations -- "REST (X-Internal-Key)<br/>/internal/v1/users/{id}/contact (names in ratings)" --> security
-    payment -- "REST (user JWT)<br/>booking total" --> booking
+    payment -- "REST (user JWT + X-Correlation-Id)<br/>booking status, total, owner, points" --> booking
+    apk[deploy/publish-apk.sh]:::ext -- "REST (X-Internal-Key)<br/>/internal/v1/notifications/app-update" --> notification
 
-    security -- user_registered --> rabbit
+    security -- security.user_registered --> rabbit
     booking -- booking.confirmed / cancelled --> rabbit
-    operations -- execution.* --> rabbit
-    rabbit -- user_registered --> customer
-    rabbit -- user, booking + execution events --> notification
+    operations -- "execution.operator_assigned / service_started /<br/>service_completed / inspection_shared" --> rabbit
+    payment -- "payment.confirmed / rejected / refunded /<br/>promotion_redeemed / loyalty_points_earned" --> rabbit
+    rabbit -- security.user_registered --> customer
+    rabbit -- booking.confirmed --> operations
+    rabbit -- user, booking, execution and payment events --> notification
 
     security --> sql
     customer --> sql
@@ -74,4 +78,11 @@ flowchart TB
 ```
 
 In development the web reaches the services through the gateway: `Web/proxy.conf.json` sends `/api`
-to `http://localhost:8080`.
+to `http://localhost:8080`. In production Caddy serves the web and sends `/api` to the gateway over
+HTTPS ([deployment-production](./deployment-production.md)). The `/internal/**` routes are not
+published by the gateway; they need the `X-Internal-Key` header.
+
+customer-service raises its own domain events (`customer.provisioned`, `customer.vehicle.*`) but only
+writes them to the log; no other service needs them yet. security-service publishes only
+`security.user_registered`; its other events (`security.user.deactivated`, email and password
+changes) also stay in the log.
