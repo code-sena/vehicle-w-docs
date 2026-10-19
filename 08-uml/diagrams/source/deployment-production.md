@@ -7,51 +7,39 @@ Deployment Document of `lavarapido-docs`.
 
 ```mermaid
 flowchart TB
-    browser([Browser<br/>web app]):::person
+    browser([Browser]):::person
     phone([Android phone<br/>LavaRápido APK]):::person
     team([Team member<br/>own SSH key]):::person
     gha[GitHub Actions<br/>Desplegar en Azure]:::ext
-    expo[Expo Push API]:::ext
-    gmail[Gmail SMTP]:::ext
 
-    subgraph azure["Azure · VM vehiclecarwash-vm · Ubuntu 24.04 · 2 vCPU · 7.7 GB · 64.236.160.129"]
-        subgraph docker["Docker 29 + Compose v5 · network lavarapido_default"]
-            caddy["caddy<br/>:80 / :443 (only public ports)<br/>Let's Encrypt TLS 1.3"]
-            web["web<br/>nginx + Angular build"]
-            gw["api-gateway :8080"]
-            sec["security-service :3001"]
-            cus["customer-service :3002"]
-            boo["booking-service :3003"]
-            ops["operations-service :3004"]
-            pay["payment-service :3005 (.NET 8)"]
-            noti["notification-service :3006"]
-            mq[["rabbitmq :5672"]]
-            db[("sqlserver :1433<br/>SQL Server 2022 Express<br/>LavaRapido · 57 tables")]
-            init["db-init (creates the database, exits 0)"]
-            mig["payment-migrate<br/>Liquibase for payment and promotion (exits 0)"]
-            dl[/"deploy/downloads<br/>APK + version.json"/]
-        end
-        portainer["Portainer<br/>127.0.0.1:9443 (SSH tunnel only)"]
-        scripts["deploy/update-server.sh<br/>deploy/ci-deploy.sh · publish-apk.sh"]
+    subgraph azure["Azure VM vehiclecarwash-vm"]
+        caddy["caddy · :80 / :443<br/>only public ports · TLS 1.3"]
+        web["web<br/>nginx + Angular"]
+        dl[/"/app/<br/>APK + version.json"/]
+        gw["api-gateway :8080"]
+        apps["6 microservices<br/>security :3001 · customer :3002 · booking :3003<br/>operations :3004 · payment :3005 (.NET 8) · notification :3006"]
+        db[("SQL Server 2022 Express<br/>LavaRapido · 57 tables")]
+        mq[["RabbitMQ :5672"]]
+        init["db-init + payment-migrate<br/>(run once, exit 0)"]
+        scripts["deploy/update-server.sh<br/>ci-deploy.sh · publish-apk.sh"]
+        portainer["Portainer · 127.0.0.1:9443<br/>(SSH tunnel only)"]
     end
 
-    browser -- "HTTPS lavarapidovehicular.northcentralus.cloudapp.azure.com" --> caddy
-    phone -- "HTTPS /api, /app/version.json" --> caddy
-    caddy -- "/api/*" --> gw
-    caddy -- "/app/*" --> dl
+    ext[Gmail SMTP · Expo Push API]:::ext
+
+    browser -- "HTTPS (domain on cloudapp.azure.com)" --> caddy
+    phone -- "HTTPS /api and /app/version.json" --> caddy
     caddy -- "everything else" --> web
-    gw --> sec & cus & boo & ops & pay & noti
-    sec & cus & boo & ops & pay & noti --> db
-    sec & boo & ops & pay -- publish --> mq
-    mq -- consume --> cus & ops & noti
+    caddy -- "/app/*" --> dl
+    caddy -- "/api/*" --> gw
+    gw --> apps
+    apps --> db
+    apps -- "publish / consume" --> mq
     init --> db
-    mig --> db
-    noti --> expo
-    noti --> gmail
-    sec -- recovery code --> gmail
-    team -- "SSH :22 (key in authorized_keys)" --> scripts
-    gha -- "SSH :22 restricted key → ci-deploy.sh" --> scripts
-    scripts -- "git pull + docker compose up --build" --> docker
+    apps -- "email and push" --> ext
+    team -- "SSH :22" --> scripts
+    gha -- "SSH :22, restricted key" --> scripts
+    scripts -- "git pull + docker compose up --build" --> apps
 
     classDef person fill:#08427b,color:#fff,stroke:#052e56
     classDef ext fill:#999,color:#fff
@@ -59,8 +47,9 @@ flowchart TB
 
 | Node | Notes |
 |---|---|
+| Server | Azure VM `vehiclecarwash-vm` (Ubuntu 24.04, 2 vCPU, 7.7 GB), domain `lavarapidovehicular.northcentralus.cloudapp.azure.com`, public IP 64.236.160.129, Docker 29 and Compose v5; every container is in the network `lavarapido_default` |
 | Caddy | Only container with published ports; obtains and renews the certificate (valid until 2027-01-14 at the last check) |
-| Services | No ports on the host; Swagger off; memory limit per container, `restart: unless-stopped` |
+| Services | Which service calls which and the events they exchange: [c2-containers](./c2-containers.md). No ports on the host; Swagger off; memory limit per container, `restart: unless-stopped` |
 | SQL Server | Express edition; data in the `sqlserver-data` volume. `db-init` only creates the database; each Java service applies its Liquibase changelog on start-up and `payment-migrate` applies the .NET service's (global numbering up to 039) |
 | Mailpit | Not started in production (`dev-only` profile) |
 | Portainer | Bound to `127.0.0.1`; reached through an SSH tunnel |
