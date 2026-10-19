@@ -1,4 +1,4 @@
-# Generated from the running payment-service (Swashbuckle, GET /swagger/v1/swagger.json) on 2026-10-06.
+# Generated from the running payment-service (Swashbuckle, GET /swagger/v1/swagger.json) on 2026-10-19.
 # Do not edit by hand: regenerate from the code so the contract never drifts.
 openapi: "3.0.1"
 info:
@@ -11,138 +11,10 @@ servers:
   - url: "http://localhost:3005"
     description: "payment-service directly (local development)"
 paths:
-  "/api/v1/admin/payments":
-    get:
-      tags:
-        - "AdminPayments"
-      parameters:
-        - name: "status"
-          in: "query"
-          schema:
-            type: "string"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "text/plain":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentView"
-            "application/json":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentView"
-            "text/json":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentView"
-    post:
-      tags:
-        - "AdminPayments"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ManualPaymentRequest"
-          "text/json":
-            schema:
-              "$ref": "#/components/schemas/ManualPaymentRequest"
-          "application/*+json":
-            schema:
-              "$ref": "#/components/schemas/ManualPaymentRequest"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "text/plain":
-              schema:
-                "$ref": "#/components/schemas/PaymentView"
-            "application/json":
-              schema:
-                "$ref": "#/components/schemas/PaymentView"
-            "text/json":
-              schema:
-                "$ref": "#/components/schemas/PaymentView"
-  "/api/v1/admin/payments/{id}/approve":
-    post:
-      tags:
-        - "AdminPayments"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "text/plain":
-              schema:
-                "$ref": "#/components/schemas/PaymentView"
-            "application/json":
-              schema:
-                "$ref": "#/components/schemas/PaymentView"
-            "text/json":
-              schema:
-                "$ref": "#/components/schemas/PaymentView"
-  "/api/v1/admin/payments/{id}/reject":
-    post:
-      tags:
-        - "AdminPayments"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/RejectPaymentRequest"
-          "text/json":
-            schema:
-              "$ref": "#/components/schemas/RejectPaymentRequest"
-          "application/*+json":
-            schema:
-              "$ref": "#/components/schemas/RejectPaymentRequest"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "text/plain":
-              schema:
-                "$ref": "#/components/schemas/PaymentView"
-            "application/json":
-              schema:
-                "$ref": "#/components/schemas/PaymentView"
-            "text/json":
-              schema:
-                "$ref": "#/components/schemas/PaymentView"
-  "/api/v1/admin/payments/{id}/refund":
-    post:
-      tags:
-        - "AdminPayments"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
   "/api/v1/admin/payment-accounts":
     get:
       tags:
-        - "AdminPayments"
+        - "AdminPaymentAccounts"
       responses:
         "200":
           description: "OK"
@@ -164,7 +36,7 @@ paths:
                   "$ref": "#/components/schemas/PaymentAccountDto"
     post:
       tags:
-        - "AdminPayments"
+        - "AdminPaymentAccounts"
       requestBody:
         content:
           "application/json":
@@ -192,7 +64,7 @@ paths:
   "/api/v1/admin/payment-methods":
     get:
       tags:
-        - "AdminPayments"
+        - "AdminPaymentAccounts"
       responses:
         "200":
           description: "OK"
@@ -215,7 +87,7 @@ paths:
   "/api/v1/admin/payment-accounts/{id}":
     put:
       tags:
-        - "AdminPayments"
+        - "AdminPaymentAccounts"
       parameters:
         - name: "id"
           in: "path"
@@ -247,6 +119,249 @@ paths:
             "text/json":
               schema:
                 "$ref": "#/components/schemas/PaymentAccountDto"
+  "/api/v1/admin/payments":
+    get:
+      tags:
+        - "AdminPayments"
+      parameters:
+        - name: "status"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentDto"
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentDto"
+            "text/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PaymentDto"
+    post:
+      tags:
+        - "AdminPayments"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ManualPaymentRequest"
+          "text/json":
+            schema:
+              "$ref": "#/components/schemas/ManualPaymentRequest"
+          "application/*+json":
+            schema:
+              "$ref": "#/components/schemas/ManualPaymentRequest"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
+  "/api/v1/admin/payments/{id}":
+    get:
+      tags:
+        - "AdminPayments"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
+  "/api/v1/admin/payments/amount-due":
+    get:
+      tags:
+        - "AdminPayments"
+      parameters:
+        - name: "bookingId"
+          in: "query"
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/AmountDueDto"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/AmountDueDto"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/AmountDueDto"
+  "/api/v1/admin/payments/{id}/approve":
+    post:
+      tags:
+        - "AdminPayments"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
+  "/api/v1/admin/payments/{id}/reject":
+    post:
+      tags:
+        - "AdminPayments"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/RejectPaymentRequest"
+          "text/json":
+            schema:
+              "$ref": "#/components/schemas/RejectPaymentRequest"
+          "application/*+json":
+            schema:
+              "$ref": "#/components/schemas/RejectPaymentRequest"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
+  "/api/v1/admin/payments/{id}/refund":
+    post:
+      tags:
+        - "AdminPayments"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/loyalty/balance":
+    get:
+      tags:
+        - "Loyalty"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/LoyaltyBalanceDto"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/LoyaltyBalanceDto"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/LoyaltyBalanceDto"
+  "/api/v1/loyalty/promotions":
+    get:
+      tags:
+        - "Loyalty"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PromotionForCustomerDto"
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PromotionForCustomerDto"
+            "text/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PromotionForCustomerDto"
+  "/api/v1/loyalty/redeem":
+    post:
+      tags:
+        - "Loyalty"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/RedeemPromotionRequest"
+          "text/json":
+            schema:
+              "$ref": "#/components/schemas/RedeemPromotionRequest"
+          "application/*+json":
+            schema:
+              "$ref": "#/components/schemas/RedeemPromotionRequest"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/RedeemPromotionResultDto"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/RedeemPromotionResultDto"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/RedeemPromotionResultDto"
   "/api/v1/payment-accounts":
     get:
       tags:
@@ -291,35 +406,30 @@ paths:
           content:
             "text/plain":
               schema:
-                "$ref": "#/components/schemas/PaymentView"
+                "$ref": "#/components/schemas/PaymentDto"
             "application/json":
               schema:
-                "$ref": "#/components/schemas/PaymentView"
+                "$ref": "#/components/schemas/PaymentDto"
             "text/json":
               schema:
-                "$ref": "#/components/schemas/PaymentView"
+                "$ref": "#/components/schemas/PaymentDto"
   "/api/v1/payments/me":
     get:
       tags:
         - "Payments"
-      description: "RF-015: the client's payment history, newest booking first. Optional filters by booking date and service name. 400 INVALID_DATE_RANGE when from is after to."
       parameters:
         - name: "from"
           in: "query"
-          required: false
           schema:
             type: "string"
             format: "date"
         - name: "to"
           in: "query"
-          required: false
           schema:
             type: "string"
             format: "date"
         - name: "service"
           in: "query"
-          required: false
-          description: "Part of the service name, case-insensitive"
           schema:
             type: "string"
       responses:
@@ -330,36 +440,64 @@ paths:
               schema:
                 type: "array"
                 items:
-                  "$ref": "#/components/schemas/PaymentView"
+                  "$ref": "#/components/schemas/PaymentDto"
             "application/json":
               schema:
                 type: "array"
                 items:
-                  "$ref": "#/components/schemas/PaymentView"
+                  "$ref": "#/components/schemas/PaymentDto"
             "text/json":
               schema:
                 type: "array"
                 items:
-                  "$ref": "#/components/schemas/PaymentView"
+                  "$ref": "#/components/schemas/PaymentDto"
   "/api/v1/payments/me/bookings":
     get:
       tags:
         - "Payments"
-      summary: "Each booking of the caller with its latest payment status and whether it can still be paid"
-      description: "payable applies the same rule as reporting a payment (PaymentPolicy.CanReportPayment): payable booking status, no approved payment and no pending or in-review one. The web and the app show Pay with it instead of repeating the rule."
       responses:
         "200":
           description: "OK"
           content:
+            "text/plain":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/BookingPaymentStateDto"
             "application/json":
               schema:
                 type: "array"
                 items:
-                  "$ref": "#/components/schemas/BookingPaymentState"
-        "401":
-          description: "Without a token"
-        "403":
-          description: "The caller is not a CLIENT"
+                  "$ref": "#/components/schemas/BookingPaymentStateDto"
+            "text/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/BookingPaymentStateDto"
+  "/api/v1/payments/{id}":
+    get:
+      tags:
+        - "Payments"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PaymentDto"
   "/health":
     get:
       tags:
@@ -374,9 +512,175 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/admin/promotions":
+    get:
+      tags:
+        - "Promotions"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PromotionDto"
+            "application/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PromotionDto"
+            "text/json":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/PromotionDto"
+    post:
+      tags:
+        - "Promotions"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SavePromotionRequest"
+          "text/json":
+            schema:
+              "$ref": "#/components/schemas/SavePromotionRequest"
+          "application/*+json":
+            schema:
+              "$ref": "#/components/schemas/SavePromotionRequest"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PromotionDto"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PromotionDto"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PromotionDto"
+  "/api/v1/admin/promotions/metrics":
+    get:
+      tags:
+        - "Promotions"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PromotionMetricsDto"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PromotionMetricsDto"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PromotionMetricsDto"
+  "/api/v1/admin/promotions/{id}":
+    put:
+      tags:
+        - "Promotions"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SavePromotionRequest"
+          "text/json":
+            schema:
+              "$ref": "#/components/schemas/SavePromotionRequest"
+          "application/*+json":
+            schema:
+              "$ref": "#/components/schemas/SavePromotionRequest"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PromotionDto"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PromotionDto"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PromotionDto"
+    delete:
+      tags:
+        - "Promotions"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/promotions/{id}/active":
+    patch:
+      tags:
+        - "Promotions"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int32"
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SetPromotionActiveRequest"
+          "text/json":
+            schema:
+              "$ref": "#/components/schemas/SetPromotionActiveRequest"
+          "application/*+json":
+            schema:
+              "$ref": "#/components/schemas/SetPromotionActiveRequest"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "text/plain":
+              schema:
+                "$ref": "#/components/schemas/PromotionDto"
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/PromotionDto"
+            "text/json":
+              schema:
+                "$ref": "#/components/schemas/PromotionDto"
 components:
   schemas:
-    BookingPaymentState:
+    AmountDueDto:
+      type: "object"
+      properties:
+        bookingId:
+          type: "integer"
+          format: "int64"
+        bookingTotal:
+          type: "number"
+          format: "double"
+        appliedDiscounts:
+          type: "number"
+          format: "double"
+        amountDue:
+          type: "number"
+          format: "double"
+      additionalProperties: false
+    BookingPaymentStateDto:
       type: "object"
       properties:
         bookingId:
@@ -385,49 +689,15 @@ components:
         paymentStatus:
           type: "string"
           nullable: true
-          enum:
-            - "PENDING"
-            - "IN_REVIEW"
-            - "APPROVED"
-            - "REJECTED"
-            - "REFUNDED"
         payable:
           type: "boolean"
       additionalProperties: false
-    BookingInfo:
+    LoyaltyBalanceDto:
       type: "object"
       properties:
-        id:
+        points:
           type: "integer"
-          format: "int64"
-        code:
-          type: "string"
-          nullable: true
-        status:
-          type: "string"
-          nullable: true
-        total:
-          type: "number"
-          format: "double"
-        date:
-          type: "string"
-          nullable: true
-        startTime:
-          type: "string"
-          nullable: true
-        services:
-          type: "string"
-          nullable: true
-        vehicle:
-          type: "string"
-          nullable: true
-        plate:
-          type: "string"
-          nullable: true
-        ownerUserId:
-          type: "integer"
-          format: "int64"
-          nullable: true
+          format: "int32"
       additionalProperties: false
     ManualPaymentRequest:
       type: "object"
@@ -471,22 +741,42 @@ components:
         requiresReceipt:
           type: "boolean"
       additionalProperties: false
-    PaymentMethodDto:
+    PaymentBookingDto:
       type: "object"
       properties:
         id:
           type: "integer"
-          format: "int32"
+          format: "int64"
         code:
           type: "string"
           nullable: true
-        name:
+        status:
           type: "string"
           nullable: true
-        requiresReceipt:
-          type: "boolean"
+        total:
+          type: "number"
+          format: "double"
+        date:
+          type: "string"
+          nullable: true
+        startTime:
+          type: "string"
+          nullable: true
+        services:
+          type: "string"
+          nullable: true
+        vehicle:
+          type: "string"
+          nullable: true
+        plate:
+          type: "string"
+          nullable: true
+        ownerUserId:
+          type: "integer"
+          format: "int64"
+          nullable: true
       additionalProperties: false
-    PaymentView:
+    PaymentDto:
       type: "object"
       properties:
         id:
@@ -508,6 +798,10 @@ components:
         transactionReference:
           type: "string"
           nullable: true
+        reportedAmount:
+          type: "number"
+          format: "double"
+          nullable: true
         receiptImage:
           type: "string"
           nullable: true
@@ -522,7 +816,153 @@ components:
         account:
           "$ref": "#/components/schemas/PaymentAccountDto"
         booking:
-          "$ref": "#/components/schemas/BookingInfo"
+          "$ref": "#/components/schemas/PaymentBookingDto"
+      additionalProperties: false
+    PaymentMethodDto:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+        code:
+          type: "string"
+          nullable: true
+        name:
+          type: "string"
+          nullable: true
+        requiresReceipt:
+          type: "boolean"
+      additionalProperties: false
+    PromotionDto:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+        code:
+          type: "string"
+          nullable: true
+        name:
+          type: "string"
+          nullable: true
+        description:
+          type: "string"
+          nullable: true
+        price:
+          type: "number"
+          format: "double"
+          nullable: true
+        durationMinutes:
+          type: "integer"
+          format: "int32"
+          nullable: true
+        icon:
+          type: "string"
+          nullable: true
+        featured:
+          type: "boolean"
+        benefits:
+          type: "array"
+          items:
+            type: "string"
+          nullable: true
+        validFrom:
+          type: "string"
+          format: "date"
+        validTo:
+          type: "string"
+          format: "date"
+        status:
+          type: "string"
+          nullable: true
+        redemptions:
+          type: "integer"
+          format: "int32"
+        discountPercent:
+          type: "integer"
+          format: "int32"
+        requiredPoints:
+          type: "integer"
+          format: "int32"
+        discountType:
+          type: "string"
+          nullable: true
+        discountValue:
+          type: "number"
+          format: "double"
+      additionalProperties: false
+    PromotionForCustomerDto:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int32"
+        code:
+          type: "string"
+          nullable: true
+        name:
+          type: "string"
+          nullable: true
+        description:
+          type: "string"
+          nullable: true
+        icon:
+          type: "string"
+          nullable: true
+        featured:
+          type: "boolean"
+        benefits:
+          type: "array"
+          items:
+            type: "string"
+          nullable: true
+        discountPercent:
+          type: "integer"
+          format: "int32"
+        requiredPoints:
+          type: "integer"
+          format: "int32"
+        unlocked:
+          type: "boolean"
+      additionalProperties: false
+    PromotionMetricsDto:
+      type: "object"
+      properties:
+        redemptions:
+          type: "integer"
+          format: "int32"
+        savings:
+          type: "number"
+          format: "double"
+      additionalProperties: false
+    RedeemPromotionRequest:
+      type: "object"
+      properties:
+        bookingId:
+          type: "integer"
+          format: "int64"
+        code:
+          type: "string"
+          nullable: true
+      additionalProperties: false
+    RedeemPromotionResultDto:
+      type: "object"
+      properties:
+        promotionId:
+          type: "integer"
+          format: "int32"
+        promotionCode:
+          type: "string"
+          nullable: true
+        promotionName:
+          type: "string"
+          nullable: true
+        discountAmount:
+          type: "number"
+          format: "double"
+        newTotal:
+          type: "number"
+          format: "double"
       additionalProperties: false
     RejectPaymentRequest:
       type: "object"
@@ -546,6 +986,10 @@ components:
         receiptImage:
           type: "string"
           nullable: true
+        reportedAmount:
+          type: "number"
+          format: "double"
+          nullable: true
       additionalProperties: false
     SaveAccountRequest:
       type: "object"
@@ -565,6 +1009,62 @@ components:
         instructions:
           type: "string"
           nullable: true
+        active:
+          type: "boolean"
+      additionalProperties: false
+    SavePromotionRequest:
+      type: "object"
+      properties:
+        code:
+          type: "string"
+          nullable: true
+        name:
+          type: "string"
+          nullable: true
+        description:
+          type: "string"
+          nullable: true
+        price:
+          type: "number"
+          format: "double"
+          nullable: true
+        durationMinutes:
+          type: "integer"
+          format: "int32"
+          nullable: true
+        icon:
+          type: "string"
+          nullable: true
+        featured:
+          type: "boolean"
+        benefits:
+          type: "array"
+          items:
+            type: "string"
+          nullable: true
+        validFrom:
+          type: "string"
+          format: "date"
+        validTo:
+          type: "string"
+          format: "date"
+        discountPercent:
+          type: "integer"
+          format: "int32"
+        requiredPoints:
+          type: "integer"
+          format: "int32"
+        discountType:
+          type: "string"
+          nullable: true
+        discountValue:
+          type: "number"
+          format: "double"
+          nullable: true
+      additionalProperties: false
+    SetPromotionActiveRequest:
+      type: "object"
+      properties:
         active:
           type: "boolean"
       additionalProperties: false
