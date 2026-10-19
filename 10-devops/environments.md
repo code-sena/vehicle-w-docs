@@ -13,7 +13,7 @@
 | **local Docker (app profile)** | 🟢 Available | `docker compose --profile app up -d --build`: every service (payment included) and the API gateway in containers | Same database |
 | **production** | 🟢 In use, turned on on demand | `docker-compose.yml` + `docker-compose.prod.yml` on an Azure VM: Caddy on 80/443, web in nginx, SQL Server Express (see `production.md`) | Empty database plus the first administrator from `ADMIN_*` |
 | **staging** | 🔴 Not set up | — | — |
-| **CI** | 🔴 Not set up | No pipeline yet; tests run locally with `./mvnw test`, `dotnet test` and `ng build` | — |
+| **CI** | 🟢 GitHub Actions | `ci.yml` in every repository on each push/PR to `develop` and `main` (`ci-cd.md`) | — |
 
 Spring profile `dev` (default) turns on Swagger UI and the demo data seeder; without it Swagger is off.
 

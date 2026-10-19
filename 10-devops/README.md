@@ -13,7 +13,7 @@
 | [`local-setup.md`](./local-setup.md) | Start the whole system on a new computer: prerequisites, `.env`, order, ports, demo accounts, common issues |
 | [`environments.md`](./environments.md) | Which environments exist, how they differ, every configuration variable |
 | [`production.md`](./production.md) | The public server: topology, `.env.production`, first administrator, APK publishing, security headers, status |
-| [`ci-cd.md`](./ci-cd.md) | The Jenkins pipeline the team will build (planned) |
+| [`ci-cd.md`](./ci-cd.md) | GitHub Actions: CI in every repository and the Azure deploy button |
 
 ---
 
@@ -24,7 +24,7 @@
 | Orchestration | `lavarapido-infra/docker-compose.yml`: SQL Server, RabbitMQ, Mailpit, the 6 services, payment migrations, api-gateway; `docker-compose.prod.yml` adds the web and Caddy |
 | Configuration | One `lavarapido-infra/.env` (template: `.env.example`), read by compose and by each service run with `./mvnw` |
 | Database migrations | Liquibase, run by each service at startup |
-| CI/CD | Jenkins, planned (no `Jenkinsfile` yet) |
+| CI/CD | GitHub Actions: `ci.yml` in the 10 repositories and `deploy.yml` in `lavarapido-infra` |
 | Remote environments | Production on an Azure VM (`production.md`); no staging |
 
 ---
