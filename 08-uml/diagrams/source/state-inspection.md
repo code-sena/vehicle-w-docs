@@ -6,12 +6,12 @@ Source: `operations-service` `InspectionReport` (`start`, `setPhaseStatus`, `add
 ```mermaid
 stateDiagram-v2
     state "Report" as R {
-        [*] --> Draft : start (admin, service ≥ 180 min, booking CONFIRMED / IN_PROGRESS / COMPLETED)
-        Draft --> Draft : phase status, add / remove finding (booking CONFIRMED or IN_PROGRESS)
+        [*] --> Draft : start
+        Draft --> Draft : edit phases and findings
         Draft --> Published : publish
-        Published --> Published : publish again (keeps published_at) / edits while the booking is editable
+        Published --> Published : edit or publish again
         Published --> Shared : share → execution.inspection_shared
-        Shared --> Shared : share again (new notice)
+        Shared --> Shared : share again
     }
 
     state "Each of the 5 phases" as P {
@@ -25,6 +25,8 @@ stateDiagram-v2
 
 | Rule | Where |
 |---|---|
+| The admin starts it only for services of 180 minutes or more with the booking `CONFIRMED`, `IN_PROGRESS` or `COMPLETED` | `InspectionReport.availableFor`, `start` |
+| Publishing again keeps the first `published_at` | `InspectionReport.publish` |
 | Phases: `RECEPTION`, `EXTERIOR`, `INTERIOR`, `ENGINE`, `DELIVERY`; the admin sets any status | `InspectionReport.setPhaseStatus` |
 | Editing needs the booking `CONFIRMED` or `IN_PROGRESS`, else 409 `INSPECTION_NOT_EDITABLE` | `InspectionReport.requireEditable` |
 | A finding has up to 5 photos (JPEG or PNG, 2 MB each) | `InspectionReport.addFinding`, `InspectionService` |
