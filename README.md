@@ -26,7 +26,7 @@
 | payment-service (3005, .NET 8) | Partial: payment accounts with QR, payments with receipt, admin review and manual payments. Promotions, loyalty and events pending; not in Docker Compose yet |
 | Web (Angular 21) | Connected through the gateway to all six services |
 | Android app | In development by teammates (already calls operations and payment too) |
-| CI | Jenkins planned |
+| CI | GitHub Actions (all repositories) |
 
 Stack: Java 21 · Spring Boot 4 · Spring Cloud Gateway · .NET 8 (payment) · SQL Server 2022 ·
 Liquibase · RabbitMQ · Angular 21 · React Native (Expo) · Docker.
