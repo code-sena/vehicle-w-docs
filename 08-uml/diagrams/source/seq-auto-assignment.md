@@ -27,7 +27,7 @@ sequenceDiagram
     MQ-)OP: BookingConfirmed (queue operations-service.events)
     OP->>B: GET /internal/v1/bookings/{id} and /internal/v1/bookings?from=&to= (X-Internal-Key)
     alt booking already has executions (reschedule) or is no longer assignable
-        OP-->>OP: keeps the current operator; nothing to do
+        OP-->>OP: keeps the current operator, nothing to do
     else
         OP->>DB: shifts, absences, executions of that day
         OP->>S: GET /internal/v1/users/{id}/contact (account still active)
