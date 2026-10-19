@@ -57,4 +57,4 @@ The architecture is checked against `01-context`, `03-product`, `04-requirements
 - `06-data/` — SQL Server schemas, tables, constraints and migrations
 - `07-api/` — API contracts
 - `09-microservices/` — service implementation documentation
-- `10-devops/` — local environment procedures and the planned Jenkins pipeline
+- `10-devops/` — local environment, production server, and the GitHub Actions CI/CD

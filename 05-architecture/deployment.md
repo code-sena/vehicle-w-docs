@@ -107,7 +107,7 @@ before a demo → `13-operations/README.md`.
 
 ## 9. CI/CD boundary
 
-Jenkins is the planned CI tool; pipeline design lives in `10-devops/ci-cd.md`.
+CI runs on GitHub Actions in every repository, and `lavarapido-infra` has a manual workflow that updates the Azure server; details in `10-devops/ci-cd.md`.
 
 ## References
 
