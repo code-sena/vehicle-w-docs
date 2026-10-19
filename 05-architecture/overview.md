@@ -173,9 +173,11 @@ RabbitMQ (topic exchange `carwash.events`) is used for work that can happen afte
 |---|---|---|
 | `security.user_registered` | security | customer (profile), notification (welcome) |
 | `booking.confirmed` (created or rescheduled), `booking.cancelled` | booking | notification (inbox, email, reminders) |
-| `execution.operator_assigned`, `execution.service_started`, `execution.service_completed` | operations | notification (operator and client) |
+| `booking.confirmed` | booking | operations (automatic operator assignment) |
+| `execution.operator_assigned`, `execution.service_started`, `execution.service_completed`, `execution.inspection_shared` | operations | notification (operator and client; started and completed also cancel the reminders) |
+| `payment.confirmed`, `payment.rejected`, `payment.refunded`, `payment.promotion_redeemed`, `payment.loyalty_points_earned` | payment | notification (client) |
 
-customer-service raises `CustomerProvisioned` and vehicle events in its domain but only logs them (no consumer needs them yet). payment-service raises `PaymentApproved`, `PaymentRejected` and `PaymentRefunded` in its domain but does not publish them yet. Planned: automatic assignment after booking confirmation (operations), payment approval and loyalty updates (payment). Event names and payloads → `09-microservices/services/*/events.md`.
+customer-service raises `CustomerProvisioned` and vehicle events in its domain but only logs them (no consumer needs them yet). Diagram of every link: `08-uml/diagrams/source/c2-containers.md`. Event names and payloads → `09-microservices/services/*/events.md`.
 
 Events are published after the database transaction commits. The current architecture accepts the risk of a failure between commit and publish; an Outbox implementation is **not adopted yet**.
 

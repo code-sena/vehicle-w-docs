@@ -188,7 +188,7 @@ The same structure is used across all six services, but the amount of domain log
 | `customer-service` | Medium: customer/vehicle ownership rules |
 | `booking-service` | High: slot conflicts, booking lifecycle, price freezing |
 | `operations-service` | High: availability, assignment, execution and rating rules (`AssignmentPolicy`, `ServiceExecution`) |
-| `payment-service` | High: payment review today (`Payment` aggregate); promotion and loyalty rules still to come |
+| `payment-service` | High: payment review and refund (`Payment`), coupons (`Promotion` with discount strategies) and the loyalty ledger (`LoyaltyTransaction`) |
 | `notification-service` | Thin: notification creation and read state |
 
 ## 11. Testing consequence

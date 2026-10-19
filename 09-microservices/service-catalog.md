@@ -102,7 +102,7 @@ reading another schema.
 | Client profile, vehicles, vehicle types | customer-service | REST (`/vehicles`, `/admin/vehicles`, `/vehicle-types`) |
 | Services, prices, schedule, bays, bookings | booking-service | REST; `BookingConfirmed` / `BookingCancelled` events |
 | Operators, shifts, absences, executions, ratings | operations-service | REST; `OperatorAssigned` / `ServiceStarted` / `ServiceCompleted` events |
-| Payment accounts, payments, receipts, promotions, loyalty ledger | payment-service | REST (events not published yet) |
+| Payment accounts, payments, receipts, promotions, loyalty ledger | payment-service | REST; `payment.confirmed` / `rejected` / `refunded` / `promotion_redeemed` / `loyalty_points_earned` events |
 | Notifications, devices, reminders | notification-service | REST (own inbox only) |
 
 ---

@@ -534,7 +534,9 @@ payload fields) are in `09-microservices/services/<NN-service>/events.md`.
 | `BookingModified` | Covered by `BookingConfirmed` | A reschedule republishes `BookingConfirmed` with the new start time; consumers treat it as "the booking is now at this time" |
 | `BookingCancelled` | Published | Includes the cancellation reason |
 | `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` | Published | By `operations-service` (`execution.*`); consumed by notification. A reassignment republishes `OperatorAssigned`; `OperatorReassigned` and `RatingSubmitted` are not emitted |
-| Payment, promotion and loyalty events | Pending | `payment-service` raises `PaymentApproved`, `PaymentRejected`, `PaymentRefunded` in its domain but does not publish them; notification already listens for `payment.confirmed`, `payment.rejected` |
+| `PaymentApproved`, `PaymentRejected`, `PaymentRefunded` | Published | By `payment-service` as `payment.confirmed`, `payment.rejected`, `payment.refunded`; consumed by notification |
+| `PromotionRedeemed`, loyalty points earned | Published | `payment.promotion_redeemed` and `payment.loyalty_points_earned` (with the coupons the new balance unlocked); consumed by notification |
+| `InspectionShared` | Published | `execution.inspection_shared` by `operations-service` when the admin shares the inspection report; notification sends the link to the client |
 | `NotificationCreated` | Not emitted | Notifications are read through the inbox API |
 | `CustomerProvisioned`, vehicle events | Raised, only logged | Raised by the customer domain; no consumer needs them yet |
 
