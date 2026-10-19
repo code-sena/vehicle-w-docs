@@ -22,18 +22,22 @@
 
 ### Current numbers (all green, run on 2026-10-19)
 
+Counted from the Maven summary (`Tests run:` at the end of `./mvnw test`), `dotnet test` and Vitest. The
+`tests` attribute of the surefire XML of customer-service reports one less (68) because of a nested
+test class; the 69 test cases do run.
+
 | Service | Tests | Test classes |
 |---|---|---|
 | security-service | 151 | `UserAccountTest`, `ValueObjectsTest`, `PasswordPolicyTest`, `PasswordResetTokenTest`, `UserPreferenceTest`, `AccountRegistrationServiceTest`, `AuthenticationServiceTest`, `PasswordRecoveryServiceTest`, `UserProfileAndAdministrationTest`, `PersonAddressServiceTest`, `UserPreferenceServiceTest`, `RolePermissionAdministrationServiceTest`, `AdministratorBootstrapServiceTest`, `AdministratorBootstrapRunnerTest`, `JwtTokenIssuerTest`, `EmailResetCodeNotifierTest`, `ApiSecurityWebTest` |
-| customer-service | 68 | `CustomerAccountTest`, `LicensePlateTest`, `LicensePlatePolicyTest`, `CustomerVehicleServiceTest`, `UserRegisteredListenerTest`, `CustomerApiWebTest` |
+| customer-service | 69 | `CustomerAccountTest`, `LicensePlateTest`, `LicensePlatePolicyTest`, `CustomerVehicleServiceTest`, `UserRegisteredListenerTest`, `CustomerApiWebTest` |
 | booking-service | 43 | `BookingTest`, `EstablishmentTest`, `ServiceBayTest` (a bay cannot be created in maintenance), `AvailabilityPolicyTest` (including the reason of an unavailable time), `BookingServiceTest`, `CatalogServiceTest`, `BookingApiWebTest` |
 | operations-service | 55 | `AssignmentPolicyTest`, `AutoAssignmentPolicyTest`, `StartPolicyTest`, `ServiceExecutionTest`, `InspectionReportTest`, `OperatorMetricsCalculatorTest`, `TeamSummaryCalculatorTest`, `OperationsServiceTest`, `OperatorProfileServiceTest`, `OperatorPersistenceAdapterTest` (operator row race), `OperationsApiWebTest` |
 | notification-service | 112 | `NotificationTest`, `DeviceTokenTest`, `BookingReminderTest`, `NotificationFactoryTest`, `LocalizedNotificationsTest`, `NotificationUseCasesTest`, `BookingReminderServiceTest`, `StaffNotificationsTest`, `UnassignedBookingAlertTest`, `AppUpdateNoticeTest`, `DeliveryCommandsTest`, `AdminNotificationControllerTest` |
 | api-gateway | 34 | `GatewayRoutesTest` |
 | payment-service (.NET, xUnit, `dotnet test`) | 141 (+7 skipped) | Domain 113 (`PaymentTests`, `PaymentPolicyTests`, `PromotionTests`, `LoyaltyTransactionTests`, `AggregateRootTests`), Application 28 (`PaymentCommandServiceTests`, `PaymentQueryServiceTests`, `CustomerPromotionServiceTests`); the 7 `PersistenceTests` need a real SQL Server and are skipped by default |
-| **Total backend** | **604** | Java 463 + .NET 141 |
+| **Total backend** | **605** | Java 464 + .NET 141 |
 | Web (Angular, Vitest, `ng test`) | 43 | 37 spec files, including `api-error.spec.ts` (error codes and the slot reason) and `payment.spec.ts` (two accounts of the same method) |
-| **Total** | **647** | |
+| **Total** | **648** | |
 
 ---
 
