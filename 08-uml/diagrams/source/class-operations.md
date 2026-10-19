@@ -98,9 +98,9 @@ classDiagram
         -Instant publishedAt
         +availableFor(BookingSnapshot)$ boolean
         +editableFor(BookingSnapshot)$ boolean
-        +start(BookingSnapshot, String publicToken, Instant)$ InspectionReport
-        +setPhaseStatus(InspectionPhase, InspectionPhaseStatus, Instant)
-        +addFinding(InspectionPhase, String area, FindingSeverity, String note, ...) InspectionFinding
+        +start(BookingSnapshot, publicToken, Instant)$ InspectionReport
+        +setPhaseStatus(phase, status, Instant)
+        +addFinding(phase, area, severity, note, photos) InspectionFinding
         +removeFinding(long findingId, Instant) InspectionFinding
         +publish(Instant)
         +summary() Summary

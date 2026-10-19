@@ -15,9 +15,9 @@ classDiagram
         -LocalDate customerSince
         -Instant createdAt
         -List~DomainEvent~ pendingEvents
-        +provision(long personId, Long userId, LocalDate, Instant)$ CustomerAccount
-        +registerVehicle(LicensePlate, VehicleType, VehicleText, VehicleText, VehicleText, Instant) CustomerVehicle
-        +updateVehicle(long vehicleId, LicensePlate, VehicleType, ...)
+        +provision(personId, userId, LocalDate, Instant)$ CustomerAccount
+        +registerVehicle(plate, type, ...) CustomerVehicle
+        +updateVehicle(vehicleId, plate, type, ...)
         +removeVehicle(long vehicleId, Instant)
         +findActiveVehicle(long vehicleId) CustomerVehicle
         +activeVehicles() List~CustomerVehicle~
@@ -36,7 +36,7 @@ classDiagram
         -VehicleText color
         -Instant createdAt
         -Instant deletedAt
-        +register(long customerId, LicensePlate, VehicleType, ...)$ CustomerVehicle
+        +register(customerId, plate, type, ...)$ CustomerVehicle
         +update(LicensePlate, VehicleType, VehicleText, VehicleText, VehicleText)
         +remove(Instant)
         +isDeleted() boolean
