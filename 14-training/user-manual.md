@@ -13,7 +13,7 @@
 | Create an account (clients) | Home → **Register**. Fill your data; the password must meet the rules shown (8+ characters, an uppercase letter, a number, a special character). You receive a welcome email |
 | Sign in | Home → **Sign in** with email and password. You land on your area (client, operator or administrator) |
 | Forgot password | Sign in → **Forgot password** → enter your email → type the 6-digit code you receive (valid 15 minutes) → choose a new password. The code is burnt after 5 wrong attempts |
-| Profile | Menu → **Profile**: edit your data and your address (saved in your account, the same on the web and the app), change your password, deactivate your account (asks for your password) |
+| Profile | Menu → **Profile**: edit your data and your address (saved in your account, the same on the web and the app), change your password, deactivate your account (asks for your password; administrators do not have this option) |
 | Change your email | **Profile → Email**, confirmed with your current password. From then on you sign in with the new email; the old one no longer works |
 | Notifications | Bell / **Notifications**: unread first; filter by type or date; mark one or all as read; delete |
 | Notification channels | **Settings → Notifications**: **Push** (phone notifications), **Booking reminders by email** and **Promotions** (unlocked coupons by email and push). They are saved in your account; the inbox always receives everything |
@@ -93,7 +93,7 @@ rating shows who served you ("Served by Juan Camilo").
 | Bays (active / maintenance / inactive) | **Schedule → Bays**. Only active bays are used for new bookings; two vehicles at the same time never share a bay |
 | Services, prices per vehicle type and **loyalty points** per service | **Management → Services** |
 | Promotions (coupons) | **Management → Promotions**: code, discount %, points needed to unlock it, start date; pause or resume from its card |
-| Users and roles: create, change role, deactivate; permissions per role | **Management → Users / Roles** (accounts are deactivated, never deleted) |
+| Users and roles: create, change role, deactivate; permissions per role | **Management → Users / Roles** (accounts are deactivated, never deleted). The user type is changed in the table itself; the person's sessions close and they sign in again. Nobody changes their own type, and an administrator account cannot be deactivated until its type is changed |
 | Send a notification to users | **Notifications** |
 | Operators: active or not, weekly shift, absences | **Operators** (operators are the accounts with role Operator in **Management → Users**) |
 | Operator specialty and skills | **Operators** → an operator → **Skills and certifications → Edit**: specialty and up to 10 skills, each certified, expert or advanced. Saving replaces the list |
@@ -101,7 +101,7 @@ rating shows who served you ("Served by Juan Camilo").
 | Review payments | **Payments** → **Verify**: you see the amount due and the amount the client reports; approve, or reject with a reason. Approving credits the client's points |
 | Refund a payment | **Payments** → an approved payment → **Refund**. The money is returned outside the system (same account or cash); the client is notified and the points are reversed |
 | Register a cash payment | **Payments** → **Manual entry**: the amount is the booking total and it is approved at once |
-| Business data | **Settings → Business data**: legal name, tax ID, address, contact, tax information and official channels. Saved in the system, so the web and the app show the same data. Legal name, tax ID and address are required; the phone needs at least 7 digits |
+| Business data | **Settings → Business data**: four cards (general information, location and contact, tax information, official channels), each edited with its pencil and **Apply**, then **Save changes**. The system ships without a real business, so empty fields show **To be completed** until the business that adopts it fills them. Saved in the system, so the web and the app show the same data. Legal name, tax ID and address are required; the phone needs at least 7 digits |
 | Payment accounts and QR | **Settings → Payment methods** |
 | Operator's week | **Operators** → an operator: services finished this week and the change against last week, punctuality (started at most 10 minutes late), revenue of the finished services and worked hours against the weekly shift. "—" means there is no data yet |
 | Vehicle inspection | **Reservations** → a booking of 3 hours or more → **Inspection**: fill the 5 phases with findings and photos (up to 5 per finding), **Publish** and copy the link, then **Notify client** (inbox, push and email with the summary and the link). The client opens the link from any device without logging in; the plate shows masked. In the mobile app: booking detail → **Inspection**; photos come from the camera or the gallery, are shrunk on the phone before uploading, and the link is shared with the phone's share menu |
