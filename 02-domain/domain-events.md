@@ -500,6 +500,11 @@ Points earned   Points redeemed
 
 `customer.customer.loyalty_points` is only a display copy and must not be used to authorize a redemption.
 
+In the current code the right-hand branch does not happen: using a coupon does not spend points
+(`RequiredPoints` only unlocks it), so the ledger gets `EARNED` when a payment is approved and
+`REVERSED` when it is refunded. No flow updates `customer.customer.loyalty_points` yet; the balance
+the client sees comes from the ledger (`GET /api/v1/loyalty/balance`).
+
 ---
 
 # 5. Event ownership and current service alignment
@@ -520,7 +525,7 @@ This mapping is included for consistency with the current architecture. The doma
 
 ---
 
-## Implementation status (2026-10-04)
+## Implementation status (checked against the code on 2026-10-20)
 
 Which domain events are emitted by the built services. Transport details (routing keys, queues,
 payload fields) are in `09-microservices/services/<NN-service>/events.md`.
@@ -529,14 +534,17 @@ payload fields) are in `09-microservices/services/<NN-service>/events.md`.
 |---|---|---|
 | `UserRegistered` | Published | Consumed by customer (profile) and notification (welcome) |
 | `UserAuthenticated` | Not emitted | No consumer needs it; logins are only logged |
+| `EmailChanged`, `PasswordChanged`, `AccountDeactivated` | Raised, only logged | Raised by the security domain (`security.user.email-changed`, `security.user.password-changed`, `security.user.deactivated`); no consumer needs them yet, so they are written to the log and not sent to RabbitMQ |
 | `BookingCreated` | Covered by `BookingConfirmed` | A booking is confirmed in the same transaction it is created (RF-006), so only `BookingConfirmed` is published |
 | `BookingConfirmed` | Published | Also published when a booking is rescheduled |
 | `BookingModified` | Covered by `BookingConfirmed` | A reschedule republishes `BookingConfirmed` with the new start time; consumers treat it as "the booking is now at this time" |
 | `BookingCancelled` | Published | Includes the cancellation reason |
 | `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` | Published | By `operations-service` (`execution.*`); consumed by notification. A reassignment republishes `OperatorAssigned`; `OperatorReassigned` and `RatingSubmitted` are not emitted |
+| `PaymentInitiated` | Not emitted | A reported payment is saved in `IN_REVIEW` and waits for the admin; nobody else needs to know about it |
 | `PaymentApproved`, `PaymentRejected`, `PaymentRefunded` | Published | By `payment-service` as `payment.confirmed`, `payment.rejected`, `payment.refunded`; consumed by notification |
 | `PromotionRedeemed`, loyalty points earned | Published | `payment.promotion_redeemed` and `payment.loyalty_points_earned` (with the coupons the new balance unlocked); consumed by notification |
 | `InspectionShared` | Published | `execution.inspection_shared` by `operations-service` when the admin shares the inspection report; notification sends the link to the client |
+| `LoyaltyPointsRedeemed` | Not emitted | Points are not spent: `RequiredPoints` is the balance that unlocks a coupon, and the ledger only writes `EARNED` and `REVERSED` movements today |
 | `NotificationCreated` | Not emitted | Notifications are read through the inbox API |
 | `CustomerProvisioned`, vehicle events | Raised, only logged | Raised by the customer domain; no consumer needs them yet |
 

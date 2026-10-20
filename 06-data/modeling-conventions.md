@@ -67,14 +67,20 @@ deleted_by   BIGINT        NULL,
 row_version  INT           NOT NULL DEFAULT 1,
 ```
 
-- `updated_at` and `row_version` are never set by application code. A generated trigger
-  (`tr_touch_<table>`, built once from `sys.tables`/`sys.columns` for every table that has a
-  `row_version` column — see section 14 of `schema_sqlserver.sql`) bumps both on every
-  `UPDATE`, so it can't be forgotten in one service and not another.
+- `updated_at` and `row_version` are bumped on every `UPDATE` by a `tr_touch_<table>` trigger, which
+  each changeset writes explicitly for its table (`migration-strategy.md`, "Triggers"). As built
+  (checked 2026-10-20), there are 16 of them, on the tables that are edited after creation:
+  `security.user_preference`, the three `customer` tables, `catalog.service` and `service_price`,
+  `booking.booking`, `business_hour`, `business_hour_exception`, `establishment` and `service_bay`,
+  and `execution.operator`, `operator_availability`, `operator_absence`, `service_execution` and
+  `inspection_report`. Lookup tables seeded once have none. The `notification` tables have no touch trigger:
+  notification-service sets `updated_at` itself where it needs it. payment-service has none either:
+  `EfUnitOfWork` sets `row_version` and the audit columns before saving.
 - `created_by` / `updated_by` / `deleted_by` reference `security.app_user.user_id`, but — like
   every other cross-service reference — with no FK.
 - `row_version` backs optimistic locking: a second editor's `UPDATE ... WHERE row_version = @x`
-  simply matches zero rows if someone else got there first.
+  simply matches zero rows if someone else got there first. Only payment-service sends that `WHERE` today
+  (EF Core concurrency token); the Java services do not check it yet.
 
 `security.person`, `app_user`, `role`, `permission`, `role_permission`, `user_role`,
 `user_session`, and `password_reset_token` intentionally **don't** carry this block. They're
@@ -117,8 +123,8 @@ PKs:          [table]_id — booking_id, payment_receipt_id (never a bare `id`,
               so a join never needs a column alias to stay readable)
 Constraints:  pk_[table], fk_[table]_[target], uq_[table]_[column], ck_[table]_[rule]
 Indexes:      ix_[table]_[column(s)] (ux_ prefix when unique)
-Triggers:     tr_[table]_[what it prevents], tr_touch_[table] for the generated
-              audit trigger
+Triggers:     tr_[table]_[what it prevents], tr_touch_[table] for the trigger
+              that bumps updated_at and row_version
 ```
 
 `[role]`, `[permission]`, and `[action]` are wrapped in brackets because they're T-SQL

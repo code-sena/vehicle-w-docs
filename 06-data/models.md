@@ -1,12 +1,12 @@
 # Data Models per Service
 
-**Last updated:** 2026-10-15 — ADR-010 (bay status, daily break, vehicle model, customer user id, business data, address, operator specialty), ADR-011 (device tokens, processed events, booking reminders), the login lockout (RF-004b), the account registration date and the vehicle inspection report, as applied by the services' migrations.
+**Last updated:** 2026-10-20 (rules checked against the code) — 2026-10-15: ADR-010 (bay status, daily break, vehicle model, customer user id, business data, address, operator specialty), ADR-011 (device tokens, processed events, booking reminders), the login lockout (RF-004b), the account registration date and the vehicle inspection report, as applied by the services' migrations.
 
 The system is split into **six microservices over nine schemas**, all inside a single SQL
 Server 2016+ instance. Every schema has exactly one owning service; a service may own more
 than one schema (ADR-009). **No service has a foreign key into another service's schemas** —
-the 17 places where one service's data needs another's are documented as plain, indexed
-columns at the end of this file, and integrity there is the application's job, not the
+the 26 places where one service's data needs another's are documented as plain columns at
+the end of this file, and integrity there is the application's job, not the
 database's.
 
 This deviates from the letter of "one physical database per service" (see
@@ -445,7 +445,7 @@ CREATE TABLE [security].person_address (
 
 ## 02. audit
 
-**Owning service:** `security-service` (read-only: rows are written by database triggers)
+**Owning service:** `security-service` (planned to be written by database triggers; as of 2026-10-20 no trigger or service writes to it, so the table is empty)
 
 **DB Engine:** SQL Server 2016+
 
@@ -496,6 +496,7 @@ CREATE TABLE [audit].audit_log (
 
 1. One generic table instead of `booking_history`, `payment_history`, etc.: canceling a booking, approving a payment, and updating a price are all the same kind of event — *something changed* — so every history query starts from the same place.
 2. `previous_data`/`new_data` are `NVARCHAR(MAX)` JSON, not typed columns, because every entity has a different shape and one fixed schema can't fit all of them.
+3. **Status (2026-10-20):** the audit triggers and the `sp_set_session_context` call that would fill `changed_by` were never built (`05-architecture/cross-cutting.md` §1). Who changed a row and when is kept today by the audit block of each table.
 
 ---
 
@@ -803,7 +804,7 @@ CREATE TABLE [catalog].service_price (
 
 1. Exists as its own table (2NF): price depends on the *whole* key (service + vehicle type), not on service alone — storing it on `service` would be a partial dependency.
 2. **The row is immutable once created.** `price`, `service_id`, `vehicle_type_id`, and `valid_from` are never updated — enforced by the `tr_service_price_immutable` trigger. `booking.booking_service` freezes the price it charged by pointing straight at this row; an `UPDATE` here would silently rewrite what a booking from three months ago actually cost. Raising a price means closing the current row (`valid_to = today`) and inserting a new one.
-3. A filtered unique index guarantees at most one *current* tariff per (service, vehicle type) pair, and a trigger blocks overlapping historical date ranges for the same pair.
+3. A filtered unique index (`ux_service_price_current`) guarantees at most one *current* tariff per (service, vehicle type) pair. There is no trigger for overlapping historical ranges: `CatalogService` always closes the current row before inserting the new one.
 
 ---
 
@@ -1308,7 +1309,7 @@ CREATE TABLE [execution].execution_status (
 | Column | Type | Nullable | Description | Constraints |
 |--------|------|----------|--------------|-------------|
 | `execution_status_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
-| `code` | NVARCHAR(30) | No | `PENDIENTE`, `EN_PROCESO`, `PAUSADA`, `FINALIZADA`, `CON_NOVEDAD`. | Unique |
+| `code` | NVARCHAR(30) | No | `PENDING`, `IN_PROGRESS`, `PAUSED`, `COMPLETED`, `WITH_ISSUE` (seed 105, fixed ids 1–5; the code never sets `PAUSED` or `WITH_ISSUE` today). | Unique |
 | `name` | NVARCHAR(60) | No | Label. | — |
 | `is_final` | BIT | No | Whether this status accepts further changes. | — |
 | `display_order` | SMALLINT | No | Sort order. | — |
@@ -1317,7 +1318,7 @@ CREATE TABLE [execution].execution_status (
 
 **Modeling decisions:**
 
-1. Kept separate from `booking_status` because the two levels genuinely diverge: a booking can be `EN_EJECUCION` while one of its services is finished and another hasn't started.
+1. Kept separate from `booking_status` because the two levels genuinely diverge: a booking can be `IN_PROGRESS` while one of its services is finished and another hasn't started.
 
 ---
 
@@ -1493,7 +1494,7 @@ CREATE TABLE [execution].service_execution (
 
 | Name | Fields | Type | Justification |
 |------|--------|------|----------------|
-| `ix_service_execution_operator` | `operator_id, started_at` | Non-unique | Overlap check used by `tr_service_execution_overlap`. |
+| `ix_service_execution_operator` | `operator_id, started_at` | Non-unique | Lookups of an operator's executions (busy check, metrics). |
 
 **Data dictionary:**
 
@@ -1514,7 +1515,7 @@ CREATE TABLE [execution].service_execution (
 **Modeling decisions:**
 
 1. Tracked per line item, not per booking: if a booking includes wash and polish, each can have its own operator, its own timing, and its own rating. Attaching this to the whole booking would lose that detail.
-2. `tr_service_execution_overlap` blocks an operator from appearing to run two services at once.
+2. An operator cannot run two services at once. There is no trigger for it (`tr_service_execution_overlap` was planned but never created): `AssignmentPolicy` rejects a busy operator (`OPERATOR_BUSY`) and `OperationsService.start` refuses to start a service while the operator has another one in progress.
 3. **Rating is stored here, not in a `rating` table.** `02-domain` models `Rating` as an aggregate; physically it is these three columns, because a rating cannot exist without the service line it rates, and rating per line is what RF-023 needs for the average rating per operator. Rating is optional: an unrated line keeps all three columns NULL, and `ck_sexec_rated` / `ck_sexec_comment` keep them consistent (no date without a score, no comment without a score). Reports average with `AVG(quality_rating * 1.0)`: `AVG` ignores NULLs, and the `* 1.0` avoids SQL Server's integer truncation of the average. Never `COALESCE(quality_rating, 0)`.
 
 ---
@@ -1750,7 +1751,7 @@ CREATE TABLE [promotion].promotion (
 
 **Modeling decisions:**
 
-1. Eligibility is resolved by combining `is_public` and `min_completed_booking`: public + 0 reaches everyone; public + N unlocks only for customers who've already finished N bookings; private (`is_public = 0`) reaches only the customers explicitly listed in `promotion_customer`. This is how the same mechanism covers both "everyone gets 10% off this month" and "loyal customers get a better deal".
+1. Eligibility is resolved by combining `is_public` and `min_completed_booking`: public + 0 reaches everyone; public + N unlocks only for customers who've already finished N bookings; private (`is_public = 0`) reaches only the customers explicitly listed in `promotion_customer`. This is how the same mechanism covers both "everyone gets 10% off this month" and "loyal customers get a better deal". **Status (2026-10-20):** the code reads neither column nor `promotion_customer`; every active promotion in its dates is offered to every customer and only `required_points` decides whether it is unlocked.
 2. No usage counter here — it's derived by counting `booking_promotion` rows, to avoid a second number that can drift from the source of truth.
 3. Four checks were added with ADR-009 so that a limit, when present, is meaningful: `max_discount_amount`, `max_redemptions` and `max_redemptions_per_customer` must be positive, and the per-customer limit can't exceed the total limit.
 4. **`price`/`duration_minutes`/`icon`/`featured`/`benefits` (ADR-010 amended, ADR-015) are purely cosmetic**, added so the admin screen can show a promotion as a package-style card. They coexist with `discount_type_id`/`discount_value`, which are the columns that actually get applied — nothing in the schema keeps the two in sync (a promotion's displayed price and its real percentage discount can say different things), which ADR-015 accepts as a known trade-off.
@@ -2147,7 +2148,7 @@ CREATE TABLE [payment].payment_receipt (
 **Modeling decisions:**
 
 1. Kept separate from `payment` because a rejected payment can get a corrected receipt uploaded next — both stay on record. If the receipt were a column on `payment`, the second upload would overwrite the first.
-2. The index on `transaction_reference` catches the same receipt being reused to pay for two different bookings — this is the antifraud control that replaces a real payment gateway, and it's exactly what a grader is likely to test.
+2. The index on `transaction_reference` makes the reuse check fast: `BookingPaymentGuard` rejects a reference already used on another booking (409 `TRANSACTION_REFERENCE_REUSED`). It is not a unique index, because the same booking may report the same reference again after a rejection. This is the antifraud control that replaces a real payment gateway.
 
 ---
 
@@ -2181,7 +2182,7 @@ CREATE TABLE [payment].loyalty_movement_type (
 | Column | Type | Nullable | Description | Constraints |
 |--------|------|----------|--------------|-------------|
 | `loyalty_movement_type_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
-| `code` | NVARCHAR(30) | No | Seeded with `EARNED`, `REDEEMED`, `EXPIRED`, `ADJUSTED`. | Unique |
+| `code` | NVARCHAR(30) | No | Seeded with `EARNED`, `REDEEMED`, `EXPIRED`, `ADJUSTED` (015) and `REVERSED` (020, points given back when a payment is refunded). The code writes only `EARNED` and `REVERSED`. | Unique |
 | `name` | NVARCHAR(60) | No | Label. | — |
 | `sign` | SMALLINT | No | `1` or `-1` — whether the movement adds or subtracts points. | — |
 | `display_order` | SMALLINT | No | Sort order. | — |
@@ -2507,7 +2508,7 @@ CREATE TABLE [notification].booking_tracking (
 
 ## Cross-service contract (no FK, by design)
 
-26 columns point at a table in another schema, and **24 of them point at a table owned by a
+28 columns point at a table in another schema, and **26 of them point at a table owned by a
 different service** (seven added after ADR-009: `customer.user_id`, and the `user_id` / `booking_id`
 references of the new notification tables, `booking_tracking` included). That is one more than before ADR-009: `loyalty_transaction.customer_id`
 used to stay inside `customer` and now crosses from `payment` to `customer-service`. None of them has a foreign key — integrity across the boundary is the
@@ -2540,6 +2541,8 @@ joins done in application code, or in reporting queries, stay fast.
 | `notification.booking_tracking.booking_id` | `booking.booking` | `booking-service` |
 | `notification.booking_tracking.customer_user_id` | `security.app_user` | `security-service` |
 | `notification.booking_tracking.operator_user_id` | `security.app_user` | `security-service` |
+| `booking.schedule_history.changed_by` | `security.app_user` | `security-service` |
+| `execution.inspection_report.booking_id` | `booking.booking` | `booking-service` |
 
 The other two stay inside one service since ADR-009 and carry a real foreign key:
 
@@ -2550,7 +2553,7 @@ The other two stay inside one service since ADR-009 and carry a real foreign key
 
 Business rules the database can't enforce on its own, that the application must:
 
-- A service line can be rated only once its `service_execution` is `FINALIZADA`, at most once,
+- A service line can be rated only once its `service_execution` is `COMPLETED` (and the booking `COMPLETED`), at most once,
   and only by the customer who owns the booking (INV-007). Rating is optional.
 - `booking.points_discount_amount` would match that booking's `REDEEMED` movement in
   `payment.loyalty_transaction` if a direct points-to-cash redemption were ever built; as of

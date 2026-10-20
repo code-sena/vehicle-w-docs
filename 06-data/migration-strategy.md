@@ -30,7 +30,7 @@ touches and in which order the global script (`lavarapido-6-services-sqlserver.s
 | `014`+ | Later changes, numbered in the order they were made |
 | `101`–`109` | Seed data (`seed/` folder) |
 
-Current files (2026-10-15):
+Current files (checked 2026-10-20):
 
 ```
 security-service       001-create-security-schemas · 002-create-security-and-audit-core
@@ -76,7 +76,7 @@ notification-service   010-create-notification-schema · 016-create-notification
 operations-service     007-create-execution-schema (5 tables + triggers) · seed/105-seed-execution-status
                        033-execution-inspection-report (inspection report, phases, findings, photos — ADR-014 §9)
                        037-execution-operator-profile (operator specialty and skills, ADR-010)
-payment-service        db/changelog/changes/001 … 018 (own numbering, see below)
+payment-service        db/changelog/changes/001 … 020 (own numbering, see below)
 ```
 
 Current global high-water mark: **039** (security-service); seeds go up to **111**. The next new
@@ -88,8 +88,9 @@ changeset in any Java service's shared numbering starts at **040**, and the next
   in `changes/`), not in `src/main/resources`.
 - The service does not apply them at startup: the `payment-migrate` container
   (`liquibase/liquibase:4.29` in `lavarapido-infra/docker-compose.yml`) runs `update` once.
-- It uses its **own numbering** `001`–`018` (`001-create-schema-promotion` … `015-seed-reference-data`,
-  `016-payment-images-as-data`, `017-promotion-package-fields`, `018-promotion-required-points`).
+- It uses its **own numbering** `001`–`020` (`001-create-schema-promotion` … `015-seed-reference-data`,
+  `016-payment-images-as-data`, `017-promotion-package-fields`, `018-promotion-required-points`,
+  `019-verify-catalog-ids`, `020-loyalty-reversal-and-sequence`).
   Those numbers repeat the global ones above; the changeset ids (`pay-0NN-…`) and the changelog
   table `DATABASECHANGELOG_PAYMENT` keep them apart, but a new payment file should not be read as
   part of the global sequence.

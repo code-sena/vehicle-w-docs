@@ -57,9 +57,9 @@ would need to change to add it — see `models.md`'s engine note for each servic
 Without cross-schema foreign keys, consistency between services is **eventual**, not
 transactional. Two patterns cover the gap where it matters:
 
-- **Saga pattern** for multi-step flows that touch more than one service (e.g. approving a
-  payment, then crediting loyalty points) — a chain of compensating actions if a later step
-  fails.
+- **Saga pattern** for multi-step flows that touch more than one service — a chain of
+  compensating actions if a later step fails. (Approving a payment and crediting its loyalty points
+  happen in the same service and transaction, so they do not need it.)
 - **Outbox pattern** to guarantee an event is published if and only if the transaction that
   triggered it actually committed.
 

@@ -126,7 +126,10 @@ There are three assignment paths:
 2. **Customer selected:** the customer chooses an available operator.
 3. **Administrator assigned/reassigned:** an administrator chooses or changes the operator.
 
-For automatic assignment, operator **availability is required**. The current product documentation says that workload, proximity, specialization and rating are not assignment criteria, while a note in the latest requirements traceability documentation mentions a workload-based tie-break. Because these statements conflict, this domain document does not define a final automatic-selection or tie-break rule.
+For automatic assignment, operator **availability is required**. The rule implemented in
+`operations-service` (`AutoAssignmentPolicy`, ADR-014) is: the operator the customer chose if that
+operator is free; otherwise the free operator with the fewest bookings that day, and on a tie the lowest
+id. Proximity, specialization and rating are not assignment criteria.
 
 ---
 
@@ -163,11 +166,15 @@ The loyalty transaction ledger also belongs to this context. It is the source of
 | **Responsibility** | Promotion eligibility, discounts and loyalty-point movements. |
 | **Type** | Supporting |
 
-Promotions can be public or targeted according to the current requirements and data model.
+Promotions are coupons with a code. Each one asks for a loyalty balance (`RequiredPoints`) that unlocks
+it; points are not spent when it is used. The data model also has a table for customer-specific
+promotions (`promotion.promotion_customer`), which the code does not use yet.
 
 Loyalty points are represented through a transaction ledger. The `loyalty_points` value kept with the customer is a display copy, not the authoritative balance.
 
-The exact promotion formulas and loyalty earning/redemption rules must follow the current requirements and data model. The domain does not invent additional formulas.
+As implemented: a promotion gives a percentage or a fixed amount off the booking (with an optional
+maximum), and an approved payment credits the loyalty points of the booked services. The domain does
+not invent additional formulas.
 
 ---
 
@@ -269,7 +276,7 @@ The relationships below describe business dependencies, not physical database re
 5. **Payment does not own the booking.** It records and reviews the financial attempt associated with it.
 6. **Notification does not own business changes.** It communicates changes decided elsewhere.
 7. **The domain has one shop in the MVP.** Branch and Zone are not domain concepts.
-8. **Automatic operator assignment uses availability only.** Other criteria require an explicit future requirement.
+8. **Automatic operator assignment requires availability.** Among the free operators it prefers the one the customer chose, then the one with the fewest bookings that day. Other criteria require an explicit future requirement.
 9. **Loyalty validation uses the transaction ledger.** The customer's displayed points value is not the source of truth.
 
 ---
@@ -311,15 +318,15 @@ Transition guards as implemented: see the booking lifecycle in `entities-and-rul
 
 ### Service execution status
 
-Each selected service line has its own execution status:
+Each selected service line has its own execution status (English codes, seed `execution.execution_status`):
 
 | Status | Meaning |
 |---|---|
-| `PENDIENTE` | The service line has not started. |
-| `EN_PROCESO` | The operator is currently performing the service. |
-| `PAUSADA` | Execution has been temporarily paused. |
-| `FINALIZADA` | The service line has been completed. |
-| `CON_NOVEDAD` | The execution ended or was marked with an operational issue. |
+| `PENDING` | An operator is assigned and the service line has not started. |
+| `IN_PROGRESS` | The operator is currently performing the service. |
+| `PAUSED` | Execution temporarily paused. Exists in the model; no use case sets it today. |
+| `COMPLETED` | The service line has been completed. |
+| `WITH_ISSUE` | Execution marked with an operational issue. Exists in the model; no use case sets it today. |
 
 ### Payment status
 
@@ -353,8 +360,8 @@ A change in one lifecycle does not automatically mean that every other lifecycle
 6. A booking's scheduled end must be later than its scheduled start.
 7. A booking can only use a service bay when the requested time is compatible with shop availability and existing active bookings.
 8. Two active bookings cannot occupy the same service bay during overlapping times.
-9. A customer can modify or cancel a booking only while the current requirements allow it; once execution has started, cancellation is blocked.
-10. Automatic operator assignment uses operator availability only.
+9. A customer can cancel a booking only before its start time; rescheduling is done by the administrator. Once execution has started, cancellation is blocked.
+10. Automatic operator assignment requires operator availability; among the free operators it prefers the customer's choice, then the fewest bookings that day.
 11. Customer-selected assignment must use an operator who is available for the requested work.
 12. Administrator assignment/reassignment must not assign an unavailable operator.
 13. Each service execution belongs to one booking service line.
@@ -366,9 +373,9 @@ A change in one lifecycle does not automatically mean that every other lifecycle
 19. Payment attempts belong to one booking.
 20. A digital payment receipt includes a reported amount and transaction reference and is reviewed by an administrator.
 21. The reported receipt amount is compared with the amount due; a mismatch is a review condition, not an automatic payment approval.
-22. A transaction reference already used by another approved payment cannot be reused.
+22. A transaction reference already used in a payment of another booking cannot be reused.
 23. The system does not collect or store card data.
-24. Cash does not require a digital receipt; the administrator confirms the cash payment directly.
+24. Cash does not require a digital receipt; the administrator registers the cash payment and it is approved at once.
 25. Promotions apply only when their validity and eligibility rules are satisfied.
 26. Loyalty redemption is validated against the loyalty transaction ledger, not against the customer's display copy.
 27. A notification has a recipient and a read/unread state.
@@ -389,7 +396,7 @@ A change in one lifecycle does not automatically mean that every other lifecycle
 | Keep Payment separate from Booking | Store payment lifecycle inside Booking | Payment has its own attempts, review states and history. |
 | Keep the loyalty ledger in the Payment context | Treat customer.loyalty_points as the source of truth | The ledger is the authoritative record of point movements; the customer field is only a display copy. |
 | Keep one establishment in the MVP | Introduce Branch and Zone | The current scope is a single shop. |
-| Require operator availability for automatic assignment | Define a workload, proximity, specialization or rating rule here | The current product and requirements documents are not fully aligned on the automatic-selection tie-break, so the domain should not invent a final criterion. |
+| Require operator availability for automatic assignment, then the customer's choice, then the fewest bookings that day | Proximity, specialization or rating rules | It is the rule built in `operations-service` (ADR-014); the other criteria are not in the requirements. |
 | Keep domain boundaries independent from deployment boundaries | Force one microservice per bounded context | Microservice decomposition is an architecture decision, not a DDD rule. |
 | Keep persistence details outside the domain model | Model SQL Server tables as domain entities | The domain should describe business concepts; the data model describes physical persistence. |
 
@@ -420,7 +427,7 @@ The following events describe meaningful changes in the business domain. Their t
 | `LoyaltyPointsRedeemed` | Promotions & Loyalty | A loyalty-point movement deducted points. |
 | `NotificationCreated` | Notification | A notification record was created for a user. |
 
-Some loyalty and promotion events are dependent on the corresponding product rules being finalized. They must not be presented as implemented functionality if the related requirement is still pending.
+Not every event in this catalog is emitted by the code. Which ones are published, which are only logged and which are not emitted at all is listed in `domain-events.md` (Implementation status).
 
 ---
 
@@ -435,10 +442,10 @@ The domain model intentionally does not decide implementation details that belon
 | Cross-service foreign keys | Not used across service ownership boundaries | `06-data` |
 | API endpoints and DTOs | Not defined here | `07-api` |
 | Exact event transport and broker configuration | Not defined here | `05-architecture` |
-| Notification delivery channels | Not defined here | `05-architecture` / requirements |
-| Promotion formulas | Must follow current requirements; no additional formula is invented here | `04-requirements` |
-| Loyalty earning/redemption formula | Must follow current requirements and data model | `04-requirements` / `06-data` |
-| Payment-before-service policy | Current product backlog identifies it as a decision before release | Product/requirements |
+| Notification delivery channels | Inbox, push (Expo) and email, as built in notification-service | `05-architecture` / `09-microservices` |
+| Promotion formulas | Percentage or fixed amount with optional cap, as built in payment-service | `09-microservices` (payment-service) |
+| Loyalty earning/redemption formula | Points of the booked services credited on an approved payment; points are not spent | `09-microservices` (payment-service) / `06-data` |
+| Payment-before-service policy | Not required: a booking can be paid while `CONFIRMED`, `IN_PROGRESS` or `COMPLETED` | `09-microservices` (payment-service) |
 
 ---
 
@@ -452,7 +459,7 @@ The current domain model uses:
 - One physical shop for the MVP.
 - Booking as the central business process.
 - Multiple service lines per booking.
-- Operator availability is required for automatic assignment; the final tie-break rule remains to be resolved from the conflicting requirements notes.
+- Operator availability is required for automatic assignment; then the customer's choice, then the fewest bookings that day (ADR-014).
 - Manual QR/receipt payment verification.
 - Rating per completed service line.
 - Loyalty ledger as the source of truth.

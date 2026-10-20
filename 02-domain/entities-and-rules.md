@@ -176,11 +176,13 @@ create ──▶ CONFIRMED  (a free bay is assigned at once, RF-006)
 SCHEDULED ── confirm (needs a bay) ──▶ CONFIRMED
 CONFIRMED ── start ──▶ IN_PROGRESS ── complete ──▶ COMPLETED
 CONFIRMED ── no-show ──▶ NO_SHOW
-SCHEDULED / CONFIRMED ── cancel (reason) ──▶ CANCELLED
-SCHEDULED / CONFIRMED ── reschedule ──▶ same state, new time and bay (prices kept)
+SCHEDULED / CONFIRMED ── cancel (reason stored) ──▶ CANCELLED
+SCHEDULED / CONFIRMED ── reschedule (admin) ──▶ same state, new time and bay (prices kept)
 ```
 
-Only `SCHEDULED` and `CONFIRMED` can be changed or cancelled (RF-007). Diagram:
+Only `SCHEDULED` and `CONFIRMED` can be changed or cancelled (RF-007). The client cancels before the
+start time without giving a reason (the booking stores `CUSTOMER_REQUEST`); the admin reschedules and
+may choose the cancellation reason. Diagram:
 `08-uml/diagrams/source/state-booking.md`.
 
 ### Booking rules
@@ -297,7 +299,10 @@ Important concepts:
 1. An operator must have the Operator role.
 2. An operator can only be assigned when available for the requested work.
 3. An operator cannot execute overlapping services.
-4. Operator availability is required for automatic assignment. The final selection/tie-break rule is not defined here because the current requirements contain conflicting wording.
+4. Operator availability is required for automatic assignment. As implemented (`AutoAssignmentPolicy`,
+   ADR-014): the operator the customer chose if that operator is free; otherwise the free operator with
+   the fewest bookings that day, and on a tie the lowest id. If nobody is free, the booking stays
+   without an operator and the administrators are warned before it starts.
 
 ---
 
@@ -318,17 +323,17 @@ Important concepts:
 
 ### Execution lifecycle
 
+English codes (seed `execution.execution_status`). Transitions as implemented in
+`operations-service` (`ServiceExecution`):
+
 ```text
-PENDIENTE
-    │
-    ├── start ──▶ EN_PROCESO ──▶ FINALIZADA
-    │
-    ├── pause ──▶ PAUSADA ──▶ EN_PROCESO
-    │
-    └────────────────────────▶ CON_NOVEDAD
+assign ──▶ PENDING ── start ──▶ IN_PROGRESS ── finish ──▶ COMPLETED
+PENDING ── reassign (admin) ──▶ PENDING
+COMPLETED ── rate (client, once, 1 to 5) ──▶ COMPLETED
 ```
 
-The exact transitions are subject to the operational requirements.
+`PAUSED` and `WITH_ISSUE` exist in the status catalog for a later version; no use case moves an
+execution to them today. Diagram: `08-uml/diagrams/source/state-execution.md`.
 
 ### Execution rules
 
@@ -364,8 +369,8 @@ There are three assignment paths:
 
 | Method | Who selects the operator | Rule |
 |---|---|---|
-| Automatic | System | Uses operator availability only. |
-| Customer selected | Customer | The selected operator must be available. |
+| Automatic | System | Uses operator availability; among the free operators, the one with the fewest bookings that day (ties: lowest id). |
+| Customer selected | Customer | The chosen operator is used only if free; otherwise the automatic rule picks another one. |
 | Administrator assigned/reassigned | Administrator | The selected operator must be available. |
 
 For a reassignment, the operational history must not be silently lost. The implementation should preserve the relevant history according to the architecture/data decisions.
@@ -378,12 +383,13 @@ For a reassignment, the operational history must not be silently lost. The imple
 
 A payment is an attempt to settle the amount associated with one booking.
 
-Supported methods:
+Supported methods (codes of the seed `payment.payment_method_type`; the admin sets up one or more
+accounts for each):
 
-- `CASH`
+- `EFECTIVO` (cash)
 - `NEQUI`
 - `DAVIPLATA`
-- `BANK_TRANSFER`
+- `TRANSFERENCIA` (bank transfer)
 
 ### Payment lifecycle
 
@@ -407,7 +413,7 @@ For digital methods, the customer submits a receipt with the reported amount and
 
 **INV-PAY-003 — Cash does not require a digital receipt**
 
-Cash is confirmed directly by the administrator.
+Cash is registered directly by the administrator, and that payment is approved in the same step.
 
 **INV-PAY-004 — Administrator reviews payment**
 
@@ -417,9 +423,11 @@ A payment requiring review is approved or rejected by an authorized administrato
 
 A mismatch is a reason for review/rejection; it is not silently treated as a successful payment.
 
-**INV-PAY-006 — Transaction references cannot be reused for approved payments**
+**INV-PAY-006 — Transaction references cannot be reused on another booking**
 
-A receipt reference already used by another approved payment cannot be reused.
+A receipt reference already used in a payment of another booking cannot be reused (409
+`TRANSACTION_REFERENCE_REUSED`). After a rejection the customer can report again for the same booking,
+even with the same reference.
 
 **INV-PAY-007 — No card data**
 
@@ -433,16 +441,17 @@ The system does not collect or store card numbers, CVV codes or card expiration 
 
 A promotion defines a discount that can be applied when its eligibility conditions are satisfied.
 
-Current data supports:
+As implemented in `payment-service` (`Promotion`):
 
-- discount type;
-- validity period;
-- active state;
-- public eligibility;
-- minimum completed-booking threshold;
-- customer-specific eligibility.
+- discount type: percentage of the subtotal or a fixed amount, with an optional maximum discount and
+  never more than the subtotal;
+- validity period and active state (the admin can pause it);
+- required points: the loyalty balance that unlocks it (points are not spent);
+- minimum purchase, total limit of uses and limit per customer;
+- one use per booking.
 
-The exact discount formulas must follow the current product and requirements documentation.
+The table `promotion.promotion_customer` (customer-specific eligibility) exists in the data model, but
+the code does not use it yet.
 
 ---
 
@@ -457,6 +466,10 @@ A movement can:
 - add points;
 - subtract points.
 
+The movement types are `EARNED`, `REDEEMED`, `EXPIRED`, `ADJUSTED` and `REVERSED`. Today the code only
+writes `EARNED` (the points of the booking lines when its payment is approved) and `REVERSED` (when that
+payment is refunded).
+
 The ledger is the authoritative source for the customer's loyalty balance.
 
 The customer record can contain a display copy of the balance, but that copy must not be used to validate redemption.
@@ -468,6 +481,8 @@ Redemption validation uses the loyalty transaction history/balance, not the cust
 **INV-LOY-002 — A redemption has a monetary effect**
 
 When points are redeemed against a booking, the booking records both points redeemed and their monetary discount.
+The columns exist (`points_redeemed`, `points_discount_amount`), but no current flow redeems points, so
+they stay at zero.
 
 ---
 
@@ -646,7 +661,9 @@ Provides the assignment rules for:
 - customer-selected assignment;
 - administrator assignment/reassignment.
 
-For automatic assignment, availability is a required condition. The exact selection/tie-break rule must come from the approved requirements. The current documentation is inconsistent about whether workload is only mentioned historically or is used as a tie-break, so this document does not establish that rule.
+For automatic assignment, availability is a required condition. The implemented rule
+(`AutoAssignmentPolicy`, ADR-014) takes the operator the customer chose if that operator is free;
+otherwise the free operator with the fewest bookings that day, and on a tie the lowest id.
 
 The domain must not silently introduce other criteria such as:
 
@@ -674,9 +691,9 @@ The administrator performs the final approve/reject action.
 
 **Context:** Promotions & Loyalty
 
-Determines whether a promotion can be applied according to the current promotion rules.
-
-The exact formula is defined outside this domain document when it is not yet finalized.
+Determines whether a promotion can be applied according to the current promotion rules. In the code
+this is `Promotion.Redeem`, which checks in this order: validity, required points, not used on that
+booking yet, minimum purchase, total limit and limit per customer.
 
 ---
 
@@ -703,7 +720,7 @@ The exact formula is defined outside this domain document when it is not yet fin
 | INV-PAY-003 | Cash does not require a digital receipt. |
 | INV-PAY-004 | Authorized administrator reviews pending payments. |
 | INV-PAY-005 | Reported receipt amount is compared with amount due. |
-| INV-PAY-006 | Approved transaction references cannot be reused. |
+| INV-PAY-006 | A transaction reference cannot be reused on another booking. |
 | INV-PAY-007 | No card data is collected or stored. |
 | INV-LOY-001 | Loyalty ledger is the source of truth. |
 | INV-LOY-002 | Loyalty redemption records points and monetary discount together. |
@@ -757,10 +774,11 @@ Only items that are genuinely not settled by the current requirements are kept h
 
 | Topic | Current state |
 |---|---|
-| Payment-before-service policy | The product backlog identifies this as a decision to resolve before release. |
-| Exact promotion formulas | Must follow the final product/requirements definition. |
-| Exact loyalty earning formula | Must follow the final product/requirements definition. |
-| Notification delivery channels | Not defined in the domain model. |
+| Payment-before-service policy | Settled in the code: a booking can be paid while it is `CONFIRMED`, `IN_PROGRESS` or `COMPLETED` (`PaymentPolicy`); paying first is not required. |
+| Promotion formulas | Settled in the code: percentage or fixed amount, capped as described in the Promotion entity. |
+| Loyalty earning formula | Settled in the code: each catalog service has its points, and an approved payment credits the sum of the booking lines. |
+| Notification delivery channels | Settled in the code: inbox, push (Expo) and email, according to the user's preferences. |
+| Customer-specific promotions | `promotion.promotion_customer` exists but is not used yet. |
 | Cross-service implementation of domain events | Defined by architecture/API, not by this document. |
 
 No open question remains about whether Rating should be a separate physical table: the current data model stores rating fields on `service_execution`.

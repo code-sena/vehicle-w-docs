@@ -49,9 +49,9 @@ A booking can contain **one or more wash-service lines** for the customer's vehi
 - Booking is the central business process.
 - A booking can contain one or more selected wash services.
 - A selected service is represented by a booking line with its applicable price and quantity.
-- Operator assignment requires availability. The exact automatic-selection or tie-break rule is not defined in this folder when the current requirements contain conflicting wording.
+- Operator assignment requires availability. The automatic rule built in operations-service (ADR-014) prefers the operator the customer chose, then the free operator with the fewest bookings that day.
 - A service execution belongs to one booking service line and has its own operational lifecycle.
-- Customer rating is optional and is given per completed service line.
+- Customer rating is optional. The customer rates the completed booking once, and the score is stored on each of its service lines.
 - Rating is not a separate physical entity in the current data model; it is represented by fields on service execution.
 - Loyalty decisions use the loyalty transaction ledger as the source of truth. The customer loyalty balance is only a display copy.
 - The establishment is part of the booking context because the MVP has one shop.
