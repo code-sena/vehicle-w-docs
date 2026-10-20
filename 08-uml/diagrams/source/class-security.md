@@ -26,7 +26,6 @@ classDiagram
         +changePassword(HashedPassword)
         +activate()
         +deactivate()
-        +changeRole(RoleCode)
         +hasRole(RoleCode) boolean
     }
     class Person {
@@ -167,8 +166,8 @@ Rules kept by these classes:
 - `UserAccount.ensureCanAuthenticate()` rejects an inactive account; `LoginLockout` locks the account
   after 5 failed attempts in 15 minutes (HTTP 423) and a successful login clears it.
 - `UserAccount.registerCustomer(...)` always gives the `CLIENT` role; staff accounts are created with
-  `create(...)` by an administrator. An account has one role: `changeRole` replaces it (an admin cannot
-  change their own), and an admin account cannot be deactivated until its role is changed.
+  `create(...)` by an administrator, with their role fixed at creation; an admin account cannot be
+  deactivated.
 - `PasswordResetToken` can be redeemed once, before `expiresAt`; asking for a new code invalidates the
   previous one.
 - Domain events published: `UserRegistered`, `EmailChanged`, `PasswordChanged`, `AccountDeactivated`.

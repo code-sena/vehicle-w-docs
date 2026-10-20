@@ -36,7 +36,7 @@ or an event listener. One use case can use several ports and services. Checked a
 | CU24 | Manage promotions | payment | `IPromotionAdminUseCases` (list, metrics, create, update, setActive, delete) |
 | CU25 | Apply promotion at payment | payment | `ICustomerPromotionUseCases.ListAvailableAsync`, `RedeemAsync`; `ILoyaltyUseCases.BalanceAsync` |
 | CU26 | Manage vehicles | customer | `ListCustomerVehiclesUseCase`, `GetCustomerVehicleUseCase`, `RegisterCustomerVehicleUseCase`, `UpdateCustomerVehicleUseCase`, `RemoveCustomerVehicleUseCase`, `ListVehicleTypesUseCase` |
-| CU27 | Administer users and permissions | security | `ListUserAccountsUseCase`, `CreateUserAccountUseCase`, `ChangeAccountStatusUseCase`, `ChangeAccountRoleUseCase`, `ListRolePermissionsUseCase`, `UpdateRolePermissionsUseCase` |
+| CU27 | Administer users and permissions | security | `ListUserAccountsUseCase`, `CreateUserAccountUseCase`, `ChangeAccountStatusUseCase`, `ListRolePermissionsUseCase`, `UpdateRolePermissionsUseCase` |
 | CU28 | Manage payment accounts | payment | `IPaymentAccountUseCases.ListAllAsync`, `ListMethodsAsync`, `CreateAsync`, `UpdateAsync` |
 | CU29 | Manage bookings | booking, customer | `BookingUseCase.list`, `get`, `create` (for a client), `reschedule`, `changeStatus`; `LookupVehiclesUseCase` |
 | CU30 | Record inspection report | operations | `InspectionUseCase` (forBooking, start, setPhaseStatus, addFinding, removeFinding, publish, share; `published` for the client's link) |
