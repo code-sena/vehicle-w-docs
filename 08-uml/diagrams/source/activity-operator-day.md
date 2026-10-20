@@ -5,10 +5,10 @@ Built from `operations-service` (`OperationsUseCase.myServices / start / finish`
 
 ```mermaid
 flowchart TD
-    start((Start of the shift)) --> login[Sign in as OPERATOR]
+    start((Start)) --> login[Sign in as OPERATOR]
     login --> list[My services: today's bookings assigned to me<br/>client's first name, vehicle, plate, services]
     list --> any{Any service left today?}
-    any -- no --> stats[Check my ratings and week metrics] --> stop((End of the shift))
+    any -- no --> stats[Check my ratings and week metrics] --> stop((End))
     any -- yes --> next[Take the next booking]
     next --> early{15 min or less<br/>before the booked time?}
     early -- no --> waitm[Start button disabled<br/>409 SERVICE_TOO_EARLY if forced] --> early

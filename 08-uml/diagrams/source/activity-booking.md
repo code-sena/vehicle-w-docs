@@ -1,8 +1,10 @@
 # Activity — Booking a wash, from the client's point of view (CU05, CU06, CU07)
 
 Built from the web and app booking screens and `booking-service` (`BookingUseCase.availability /
-create / reschedule / cancel`). Sequence with the services: [seq-booking](./seq-booking.md). Checked on
-2026-10-19.
+create / reschedule / cancel`). Sequence with the services: [seq-booking](./seq-booking.md). The client
+cancels from the history or the payment screen (confirm dialog, no reason asked); neither the web nor the app has a reschedule
+screen for the client, so a new date is set by the administrator from Bookings (CU29). Checked on
+2026-10-20.
 
 ```mermaid
 flowchart TD
@@ -26,9 +28,9 @@ flowchart TD
     ok -- yes --> done[Booking CONFIRMED with code RES-…<br/>event booking.confirmed]
     done --> par1[Operator assigned automatically]
     done --> par2[Confirmation and reminders 24 h / 1 h]
-    par1 & par2 --> wait{Before the start,<br/>does the client change it?}
-    wait -- reschedule --> date
-    wait -- cancel with a reason --> cancelled[CANCELLED<br/>reminders removed]
+    par1 & par2 --> wait{Any change<br/>before the start?}
+    wait -- "client cancels<br/>(confirm dialog)" --> cancelled[CANCELLED<br/>reminders removed]
+    wait -- "admin reschedules<br/>from Bookings" --> resched[New date and time<br/>same checks as above] --> wait
     wait -- no --> service[Service day: see activity-operator-day]
     cancelled --> stop((End))
     service --> stop

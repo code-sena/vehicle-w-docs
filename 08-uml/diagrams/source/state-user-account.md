@@ -4,7 +4,7 @@ Source: `security-service` `UserAccount` (`activate`, `deactivate`, `ensureCanAu
 `LoginLockout`, `AuthenticationService`, `UserAdministrationService.changeStatus`,
 `AccountDeactivationService.deactivateOwnAccount`,
 `PasswordRecoveryService.resetPassword`.
-Checked on 2026-10-19.
+Checked on 2026-10-20.
 
 ```mermaid
 stateDiagram-v2
@@ -12,20 +12,18 @@ stateDiagram-v2
 
     state Active {
         [*] --> Unlocked
-        Unlocked --> Unlocked : failed login (count < 5 in 15 min)
-        Unlocked --> Locked : 5th failed login within 15 min
-        Locked --> Unlocked : 15 min pass
-        Locked --> Unlocked : password recovered
-        Unlocked --> Unlocked : successful login (clears the count)
+        Unlocked --> Locked : 5th failed login in 15 min
+        Locked --> Unlocked : 15 min pass or password recovered
     }
 
-    Active --> Inactive : admin deactivates it (not an admin account, not their own)
-    Active --> Inactive : the user closes their account (password, not an admin)
+    Active --> Inactive : admin deactivates it, or the user closes it
     Inactive --> Active : admin activates it
 ```
 
 | Rule | Where |
 |---|---|
+| A failed login below 5 in 15 minutes only adds to the count; a successful login clears it | `LoginLockout`, `AuthenticationService.login` |
+| The admin cannot deactivate an admin account or their own; the user closes their own account with the password, and an admin cannot close theirs | `UserAdministrationService.changeStatus`, `AccountDeactivationService` |
 | While `Locked` even the right password answers 423 `ACCOUNT_LOCKED` | `AuthenticationService.login` |
 | An `Inactive` account answers 403 `ACCOUNT_DISABLED`, checked only after the right password | `UserAccount.ensureCanAuthenticate` |
 | An inactive account cannot ask for a recovery code (the answer looks the same) | `PasswordRecoveryService.findActiveAccount` |

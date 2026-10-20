@@ -1,6 +1,6 @@
 # Class diagram — booking-service domain (catalog and booking)
 
-Source: `lavarapido-booking-service/src/main/java/com/lavarapido/booking/domain` as of 2026-10-19.
+Source: `lavarapido-booking-service/src/main/java/com/lavarapido/booking/domain` as of 2026-10-20.
 Getters, `restore(...)` factories and the 21 legal fields of `Establishment` are left out.
 
 ```mermaid
@@ -203,8 +203,10 @@ Rules kept by these classes:
 - A booking only takes a time with a free bay inside the day window (`AvailabilityPolicy`); when it is
   not possible, the API answers 409 with the `reason` from `UnavailableReason` and the nearest
   `alternatives` (5 by default, `app.booking.alternatives`).
-- `changeableByCustomer` allows rescheduling or cancelling only while the booking is `SCHEDULED` or
-  `CONFIRMED` and its start time has not passed.
+- `changeableByCustomer` allows a client change only while the booking is `SCHEDULED` or `CONFIRMED`
+  and its start time has not passed; the admin only needs the status (`BookingService.requireChangeableBy`).
+  In practice the client only cancels (reason `CUSTOMER_REQUEST`, nothing asked); rescheduling is done
+  by the admin, and the client reschedule endpoint is not used by the web or the app.
 - A bay in `MAINTENANCE` or `INACTIVE` does not accept bookings, and a new bay cannot be created in
   maintenance (`ServiceBay.requireInitialStatus`).
 - Each line points to the `ServicePrice` valid for the vehicle type. A price row is never edited: a

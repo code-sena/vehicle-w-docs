@@ -1,4 +1,4 @@
-# C4 Level 2 — Containers (as built, 2026-10-19)
+# C4 Level 2 — Containers (as built, 2026-10-20)
 
 > Source of truth: `lavarapido-infra/docker-compose.yml`, each service's `application.yml` and
 > REST clients. The view is split in three diagrams so each one can be read on its own: who enters
@@ -8,16 +8,9 @@
 
 ```mermaid
 flowchart TB
-    client([Client]):::person
-    operator([Operator]):::person
-    admin([Administrator]):::person
-
-    subgraph front[Front ends]
-        direction LR
-        web[Web app<br/>Angular 21]
-        mobile[Android app<br/>React Native / Expo]
-    end
-
+    people(["Client · Operator · Administrator"]):::person
+    web[Web app<br/>Angular 21]
+    mobile[Android app<br/>React Native / Expo]
     gateway[API Gateway · :8080<br/>Spring Cloud Gateway<br/>routing + CORS]
 
     subgraph services[Microservices]
@@ -28,24 +21,23 @@ flowchart TB
         operations[operations-service<br/>:3004]
         payment[payment-service<br/>:3005 · .NET 8]
         notification[notification-service<br/>:3006]
+        booking ~~~ notification
+        customer ~~~ payment
+        security ~~~ operations
     end
 
     sql[(SQL Server 2022<br/>database LavaRapido)]
     rabbit[[RabbitMQ<br/>exchange carwash.events]]
-    smtp[SMTP<br/>Gmail / Mailpit]:::ext
-    expo[Expo Push API]:::ext
+    ext[Gmail SMTP / Mailpit<br/>Expo Push API]:::ext
 
-    client --> web & mobile
-    operator --> mobile
-    admin --> web
+    people --> web
+    people --> mobile
     web -- "REST + JWT" --> gateway
     mobile -- "REST + JWT" --> gateway
     gateway -- "/api/v1/**" --> services
-    services -- "one schema owner per service" --> sql
-    services -- "publish / consume" --> rabbit
-    notification -- "email" --> smtp
-    notification -- "push" --> expo
-    security -- "recovery code" --> smtp
+    services -- "one schema per service" --> sql
+    services -- "events" --> rabbit
+    services -- "email and push" --> ext
 
     classDef person fill:#08427b,color:#fff,stroke:#052e56
     classDef ext fill:#999,color:#fff
@@ -59,6 +51,10 @@ flowchart TB
 | operations-service (Spring Boot 4) | Operators, shifts, assignment, execution, ratings, inspection report | `execution` |
 | payment-service (.NET 8) | Payment accounts, payments, receipts, promotions, loyalty points | `payment`, `promotion` |
 | notification-service (Spring Boot 4) | Inbox, push, email, reminders, staff alerts | `notification` |
+
+The three roles use both the web app and the Android app. Email and push go out from two services:
+notification-service sends the notification emails and the push messages (Expo Push API), and
+security-service sends the password recovery code by email.
 
 ## 2. Calls between services (REST)
 

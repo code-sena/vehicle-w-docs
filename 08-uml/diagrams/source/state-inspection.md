@@ -1,7 +1,7 @@
 # State — Inspection report and its phases (CU30)
 
 Source: `operations-service` `InspectionReport` (`start`, `setPhaseStatus`, `addFinding`,
-`removeFinding`, `publish`, `requirePublished`), `InspectionPhaseStatus`. Checked on 2026-10-19.
+`removeFinding`, `publish`, `requirePublished`), `InspectionPhaseStatus`. Checked on 2026-10-20.
 
 ```mermaid
 stateDiagram-v2
@@ -25,7 +25,7 @@ stateDiagram-v2
 
 | Rule | Where |
 |---|---|
-| The admin starts it only for services of 180 minutes or more with the booking `CONFIRMED`, `IN_PROGRESS` or `COMPLETED` | `InspectionReport.availableFor`, `start` |
+| The admin starts it only for services of 180 minutes or more with the booking `CONFIRMED` or `IN_PROGRESS`; with the booking `COMPLETED` an existing report can still be read, published and shared | `InspectionReport.start` (`requireEditable`), `availableFor` |
 | Publishing again keeps the first `published_at` | `InspectionReport.publish` |
 | Phases: `RECEPTION`, `EXTERIOR`, `INTERIOR`, `ENGINE`, `DELIVERY`; the admin sets any status | `InspectionReport.setPhaseStatus` |
 | Editing needs the booking `CONFIRMED` or `IN_PROGRESS`, else 409 `INSPECTION_NOT_EDITABLE` | `InspectionReport.requireEditable` |

@@ -2,7 +2,9 @@
 
 Built from `payment-service` (`PaymentCommandService`, `CustomerPromotionService`, `PaymentPolicy`) and the
 payment screens of the web and app. Sequences: [seq-payment](./seq-payment.md),
-[seq-loyalty-coupon](./seq-loyalty-coupon.md). Checked on 2026-10-19.
+[seq-loyalty-coupon](./seq-loyalty-coupon.md). Once the payment is approved, the payment screen of the
+web and app hides the method, QR, receipt and pay steps and the coupon can no longer be removed: only the
+summary is left. Checked on 2026-10-20.
 
 ```mermaid
 flowchart TD
@@ -27,6 +29,7 @@ flowchart TD
     admin -- reject with a reason --> rejected[REJECTED<br/>client notified] --> upload
     admin -- approve --> approved[APPROVED<br/>loyalty points credited]
     approved --> notify[Client notified: payment confirmed,<br/>points earned, coupons unlocked]
+    approved --> summary[Payment screen shows only the summary<br/>no method, QR or receipt steps] --> stop
     notify --> refund{Refund later?}
     refund -- yes --> refunded[REFUNDED<br/>points reversed, client notified] --> stop
     refund -- no --> stop

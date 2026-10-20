@@ -3,7 +3,7 @@
 Source: `operations-service` `InspectionControllers` (`/api/v1/admin/inspections/{bookingId}`,
 `/api/v1/public/inspections/{token}`), `InspectionService`, `InspectionReport`; web
 `admin/reservations/:id/inspection` and the public page `report/:token`; checked against the code on
-2026-10-19.
+2026-10-20.
 
 ```mermaid
 sequenceDiagram
@@ -22,7 +22,9 @@ sequenceDiagram
     OP->>B: GET /admin/bookings/{id} (admin JWT)
     alt service shorter than 180 min or booking not CONFIRMED / IN_PROGRESS / COMPLETED
         OP-->>W: not available for this booking
-    else
+    else booking COMPLETED
+        OP-->>W: the report already made, read only (it can still be published and shared)
+    else booking CONFIRMED or IN_PROGRESS
         W->>OP: POST /api/v1/admin/inspections/{bookingId} (start, returns the one already there)
         OP->>DB: inspection_report + 5 phases PENDING + random public token
     end

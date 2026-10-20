@@ -63,12 +63,8 @@ flowchart LR
     BU -.implements.- BS
     CU -.implements.- CS
     SU -.implements.- SS
-    BS --> B & AP
-    CS --> CAT
-    SS --> SCH
-    BS --> BR & BAR & CR & SR & CD & EP
-    CS --> CR
-    SS --> SR & BAR
+    APP -- "use" --> DOM
+    APP -- "call" --> POUT
     BR -.implements.- BPA
     BAR -.implements.- BAPA
     CR -.implements.- CPA
@@ -79,6 +75,14 @@ flowchart LR
     CSD --> customer
     RP --> mq
 ```
+
+What each use case uses (the two arrows above, in detail):
+
+| Use case | Domain | Ports out |
+|---|---|---|
+| `BookingService` | `Booking`, `BookingLine`, `BookingStatus`, `AvailabilityPolicy` | `BookingRepository`, `BayRepository`, `CatalogRepository`, `ScheduleRepository`, `CustomerDirectory`, `DomainEventPublisher` |
+| `CatalogService` | `CatalogItem`, `ServicePrice` | `CatalogRepository` |
+| `ScheduleService` | `BusinessHour`, `HoursException`, `ServiceBay` | `ScheduleRepository`, `BayRepository` |
 
 Folders: adapters in = `infrastructure/adapter/in/web`, ports in = `domain/port/in`, use cases =
 `application/usecase`, domain = `domain/model` and `domain/service`, ports out = `domain/port/out`,

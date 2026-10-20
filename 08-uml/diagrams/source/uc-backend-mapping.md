@@ -4,7 +4,7 @@ The SRS use cases (CU01–CU32) describe what an actor wants to do. In the code 
 that behavior as **input ports** of the hexagonal architecture (`domain/port/in` in Java,
 `Application/Ports/In` in .NET), implemented by an application service and called by a REST controller
 or an event listener. One use case can use several ports and services. Checked against the code on
-2026-10-19; actors and diagrams: [uc-actors](./uc-actors.md).
+2026-10-20; actors and diagrams: [uc-actors](./uc-actors.md).
 
 ## SRS use cases
 
@@ -16,7 +16,7 @@ or an event listener. One use case can use several ports and services. Checked a
 | CU04 | Change password | security | `ChangePasswordUseCase` |
 | CU05 | Request booking | booking | `BookingUseCase.availability`, `BookingUseCase.create` |
 | CU06 | Confirm booking based on availability | booking | `BookingUseCase.create` (`AvailabilityPolicy`, free bay, 409 with reason and alternatives) |
-| CU07 | Reschedule or cancel booking | booking | `BookingUseCase.reschedule`, `BookingUseCase.cancel`, `cancellationReasons` |
+| CU07 | Reschedule or cancel booking | booking | `BookingUseCase.cancel` (the client cancels, reason `CUSTOMER_REQUEST`); rescheduling goes through `BookingUseCase.reschedule` from the admin (CU29) — the client endpoint exists but no screen calls it |
 | CU08 | Assign operator automatically | operations | `OperationsUseCase.autoAssign` (on `booking.confirmed`), `availableOperators` |
 | CU09 | Assign or reassign operator | operations | `OperationsUseCase.candidates`, `assign`, `assignments` |
 | CU10 | View assigned services | operations, booking | `OperationsUseCase.myServices`; `BookingUseCase.operatorDay` |

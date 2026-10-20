@@ -1,7 +1,7 @@
 # Class diagram — security-service domain
 
 Source: `lavarapido-security-service/src/main/java/com/lavarapido/security/domain` (`model`, `service`,
-`port`) as of 2026-10-19. Getters, `reconstitute(...)` factories and `equals`/`hashCode` are left out.
+`port`) as of 2026-10-20. Getters, `reconstitute(...)` factories and `equals`/`hashCode` are left out.
 
 ```mermaid
 classDiagram
@@ -170,4 +170,6 @@ Rules kept by these classes:
   deactivated.
 - `PasswordResetToken` can be redeemed once, before `expiresAt`; asking for a new code invalidates the
   previous one.
-- Domain events published: `UserRegistered`, `EmailChanged`, `PasswordChanged`, `AccountDeactivated`.
+- Domain events raised: `UserRegistered`, `EmailChanged`, `PasswordChanged`, `AccountDeactivated`. Only
+  `UserRegistered` goes to RabbitMQ (`security.user_registered`, after commit); the other three are
+  only written to the log because no service consumes them yet (`RabbitDomainEventPublisher.payloadOf`).

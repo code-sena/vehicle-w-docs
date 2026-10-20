@@ -2,7 +2,7 @@
 
 Source: the `LavaRapido` database read on 2026-10-19 (`sys.tables`, `sys.columns`, `sys.foreign_keys`) with every
 migration applied (up to 039). The audit block (`created_at`, `created_by`, `updated_at`, `updated_by`,
-`deleted_at`, `deleted_by`, `row_version`) is left out to keep the diagram readable; 6 of the 6 tables have it.
+`deleted_at`, `deleted_by`, `row_version`) is left out to keep the diagram readable; 6 of the 6 tables have some or all of these columns.
 
 ```mermaid
 erDiagram

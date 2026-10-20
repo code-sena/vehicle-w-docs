@@ -11,16 +11,11 @@ stateDiagram-v2
     IN_PROGRESS --> COMPLETED : finish (operator)
     COMPLETED --> COMPLETED : rate 1–5 + comment (client, once)
     COMPLETED --> [*]
-
-    note right of PENDING
-        One row per booking line.
-        Starting moves the booking to IN_PROGRESS,
-        finishing moves it to COMPLETED (booking-service).
-    end note
 ```
 
 | Rule | Where |
 |---|---|
+| There is one execution row per booking line; starting moves the booking to `IN_PROGRESS` and finishing moves it to `COMPLETED` in booking-service | `OperationsService` |
 | `reassign` and `start` only from `PENDING`, else 409 `EXECUTION_ALREADY_STARTED` | `ServiceExecution` |
 | `finish` only from `IN_PROGRESS`, else 409 `EXECUTION_NOT_STARTED` | `ServiceExecution.finish` |
 | Starting earlier than 15 minutes before the booking → 409 `SERVICE_TOO_EARLY` | `StartPolicy.check` |

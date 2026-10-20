@@ -1,6 +1,6 @@
 # Class diagram — operations-service domain (execution and inspection)
 
-Source: `lavarapido-operation-service/src/main/java/com/lavarapido/operations/domain` as of 2026-10-19.
+Source: `lavarapido-operation-service/src/main/java/com/lavarapido/operations/domain` as of 2026-10-20.
 Getters, `restore(...)` factories and the read-only metric records (`OperatorWeekMetrics`,
 `TeamSummary`) are left out.
 
@@ -191,9 +191,10 @@ Rules kept by these classes:
 - An absence is registered from today on; one that starts before today is rejected with 400
   `ABSENCE_IN_PAST`.
 - A service can be rated once, only when `COMPLETED`, with 1 to 5 stars.
-- The inspection report exists only for services of at least 180 minutes in `CONFIRMED`,
-  `IN_PROGRESS` or `COMPLETED`; it can be edited while the booking is `CONFIRMED` or `IN_PROGRESS`,
-  and once published the customer opens it with `publicToken` (plate masked).
+- The inspection report is only for services of at least 180 minutes. It is started and edited while
+  the booking is `CONFIRMED` or `IN_PROGRESS` (`requireEditable`); with the booking `COMPLETED` it is
+  still shown (`availableFor`), and once published the customer opens it with `publicToken` (plate
+  masked).
 - Events published: `execution.operator_assigned`, `execution.service_started`,
   `execution.service_completed` (`ExecutionEvent`) and `execution.inspection_shared`
   (`InspectionSharedEvent`).
