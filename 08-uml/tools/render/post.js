@@ -73,6 +73,23 @@
         });
         if (best) { best.setAttribute('x', x + 42); best.setAttribute('y', Math.min(y, y2) - 3); best.style.textAnchor = 'start'; }
       });
+      // líneas de vida hasta el final del diagrama (mermaid las deja en 2000 aunque sea más alto)
+      const vb = svg.viewBox.baseVal;
+      // margen abajo para que el último bloque alt/loop/par no quede recortado
+      const content = [...svg.querySelectorAll('rect, line:not(.actor-line), path, text')].reduce((m, e) => { try { const b = e.getBBox(); return Math.max(m, b.y + b.height); } catch { return m; } }, 0);
+      if (content + 14 > vb.y + vb.height) vb.height = content + 14 - vb.y;
+      svg.querySelectorAll('line.actor-line').forEach((l) => l.setAttribute('y2', vb.y + vb.height - 6));
+      // texto de un mensaje encima del número de otro paso o de otro texto
+      const nums = [...svg.querySelectorAll('text.sequenceNumber')].map((t) => { const b = t.getBoundingClientRect(); return { b, cx: b.x + b.width / 2, cy: b.y + b.height / 2 }; });
+      const texts = [...svg.querySelectorAll('text.messageText')];
+      const boxes = texts.map((t) => t.getBoundingClientRect());
+      stats.textHits = [];
+      texts.forEach((t, i) => {
+        const b = boxes[i];
+        const hitNum = nums.some((n) => n.cx > b.left - 9 && n.cx < b.right + 9 && n.cy > b.top - 9 && n.cy < b.bottom + 9);
+        const hitText = boxes.some((o, j) => j !== i && Math.min(o.right, b.right) - Math.max(o.left, b.left) > 2 && Math.min(o.bottom, b.bottom) - Math.max(o.top, b.top) > 2);
+        if (hitNum || hitText) { stats.overlap++; stats.textHits.push(t.textContent.slice(0, 60)); }
+      });
       return stats;
     }
     const edges = [...svg.querySelectorAll('path.flowchart-link, g.edgePaths path, path.relation, path.transition, .edges path')]
@@ -237,11 +254,11 @@
       // se declaran, con líneas guía que después se ocultan (solo sirven para el acomodo)
       const hidden = [];
       // "%% grid: S+P": S columnas para los servicios de aplicación y P para el resto (puertos), a la derecha
-      const gm = kind === 'classDiagram' && code.match(/%%\s*grid:\s*(\d+)\+(\d+)/);
+      const gm = kind === 'classDiagram' && code.match(/%%\s*grid:\s*(\d+)\+(\d+)( ports)?/);
       if (gm) {
         const all = [...code.matchAll(/^\s*class\s+(\w+)\s*\{\s*\n\s*<<([^>]+)>>/gm)].map((m) => ({ n: m[1], s: m[2] }));
         const svc = all.filter((x) => x.s === 'application service').map((x) => x.n);
-        const rest = all.filter((x) => x.s !== 'application service').map((x) => x.n);
+        const rest = all.filter((x) => x.s !== 'application service' && (!gm[3] || x.s === 'interface')).map((x) => x.n);
         const R = Math.max(Math.ceil(svc.length / +gm[1]), Math.ceil(rest.length / +gm[2]));
         const chain = (L) => { for (let i = 0; i + R < L.length; i++) hidden.push([L[i], L[i + R]]); };
         chain(svc); chain(rest);

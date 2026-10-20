@@ -62,6 +62,7 @@
     // carriles verticales a la derecha para include/extend, el más corto más cerca de la columna
     const pos = {};
     // geometría vertical
+    const frames0 = seq.some((id) => g.nodes.get(id).group);
     let y = 64; const GAP = 16; const frames = [];
     let lastGroup = null;
     for (const id of seq) {
@@ -81,7 +82,7 @@
     const AX = Math.max(40, nameW / 2 + 10);
     const boxL = AX + 90;
     const lblL = Math.max(0, ...assocL.filter((e) => e.label).map((e) => tw(e.label, `italic ${F - 2}px Arial`)));
-    const colX = boxL + 50 + 18 * Math.max(0, nLeft - 1) + (lblL ? lblL + 4 : 0); // borde izquierdo de los óvalos
+    const colX = boxL + (frames0 ? 72 : 50) + 18 * Math.max(0, nLeft - 1) + (lblL ? lblL + 40 : 0); // borde izquierdo de los óvalos
     const bundles = [];
     for (const r of rels) { let b = bundles.find((x) => x.from === r.from && x.label === r.label);
       if (!b) { b = { from: r.from, label: r.label, rels: [] }; bundles.push(b); } b.rels.push(r); }
