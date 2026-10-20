@@ -33,13 +33,13 @@ SDD:           Documentation  →  Code  →  Updated documentation
 
 ```mermaid
 flowchart TD
-    P1["**PHASE 1 — DISCOVERY**\n01-context → 02-domain → 03-product\n_Deliverables: overview · domain-map · vision_"]
+    P1["PHASE 1 — DISCOVERY<br/>01-context → 02-domain → 03-product<br/>Deliverables: overview · domain-map · vision"]
     G1(["🔍 Gate: Stakeholder validation"])
-    P2["**PHASE 2 — DEFINITION**\n04-requirements → 05-architecture → 06-data → 07-api\n_Deliverables: user stories · ADRs · data models · OpenAPI_"]
+    P2["PHASE 2 — DEFINITION<br/>04-requirements → 05-architecture → 06-data → 07-api<br/>Deliverables: user stories · ADRs · data models · OpenAPI"]
     G2(["🔍 Gate: Architecture Review Board"])
-    P3["**PHASE 3 — DETAILED DESIGN**\n08-uml → 09-microservices → 12-ux-ui\n_Deliverables: diagrams · runbooks · wireframes_"]
+    P3["PHASE 3 — DETAILED DESIGN<br/>08-uml → 09-microservices → 12-ux-ui<br/>Deliverables: diagrams · runbooks · wireframes"]
     G3(["🔍 Gate: Sprint Planning kickoff"])
-    P4["**PHASE 4 — IMPLEMENTATION TDD + OPERATIONS**\nCode guided by design docs · tests first\n10-devops · 13-operations · 14-training\n_Gate: Code review + QA + Go/No-Go_"]
+    P4["PHASE 4 — IMPLEMENTATION TDD + OPERATIONS<br/>Code guided by design docs · tests first<br/>10-devops · 13-operations · 14-training<br/>Gate: Code review + QA + Go/No-Go"]
 
     P1 --> G1 --> P2 --> G2 --> P3 --> G3 --> P4
 

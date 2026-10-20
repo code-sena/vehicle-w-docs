@@ -68,21 +68,25 @@ There are no foreign keys between schemas owned by different services. The curre
 ## 3. C4 Level 1 — System context
 
 ```mermaid
-C4Context
-    title System Context — Express car wash
+flowchart TB
+    customer(["Customer<br/>books, pays by QR or transfer,<br/>uploads receipts, rates"]):::person
+    operator(["Operator<br/>availability and<br/>assigned services"]):::person
+    admin(["Administrator<br/>shop operation, assignment,<br/>payments and reports"]):::person
+    carwash["Express car wash<br/>[software system]<br/>web and Android platform for one shop"]:::system
+    subgraph ext[External systems]
+        direction LR
+        smtp["SMTP service<br/>Gmail SMTP, Mailpit locally"]:::ext
+        expo["Expo Push<br/>push to the Android app"]:::ext
+    end
+    customer -- "HTTPS" --> carwash
+    operator -- "HTTPS" --> carwash
+    admin -- "HTTPS" --> carwash
+    carwash -- "SMTP: welcome, booking,<br/>reminder and recovery emails" --> smtp
+    carwash -- "HTTPS: push notifications" --> expo
 
-    Person(customer, "Customer", "Books services, pays by QR/transfer, uploads receipts and rates completed service lines")
-    Person(operator, "Operator", "Manages availability and updates assigned service execution")
-    Person(admin, "Administrator", "Manages shop operation, assigns operators, reviews payments and reports")
-    System(carwash, "Express car wash", "Web and Android platform for booking and managing vehicle washing at one shop")
-    System_Ext(smtp, "SMTP service", "Gmail SMTP (or Mailpit locally): welcome, booking, reminder and password-recovery emails")
-    System_Ext(expo, "Expo Push", "Delivers push notifications to the Android app")
-
-    Rel(customer, carwash, "Books, pays, rates", "HTTPS")
-    Rel(operator, carwash, "Manages availability and execution", "HTTPS")
-    Rel(admin, carwash, "Administers operation and payments", "HTTPS")
-    Rel(carwash, smtp, "Sends emails", "SMTP")
-    Rel(carwash, expo, "Sends push notifications", "HTTPS")
+    classDef person fill:#08427b,color:#fff,stroke:#052e56
+    classDef system fill:#1168bd,color:#fff,stroke:#0b4884
+    classDef ext fill:#999,color:#fff,stroke:#6b6b6b
 ```
 
 The payment flow has no external gateway. The customer pays from their own banking application and the platform only receives the uploaded receipt. No card data is collected or transmitted.
@@ -90,62 +94,61 @@ The payment flow has no external gateway. The customer pays from their own banki
 ## 4. C4 Level 2 — Containers
 
 ```mermaid
-C4Container
-    title Container Diagram — Express car wash
+flowchart TB
+    people(["Customer · Operator · Administrator"]):::person
+    subgraph system[Express car wash]
+        web["Web application<br/>Angular"]
+        mobile["Android application<br/>React Native / Expo"]
+        gateway["API Gateway<br/>Spring Cloud Gateway (webmvc)<br/>routing and CORS"]
+        subgraph svc[Microservices]
+            direction LR
+            security["security-service<br/>Java 21 / Spring Boot"]
+            customerSvc["customer-service<br/>Java 21 / Spring Boot"]
+            booking["booking-service<br/>Java 21 / Spring Boot"]
+            operations["operations-service<br/>Java 21 / Spring Boot"]
+            payment["payment-service<br/>.NET 8 / ASP.NET Core"]
+            notification["notification-service<br/>Java 21 / Spring Boot"]
+            security ~~~ operations
+            customerSvc ~~~ payment
+            booking ~~~ notification
+        end
+        sqlserver[("SQL Server 2022<br/>one database, nine schemas")]
+        rabbit[["RabbitMQ<br/>asynchronous domain events"]]
+    end
+    smtp["Gmail SMTP / Mailpit"]:::ext
+    expo["Expo Push"]:::ext
 
-    Person(customer, "Customer")
-    Person(operator, "Operator")
-    Person(admin, "Administrator")
+    people --> web
+    people --> mobile
+    web -- "REST/HTTPS" --> gateway
+    mobile -- "REST/HTTPS" --> gateway
+    gateway -- "routes requests" --> svc
+    svc -- "each owns its schemas" --> sqlserver
+    svc -- "publish / consume" --> rabbit
+    svc -- "email: security and notification" --> smtp
+    svc -- "push: notification" --> expo
 
-    System_Boundary(system, "Express car wash") {
-        Container(web, "Web application", "Angular", "Customer and administrator interface")
-        Container(mobile, "Android application", "React Native / Expo", "Mobile interface for the three roles")
-        Container(gateway, "API Gateway", "Spring Cloud Gateway (webmvc)", "External entry point, routing and CORS")
-        Container(security, "security-service", "Java 21 / Spring Boot", "Identity, roles, sessions, preferences and audit")
-        Container(customerSvc, "customer-service", "Java 21 / Spring Boot", "Customers, vehicles and loyalty display copy")
-        Container(booking, "booking-service", "Java 21 / Spring Boot", "Catalog, prices, shop schedule and bookings")
-        Container(operations, "operations-service", "Java 21 / Spring Boot", "Operators, assignment, execution and ratings")
-        Container(payment, "payment-service", ".NET 8 / ASP.NET Core", "Payments, receipts, promotions and loyalty ledger")
-        Container(notification, "notification-service", "Java 21 / Spring Boot", "In-app notifications, push, email and booking reminders")
-        ContainerDb(sqlserver, "SQL Server", "SQL Server 2022", "One physical database with nine logical schemas")
-        ContainerQueue(rabbit, "RabbitMQ", "RabbitMQ", "Asynchronous domain events")
-        Container(smtp, "Gmail SMTP / Mailpit", "SMTP", "Outgoing email")
-    }
-
-    Rel(customer, web, "Uses")
-    Rel(customer, mobile, "Uses")
-    Rel(operator, mobile, "Uses")
-    Rel(admin, web, "Uses")
-    Rel(admin, mobile, "Uses")
-    Rel(web, gateway, "REST/HTTPS")
-    Rel(mobile, gateway, "REST/HTTPS")
-    Rel(gateway, security, "Routes requests")
-    Rel(gateway, customerSvc, "Routes requests")
-    Rel(gateway, booking, "Routes requests")
-    Rel(gateway, operations, "Routes requests")
-    Rel(gateway, payment, "Routes requests")
-    Rel(gateway, notification, "Routes requests")
-    Rel(security, sqlserver, "Owns security and audit schemas")
-    Rel(customerSvc, sqlserver, "Owns customer schema")
-    Rel(booking, sqlserver, "Owns catalog and booking schemas")
-    Rel(operations, sqlserver, "Owns execution schema")
-    Rel(payment, sqlserver, "Owns promotion and payment schemas")
-    Rel(notification, sqlserver, "Owns notification schema")
-    Rel(security, rabbit, "Publishes security.user_registered")
-    Rel(customerSvc, rabbit, "Consumes security.user_registered")
-    Rel(booking, rabbit, "Publishes booking events")
-    Rel(operations, rabbit, "Publishes execution events, consumes booking.confirmed")
-    Rel(payment, rabbit, "Publishes payment, coupon and loyalty events")
-    Rel(notification, rabbit, "Consumes notification events")
-    Rel(security, smtp, "Password-recovery code")
-    Rel(notification, smtp, "Welcome, booking and reminder emails")
-    Rel(booking, customerSvc, "Validates vehicles (REST, user token)")
-    Rel(customerSvc, security, "Reads the user's profile (REST, user token)")
-    Rel(notification, security, "Reads email/name (REST, internal key)")
-    Rel(operations, booking, "Reads bookings, moves their status (REST, user token)")
-    Rel(operations, security, "Reads operator accounts and contacts (REST, admin token or internal key)")
-    Rel(payment, booking, "Reads booking total and status (REST, user token)")
+    classDef person fill:#08427b,color:#fff,stroke:#052e56
+    classDef ext fill:#999,color:#fff,stroke:#6b6b6b
 ```
+
+| Container | Responsibility | Schemas | Messaging |
+|---|---|---|---|
+| security-service | Identity, roles, sessions, preferences and audit | `security`, `audit` | Publishes `security.user_registered` |
+| customer-service | Customers, vehicles and loyalty display copy | `customer` | Consumes `security.user_registered` |
+| booking-service | Catalog, prices, shop schedule and bookings | `catalog`, `booking` | Publishes booking events |
+| operations-service | Operators, assignment, execution and ratings | `execution` | Publishes execution events, consumes `booking.confirmed` |
+| payment-service | Payments, receipts, promotions and loyalty ledger | `payment`, `promotion` | Publishes payment, coupon and loyalty events |
+| notification-service | In-app notifications, push, email and booking reminders | `notification` | Consumes the notification events |
+
+| REST call between services | Credential |
+|---|---|
+| booking → customer: validates vehicles | User token |
+| customer → security: reads the user's profile | User token |
+| notification → security: reads email and name | Internal key |
+| operations → booking: reads bookings, moves their status | User token or internal key |
+| operations → security: reads operator accounts and contacts | Admin token or internal key |
+| payment → booking: reads booking total and status | User token |
 
 ## 5. Communication
 
