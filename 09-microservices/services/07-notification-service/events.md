@@ -8,7 +8,7 @@ Queue `notification-service.events` bound to `carwash.events` (DLQ `notification
 | Routing key | Event | Notification | Email |
 |---|---|---|---|
 | `security.user_registered` | `UserRegistered` | `USER_WELCOME` | yes (address in the event) |
-| `booking.created` | `BookingCreated` | `BOOKING_CREATED` | yes |
+| `booking.created` | `BookingCreated` | `BOOKING_CREATED` (bound and handled, but no service publishes it today: a booking is confirmed when it is created) | yes |
 | `booking.confirmed` | `BookingConfirmed` | `BOOKING_CONFIRMED` + schedules reminders | yes |
 | `booking.cancelled` | `BookingCancelled` | `BOOKING_CANCELLED` + cancels reminders | yes |
 | `execution.operator_assigned` | `OperatorAssigned` | `OPERATOR_ASSIGNED` | no |

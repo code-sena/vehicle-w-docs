@@ -11,12 +11,12 @@
 |------|-----------------|
 | [`guidelines.md`](./guidelines.md) | Paths, status codes, error format (RFC 9457 + `code`), bodies, pagination |
 | [`authentication.md`](./authentication.md) | JWT, roles, public endpoints, service-to-service credentials |
-| `contracts/openapi/security-service.yaml` | Accounts, login, recovery, profile, preferences, user admin |
+| `contracts/openapi/security-service.yaml` | Accounts, login, recovery, profile, address, preferences, closing one's own account, user admin, roles and permissions |
 | `contracts/openapi/customer-service.yaml` | Vehicle types, client vehicles, admin vehicle lookup |
 | `contracts/openapi/booking-service.yaml` | Catalog, schedule, establishment, bays, availability, bookings |
-| `contracts/openapi/operations-service.yaml` | Operators, shifts, absences, assignment and candidates, operator services, ratings |
-| `contracts/openapi/payment-service.yaml` | Payment accounts with QR, payments with receipt, admin review, manual payments, payment methods |
-| `contracts/openapi/notification-service.yaml` | Inbox, unread count, push tokens, admin notifications |
+| `contracts/openapi/operations-service.yaml` | Operators and their profiles, shifts, absences, assignment and candidates, operator services, ratings, inspection report (admin and public link) |
+| `contracts/openapi/payment-service.yaml` | Payment accounts with QR, payments with receipt, admin review, manual payments, refunds, payment methods, promotions, loyalty balance and coupon redemption |
+| `contracts/openapi/notification-service.yaml` | Inbox, unread count, push tokens, admin notifications, internal app-update notice |
 | `contracts/openapi/api-gateway.yaml` | Gateway health and routing table |
 | `contracts/openapi/_shared.yaml`, `_template-service.yaml` | Templates, not contracts |
 

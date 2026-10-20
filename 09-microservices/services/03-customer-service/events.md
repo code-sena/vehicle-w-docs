@@ -11,7 +11,8 @@ Invalid messages go straight to the dead-letter queue; other failures are retrie
 ## Published
 
 None on RabbitMQ yet. The domain raises `CustomerProvisioned`, `VehicleRegistered`,
-`VehicleUpdated` and `VehicleRemoved`, which today are only logged (no consumer needs them).
+`VehicleUpdated`, `VehicleRemoved` and `LoyaltyPointsChanged`, which today are only logged by
+`LoggingDomainEventPublisher` (no consumer needs them).
 
 ## Synchronous calls
 

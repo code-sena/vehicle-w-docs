@@ -44,9 +44,9 @@ the 1-hour lifetime; stated in `05-architecture/security-threat-model.md`).
 
 | Role | Can |
 |---|---|
-| `CLIENT` | Own profile, own vehicles, catalog, availability, own bookings (create, change, cancel before start), own notifications |
-| `OPERATOR` | Own profile and notifications (operator features arrive with operations-service) |
-| `ADMIN` | Everything under `/api/v1/admin/**`: users, all vehicles, all bookings and their status, catalog and prices, schedule, bays, manual notifications |
+| `CLIENT` | Own profile, own vehicles, catalog, availability, own bookings (create, change, cancel before start), own payments, coupons and loyalty points, rating of own completed bookings (`/api/v1/ratings/**`), own notifications |
+| `OPERATOR` | Own profile and notifications, the services assigned to them (`/api/v1/operator/**`: list, start, finish, their ratings), and the vehicle lookup `GET /api/v1/admin/vehicles` |
+| `ADMIN` | Everything under `/api/v1/admin/**`: users, roles and permissions, all vehicles, all bookings and their status, catalog and prices, schedule, bays, business data, operators and assignments, inspection reports, payments, payment accounts, promotions, manual notifications; also `/api/v1/operator/bookings/**` in booking-service |
 
 Roles are fixed (ADR-010). Ownership is checked inside each service: a client asking for another
 client's booking or vehicle gets **404** (not 403), so the API does not reveal that it exists.
@@ -60,6 +60,8 @@ client's booking or vehicle gets **404** (not 403), so the API does not reveal t
 | security | `POST /api/v1/auth/register`, `/auth/login`, `/auth/password/forgot`, `/auth/password/verify`, `/auth/password/reset` |
 | customer | `GET /api/v1/vehicle-types` |
 | booking | `GET /api/v1/catalog/**`, `/api/v1/schedule/**`, `/api/v1/establishment` (landing page) |
+| operations | `GET /api/v1/public/inspections/{token}` and its photos (published inspection report, opened from the link) |
+| payment | `GET /health`, `/actuator/health` |
 | all | `/actuator/health`, `/actuator/info`; Swagger UI only with the `dev` profile (disabled by default) |
 
 Everything else under `/api/v1/**` needs a token; `/api/v1/admin/**` needs `ADMIN`.
@@ -70,8 +72,10 @@ Everything else under `/api/v1/**` needs a token; `/api/v1/admin/**` needs `ADMI
 
 | Call | Credential |
 |---|---|
-| booking → customer, customer → security | The user's JWT, forwarded |
-| notification → security `/internal/v1/users/{id}/contact` | Header `X-Internal-Key` = `INTERNAL_API_KEY`; separate filter chain; never routed by the gateway (ADR-011 §8) |
+| booking → customer, customer → security, operations → booking and security, payment → booking | The user's JWT, forwarded |
+| notification → security `/internal/v1/users/{id}/contact` and `/internal/v1/users/admins` | Header `X-Internal-Key` = `INTERNAL_API_KEY`; separate filter chain; never routed by the gateway (ADR-011 §8) |
+| operations → booking `/internal/v1/bookings`, operations → security `/internal/v1/users/{id}/contact` (automatic assignment, no user) | `X-Internal-Key` |
+| `deploy/publish-apk.sh` → notification `/internal/v1/notifications/app-update` | `X-Internal-Key`, from inside the Docker network |
 
 ---
 

@@ -15,7 +15,7 @@
 | Stack | Spring Boot 4 · Java 21 · Maven · hexagonal (ADR-007) |
 | DB engine | SQL Server — schemas `security`, `audit` (Liquibase, changelog table `DATABASECHANGELOG_SECURITY`) |
 | Communicates with | RabbitMQ (publishes `security.user_registered`), SMTP (password recovery email) |
-| Consumed by | Web, mobile, customer-service (`GET /users/me`), notification-service (`/internal/**`) |
+| Consumed by | Web, mobile, customer-service (`GET /users/me`), operations-service (`GET /admin/users?role=OPERATOR`, `/internal/**`), notification-service (`/internal/**`) |
 
 ---
 
@@ -35,11 +35,15 @@
   The new password cannot be the current one (`400 SAME_PASSWORD`, checked before the code is spent, so the
   user can try again with another one).
 - Profile: read/update name and phone, the contact address (`security.person_address`, ADR-010; empty
-  deletes it), change email (asks for the password), change password, deactivate the own account,
-  notification preferences.
+  deletes it), change email (asks for the password), change password, close the own account (asks for
+  the password and closes every session; an administrator cannot close their own account, `403
+  CANNOT_DISABLE_OWN_ACCOUNT`), notification preferences.
 - Keep each account's registration date (`app_user.created_at`, migration 036), returned in the users
   list as `createdAt`.
-- Administration: list accounts (by role, paginated), create accounts, activate/deactivate.
+- Administration: list accounts (by role, paginated), create accounts with their role (fixed at
+  creation; there is no role change), activate/deactivate (no admin account can be deactivated, and an
+  admin cannot deactivate their own account; deactivating closes the user's sessions), and edit the
+  permissions of each fixed role (informative: authorization still uses the role in the JWT).
 - Publish `UserRegistered` after commit (customer-service creates the client profile,
   notification-service sends the welcome email).
 - Serve the internal contact endpoint for notification-service (ADR-011 §8). operations-service also

@@ -7,7 +7,7 @@ Schema `customer` in `LavaRapido` (ADR-003/ADR-009). Full DDL: `lavarapido-6-ser
 | Table | Purpose |
 |---|---|
 | `customer.vehicle_type` | 6 fixed types (ids 1–6: `CAR`, `SEDAN`, `SUV`, `PICKUP`, `TRUCK`, `MOTO`) with `size_factor` (0.80–1.35, a suggestion for pricing) |
-| `customer.customer` | Client profile: `person_id` (unique), `user_id` (unique, the JWT `sub`), display `loyalty_points`, `customer_since` |
+| `customer.customer` | Client profile: `person_id` (unique), `user_id` (unique, the JWT `sub`), `loyalty_points` (planned display copy, not updated by any flow today), `customer_since` |
 | `customer.customer_vehicle` | Vehicle: plate (stored clean and upper-case), type, brand, model, color; soft delete with `deleted_at` |
 
 Rules enforced by the database:

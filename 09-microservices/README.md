@@ -14,11 +14,12 @@
 | [`services/02-security-service/`](./services/02-security-service/) | Accounts, roles, JWT, recovery, preferences, internal contact API |
 | [`services/03-customer-service/`](./services/03-customer-service/) | Client profiles and vehicles |
 | [`services/04-booking-service/`](./services/04-booking-service/) | Catalog, prices, schedule, bays, availability, bookings |
-| [`services/07-notification-service/`](./services/07-notification-service/) | Inbox, push, email, booking reminders |
+| [`services/05-operations-service/`](./services/05-operations-service/) | Operators, shifts, absences, assignment, execution, ratings, inspection report |
+| [`services/06-payment-service/`](./services/06-payment-service/) | Payment accounts, payments, receipts, refunds, promotions, loyalty points (.NET 8) |
+| [`services/07-notification-service/`](./services/07-notification-service/) | Inbox, push, email, booking reminders, staff alerts |
 | `_template/service/` | Starting point for a new service folder |
 
-Numbers follow the service decomposition (ADR-009): `05` operations-service and `06`
-payment-service will get their folders when they are merged.
+Numbers follow the service decomposition (ADR-009).
 
 ## Folder structure per service
 

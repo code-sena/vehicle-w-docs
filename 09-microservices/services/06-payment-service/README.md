@@ -15,7 +15,7 @@
 | Repository | `lavarapido-payment-service` |
 | Stack | **.NET 8 · ASP.NET Core · EF Core** · layers Domain / Application / Infrastructure / Api (same hexagonal idea as ADR-007) |
 | DB engine | SQL Server — schemas `payment`, `promotion` (Liquibase run by Docker, changelog table `DATABASECHANGELOG_PAYMENT`) |
-| Communicates with | booking-service (REST, with the caller's token) |
+| Communicates with | booking-service (REST, with the caller's token), RabbitMQ (publishes payment, coupon and loyalty events) |
 | Consumed by | Web, mobile |
 
 This is the only service that is not Spring Boot. It keeps the same contract as the others: JWT
@@ -30,22 +30,32 @@ reads `lavarapido-infra/.env`.
   `TRANSFERENCIA`) with holder, number, QR image and instructions. Clients only see active accounts
   of methods that require a receipt.
 - **QR payment with receipt (ADR-008):** the client pays from their bank app and reports the
-  payment with the receipt image. The amount is the booking total returned by booking-service,
-  never a value sent by the browser. The payment goes straight to `IN_REVIEW`.
+  payment with the receipt image. The amount is the booking total returned by booking-service minus
+  the coupons already applied (`PaymentPolicy.AmountDue`), never a value sent by the browser. The
+  payment goes straight to `IN_REVIEW`. A transaction reference already used on another booking is
+  rejected (409 `TRANSACTION_REFERENCE_REUSED`).
 - **Review:** the admin approves or rejects (with a reason, max 200 characters) a payment in
-  review, and can refund an approved one.
+  review, and can refund an approved one (the loyalty points of that booking are reversed).
 - **Manual payment:** the admin registers a payment received at the shop (cash or a verified
-  transfer); it is approved at once with the booking total.
+  transfer); it is approved at once with the amount due.
+- **Promotions (coupons):** the admin creates, edits, pauses and deletes (soft delete) coupons with a
+  percentage or fixed discount, dates, limits and `RequiredPoints`, and sees their use
+  (`/admin/promotions/metrics`: redemptions and savings of the current promotions). The client sees
+  the coupons in force, marked unlocked or locked by points, and applies one to a booking before
+  paying (`POST /api/v1/loyalty/redeem`).
+- **Loyalty points:** an approved payment credits the points of the booking's services to the ledger
+  (`EARNED`), a refund reverses them (`REVERSED`); points are never spent. The client reads the
+  balance with `GET /api/v1/loyalty/balance`.
+- Publish `payment.confirmed`, `payment.rejected`, `payment.refunded`, `payment.promotion_redeemed`
+  and `payment.loyalty_points_earned` after commit ([events.md](./events.md)).
 - Only bookings `CONFIRMED`, `IN_PROGRESS` or `COMPLETED` can be paid, and a booking has at most
   one approved payment (unique index).
 
 ## Out of scope (what it does NOT do)
 
 - Does not compute prices: the total comes from booking-service.
-- Promotions and loyalty points: the tables exist (`promotion.*`, `payment.loyalty_*`) but there are
-  no endpoints yet.
-- Does not publish events yet: the domain raises `PaymentApproved`, `PaymentRejected`,
-  `PaymentRefunded`, but they are not sent to RabbitMQ (see [events.md](./events.md)).
+- Does not use `promotion.promotion_service` or `promotion.promotion_customer` yet (the tables exist).
+- Does not consume events.
 - No file storage: QR and receipt are stored as images (data URL) in the database.
 
 ---
@@ -61,13 +71,19 @@ token, like the Java services (`cross-cutting.md` §4).
 | GET | `/api/v1/payment-accounts` | token |
 | POST | `/api/v1/payments` (report payment with receipt) | CLIENT |
 | GET | `/api/v1/payments/me` (`?from=&to=` booking dates, `?service=`; newest booking first — RF-015) | CLIENT |
+| GET | `/api/v1/payments/{id}` (own payment) | CLIENT |
 | GET | `/api/v1/payments/me/bookings` (each booking: latest payment status and `payable`, so the screens do not repeat the rule) | CLIENT |
 | GET | `/api/v1/admin/payments` (`?status=PENDING\|IN_REVIEW\|APPROVED\|REJECTED\|REFUNDED`) | ADMIN |
+| GET | `/api/v1/admin/payments/{id}` · `/admin/payments/amount-due?bookingId=` | ADMIN |
 | POST | `/api/v1/admin/payments` (manual payment) | ADMIN |
 | POST | `/api/v1/admin/payments/{id}/approve` · `/reject` · `/refund` | ADMIN |
 | GET · POST | `/api/v1/admin/payment-accounts` | ADMIN |
 | PUT | `/api/v1/admin/payment-accounts/{id}` | ADMIN |
 | GET | `/api/v1/admin/payment-methods` | ADMIN |
+| GET · POST | `/api/v1/admin/promotions` · GET `/admin/promotions/metrics` | ADMIN |
+| PUT · DELETE | `/api/v1/admin/promotions/{id}` · PATCH `/admin/promotions/{id}/active` | ADMIN |
+| GET | `/api/v1/loyalty/balance` · `/loyalty/promotions` | CLIENT |
+| POST | `/api/v1/loyalty/redeem` (`{bookingId, code}`) | CLIENT |
 | GET | `/health`, `/actuator/health` | public — check SQL Server and answer 503 `DOWN` within 3 s when it does not respond |
 
 Through the gateway these paths are routed to `:3005` (`ROUTE_PAYMENT_URL`).
@@ -94,6 +110,7 @@ dotnet run --project src/PaymentService.Api      # http://localhost:3005 — Swa
 | `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE` | —, `lavarapido-security-service`, `lavarapido-api` | Verify tokens (the service does not start without `JWT_SECRET`) |
 | `BOOKING_SERVICE_URL` | `http://localhost:3003/api/v1` | Booking total, status and owner |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:4200` | CORS |
+| `MESSAGING_ENABLED`, `RABBITMQ_*` | `false` | Publish events (otherwise a null publisher drops them) |
 
 The repository also has its own `docker-compose.yml` (SQL Server on `1434`, database
 `lavado_vehicular`) to test only the migrations. The running service uses the shared `LavaRapido`

@@ -33,9 +33,14 @@
   saved and up to 5 alternative times of the same day are returned (409 `SLOT_UNAVAILABLE`) with
   the `reason`: `CLOSED_DAY`, `OUTSIDE_HOURS`, `TIME_PASSED` or `NO_FREE_BAY`
   (`AvailabilityPolicy.whyUnavailable`). The code stays the same so older apps keep working.
-  A vehicle cannot hold two overlapping bookings. Clients can reschedule or cancel only before
-  the start time (RF-007); the admin moves bookings through `IN_PROGRESS`, `COMPLETED`, `NO_SHOW`
-  or `CANCELLED`.
+  A vehicle cannot hold two overlapping bookings. A client can cancel their booking only before the
+  start time (RF-007); the client is not asked for a reason, the booking stores `CUSTOMER_REQUEST`.
+  The admin reschedules bookings (`PUT /admin/bookings/{id}`, CU29), books for a client, and moves
+  bookings through `IN_PROGRESS`, `COMPLETED`, `NO_SHOW` or `CANCELLED` (choosing a reason from
+  `cancellation_reason`; `CUSTOMER_REQUEST` when none is sent). The API also has a client reschedule
+  (`PUT /bookings/{id}`), but the web and the app do not use it.
+- **Schedule history:** every change of the weekly hours, exceptions and bays is recorded in
+  `booking.schedule_history` (`GET /api/v1/admin/schedule/history`).
 - **Establishment:** the shop's public data (name, address, contact).
 - Publish `BookingConfirmed` / `BookingCancelled` after commit. A new booking may carry the client's
   `preferredOperatorId` (RF-010): it is not stored, it travels in the event for operations-service.
@@ -61,8 +66,9 @@
 | GET | `/api/v1/bookings/availability?date=&vehicleTypeId=&serviceIds=` | token |
 | POST | `/api/v1/bookings` | client |
 | GET | `/api/v1/bookings/me` · `/bookings/{id}` · `/bookings/cancellation-reasons` | client |
-| PUT · POST | `/api/v1/bookings/{id}` (reschedule) · `/bookings/{id}/cancel` | client |
+| PUT · POST | `/api/v1/bookings/{id}` (reschedule, not used by the web or the app) · `/bookings/{id}/cancel` (no body needed, reason `CUSTOMER_REQUEST`) | client |
 | GET · POST | `/api/v1/admin/bookings` (`?from=&to=&status=`) | ADMIN |
+| GET | `/api/v1/admin/schedule/history` (changes of hours, exceptions and bays) | ADMIN |
 | GET | `/api/v1/admin/bookings/day-summary` (`?date=`, default today in the shop zone): bookings of the day vs the day before, for the admin home | ADMIN |
 | GET · PUT | `/api/v1/admin/bookings/{id}` | ADMIN |
 | PATCH | `/api/v1/admin/bookings/{id}/status` | ADMIN |

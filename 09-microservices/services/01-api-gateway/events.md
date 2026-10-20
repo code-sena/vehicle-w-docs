@@ -7,8 +7,8 @@
 | Published | None |
 | Consumed | None |
 
-Business events are published by the services behind it (security, booking) and consumed by
-customer and notification. See:
+Business events are published by the services behind it (security, booking, operations, payment)
+and consumed by customer, operations and notification. See:
 
 - `09-microservices/services/02-security-service/events.md`
 - `09-microservices/services/04-booking-service/events.md`

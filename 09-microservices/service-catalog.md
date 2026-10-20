@@ -27,10 +27,13 @@
     operations ──▶ booking   (bookings, status IN_PROGRESS / COMPLETED)
     operations ──▶ security  (operator accounts)
     payment    ──▶ booking   (booking total, status, owner)
-    notification ──▶ security (/internal, X-Internal-Key: email)
+  REST with X-Internal-Key (no user, /internal/**):
+    notification ──▶ security (contact data, admins)
+    operations   ──▶ booking, security (automatic assignment)
+    deploy/publish-apk.sh ──▶ notification (app-update notice)
 
   Events on RabbitMQ (exchange carwash.events):
-    security, booking, operations ──publish──▶ RabbitMQ ──▶ notification, customer
+    security, booking, operations, payment ──publish──▶ RabbitMQ ──▶ customer, operations, notification
 
   All services share one SQL Server database (LavaRapido), one schema owner per service.
 ```
@@ -45,9 +48,9 @@
 | 02 | `security-service` | Accounts, login (JWT HS256), roles, profile, password recovery | 3001 | `security`, `audit` | 🟢 Built |
 | 03 | `customer-service` | Client profile and vehicles | 3002 | `customer` | 🟢 Built |
 | 04 | `booking-service` | Catalog and prices, schedule, bays, availability, bookings | 3003 | `catalog`, `booking` | 🟢 Built |
-| 05 | `operations-service` | Operators, shifts and absences, assignment, service execution, ratings | 3004 | `execution` | 🟢 Built |
-| 06 | `payment-service` | Payment accounts with QR, payments with receipt, admin review | 3005 | `payment`, `promotion` | 🟡 Partial (promotions, loyalty and events pending; not in Docker Compose yet) |
-| 07 | `notification-service` | Inbox, push (Expo), email, booking reminders | 3006 | `notification` | 🟢 Built |
+| 05 | `operations-service` | Operators, shifts and absences, automatic and manual assignment, service execution, ratings, inspection report | 3004 | `execution` | 🟢 Built |
+| 06 | `payment-service` | Payment accounts with QR, payments with receipt, admin review, refunds, promotions, loyalty points | 3005 | `payment`, `promotion` | 🟢 Built |
+| 07 | `notification-service` | Inbox, push (Expo), email, booking reminders, staff alerts, app-update notice | 3006 | `notification` | 🟢 Built |
 
 Common stack: Spring Boot 4 · Java 21 · Maven · hexagonal architecture (ADR-007) · Liquibase ·
 RFC 9457 errors with a stable `code` · `/actuator/health` · Swagger UI in the `dev` profile.
@@ -83,11 +86,15 @@ container instead of on startup.
 | booking | RabbitMQ | Events `booking.confirmed`, `booking.cancelled` | Asynchronous | Booking lifecycle |
 | customer | RabbitMQ | consumes `security.user_registered` | Asynchronous | Create the client profile |
 | operations | booking | HTTP/REST `/admin/bookings`, `/operator/bookings`, `PATCH /operator/bookings/{id}/status`, `/bookings/{id}` (caller's token) | Synchronous | Bookings to assign; move them to `IN_PROGRESS` / `COMPLETED`; the client's booking before rating |
-| operations | security | HTTP/REST `GET /admin/users?role=OPERATOR` (admin's token) | Synchronous | Operator accounts and names |
-| operations | RabbitMQ | Events `execution.operator_assigned`, `execution.service_started`, `execution.service_completed` | Asynchronous | Execution lifecycle |
+| operations | security | HTTP/REST `GET /admin/users?role=OPERATOR` (admin's token); `GET /internal/v1/users/{id}/contact` (`X-Internal-Key`) | Synchronous | Operator accounts and names; whether an operator's account is active during the automatic assignment |
+| operations | booking | HTTP/REST `GET /internal/v1/bookings/{id}`, `/internal/v1/bookings?from=&to=` (`X-Internal-Key`) | Synchronous | Booking data for the automatic assignment (no user) |
+| operations | RabbitMQ | consumes `booking.confirmed` | Asynchronous | Automatic operator assignment |
+| operations | RabbitMQ | Events `execution.operator_assigned`, `execution.service_started`, `execution.service_completed`, `execution.inspection_shared` | Asynchronous | Execution lifecycle and inspection report |
+| payment | RabbitMQ | Events `payment.confirmed`, `payment.rejected`, `payment.refunded`, `payment.promotion_redeemed`, `payment.loyalty_points_earned` | Asynchronous | Payment, coupon and loyalty facts |
 | payment | booking | HTTP/REST `GET /bookings/{id}`, `/bookings/me`, `/admin/bookings/{id}` (caller's token) | Synchronous | Booking total, status and owner (the browser never sends the amount) |
 | notification | RabbitMQ | consumes user, booking, execution and payment events | Asynchronous | Inbox, push, email, reminders |
-| notification | security | HTTP/REST `GET /internal/v1/users/{id}/contact` (`X-Internal-Key`) | Synchronous | Current email for booking emails and reminders (ADR-011 §8) |
+| notification | security | HTTP/REST `GET /internal/v1/users/{id}/contact`, `/internal/v1/users/admins` (`X-Internal-Key`) | Synchronous | Current email, language and switches for emails and reminders; the active admins for staff alerts (ADR-011 §8) |
+| `deploy/publish-apk.sh` | notification | HTTP/REST `POST /internal/v1/notifications/app-update` (`X-Internal-Key`) | Synchronous | Tell the app users a new APK is published |
 
 ---
 
@@ -101,7 +108,7 @@ reading another schema.
 | Person, account, roles, session | security-service | JWT claims; `GET /users/me`; `/internal/.../contact`; `UserRegistered` event |
 | Client profile, vehicles, vehicle types | customer-service | REST (`/vehicles`, `/admin/vehicles`, `/vehicle-types`) |
 | Services, prices, schedule, bays, bookings | booking-service | REST; `BookingConfirmed` / `BookingCancelled` events |
-| Operators, shifts, absences, executions, ratings | operations-service | REST; `OperatorAssigned` / `ServiceStarted` / `ServiceCompleted` events |
+| Operators, shifts, absences, executions, ratings, inspection reports | operations-service | REST; `OperatorAssigned` / `ServiceStarted` / `ServiceCompleted` / `InspectionShared` events |
 | Payment accounts, payments, receipts, promotions, loyalty ledger | payment-service | REST; `payment.confirmed` / `rejected` / `refunded` / `promotion_redeemed` / `loyalty_points_earned` events |
 | Notifications, devices, reminders | notification-service | REST (own inbox only) |
 

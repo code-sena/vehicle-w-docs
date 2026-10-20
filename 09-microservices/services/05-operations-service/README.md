@@ -11,7 +11,7 @@
 |-------|-------|
 | Number in catalog | 05 |
 | Local port | 3004 (`OPERATIONS_PORT`) |
-| Repository | `lavarapido-operations-service` |
+| Repository | `lavarapido-operation-service` |
 | Stack | Spring Boot 4 · Java 21 · Maven · hexagonal (ADR-007) |
 | DB engine | SQL Server — schema `execution` (Liquibase, changelog table `DATABASECHANGELOG_OPERATIONS`) |
 | Communicates with | booking-service (REST, with the caller's token), security-service (REST: admin token for operators, internal key for first names in ratings), RabbitMQ (publishes execution events) |
@@ -30,7 +30,8 @@
   `OPERATOR_NOT_FOUND`, so a token of an account that does not exist leaves no rows behind. Without
   the internal key or an answer it keeps creating the row as before.
 - **Shifts and absences:** one weekly shift per day (`operator_availability`, replaced as a whole)
-  and dated absences (`operator_absence`) that cannot overlap.
+  and dated absences (`operator_absence`) that cannot overlap and cannot start before today (400
+  `ABSENCE_IN_PAST`).
 - **Assignment (RF-008/009):** the admin assigns or changes the operator of a booking while it is
   `SCHEDULED` or `CONFIRMED` and its time has not passed (409 `BOOKING_IN_PAST`, ADR-014 §8). `AssignmentPolicy` checks: operator active, on shift for the whole
   booking, not absent, and not busy with another booking at the same time. The candidates endpoint
@@ -68,7 +69,7 @@
   active ones, available today (active, on shift today and with no absence touching the day), absent
   today, bookings finished this week with the change against the previous week, and the weighted average
   rating. The screens only show it.
-- Publish `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` after commit.
+- Publish `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` and `InspectionShared` after commit.
 
 ## Out of scope (what it does NOT do)
 
@@ -117,7 +118,7 @@ Full contract: [`07-api/contracts/openapi/operations-service.yaml`](../../../07-
 ## How to run it locally
 
 ```bash
-cd lavarapido-operations-service
+cd lavarapido-operation-service
 ./mvnw spring-boot:run           # http://localhost:3004 — Swagger: /swagger-ui.html (dev profile)
 ```
 

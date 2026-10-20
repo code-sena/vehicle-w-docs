@@ -35,7 +35,8 @@
 - Does not store personal data (name, email, phone): those live in `security.person`.
 - Does not compute prices: `size_factor` is only a suggestion for the admin; prices live in
   `catalog.service_price` (booking-service).
-- Does not hold the real loyalty balance: `loyalty_points` is a display copy (payment-service owns the ledger).
+- Does not hold the real loyalty balance: `loyalty_points` was planned as a display copy, but nothing
+  updates it today; payment-service owns the ledger and answers the balance.
 
 ---
 
@@ -46,7 +47,7 @@
 | GET | `/api/v1/vehicle-types` | public |
 | GET · POST | `/api/v1/vehicles` | client token (own vehicles only) |
 | GET · PUT · DELETE | `/api/v1/vehicles/{id}` | client token — another client's vehicle is 404 |
-| GET | `/api/v1/admin/vehicles?ids=1,2` or `?plate=ABC123` | ADMIN — vehicle + `ownerUserId` |
+| GET | `/api/v1/admin/vehicles?ids=1,2` or `?plate=ABC123` | ADMIN or OPERATOR — vehicle + `ownerUserId` |
 
 Full contract: [`07-api/contracts/openapi/customer-service.yaml`](../../../07-api/contracts/openapi/customer-service.yaml).
 

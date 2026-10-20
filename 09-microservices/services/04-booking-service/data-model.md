@@ -8,7 +8,7 @@ section 3 (11 tables), plus the ADR-010 changes below.
 | Table | Purpose |
 |---|---|
 | `catalog.service_category` | `LAVADO`, `POLICHADO`, `DETALLADO`, `INTERIOR`, `PAQUETES` (combos are services in "Paquetes", ADR-010) |
-| `catalog.service` | Service without price (2NF): code, name, description, category, active |
+| `catalog.service` | Service without price (2NF): code, name, description, category, active, `loyalty_points` (022) |
 | `catalog.service_price` | Price + estimated minutes per (service, vehicle type), `valid_from`/`valid_to`. **Immutable** (trigger `tr_service_price_immutable`) |
 | `booking.establishment` | The shop (single row): contact data plus legal, tax and channel data edited in Settings (032) |
 | `booking.business_hour` | One row per weekday (1 = Monday … 7 = Sunday), `is_active`, optional `break_starts_at`/`break_ends_at` |
@@ -19,6 +19,7 @@ section 3 (11 tables), plus the ADR-010 changes below.
 | `booking.cancellation_reason` | Catalog of cancellation reasons |
 | `booking.booking` | Vehicle, bay, start/end (UTC), status, who booked, reason, notes. No total column: it is computed from its lines |
 | `booking.booking_service` | Booking lines; each points to the `service_price` row it was charged with |
+| `booking.schedule_history` | Who changed the weekly hours, an exception or a bay, and when (021) |
 
 Database safety nets:
 - `tr_booking_bay_overlap`: two active bookings cannot overlap on the same bay.
@@ -38,7 +39,9 @@ Database safety nets:
 
 Liquibase, changelog table `DATABASECHANGELOG_BOOKING`:
 `005-create-booking-schemas` (tables + triggers) · `018-booking-adr-010` ·
+`021-booking-schedule-history` · `022-booking-catalog-loyalty-points` · `024-booking-revert-bay-operator` ·
 seeds `103-seed-catalog` (categories, BASIC/PREMIUM/FULL with prices for the 6 vehicle types),
 `104-seed-booking-catalogs` (statuses, cancellation reasons), `109-seed-establishment-schedule`
 (shop, weekly hours, 4 bays), `032-booking-establishment-business-data` (legal, tax and channel
-columns of the shop) and `110-seed-establishment-business-data` (their example values).
+columns of the shop), `110-seed-establishment-business-data` (their example values) and
+`111-clear-example-business-data` (empties them again so the real business fills them in).

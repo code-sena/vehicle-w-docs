@@ -12,7 +12,8 @@ issuer and audience; RFC 9457 errors with `code`; `/actuator/health`; reads
 ## The amount comes from booking-service
 
 **Decision:** When a payment is reported or registered, the amount is the booking total returned
-by booking-service with the caller's token. The browser never sends the amount.
+by booking-service with the caller's token minus the coupons already applied to it
+(`AmountDueCalculator`, never negative). The browser never sends the amount.
 
 ## Reported payments go straight to review
 
