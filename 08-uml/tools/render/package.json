@@ -1,0 +1,15 @@
+{
+  "name": "lavarapido-uml-render",
+  "private": true,
+  "description": "Exporta los diagramas mermaid de 08-uml con líneas rectas, codos de 90° y puentes en los cruces",
+  "scripts": {
+    "build": "esbuild entry.mjs --bundle --format=iife --minify --outfile=mermaid-elk.js",
+    "export": "node render.js ../../diagrams/exports ../../diagrams/source/*.md"
+  },
+  "devDependencies": {
+    "@mermaid-js/layout-elk": "0.2.3",
+    "esbuild": "0.24.2",
+    "mermaid": "11.17.2",
+    "playwright-core": "1.64.0"
+  }
+}
