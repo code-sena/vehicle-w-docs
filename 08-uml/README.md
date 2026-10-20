@@ -46,9 +46,10 @@ always the `.md` file; the images in `diagrams/exports/` are a copy for Word, PD
 - When a source changes, export the images again in the same PR:
   `cd 08-uml/tools/render && npm install && npm run build && npm run export`. It needs Node 22 and Edge
   (or `BROWSER=chrome`). The tool prints `REVISAR` for any diagram with a crossing or an overlap.
+- If a diagram still has a crossing, `node untangle.js <file.md> <block number>` tries other orders of
+  its declarations (same content) and keeps the first one with no crossings.
 - The 41 images were exported on 2026-10-20 with Mermaid 11.17.2 and ELK and checked one by one: no
-  syntax errors, no curved lines, no overlaps. Three diagrams (class-operations, class-payment and
-  erd-security) keep one crossing, drawn with a bridge.
+  syntax errors, no curved lines, no crossings and no overlaps.
 
 ---
 
