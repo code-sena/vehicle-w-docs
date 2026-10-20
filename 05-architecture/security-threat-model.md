@@ -1,6 +1,6 @@
 # Security Threat Model
 
-**Last updated:** 2026-09-24
+**Last updated:** 2026-10-20 (status column checked against the code)
 
 This threat model uses STRIDE for the current web/mobile, gateway, six-service, SQL Server and RabbitMQ architecture. It describes current mitigations and identifies risks that still require implementation work.
 
@@ -43,16 +43,16 @@ The browser/mobile client is untrusted. Service code validates authorization eve
 
 | Threat | Example | Current mitigation | Status |
 |---|---|---|---|
-| Spoofing | Stolen credentials used to log in | BCrypt passwords, JWT authentication, inactive accounts rejected | Implemented — **no login attempt limit yet** (RF-004b gap) |
-| Spoofing | Forged service-to-service identity | Forwarded user token (booking → customer, customer → security); `X-Internal-Key` on `/internal/**` (notification → security), not routed by the gateway | Implemented |
-| Tampering | Customer changes another customer's booking id | Ownership checks inside owning service | Required |
-| Tampering | Receipt reference reused | Unique transaction reference constraint | Data model |
-| Repudiation | User denies changing a booking | Audit trigger with user id and timestamps | Data model |
+| Spoofing | Stolen credentials used to log in | BCrypt passwords, JWT authentication, inactive accounts rejected, account locked 15 minutes after 5 failed attempts in 15 minutes (RF-004b) | Implemented |
+| Spoofing | Forged service-to-service identity | Forwarded user token (booking → customer, customer → security, operations → booking/security, payment → booking); `X-Internal-Key` on `/internal/**` (notification → security, operations → booking/security, APK script → notification), not routed by the gateway | Implemented |
+| Tampering | Customer changes another customer's booking id | Ownership checks inside owning service (booking-service answers 404 for a booking that is not the caller's) | Implemented |
+| Tampering | Receipt reference reused | Use-case check: a reference already used on another booking is rejected (409 `TRANSACTION_REFERENCE_REUSED`); the column has an index, not a unique constraint | Implemented |
+| Repudiation | User denies changing a booking | `created_by` / `updated_by` / `deleted_by` with timestamps on each row; `audit.audit_log` exists but nothing writes to it yet | Partial |
 | Information disclosure | Password/token appears in logs | Logging rules prohibit secrets | Design |
-| Information disclosure | User reads another user's payment | Role plus ownership checks | Required |
-| Denial of Service | Excessive requests | No public deployment/rate limiter currently | Accepted for scope |
-| Elevation of privilege | Customer calls administrator operation | Role checks in service | Required |
-| Elevation of privilege | Operator changes another operator's execution | Ownership check on `service_execution` | Required |
+| Information disclosure | User reads another user's payment | Role plus ownership checks (payment-service asks booking-service for the booking with the client's token) | Implemented |
+| Denial of Service | Excessive requests | No rate limiter; the Azure server only opens 80/443 (Caddy) and each container has a memory limit | Accepted for scope |
+| Elevation of privilege | Customer calls administrator operation | Role checks in each service (Spring Security rules by path, `[Authorize(Roles = ...)]` in payment-service) | Implemented |
+| Elevation of privilege | Operator changes another operator's execution | The operator starts or finishes only the service lines assigned to them (`OperationsService.myLines`), on a booking that booking-service returns for their token | Implemented |
 
 ## 4. Authentication
 
@@ -84,7 +84,7 @@ The system does not collect card data and does not integrate a payment gateway. 
 Controls include:
 
 - declared amount stored separately from amount due
-- transaction reference uniqueness for approved payments
+- a transaction reference cannot be reused on another booking
 - only one approved payment per booking
 - administrator review before approval
 - receipt content excluded from logs
@@ -99,7 +99,7 @@ The project handles personal data under the applicable Colombian data-protection
 
 RabbitMQ credentials must not be committed. Consumers must validate event structure before processing. Duplicate delivery must be expected.
 
-The current design does not define message-level encryption or a separate service mesh because the deployment is local and academic.
+The current design does not define message-level encryption or a separate service mesh: RabbitMQ is only reachable inside the Docker network, also on the Azure server.
 
 ## 9. Remaining risks
 
@@ -107,10 +107,10 @@ The current design does not define message-level encryption or a separate servic
 |---|---|---|
 | JWT secret shared by services is leaked | High | Environment variables; reconsider asymmetric signing before real deployment |
 | Event published after DB commit but service crashes before publish | Medium/High | Manual recovery; Outbox remains a future option |
-| Receipt storage is not yet defined | Medium | Decision required before implementation |
+| Receipts and inspection photos stored inside the database | Medium | Images only (no SVG, no external links), inspection photos up to 2 MB; a file storage is a future option |
 | SMTP credentials (Gmail app password) in `.env` | Medium | `.env` is git-ignored; never logged; rotate if shared |
-| Internal API key leaked | Medium | Only grants read of a user's email/name; separate from `JWT_SECRET`; rotate in `.env` |
-| Rate limiting is not implemented | Medium | Public production exposure is out of scope |
+| Internal API key leaked | Medium | Grants read of a user's contact data and of the admins list, read of bookings and the app-update notice; separate from `JWT_SECRET`; rotate in `.env` |
+| Rate limiting is not implemented | Medium | The Azure server is public; only the login has a limit (lockout) |
 
 ## References
 

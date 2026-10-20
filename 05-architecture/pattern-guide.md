@@ -1,6 +1,6 @@
 # Pattern Guide
 
-**Last updated:** 2026-10-04
+**Last updated:** 2026-10-20 (table checked against the code)
 
 This document distinguishes patterns that are part of the current architecture from patterns that are only proposals or alternatives. A pattern listed here is not automatically an implementation requirement.
 
@@ -14,13 +14,17 @@ This document distinguishes patterns that are part of the current architecture f
 | Repository / ports | Service persistence | Adopted | Isolates domain/application from SQL Server access |
 | Publish/Subscribe | RabbitMQ | Adopted | Decouples asynchronous reactions such as notifications |
 | Soft delete | Domain data | Adopted | Keeps operational history |
-| Optimistic locking | Domain data | Modeled, not enforced | `row_version` columns and triggers exist, but no service maps them with `@Version` yet |
+| Optimistic locking | Domain data | Enforced only in payment-service | `row_version` columns and triggers exist everywhere; EF Core in payment-service uses it as a concurrency token, the Java services do not map it with `@Version` yet |
 | Pessimistic schedule lock | booking-service | Adopted | `sp_getapplock` serialises booking creation/rescheduling so two clients cannot take the same bay; `tr_booking_bay_overlap` is the database safety net |
-| Idempotent consumer | customer, notification | Adopted | `notification.processed_event` stores handled `eventId`s; customer skips a profile that already exists |
-| Dead-letter queue | RabbitMQ consumers | Adopted | Invalid or repeatedly failing messages go to `<service>.events.dlq` |
-| Ports for external calls | booking, customer, notification | Adopted | REST clients to other services are output adapters behind a port (e.g. `CustomerDirectory`, `UserContactDirectory`) |
-| Shared-key internal API | security ← notification | Adopted | `/internal/**` routes protected by `X-Internal-Key`, never routed by the gateway (ADR-011 §8) |
-| Scheduler | notification | Adopted | `ReminderScheduler` sends due booking reminders |
+| Idempotent consumer | customer, operations, notification | Adopted | `notification.processed_event` stores handled `eventId`s; customer skips a profile that already exists; operations skips a booking that already has executions |
+| Dead-letter queue | customer and notification consumers | Adopted | Invalid or repeatedly failing messages go to `<service>.events.dlq`; the operations-service queue has none yet |
+| Ports for external calls | booking, customer, operations, payment, notification | Adopted | REST clients to other services are output adapters behind a port (e.g. `CustomerDirectory`, `BookingDirectory`, `IBookingDirectory`, `UserContactDirectory`) |
+| Shared-key internal API | security ← notification and operations, booking ← operations, notification ← APK script | Adopted | `/internal/**` routes protected by `X-Internal-Key`, never routed by the gateway (ADR-011 §8) |
+| Scheduler | notification | Adopted | `ReminderScheduler` sends due booking reminders and the alert for bookings without an operator |
+| Strategy + factory | payment-service | Adopted | `IDiscountStrategy` (`PercentageDiscountStrategy`, `FixedAmountDiscountStrategy`) chosen by `DiscountStrategyFactory` |
+| Factory method | payment-service | Adopted | `Payment.ReportWithReceipt` and `Payment.RegisterInPerson` create a payment already in the right state |
+| Unit of work | payment-service | Adopted | `EfUnitOfWork` commits the changes of one use case and fills the audit columns |
+| Command | notification-service | Adopted | `EmailDeliveryCommand` and `PushDeliveryCommand` run by `DeliveryInvoker` |
 
 ## 2. API Gateway
 
@@ -67,7 +71,7 @@ Business data uses `deleted_at` instead of physical deletion. Queries exclude de
 
 ## 7. Optimistic locking
 
-`row_version` is designed to prevent an update based on stale data from silently overwriting another update. **Status:** the column and its `tr_touch_*` trigger exist, but the services do not read it back yet (no `@Version` in the JPA entities), so today the last write wins. Booking conflicts are covered instead by the schedule lock.
+`row_version` is designed to prevent an update based on stale data from silently overwriting another update. **Status:** the column and its `tr_touch_*` trigger exist. payment-service checks it on every update (EF Core concurrency token); the Java services do not read it back yet (no `@Version` in the JPA entities), so there the last write wins. Booking conflicts are covered instead by the schedule lock.
 
 ```text
 Admin A reads version 4

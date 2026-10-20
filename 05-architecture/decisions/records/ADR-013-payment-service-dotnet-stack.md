@@ -94,6 +94,13 @@ PaymentService.Api ──► PaymentService.Application ──► PaymentService
 - Only the domain has tests; Application, Infrastructure and Api have none.
 - No container in `lavarapido-infra/docker-compose.yml` yet.
 
+*Status checked against the code on 2026-10-20:* the three last points and the health point are
+solved. payment-service publishes its events to `carwash.events` (`RabbitMqIntegrationEventPublisher`:
+`payment.confirmed`, `payment.rejected`, `payment.refunded`, `payment.promotion_redeemed`,
+`payment.loyalty_points_earned`), `/actuator/health` and `/health` check the database, there are
+Application unit tests and Infrastructure integration tests, and the service runs in Docker Compose
+(`payment-service`, after `payment-migrate`).
+
 **Impact on the system:**
 - Affected services: payment-service; api-gateway (route to `:3005`).
 - Documents updated: ADR-007 (note), `09-microservices/service-catalog.md`,

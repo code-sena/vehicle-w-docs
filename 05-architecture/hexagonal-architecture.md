@@ -1,6 +1,6 @@
 # Hexagonal Architecture
 
-**Last updated:** 2026-10-06
+**Last updated:** 2026-10-20
 
 The six backend services use the same internal architectural style: **hexagonal architecture (ports and adapters)**. Five of them are Java 21 and Spring Boot; `payment-service` is .NET 8 and applies the same idea in four projects (see section 13 and ADR-013).
 
@@ -31,7 +31,7 @@ Dependencies point inward. The domain does not depend on infrastructure.
 
 ## 2. Package structure
 
-Every built service (security, customer, booking, notification) follows this structure. Real
+Every Java service (security, customer, booking, operations, notification) follows this structure. Real
 example, `booking-service` (`com.lavarapido.booking`):
 
 ```text
@@ -55,27 +55,26 @@ src/main/java/com/lavarapido/booking/
     └── config/                 security, clock, beans
 ```
 
-Other services add adapters with the same rule: `in/messaging` (RabbitMQ listeners) in customer
-and notification, `in/scheduling` (reminder job) in notification, `out/identity` (REST client to
-security), `out/email` and `out/push` in notification. The dependency direction never changes.
+Other services add adapters with the same rule: `in/messaging` (RabbitMQ listeners) in customer,
+operations and notification, `in/scheduling` (reminder job) in notification, `out/identity` (REST
+client to security) in customer, operations and notification, `out/booking` (REST client to booking)
+in operations, `out/email` and `out/push` in notification. The dependency direction never changes.
 
 ## 3. Domain layer
 
 The domain contains business concepts and rules with no framework annotations.
 
-For the booking domain, examples include:
+For the booking domain, the real classes include:
 
-- `Booking`
-- `BookingService`
-- `TimeSlot`
-- `Money`
-- booking invariants
+- `Booking` (aggregate root, with `moveTo`, `cancel`, `reschedule`)
+- `BookingLine` and `BookingStatus`
+- `AvailabilityPolicy` (free times, free bay, alternatives)
 
-For operations, examples include:
+For operations:
 
-- `Operator`
-- `ServiceExecution`
-- availability and assignment rules
+- `Operator`, `WeeklyAvailability`, `Absence`
+- `ServiceExecution` and `InspectionReport`
+- `AssignmentPolicy`, `AutoAssignmentPolicy` and `StartPolicy`
 
 A domain class must not import `org.springframework.*` or JPA annotations.
 
@@ -101,7 +100,9 @@ public final class ConfirmBookingUseCase {
 }
 ```
 
-This is illustrative structure, not an implemented project class.
+This is illustrative structure, not an implemented project class. The real ones are grouped by area:
+for example `BookingService` implements `BookingUseCase` and calls `Booking.confirmNew`, then
+`BookingRepository.save` and `DomainEventPublisher.publish`.
 
 ## 5. Input ports
 
@@ -189,7 +190,7 @@ The same structure is used across all six services, but the amount of domain log
 | `booking-service` | High: slot conflicts, booking lifecycle, price freezing |
 | `operations-service` | High: availability, assignment, execution and rating rules (`AssignmentPolicy`, `ServiceExecution`) |
 | `payment-service` | High: payment review and refund (`Payment`), coupons (`Promotion` with discount strategies) and the loyalty ledger (`LoyaltyTransaction`) |
-| `notification-service` | Thin: notification creation and read state |
+| `notification-service` | Medium: notifications from events, read state, reminders (`BookingReminder`), staff alerts (`TrackedBooking`) and texts in four languages |
 
 ## 11. Testing consequence
 
@@ -218,7 +219,9 @@ PaymentService.Api ──► PaymentService.Application ──► PaymentService
 | `infrastructure/adapter/out` (JPA entities, REST clients, RabbitMQ) | `PaymentService.Infrastructure`: EF Core repositories that map the **domain classes directly** (`IEntityTypeConfiguration`), `EfUnitOfWork`, `BookingServiceDirectory` (HTTP), `RabbitMqIntegrationEventPublisher` (events published after commit) |
 | `infrastructure/adapter/in/web` | `PaymentService.Api`: controllers, JWT, `GlobalExceptionHandler`, composition root |
 
-Domain tests use xUnit (`tests/PaymentService.Domain.UnitTests`) without EF or ASP.NET.
+Domain tests use xUnit (`tests/PaymentService.Domain.UnitTests`) without EF or ASP.NET; the use cases
+are tested in `PaymentService.Application.UnitTests` and the EF mappings against SQL Server in
+`PaymentService.Infrastructure.IntegrationTests`.
 
 ## References
 

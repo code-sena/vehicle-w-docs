@@ -1,6 +1,6 @@
 # Cross-Cutting Concerns
 
-**Last updated:** 2026-09-24
+**Last updated:** 2026-10-20 (status notes checked against the code)
 
 These rules apply across the six backend services. They are intentionally limited to decisions supported by the current requirements and data model.
 
@@ -15,19 +15,25 @@ Domain tables use the audit block defined in `06-data/modeling-conventions.md`:
 | `deleted_at`, `deleted_by` | Logical deletion |
 | `row_version` | Optimistic-locking version |
 
-Domain data uses soft delete. `audit.audit_log` records changes through database triggers. Services do not publish audit events as a replacement for this database-level audit.
+Domain data uses soft delete. The services fill `created_by`, `updated_by` and `deleted_by` with the
+user id taken from the JWT (the persistence adapters set them on each write), and the `tr_touch_*`
+triggers set `updated_at` and add one to `row_version` on every update.
 
-**How `changed_by` gets filled.** The trigger reads `SESSION_CONTEXT(N'user_id')`, which is empty unless something sets it first. Every service sets it at the start of each request, before touching any table:
+**Status of `audit.audit_log` (checked 2026-10-20).** The table exists (security-service, migration 002),
+but nothing writes to it yet: there is no audit trigger in the changelogs and no service calls
+`sp_set_session_context`. The original plan was a trigger that reads `SESSION_CONTEXT(N'user_id')`,
+set once per request by a filter in each service:
 
 ```sql
 EXEC sp_set_session_context @key = N'user_id', @value = @currentUserId;
 ```
 
-`@currentUserId` comes from the authenticated JWT (`ADR-006`), read once per request — not per query. This has to happen in one shared place per service (a filter or interceptor), not copied into every use case by hand; ADR-009 flagged forgetting this as a real, High-probability risk, since a missed request just leaves `changed_by` NULL with no error to notice it by.
+Until that is built, the audit block of each row (who created, updated or deleted it, and when) is the
+record of changes. Services do not publish audit events.
 
 ## 2. Concurrency
 
-`row_version` is used for optimistic locking. An update includes the version read by the application; if another update already changed the row, the update affects no row and the application reports a conflict. **Status (2026-10-04):** not enforced yet — no service maps `row_version` with `@Version`; booking-service relies on its schedule lock (`sp_getapplock`) for the only conflict that matters today (two bookings for one bay).
+`row_version` is used for optimistic locking. An update includes the version read by the application; if another update already changed the row, the update affects no row and the application reports a conflict. **Status (2026-10-20):** only payment-service enforces it (EF Core maps `row_version` as a concurrency token). The Java services do not map it with `@Version`; booking-service relies on its schedule lock (`sp_getapplock`) and the trigger `tr_booking_bay_overlap` for the conflict that matters most (two bookings for one bay).
 
 Cross-service transactions are not used. A transaction stays inside the schemas owned by one service and is never kept open while waiting for another service.
 
@@ -41,7 +47,7 @@ Never log passwords, JWTs, password-reset tokens, receipt contents or unnecessar
 
 Target: the API Gateway generates or accepts a correlation id and forwards it; service-to-service HTTP calls and RabbitMQ messages keep the same identifier so a request can be followed across the system.
 
-**Status (2026-10-04):** each service reads `X-Correlation-Id` (or generates one), logs it and returns it (`CorrelationIdFilter`). The gateway forwards the header if the client sends one but does not generate it, booking-service forwards it on its calls to customer-service (since 2026-10-03); the other REST calls (customer → security, notification → security) and RabbitMQ messages do not carry it yet (`13-operations/observability.md`).
+**Status (2026-10-20):** each service reads `X-Correlation-Id` (or generates one), logs it and returns it (`CorrelationIdFilter`, `CorrelationIdMiddleware` in payment-service). The gateway forwards the header if the client sends one but does not generate it. booking → customer, operations → booking/security and payment → booking forward it; customer → security, notification → security and the RabbitMQ messages do not carry it yet (`13-operations/observability.md`).
 
 The project does not currently include a distributed tracing platform.
 
@@ -90,27 +96,29 @@ schema prefix matches `06-data`/`ADR-003` ownership directly, so the same name
 tells you both the queue to bind and which service's database the fact came
 from.
 
-| Event (`02-domain/domain-events.md`) | Routing key | Publishing service |
-|---|---|---|
-| `UserRegistered` | `security.user_registered` | `security-service` |
-| `UserAuthenticated` | `security.user_authenticated` | `security-service` |
-| `BookingCreated` | `booking.created` | `booking-service` |
-| `BookingConfirmed` | `booking.confirmed` | `booking-service` |
-| `BookingModified` | `booking.modified` | `booking-service` |
-| `BookingCancelled` | `booking.cancelled` | `booking-service` |
-| `OperatorAssigned` | `execution.operator_assigned` | `operations-service` |
-| `OperatorReassigned` | `execution.operator_reassigned` | `operations-service` |
-| `ServiceStarted` | `execution.service_started` | `operations-service` |
-| `ServiceCompleted` | `execution.service_completed` | `operations-service` |
-| `InspectionShared` | `execution.inspection_shared` | `operations-service` |
-| `RatingSubmitted` | `execution.rating_submitted` | `operations-service` |
-| `PaymentInitiated` | `payment.initiated` | `payment-service` |
-| `PaymentConfirmed` | `payment.confirmed` | `payment-service` |
-| `PaymentRejected` | `payment.rejected` | `payment-service` |
-| `PromotionApplied` | `payment.promotion_applied` | `payment-service` (planned) |
-| `LoyaltyPointsEarned` | `payment.loyalty_points_earned` | `payment-service` (planned) |
-| `LoyaltyPointsRedeemed` | `payment.loyalty_points_redeemed` | `payment-service` (planned) |
-| `NotificationCreated` | `notification.created` | `notification-service` |
+Routing keys built today (checked 2026-10-20):
+
+| Event (`02-domain/domain-events.md`) | Routing key | Publishing service | Consumers |
+|---|---|---|---|
+| `UserRegistered` | `security.user_registered` | `security-service` | customer, notification |
+| `BookingConfirmed` (also on reschedule) | `booking.confirmed` | `booking-service` | operations, notification |
+| `BookingCancelled` | `booking.cancelled` | `booking-service` | notification |
+| `OperatorAssigned` (also on reassignment) | `execution.operator_assigned` | `operations-service` | notification |
+| `ServiceStarted` | `execution.service_started` | `operations-service` | notification |
+| `ServiceCompleted` | `execution.service_completed` | `operations-service` | notification |
+| `InspectionShared` | `execution.inspection_shared` | `operations-service` | notification |
+| `PaymentConfirmed` | `payment.confirmed` | `payment-service` | notification |
+| `PaymentRejected` | `payment.rejected` | `payment-service` | notification |
+| `PaymentRefunded` | `payment.refunded` | `payment-service` | notification |
+| `PromotionRedeemed` | `payment.promotion_redeemed` | `payment-service` | notification |
+| `LoyaltyPointsEarned` | `payment.loyalty_points_earned` | `payment-service` | notification |
+
+notification-service also binds `booking.created`, which no service publishes today (a booking is
+confirmed when it is created). Events of the domain catalog that are not emitted (`UserAuthenticated`,
+`BookingModified`, `OperatorReassigned`, `RatingSubmitted`, `PaymentInitiated`,
+`LoyaltyPointsRedeemed`, `NotificationCreated`) have no routing key. The security events
+`security.user.email-changed`, `security.user.password-changed` and `security.user.deactivated` and the
+customer events are raised but only written to the log.
 
 `execution.*` is used for operator/service-execution events (including
 rating, since it physically lives on `service_execution`) rather than
@@ -125,7 +133,7 @@ information" list already given for that event in `domain-events.md`.
 {
   "eventId": "uuid — the idempotency key for consumers",
   "eventType": "PascalCase event name, e.g. BookingConfirmed",
-  "aggregateId": "uuid of the aggregate that produced it",
+  "aggregateId": "id of the aggregate that produced it, as text (user, booking or payment id)",
   "occurredAt": "ISO 8601 timestamp",
   "version": 1,
   "payload": { "...": "event-specific fields" }
@@ -136,8 +144,8 @@ information" list already given for that event in `domain-events.md`.
 |---|---|
 | Delivery | At least once should be assumed by consumers |
 | Acknowledgement | After successful processing |
-| Retry | Limited retries with backoff are proposed |
-| Dead letter | Failed messages should be retained for review |
+| Retry | customer-service and notification-service retry a failed message 3 times (first wait 1 s) |
+| Dead letter | Then the message goes to `customer-service.events.dlq` or `notification-service.events.dlq`; the operations-service queue has no dead-letter queue yet |
 | Idempotency | A consumer checks `eventId` against its own processed-events record before acting, in the same transaction as the work it does (implemented in notification-service, `processed_event`; customer-service checks whether the profile exists) |
 | Outbox | Not adopted in this version |
 
@@ -145,7 +153,14 @@ A new event should have a documented consumer and a reason to exist.
 
 ## 8. File uploads
 
-The only business file currently identified is the payment receipt. The file must not be logged. Size, accepted image formats and final storage location remain implementation details to be closed before the payment upload is built.
+Two kinds of business file are built, and neither is logged:
+
+- Payment receipts and payment-account QR codes: sent as a base64 data URL (PNG, JPEG, WebP or GIF;
+  SVG and external links are rejected, `ImageSource`) and stored in the payment tables.
+- Inspection photos: multipart upload, JPEG or PNG, up to 2 MB each and 5 per finding, stored as bytes
+  in `execution.inspection_photo`.
+
+There is no separate file storage yet.
 
 ## 9. Configuration and secrets
 

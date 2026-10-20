@@ -152,6 +152,11 @@ Instructor review and team request after section 4 went live:
 This amendment resolves the "display price vs. real discount" trade-off listed under Consequences
 and its risk row: the display price is no longer entered or shown.
 
+**Note checked against the code on 2026-10-20.** The discount is no longer only a percentage: the
+promotion form accepts `PERCENT` or `FIXED` (`DiscountTypeCodes.ParseEditable`), each calculated by its
+strategy (`PercentageDiscountStrategy`, `FixedAmountDiscountStrategy`) with an optional maximum and
+never more than the amount due. Old `PACKAGE` rows cannot be redeemed until the admin edits them.
+
 ---
 
 ## Evaluated alternatives

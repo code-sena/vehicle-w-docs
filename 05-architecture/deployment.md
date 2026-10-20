@@ -1,9 +1,9 @@
 # Deployment
 
-**Last updated:** 2026-10-06
+**Last updated:** 2026-10-20
 
-The project runs on the team's machines (local development, integration testing and demos).
-There is no staging or production deployment in scope.
+The project runs on the team's machines (local development and integration testing) and on one
+Azure virtual machine (production, used for the demos). There is no staging environment.
 
 ## 1. Environments
 
@@ -11,7 +11,7 @@ There is no staging or production deployment in scope.
 |---|---|---|
 | Local | In use | Development, integration testing and demos with Docker Compose |
 | Staging | Out of scope | Not built in this academic version |
-| Production | Out of scope | The system is not deployed for real users |
+| Production | In use | Azure VM with `docker-compose.yml` + `docker-compose.prod.yml` behind Caddy (HTTPS); diagram `08-uml/diagrams/source/deployment-production.md`, details `10-devops/production.md` |
 
 ## 2. Runtime components
 
@@ -28,7 +28,7 @@ Defined in `lavarapido-infra/docker-compose.yml`:
 | `customer-service` | `lavarapido/customer-service:local` | 3002 | Customers and vehicles |
 | `booking-service` | `lavarapido/booking-service:local` | 3003 | Catalog, schedule, bays, bookings |
 | `operations-service` | `lavarapido/operations-service:local` | 3004 | Operators, assignment, execution, ratings |
-| `payment-service` | `dotnet run` (not in compose yet) | 3005 | Payment accounts, payments, receipts (.NET 8) |
+| `payment-service` | `lavarapido/payment-service:local` | 3005 | Payment accounts, payments, receipts, promotions, loyalty (.NET 8) |
 | `notification-service` | `lavarapido/notification-service:local` | 3006 | Inbox, push, email, reminders |
 | `api-gateway` | `lavarapido/api-gateway:local` | 8080 | External entry point |
 | Web (Angular) | `ng serve` | 4200 | Not containerised; proxies `/api` to the gateway `:8080` (`proxy.conf.json`) |
@@ -39,11 +39,10 @@ Defined in `lavarapido-infra/docker-compose.yml`:
 (`docker compose --profile app up -d --build`), so a developer can run them from the IDE with
 `./mvnw spring-boot:run` (or `dotnet run` for payment) instead.
 
-**Gap:** `payment-service` has no container in the compose file yet, and the `api-gateway`
-container does not set `ROUTE_PAYMENT_URL`. With `--profile app`, payment routes fall back to
-`http://localhost:3005` inside the gateway container and fail. Until it is added, run the gateway
-from the IDE, or add a `payment-service` container plus
-`ROUTE_PAYMENT_URL: http://payment-service:3005` to the gateway.
+`payment-service` is in the `app` profile too: it waits for `payment-migrate` and the gateway reaches
+it with `ROUTE_PAYMENT_URL: http://payment-service:3005`. In production the same compose file runs
+with `docker-compose.prod.yml` on top: no host ports except Caddy's 80/443, and Mailpit is not
+started.
 
 ## 3. Logical topology
 
@@ -59,7 +58,7 @@ security customer  booking  operations  payment  notification
  (3001)  (3002)    (3003)    (3004)     (3005)     (3006)
 REST: customer → security · booking → customer · operations → booking, security
       payment → booking · notification → security (X-Internal-Key)
-Events: security, booking, operations ──publish──► RabbitMQ ──► customer, notification
+Events: security, booking, operations, payment ──publish──► RabbitMQ ──► customer, operations, notification
    all ──► SQL Server (1433) · database LavaRapido · one schema owner per service
 security (recovery code), notification (emails) ──► SMTP (Gmail or Mailpit)
 notification ──► Expo Push API
@@ -102,7 +101,7 @@ QR codes are stored as images (data URLs) in the `payment` schema.
 ## 8. Health and verification
 
 Every service and the gateway expose `GET /actuator/health` (database included in the Java
-services; payment-service answers a fixed `{"status":"UP"}` and also `GET /health`). Verification
+services; payment-service also checks the database, on `/actuator/health` and on `GET /health`). Verification
 before a demo → `13-operations/README.md`.
 
 ## 9. CI/CD boundary

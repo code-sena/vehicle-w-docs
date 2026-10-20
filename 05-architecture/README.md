@@ -27,7 +27,7 @@ The backend uses six domain services plus one API Gateway:
 | `payment-service` | `promotion`, `payment` | Promotions, payments, receipts and loyalty ledger |
 | `notification-service` | `notification` | In-app notifications, push, email and booking reminders |
 
-Built and running today: api-gateway (8080), security (3001), customer (3002), booking (3003), operations (3004) and notification (3006). `payment-service` (3005, .NET 8) is partial: payments and accounts work, promotions, loyalty and events are pending (status table in `overview.md`).
+Built and running today (local Docker Compose and the Azure server): api-gateway (8080), security (3001), customer (3002), booking (3003), operations (3004), payment (3005, .NET 8: payments, accounts, promotions, loyalty and its events) and notification (3006). Status table in `overview.md`.
 
 All six services use the same physical SQL Server database in the current academic environment. Schemas provide logical ownership boundaries. A service may own more than one schema, but every schema has exactly one owning service.
 
@@ -44,7 +44,7 @@ All six services use the same physical SQL Server database in the current academ
 - Authentication uses JWT issued by `security-service`; each service performs its own authorization and ownership checks.
 - Services use hexagonal architecture (ports and adapters, ADR-007): `domain` (model, ports) → `application` (use cases) → `infrastructure` (web, persistence, messaging adapters). Five are Java 21 / Spring Boot; payment-service is .NET 8 with the same layers as projects (ADR-013).
 - The JWT is validated by every service; the gateway only routes and answers CORS.
-- Service-to-service calls without a user (notification → security) use `X-Internal-Key` on `/internal/**` routes, which the gateway never exposes.
+- Service-to-service calls without a user (notification → security, operations → booking and security during the automatic assignment, the APK script → notification) use `X-Internal-Key` on `/internal/**` routes, which the gateway never exposes.
 
 ## Sources of truth
 
