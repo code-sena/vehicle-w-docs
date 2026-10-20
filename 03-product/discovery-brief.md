@@ -31,7 +31,7 @@ Validate whether the documented booking and operational problems occur in the ta
 | D-04 | Administrator-configured schedules reflect real shop operation. | Availability calculation. | Pending |
 | D-05 | Customer-selected operators add value versus automatic assignment. | Assignment options. | Pending |
 | D-06 | A post-service rating is useful to customers and the business. | Rating and review feature. | Pending |
-| D-07 | In-app notifications are sufficient for the MVP even though email is excluded. | Notification channel and read/unread experience. | Pending |
+| D-07 | The in-app inbox, with push and email copies the user can switch off, keeps users informed. | Notification channel and read/unread experience. | Pending |
 | D-08 | Payment must be confirmed before a wash can start. | Payment/operations policy. | Pending — explicit domain question |
 | D-09 | Customers understand the difference between booking, assignment and payment states. | Status presentation. | Pending |
 | D-10 | The proposed promotion conditions and loyalty-point formulas are useful and understandable. | Promotions and loyalty rules. | Pending |

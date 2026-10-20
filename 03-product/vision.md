@@ -36,7 +36,7 @@ There is no live baseline yet. The team will establish pilot baselines and targe
 
 ## Scope boundary
 
-The vision includes the approved MVP in `01-context/scope.md` and the current domain requirements: user and role management, booking changes/cancellation, assignment, QR-based payment with receipt review, in-app notifications, ratings, promotions and loyalty, role-based interfaces and administrative management. iOS, at-home washing, electronic invoicing, inventory, production deployment, additional locations and email notifications are excluded from this version.
+The vision includes the approved MVP in `01-context/scope.md` and the current domain requirements: user and role management, booking changes/cancellation, assignment, QR-based payment with receipt review, in-app, push and email notifications, ratings, promotions and loyalty, role-based interfaces and administrative management. iOS, at-home washing, electronic invoicing, inventory, production deployment and additional locations are excluded from this version.
 
 ## Traceability
 

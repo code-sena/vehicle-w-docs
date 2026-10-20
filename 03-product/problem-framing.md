@@ -41,9 +41,9 @@ We will know the hypothesis is promising when pilot evidence shows that users ca
 - Automatic assignment considers only operator availability at the shop. Workload, proximity, specialization and ratings are not assignment criteria unless a requirement adds them.
 - A reassignment cancels the pending assignment and creates a new assignment, preserving who was previously responsible; it does not cancel the booking.
 - A payment belongs to one booking and moves through `PENDING → IN_REVIEW → APPROVED / REJECTED`, with `REFUNDED` as a later terminal state. The customer scans the shop's QR code for their chosen method (cash, Nequi, Daviplata or bank transfer) and uploads a payment receipt; an administrator compares the reported amount against the booking and approves or rejects it. At most one payment per booking can be `APPROVED`. No card data is ever collected or stored by the platform.
-- Only the assigned operator can progress assigned work. A booking moves `PENDING → CONFIRMED → IN_PROGRESS → COMPLETED`; its assignment moves `PENDING → IN_PROGRESS → COMPLETED`. Completed or cancelled bookings cannot be changed.
+- Only the assigned operator can progress assigned work. A booking is created `CONFIRMED` with a free bay (the model also has `SCHEDULED`, which the current flow never creates) and moves `CONFIRMED → IN_PROGRESS → COMPLETED`, or ends `CANCELLED` / `NO_SHOW`; its assignment moves `PENDING → IN_PROGRESS → COMPLETED`. Completed or cancelled bookings cannot be changed.
 - Only one rating (score 1–5, optionally with comment) is allowed per completed wash-service line within a booking — a booking with two services can receive two independent ratings, one per operator/line.
-- Notifications have a recipient and a read/unread state; the delivery channel remains a technical/open decision. Email notifications remain out of scope.
+- Notifications have a recipient and a read/unread state; they are kept in the in-app inbox and, depending on the user's switches, also sent by push and email.
 
 ## Initial success measures
 
@@ -71,7 +71,7 @@ The project has no production baseline. Before setting numeric targets, the team
 
 ## Out of scope for this product version
 
-The MVP does not include an iOS application, at-home washing, electronic invoicing, inventory management, production deployment, or email notifications/password recovery by email. It also does not cover mechanical repair, vehicle sales, fuel, insurance, advanced fleet management, real-time GPS, AI recommendations, a multi-business marketplace, international expansion or advanced BI. See `01-context/scope.md` for the authoritative rationale and future candidates.
+The MVP does not include an iOS application, at-home washing, electronic invoicing, inventory management, or production deployment. It also does not cover mechanical repair, vehicle sales, fuel, insurance, advanced fleet management, real-time GPS, AI recommendations, a multi-business marketplace, international expansion or advanced BI. See `01-context/scope.md` for the authoritative rationale and future candidates.
 
 ## Related documents
 

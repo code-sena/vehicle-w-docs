@@ -23,8 +23,8 @@ app wins and `navigation-map.md` describes the app.
 - Business rules live in the backend; screens show what the API answers.
 - Every backend error is shown through its translated `API_ERRORS.<code>` text, in 4 languages.
 - Destructive actions ask for confirmation.
-- Theme and language must belong to the **account**, not the device (RF-019/020) — today they are
-  stored per browser; fix tracked as TD-002 in `15-project-control/technical-backlog.md`.
+- Theme and language belong to the **account**, not the device (RF-019/020): the web and the app
+  read and save them through `/users/me/preferences`, so they follow the user to any device.
 
 ---
 

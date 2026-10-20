@@ -1,7 +1,7 @@
 # User Manual (web and mobile)
 
 > How to use LavaRápido in the browser and in the Android app (both have the same features).
-> Covers what is connected to the backend on 2026-10-13; what still uses sample or local data is
+> Covers what is connected to the backend on 2026-10-20; what still uses sample or local data is
 > marked. Screens: `12-ux-ui/navigation-map.md`.
 
 ---
@@ -15,7 +15,7 @@
 | Forgot password | Sign in → **Forgot password** → enter your email → type the 6-digit code you receive (valid 15 minutes) → choose a new password. The code is burnt after 5 wrong attempts |
 | Profile | Menu → **Profile**: edit your data and your address (saved in your account, the same on the web and the app), change your password, deactivate your account (asks for your password; administrators do not have this option) |
 | Change your email | **Profile → Email**, confirmed with your current password. From then on you sign in with the new email; the old one no longer works |
-| Notifications | Bell / **Notifications**: unread first; filter by type or date; mark one or all as read; delete |
+| Notifications | Bell / **Notifications**: newest first, in tabs by type, with filters for read/unread and dates; mark one or all as read (or one as unread); delete. Clicking a notification opens its detail and marks it read; when the notice belongs to a section, the detail has a **Go to...** button (history, home, assigned services or bookings) |
 | Notification channels | **Settings → Notifications**: **Push** (phone notifications), **Booking reminders by email** and **Promotions** (unlocked coupons by email and push). They are saved in your account; the inbox always receives everything |
 | Theme and language | **Settings**: 4 palettes and Spanish, English, French, Portuguese. Saved in your account, so they follow you to any device. Notifications and emails also arrive in that language (the ones already received keep their original language) |
 | Sign out | Menu → **Sign out**. The session also ends after 1 hour |
@@ -44,10 +44,11 @@ and a plate cannot be registered twice. You can edit or remove your vehicles.
 You receive reminders **24 hours and 1 hour before** (inbox, push and, if you keep that switch on,
 email). Once your service starts, the pending reminders stop.
 
-### Change or cancel
-From the dashboard or the booking detail: change date/time or services, or cancel with a reason.
-Only possible **before the service starts**. Prices of a booking do not change if the catalog
-changes later.
+### Cancel
+In **History** (or on the payment screen of the booking) → **Cancel** and confirm; no reason is asked.
+Only possible while the booking can still be changed (**before the service starts**). The web and the
+app have no screen for the client to change the date: to move a booking, the client asks the shop and
+the administrator reschedules it. Prices of a booking do not change if the catalog changes later.
 
 ### Pay a booking
 In **History**, **Pay** appears only on bookings that can still be paid (not paid yet and without a
@@ -64,6 +65,8 @@ transfer) with their QR and instructions:
 4. While something is missing, the list under the button tells you what. Send it: the payment stays
    **in review** until the administrator approves or rejects it (with the reason). You get the result
    in the inbox and by email.
+5. Once the payment is **approved**, the screen only shows the booking summary: the method, QR,
+   receipt and pay steps disappear and the coupon (if one was used) can no longer be removed.
 
 **Cash:** choose **Cash** and confirm. Nothing is sent from the app: you pay at the shop when you pick
 up your vehicle, and the administrator records the payment, which is approved at once.
@@ -75,8 +78,10 @@ redeem!"** with its code (inbox and, if Promotions is on, email and push). Your 
 available coupons are on the dashboard. A refunded payment takes its points back.
 
 ### History and rating
-**History** shows your real bookings (active, completed, cancelled), the payment status of each one
-(pending, in review, paid, rejected, refunded) and the operator assigned. When a booking is
+**History** shows your real bookings, newest first (filters: all, active, completed, cancelled), the
+payment status of each one (pending, in review, paid, rejected, refunded) and the operator assigned.
+Clicking a booking opens its detail (services, date and time, vehicle, total, payment status and
+rating) with a **Go to payment** button, except for cancelled or no-show bookings. When a booking is
 **completed** you can rate it once: 1 to 5 stars and an optional comment (up to 500 characters). Your
 rating shows who served you ("Served by Juan Camilo").
 
@@ -93,8 +98,8 @@ rating shows who served you ("Served by Juan Camilo").
 | Bays (active / maintenance / inactive) | **Schedule → Bays**. Only active bays are used for new bookings; two vehicles at the same time never share a bay |
 | Services, prices per vehicle type and **loyalty points** per service | **Management → Services** |
 | Promotions (coupons) | **Management → Promotions**: code, discount %, points needed to unlock it, start date; pause or resume from its card |
-| Users and roles: create, change role, deactivate; permissions per role | **Management → Users / Roles** (accounts are deactivated, never deleted). The user type is changed in the table itself; the person's sessions close and they sign in again. Nobody changes their own type, and an administrator account cannot be deactivated until its type is changed |
-| Send a notification to users | **Notifications** |
+| Users and roles: create, activate or deactivate; permissions per role | **Management → Users / Roles** (accounts are deactivated, never deleted). The users table has the **Enabled** and **Disabled** filters and a search box; the user type is only shown, it is not changed from the list. Nobody deactivates their own account, and an administrator account cannot be deactivated |
+| Your notices | **Notifications** (same inbox as the other roles; the administrator does not write notices from the web or the app) |
 | Operators: active or not, weekly shift, absences | **Operators** (operators are the accounts with role Operator in **Management → Users**) |
 | Operator specialty and skills | **Operators** → an operator → **Skills and certifications → Edit**: specialty and up to 10 skills, each certified, expert or advanced. Saving replaces the list |
 | Assign or change the operator of a booking | New bookings are **assigned automatically** to the operator the client chose or to the free one with fewest bookings that day. To change it: **Reservations** → booking detail → **Operator assignment**: each operator shows whether they are available or why not (inactive, not on shift, absent, busy). Only before the service starts and while its time has not passed |
@@ -121,6 +126,7 @@ hour ago — and nobody is assigned.
 | Start a service | **Start**. Enabled from **15 minutes before** the booking time; before that the button tells you from what time you can start. You cannot have two services in progress |
 | Finish a service | **Finish**. The client is notified and can rate it |
 | See your shift | **My Schedule** (the administrator sets it) |
+| See your finished services | **Service history**: newest first; clicking a row opens its detail and, if the client rated it, a **Go to ratings** button |
 | See your ratings | **Ratings**: stars, comments, the client's name and plate, and your average |
 | Notices | You are told when a service is assigned to you, rescheduled, cancelled or given to someone else (inbox and push) |
 

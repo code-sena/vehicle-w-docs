@@ -16,8 +16,8 @@ This is the product-level, prioritized backlog. It uses the terms and MVP bounda
 
 | ID | User story | Acceptance criteria |
 |---|---|---|
-| US-01 | As a user, I want to register, log in, recover/change my password and manage my permitted profile data so that I can use the platform securely. | Required data is validated; duplicate accounts are rejected; invalid credentials are rejected; passwords are never stored in plain text — only their hash; repeated failed logins trigger a temporary account lock; password recovery issues a single-use, time-limited token and does not require an excluded email channel. |
-| US-02 | As an administrator, I want to manage role-based access so that customers, operators and administrators only use the functions assigned to them. | Authorized administrators can assign roles; unauthorized access is denied; permissions are applied to protected actions. |
+| US-01 | As a user, I want to register, log in, recover/change my password and manage my permitted profile data so that I can use the platform securely. | Required data is validated; duplicate accounts are rejected; invalid credentials are rejected; passwords are never stored in plain text — only their hash; repeated failed logins trigger a temporary account lock; password recovery sends a single-use, time-limited 6-digit code to the account email. |
+| US-02 | As an administrator, I want to manage role-based access so that customers, operators and administrators only use the functions assigned to them. | Administrators give each new account one of the three fixed roles when they create it (the role is not changed afterwards from the users list); they edit the permissions of each role; unauthorized access is denied; permissions are applied to protected actions. |
 | US-03 | As an administrator, I want to manage wash services, operators and schedules so that customers are offered real operating options. | Required master data is validated; an operator is associated with the relevant schedule; inactive or invalid options cannot be booked. |
 
 ### EP-02 — Customer vehicle (P0)
@@ -56,14 +56,14 @@ This is the product-level, prioritized backlog. It uses the terms and MVP bounda
 
 | ID | User story | Acceptance criteria |
 |---|---|---|
-| US-12 | As a customer, I want to modify or cancel an eligible booking before execution so that I can change my plans. | The system permits changes/cancellation only before the service starts; completed or cancelled bookings are immutable; cancellation updates availability and the pending assignment consistently; payment handling follows the documented policy when defined. |
+| US-12 | As a customer, I want to modify or cancel an eligible booking before execution so that I can change my plans. | The customer cancels from the history or the payment screen; a change of date or time is asked to the shop and made by the administrator from Bookings (the web and the app have no reschedule screen for the customer); the system permits changes/cancellation only before the service starts; completed or cancelled bookings are immutable; cancellation updates availability and the pending assignment consistently; payment handling follows the documented policy when defined. |
 
 ### EP-06A — Reassignment and notification (P1)
 
 | ID | User story | Acceptance criteria |
 |---|---|---|
 | US-13 | As an administrator, I want to assign or reassign a pending service so that operational changes do not leave work unowned. | The administrator selects an operator available at that time; reassignment cancels the previous pending assignment and creates a new assignment instead of overwriting history; the booking is not cancelled; the relevant parties are notified. |
-| US-14 | As a user, I want to receive and read in-app notifications about relevant changes so that I can act on current information. | Booking confirmation/modification/cancellation, assignment/reassignment, payment result and service completion create the appropriate notification; every notification has one recipient and read/unread state; email delivery is not required. |
+| US-14 | As a user, I want to receive and read in-app notifications about relevant changes so that I can act on current information. | Booking confirmation/modification/cancellation, assignment/reassignment, payment result and service completion create the appropriate notification; every notification has one recipient and read/unread state; opening a notification shows its detail and, when it belongs to a section (history, home, assigned services or bookings), a button to go there; email and push copies follow the user's switches. |
 
 ## M4 — Administration, promotion and feedback
 
@@ -88,7 +88,7 @@ A story is done only when its acceptance criteria pass, role authorization is ve
 
 ## Explicitly deferred candidates (P2)
 
-- iOS application, at-home wash service, email notifications and email-based password recovery.
+- iOS application and at-home wash service (email notifications and email-based password recovery were built in the MVP).
 - Additional shop locations, only after validation.
 - Additional integrations, only after validation.
 

@@ -19,10 +19,10 @@ debugging (`EXPO_PUBLIC_CUSTOMER_API_URL`, `…_BOOKING_…`, `…_OPERATIONS_�
 │   └── /forgot-password            → Password recovery (email → code → new password)
 │
 ├── /client                         → (authGuard, role CLIENT)
-│   ├── /                           → Dashboard: vehicles, next booking, shop address
+│   ├── /                           → Dashboard: vehicles, next booking, points and coupons, shop address
 │   ├── /reserve                    → Book a wash (vehicle → service → date/time → confirm)
 │   ├── /vehicles                   → My vehicles
-│   ├── /history                    → Service history
+│   ├── /history                    → Booking history, newest first (click → detail → Go to payment)
 │   ├── /payment                    → Pay a booking
 │   ├── /notifications              → Notification inbox
 │   ├── /profile                    → Profile
@@ -30,10 +30,10 @@ debugging (`EXPO_PUBLIC_CUSTOMER_API_URL`, `…_BOOKING_…`, `…_OPERATIONS_�
 │
 ├── /operator                       → (authGuard, role OPERATOR)
 │   ├── /                           → Home: today's services, unread notifications
-│   ├── /tasks                      → Tasks
+│   ├── /tasks                      → Redirects to /operator/assigned-services
 │   ├── /assigned-services          → Assigned services
 │   ├── /schedule                   → My schedule
-│   ├── /service-history            → Service history
+│   ├── /service-history            → Service history, newest first (click → detail → Go to ratings)
 │   ├── /qualifications             → Ratings
 │   ├── /notifications              → Notification inbox
 │   ├── /profile                    → Profile
@@ -50,7 +50,7 @@ debugging (`EXPO_PUBLIC_CUSTOMER_API_URL`, `…_BOOKING_…`, `…_OPERATIONS_�
 │   ├── /operators/:id/calendar     → Operator calendar
 │   ├── /payments                   → Payments review
 │   ├── /reports                    → Reports
-│   ├── /notifications              → Notification inbox + manual notifications
+│   ├── /notifications              → Notification inbox
 │   ├── /profile                    → Profile
 │   └── /settings                   → Business data, payment methods
 │
@@ -69,15 +69,15 @@ Status: **API** = reads and writes the backend · **Partial** = some data still 
 |--------|-------|------|-----------------|--------|
 | Landing | `/` | Public | booking (catalog prices) | API |
 | Login / Register / Recovery | `/auth/**` | Public | security | API |
-| Client dashboard | `/client` | CLIENT | customer (vehicles), booking (stats, next booking, establishment) | API |
+| Client dashboard | `/client` | CLIENT | customer (vehicles), booking (stats, next booking, establishment), operations, payment (points and coupons) | API |
 | Book a wash | `/client/reserve` | CLIENT | customer (vehicles), booking (catalog, availability, booking) | API |
 | My vehicles | `/client/vehicles` | CLIENT | customer | API |
-| Service history | `/client/history` | CLIENT | booking (bookings), operations (ratings) | API |
-| Pay a booking | `/client/payment` | CLIENT | booking (amount, points discount, cancel); payment (accounts with QR, report with receipt, my payments) | API (the points discount stays 0 until the loyalty ledger exists) |
+| Service history | `/client/history` | CLIENT | booking (bookings, cancel), payment (my payments), operations (ratings) | API |
+| Pay a booking | `/client/payment` | CLIENT | booking (amount, cancel); payment (accounts with QR, report with receipt, my payments, coupon redeem) | API (once the payment is approved only the summary is shown) |
 | Notifications (all roles) | `*/notifications` | any | notification | API |
 | Profile (all roles) | `*/profile` | any | security | API |
 | Preferences — theme, language | `*/configuration`, `*/settings` | any | security (`/users/me/preferences`) | API (`localStorage` only remembers the last choice for screens without a session) |
-| Operator area | `/operator/**` | OPERATOR | operations (services, start/finish, ratings), notification, security | API (the `tasks` page is still an empty placeholder) |
+| Operator area | `/operator/**` | OPERATOR | operations (services, start/finish, ratings), notification, security | API (`/operator/tasks` only redirects to assigned services) |
 | Admin dashboard | `/admin` | ADMIN | booking (bookings, bays), operations, payment | API |
 | Bookings | `/admin/reservations` | ADMIN | booking, customer (plate lookup), security (client names), operations (assignment, candidates) | API |
 | Vehicle inspection | `/admin/reservations/:id/inspection` | ADMIN | operations (report, phases, findings with photos, publish, share) | API |
@@ -150,6 +150,26 @@ Edit / cancel only while the backend says the booking is still changeable (RF-00
 
 **Related HUs:** HU-AUTH-003
 
+### Flow 5 — Notification detail and "Go to..."
+
+```
+*/notifications → click a notification (or "View detail") → detail dialog, marked as read
+  └─ notice with its own section → button "Go to ..." → client: history or home ·
+     operator: assigned services or home · admin: bookings or home
+     (system messages without a section only show "Close")
+```
+
+The same table is used for push notifications in the app (`notificationRoutes.ts`) and in the web
+(`shared/dialogs/notification-models/notification-target.ts`).
+
+### Flow 6 — History detail
+
+```
+/client/history (newest first) → click a booking → booking detail → "Go to payment" → /client/payment?booking=:id
+                                 (not shown for cancelled or no-show bookings)
+/operator/service-history (newest first) → click a row → service detail → "Go to ratings" (only if rated)
+```
+
 ---
 
 ## Navigation rules
@@ -161,7 +181,7 @@ Edit / cancel only while the backend says the booking is still changeable (RF-00
 | Guests only | `/auth/**` (`guestGuard`): a signed-in user is sent to their home |
 | Confirmation | Destructive actions (delete, cancel, deactivate) open a confirmation dialog |
 | Errors | Backend errors carry a `code`, translated through `API_ERRORS.<code>` in the 4 languages |
-| 404 | **Gap:** there is no wildcard (`**`) route — an unknown URL renders nothing. A 404 page is pending |
+| 404 | The wildcard route (`**`) opens the not-found page, with a link to the home of each role |
 
 ---
 

@@ -27,7 +27,7 @@ The booking may not bypass availability validation. Payment, booking and assignm
 
 ## Candidates after the MVP
 
-Only after validating need and capacity may the team evaluate iOS support, at-home washing, email notifications, email-based password recovery, additional locations and additional integrations. Electronic invoicing, inventory management and production deployment are explicitly not part of the current academic MVP. Loyalty is in the current domain scope, but its point-account model and formulas must be defined before implementation. The remaining exclusions are listed in `01-context/scope.md` and `problem-framing.md`.
+Only after validating need and capacity may the team evaluate iOS support, at-home washing, additional locations and additional integrations. Electronic invoicing, inventory management and production deployment are explicitly not part of the current academic MVP. Loyalty is in the current domain scope, but its point-account model and formulas must be defined before implementation. The remaining exclusions are listed in `01-context/scope.md` and `problem-framing.md`.
 
 ## Roadmap governance
 

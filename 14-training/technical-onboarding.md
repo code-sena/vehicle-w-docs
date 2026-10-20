@@ -22,7 +22,8 @@
    operations 3004, notification 3006, gateway 8080). Liquibase creates the tables on first start.
    payment (.NET 8, port 3005): `dotnet run --project src/PaymentService.Api`; its tables are
    created by the `payment-migrate` container of step 3.
-5. Web: `npm install`, then `npm start` (port 4200).
+5. Web: `npm install`, then `npm start` (port 4200). Mobile app (optional): `npm install`, copy
+   `.env.example` to `.env.local`, then `npx expo start` and open it with Expo Go on the same network.
 6. Check:
    ```bash
    for p in 3001 3002 3003 3004 3005 3006 8080; do echo "$p $(curl -s localhost:$p/actuator/health)"; done

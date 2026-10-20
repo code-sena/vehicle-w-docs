@@ -120,7 +120,7 @@ All dialogs open with `panelClass: 'custom-dialog'` and share `shared/dialogs/_d
 | `profile-card`, `settings-panel` | Profile and preferences (theme, language, help center) |
 | `stepper`, `password-requirements`, `auth-card`, `auth-side-panel` | Auth and registration screens |
 | `empty-state`, `coming-soon`, `back-button` | Common states and navigation |
-| `dialogs/*` | Modals: confirm, status, service, schedule exception, register vehicle, notification detail… |
+| `dialogs/*` | Modals: confirm, status, service, schedule exception, register vehicle, notification detail (with its "Go to..." button), service history detail… |
 
 ---
 
@@ -144,7 +144,7 @@ All dialogs open with `panelClass: 'custom-dialog'` and share `shared/dialogs/_d
 | 409 `SLOT_UNAVAILABLE` (booking) | The alternative times returned by the backend are offered |
 | Any other error with a known `code` | Its translated message |
 | Unknown code | `API_ERRORS.UNEXPECTED` — the user never sees a raw key or stack trace |
-| Unknown route | **Gap:** no 404 page yet |
+| Unknown route | The wildcard route opens the not-found page (`features/not-found`) with a link to the home of each role |
 
 ---
 
