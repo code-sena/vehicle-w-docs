@@ -48,17 +48,17 @@ Only three roles are seeded, exactly as defined in `security.role` (`06-data`, s
 
 | Role | Description | Permissions |
 |------|-------------|------------|
-| `ADMIN` | Business owner or manager (the *Administrator*) | Configures the establishment, services and promotions; assigns/reassigns operators; reviews and approves payments; consults operational reports (RF-021 to RF-023) |
+| `ADMIN` | Business owner or manager (the *Administrator*) | Configures the establishment, services and promotions; assigns/reassigns operators; reviews and approves payments; consults operational reports (RF-021 to RF-023); creates operator and administrator accounts and activates or deactivates accounts (RF-028). The role is set when the account is created and there is no endpoint to change it; an administrator account cannot be deactivated (`ADMIN_CANNOT_BE_DISABLED`) and an administrator cannot deactivate their own account |
 | `OPERATOR` | Performs the wash | Records their own availability; views and updates only the `service_execution` rows assigned to them (RF-008 to RF-012b, RF-022) |
 | `CLIENT` | Registers vehicles and books | Manages their own vehicles and bookings, pays by QR, rates completed services, views only their own records (RF-005 to RF-016) |
 
 **Permission model:**
 
-The `security` schema also defines granular `permission` and `role_permission` tables (resource + action, e.g. `booking:cancel`), inherited from the instructor's shared core. **This project's requirements only ask for role-level control** — whether services check fine-grained permissions or only the role is confirmed when the endpoints are designed in `07-api` (ADR-006, Pending decisions). Until then, treat the role as the unit of authorization.
+The `security` schema also defines granular `permission` and `role_permission` tables (resource + action, e.g. `booking:cancel`), inherited from the instructor's shared core. The administrator can view and edit this matrix for the three fixed roles (RF-029), but it is informative: **authorization is decided by the role in the JWT** (ADR-015). Applying the matrix to each endpoint is an open improvement.
 
 **Validation:**
-- The API Gateway rejects a request with a missing, invalid or expired JWT before it reaches any service (ADR-005)
-- Each service validates the JWT again and checks the role for that endpoint — service-to-service calls do not pass through the gateway (ADR-004), so skipping this would leave internal calls unauthenticated
+- The API Gateway only routes and answers CORS; it does **not** validate the JWT (ADR-005)
+- Each service validates the JWT and checks the role for that endpoint — service-to-service calls do not pass through the gateway (ADR-004), and the `/internal/**` routes require the shared `X-Internal-Key` header
 - On top of the role, each service checks **ownership**: an `OPERATOR` with a valid token still cannot update a `service_execution` line that is not theirs, and a `CLIENT` only reaches their own bookings, vehicles and payments
 
 ---
@@ -69,8 +69,8 @@ The `security` schema also defines granular `permission` and `role_permission` t
 
 - **HTTPS mandatory** in all environments except local
 - TLS 1.2 minimum; TLS 1.3 recommended
-- Certificates: Let's Encrypt (staging) / Corporate CA (production)
-- HSTS enabled in production
+- Certificates: Let's Encrypt, issued and renewed automatically by Caddy on the academic Azure server
+- HSTS enabled on the public server
 
 ### Internal service-to-service communication
 
@@ -89,7 +89,7 @@ The `security` schema also defines granular `permission` and `role_permission` t
 ✗ NEVER in client error messages
 ✓ Environment variables, read from a local .env file that is git-ignored (Docker Compose)
 ✓ .env.example in the repository, with placeholder values only
-✓ One database login per service, with rights only on its own schemas (ADR-003 / ADR-009)
+✓ Target: one database login per service, with rights only on its own schemas (ADR-003 / ADR-009). Today every service still uses `sa` (open preventive action AP-08 in `lavarapido-docs`)
 ```
 
 **Secret rotation:**
@@ -132,17 +132,16 @@ element.textContent = userProvidedContent;
 ### Validation with Bean Validation
 
 ```java
-// Explicit validation of the request shape in the REST adapter (booking-service).
+// Explicit validation of the request shape in the REST adapter (booking-service, BookingDtos).
 // Ids are numbers (IDENTITY keys, ADR-003); prices and the end time are never accepted from the client.
 public record CreateBookingRequest(
-        @NotNull Long customerVehicleId,
-        @NotNull @Future OffsetDateTime scheduledStart,
-        @NotEmpty List<@Valid Item> services,
-        @Size(max = 300) String notes) {
-
-    public record Item(@NotNull Integer serviceId, @Min(1) int quantity) { }
-}
-// The shape is checked here (400); the business rules are checked by the domain (422).
+        @NotNull Long vehicleId,
+        @NotEmpty List<Integer> serviceIds,
+        @NotNull LocalDate date,
+        @NotNull @JsonFormat(pattern = "HH:mm") LocalTime time,
+        @Size(max = 300) String notes,
+        @Positive Integer preferredOperatorId) { }
+// The shape is checked here (400); the business rules are checked by the domain (409 or 422).
 ```
 
 ---
@@ -151,7 +150,7 @@ public record CreateBookingRequest(
 
 | Vulnerability | Implemented control |
 |---------------|-------------------|
-| A01: Broken Access Control | Role check (`@PreAuthorize`) + ownership check in each service |
+| A01: Broken Access Control | Role rules per path in each service's `SecurityConfig` (`[Authorize(Roles = …)]` in payment-service) + ownership check in each service |
 | A02: Cryptographic Failures | TLS 1.2+ outside local, BCrypt for passwords, secrets in environment variables |
 | A03: Injection | Named parameters in every SQL statement, Bean Validation on every request |
 | A04: Insecure Design | Threat modeling in design, Security review |
@@ -159,7 +158,7 @@ public record CreateBookingRequest(
 | A06: Vulnerable Components | Dependency review before each delivery (`security-rules.md`, A06) |
 | A07: Authentication Failures | 1-hour JWT, no refresh token (ADR-006), lockout after 5 failed attempts (RF-004b) |
 | A08: Software Integrity Failures | Pinned dependency versions, RabbitMQ messages validated before processing |
-| A09: Logging Failures | Logs without PII, with a correlation id per request; changes recorded in `audit.audit_log` |
+| A09: Logging Failures | Logs without PII, with a correlation id per request; `audit.audit_log` exists but is not written yet (ACO-04) |
 | A10: SSRF | Whitelist of external URLs, do not follow redirects automatically |
 
 ---
@@ -171,11 +170,11 @@ public record CreateBookingRequest(
 | Event | Where it is recorded |
 |-------|---------------------|
 | Successful login | `security.user_session` (user, start, expiry, IP, user agent) + `app_user.last_login` |
-| Failed login and lockout (RF-004b) | `security-service` log |
+| Failed login and lockout (RF-004b) | `security.login_lockout` (failed attempts and lock time) + `security-service` log |
 | Logout | `security.user_session.revoked_at` |
-| Password change (RF-004) | `security-service` log + `audit.audit_log` |
+| Password change (RF-004) | `security-service` log |
 | Access denied (403) | Log of the service that denied it |
-| Any change to a domain table | `audit.audit_log`, written by the `tr_touch_<table>` triggers, with `changed_by` taken from `SESSION_CONTEXT('user_id')` |
+| Any change to a domain table | `updated_at` and `row_version` of the row (set by the `tr_touch_<table>` triggers). `audit.audit_log` is designed for this but nothing writes to it yet (ACO-04) |
 
 **Required fields in security logs:**
 - `userId` (or `ANONYMOUS` if not authenticated)

@@ -18,16 +18,16 @@
 
 | Term | Definition | Notes |
 |------|-----------|-------|
-| Booking | A reserved time slot for a wash service on a specific vehicle | In Spanish always *turno* |
+| Booking | A reserved time slot for a wash service on a specific vehicle | In Spanish always *reserva* (the interface uses this word) |
 | Wash service | A type of wash offered, with its own duration and price | |
 | Operator | Shop employee who performs the wash; has their own working availability | |
 | Availability | Time window in which an operator can take bookings | |
 | Assignment | Linking an operator to a booking. It can be automatic, chosen by the customer, or set by the administrator | |
-| Rating | Optional score (1–5) and comment the customer submits for a service line once it is completed | At most one per line |
+| Rating | Optional score (1–5) and comment the customer submits once for a completed booking | Stored on every line of the booking; feeds the operator's average |
 | Booking line | One service inside a booking (e.g. wash + polish = two lines); each line is executed by one operator | Table `booking.booking_service` |
 | Wash bay | A physical washing position of the shop; two bookings can't hold the same bay at the same time | Table `booking.service_bay` |
 | Loyalty ledger | The record of every loyalty-point movement; the source of truth for a customer's balance | `payment.loyalty_transaction` (ADR-009) |
-| Promotion | Discount applicable to a booking under conditions defined by the administrator | |
+| Promotion | Percentage discount (1 to 100) on a booking, with a code and validity, unlocked by the customer's loyalty points without spending them | ADR-015 |
 | Customer | Person who registers one or more vehicles and books time slots | Distinct from "user", which covers all three roles |
 | Administrator | Role that manages operators, schedules and services | Single role |
 
@@ -42,7 +42,7 @@
 | # | Domain (schema) | What it answers | Owning service |
 |---|-----------------|-----------------|----------------|
 | 1 | Security | Who is the person, and what are they allowed to do? (people, credentials, roles, permissions, sessions, preferences) | `security-service` |
-| 2 | Audit | What changed, when, and who changed it? | `security-service` (read-only; written by triggers) |
+| 2 | Audit | What changed, when, and who changed it? | `security-service` (the table exists but nothing writes to it yet) |
 | 3 | Customer | Who is the customer, and what vehicles do they have? (plus a display copy of their loyalty points) | `customer-service` |
 | 4 | Catalog | What services are offered, and at what price per vehicle type? | `booking-service` |
 | 5 | Booking | When is the shop open, which bays exist, and what slots are booked? (includes the shop's own data) | `booking-service` |

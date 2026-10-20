@@ -14,12 +14,12 @@
 // ❌ BAD — trusting frontend data
 long userId = request.userId();
 
-// ✅ GOOD — extract it from the verified JWT (platform-commons)
-long userId = CurrentUser.get().userId();
+// ✅ GOOD — extract it from the verified JWT (each service has its own AuthenticatedUser)
+long userId = AuthenticatedUser.from(jwt).userId();
 ```
 
 **Rules:**
-- Every endpoint is authenticated by default (`PlatformSecurityConfig`); public paths are listed explicitly per service, and the role is declared with `@PreAuthorize`
+- Every endpoint is authenticated by default (`SecurityConfig` of each service); public paths are listed explicitly per service, and role rules are declared on the paths (for example `/api/v1/admin/**` requires `ADMIN`)
 - Permissions are verified in the application layer, not the controller (hexagonal architecture, ADR-007)
 - A resource is only returned to the role allowed to read it — see `security-policy.md` for the three seeded roles
 - On top of the role, ownership is checked in the service: an `OPERATOR` only reaches their own `service_execution` rows, a `CLIENT` only their own bookings/vehicles/payments (ADR-006)
@@ -82,19 +82,19 @@ bookingJpaRepository.findWithLinesById(id);
 
 - JWT with maximum expiration of **1 hour** for access tokens (RNF-004.2)
 - **No refresh tokens in this version.** The user logs in again once the token expires — deferred by ADR-006, not implemented as a stopgap
-- Account lockout after **5 failed attempts within 15 minutes, for 15 minutes** — the definition of RF-004b (`05-architecture/overview.md`, closes AT-004), now stated in `04-requirements/functional.md`. The counters live in memory (the shared `security` core has no columns for them), so a restart of `security-service` clears them
-- No rate limiting at the gateway: there is no public exposure to rate-limit against (ADR-005, Pending decisions) — the account lockout above is the actual defense against brute-forcing a single account
+- Account lockout after **5 failed attempts within 15 minutes, for 15 minutes** — the definition of RF-004b (`05-architecture/overview.md`, closes AT-004), now stated in `04-requirements/functional.md`. The counters are stored in `security.login_lockout` (migration 034), so a restart of `security-service` does not clear them; only the password recovery code attempts are counted in memory
+- No rate limiting yet at the gateway or in Caddy, even though the academic server is public (TD-022, ADR-005 Pending decisions) — the account lockout above is the current defense against brute-forcing a single account
 
 ### A08 — Software and Data Integrity Failures
 
-- Verify the Docker image digest for `sqlserver` and `rabbitmq` matches what the team last tested — there is no production registry to pull from, only the local Compose environment (`05-architecture/deployment.md`)
+- Verify the Docker image digest for `sqlserver` and `rabbitmq` matches what the team last tested — there is no image registry: the local environment and the Azure server build the same Compose files (`05-architecture/deployment.md`)
 - There are no third-party webhooks: payment verification is manual, in-house (ADR-008)
 - Validate that messages from RabbitMQ have the expected schema before processing them — there is no Kafka in this stack (ADR-004)
 
 ### A09 — Security Logging and Monitoring Failures
 
 - Every failed authentication must be logged with the account and timestamp; successful logins also record IP and user agent in `security.user_session`
-- Log delete operations with who, when, and what was deleted — covered by the audit block on every domain table (`deleted_at`/`deleted_by`) and `audit.audit_log` (`06-data`, ADR-003)
+- Records with history are deactivated, not deleted; the tables keep the audit columns (`deleted_at`/`deleted_by`), but `audit.audit_log` is not written yet (corrective action ACO-04 in `lavarapido-docs`)
 - Security logs are plain output, readable with `docker logs` — there is no log retention policy or alerting stack: `04-requirements/non-functional.md` explicitly drops metrics and alerting from this academic delivery's scope
 
 ### A10 — Server-Side Request Forgery (SSRF)
@@ -111,9 +111,11 @@ bookingJpaRepository.findWithLinesById(id);
 public record RegisterRequest(@NotBlank @Size(max = 20) String documentNumber,
                               @NotBlank @Size(max = 60) String firstName,
                               @NotBlank @Size(max = 60) String lastName,
+                              @NotBlank @Email @Size(max = 60) String email,
                               @Size(max = 20) String phone,
-                              @NotBlank @Email @Size(max = 120) String email,
-                              @NotBlank String password) { }
+                              @NotBlank @Size(max = 72) String password,
+                              Boolean acceptsTerms,
+                              Boolean acceptsDataPolicy) { }
 
 // @Valid on the controller parameter rejects a bad shape with 400 before the use case runs
 public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest body) { ... }
@@ -130,9 +132,9 @@ pass through a validation schema before reaching the domain.
 // ❌ BAD — exposes internal details
 return ResponseEntity.status(500).body(e.getMessage() + Arrays.toString(e.getStackTrace()));
 
-// ✅ GOOD — RFC 7807 body, same in every service (PlatformExceptionHandler)
-//   { "status": 422, "detail": "INV-003: no wash bay is free at that time", "correlationId": "3b9e..." }
-// Business-rule messages are safe to show; unexpected errors return a generic 500 with the correlationId.
+// ✅ GOOD — RFC 9457 problem+json body with a stable code, same shape in every service (ApiExceptionHandler)
+//   { "title": "Conflict", "status": 409, "detail": "...", "code": "SLOT_UNAVAILABLE" }
+// The frontend translates the code; unexpected errors return a generic 500 with code INTERNAL_ERROR.
 ```
 
 ---

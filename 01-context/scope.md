@@ -15,19 +15,19 @@ What the system **DOES build and maintain**:
 | # | Feature | Description | Responsible service (ADR-009) |
 |---|---------|-------------|--------------------|
 | 1 | User management | Sign-up, login, password recovery and change, and profiles with different roles and permissions | `security-service` |
-| 2 | Wash service management | Service request with selection of date, time and service type; changes and cancellation before execution | `booking-service` |
+| 2 | Wash service management | Service request with selection of date, time and service type; cancellation by the customer before the start time; rescheduling by the Administrator | `booking-service` |
 | 3 | Operator assignment | Automatic by availability, direct selection by the customer, or manual override by the Administrator when needed | `operations-service` |
 | 4 | Payment management | QR-based payment (cash, Nequi, Daviplata, bank transfer) with an uploaded receipt reviewed by an administrator; transaction recording and payment history | `payment-service` |
 | 5 | Ratings and reviews | Customers rate and comment on the service once it is completed | `operations-service` |
 | 6 | Role-based dashboard and user preferences | Dashboard and notifications tailored to each user role, theme customisation, and interface available in four languages (Spanish, English, French, Portuguese) | `security-service` (preferences), `notification-service` (dashboard itself is frontend-only) |
 | 7 | Administrative management | Management of the shop's settings and business hours, wash bays, operator schedules and availability, plus operational reports and statistics | `booking-service` (shop data, hours, bays), `operations-service` (schedules, operator reports), `payment-service` (revenue) |
-| 8 | Promotions and loyalty | Administrator-created discounts/promotions, customer-applied promo codes at payment time, and a loyalty points program (accumulate on completed services, redeem for discounts) | `payment-service` |
+| 8 | Promotions and loyalty | Administrator-created percentage promotions, customer-applied promo codes at payment time, and a loyalty points program (points are credited when a booking's payment is approved and unlock promotions without being spent, ADR-015) | `payment-service` |
 
 ### Included integrations
 
-The only external system is an **SMTP mail server**. Locally it is Mailpit, a mail catcher that
-runs in Docker Compose; for a real delivery it is any SMTP account (for example, Gmail with an
-app password). It is used for the 6-digit password-recovery code (RF-003) and for the booking
+There are two external systems. The first is an **SMTP mail server**: locally it is Mailpit, a mail
+catcher that runs in Docker Compose; on the Azure server it is Gmail with an app password. The second
+is the **Expo Push API**, which delivers push notifications to the Android app. It is used for the 6-digit password-recovery code (RF-003) and for the booking
 e-mails `notification-service` sends on top of the in-app inbox (RF-018): welcome on sign-up,
 booking confirmation/cancellation, and reminders before the scheduled time. The recipient's
 address is read from `security-service` at send time through `/internal/**` (ADR-011 §8).
@@ -41,6 +41,7 @@ transmitted.
 | Environment | Purpose |
 |-------------|---------|
 | Local | Development and testing on each team member's machine, with Docker for the database and services |
+| Academic demo server | An Azure virtual machine with Docker Compose and Caddy (HTTPS), turned on on demand for reviews and demonstrations; it runs the `develop` branch (`10-devops/production.md`) |
 ---
 
 ## Out of Scope
@@ -53,7 +54,7 @@ What the system **does NOT build** in this version:
 | 2 | At-home / mobile wash service | The business model requires the customer to bring the vehicle to the shop | Under evaluation |
 | 3 | Electronic invoicing (DIAN) | Requires the business to be legally registered with the tax authority | No |
 | 4 | Supplies and inventory management | Outside the booking domain | No |
-| 5 | Staging and production deployment | Academic project, not deployed for real users | Yes — if the project continues |
+| 5 | Staging environment and real production operation | Academic project: the only shared deployment is the demo server on an Azure VM, turned on on demand, not a production service for real customers | Yes — if the project continues |
 
 ### What another system / team handles (and why not us)
 
@@ -81,7 +82,7 @@ verification is done manually by an administrator, inside the platform.
 | Type | Description |
 |------|-------------|
 | **Time** | The MVP must be ready by the academic delivery date |
-| **Budget** | No assigned funding. Development runs on the team's own equipment and free or free-tier tools. The estimated cost under real conditions is COP 148,173,000. |
+| **Budget** | No assigned funding. Development runs on the team's own equipment and free or free-tier tools. The estimated cost under real conditions is COP 212,925,240 (technical and economic proposal in `lavarapido-docs`). |
 | **Technology** | Java 21 + Spring Boot, Angular, React Native and SQL Server. |
 | **Regulatory** | Personal data handling under Colombian Law 1581 of 2012 (habeas data) |
 | **Team** | 3 part-time developers, alongside their academic workload |
@@ -94,7 +95,7 @@ verification is done manually by an administrator, inside the platform.
 |-----------|--------------------|--------------|--------|
 | Development equipment | Team members | Project start | 🟢 Available |
 | Technical guidance and delivery reviews | Technical instructors | Each review cycle | 🟢 Available |
-| SMTP account for the password-recovery e-mail (RF-003) | Team (Mailpit locally; e.g. Gmail app password for the delivery) | Before the final delivery | 🟡 Local ready, real account pending |
+| SMTP account for the password-recovery e-mail (RF-003) | Team (Mailpit locally; Gmail app password on the Azure server) | Before the final delivery | 🟢 Available |
 ---
 
 ## How to update the scope

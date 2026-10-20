@@ -24,9 +24,9 @@
 - [ ] If new/modified events: `event-catalog.md` updated
 
 ### Deployment
-- [ ] Code is mergeable to `dev` (no conflicts)
+- [ ] Code is mergeable to `develop` (no conflicts)
 - [ ] CI/CD green on the branch
-- [ ] Runs locally via Docker Compose, following `05-architecture/deployment.md` — there is no staging or production environment for this project (`01-context/scope.md`, Out of Scope #5)
+- [ ] Runs locally via Docker Compose, following `05-architecture/deployment.md`; the only shared environment is the academic Azure server, updated with `deploy/update-server.sh` or the manual deploy workflow (`10-devops/production.md`)
 - [ ] Basic smoke test passing locally
 
 ### Documentation
@@ -46,5 +46,5 @@ The following exceptions must be explicitly agreed to by the Tech Lead:
 ## What is NOT a Done criterion
 
 - "The code is on my machine" — it must be in the repository
-- "It works on my local environment" — it must work on staging
+- "It works on my local environment" — it must work in the shared Docker Compose setup (and on the Azure server once deployed)
 - "The PM/PO approved it" — that is the product Definition of Done, not the code's

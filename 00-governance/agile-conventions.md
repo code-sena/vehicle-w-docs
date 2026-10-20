@@ -16,7 +16,7 @@ instructor rather than an arbitrary week boundary.
 | Duration | 2 weeks, aligned to each academic review cycle |
 | Sprint start | Monday |
 | Sprint end | Friday of week 2, the day before the instructor review |
-| Current sprint | Sprint covering `04-requirements` → `06-data` (see `03-product/roadmap.md`, M1–M2) |
+| Current sprint | The planned sprints are closed; in October 2026 the team works on delivery fixes and documentation (see `03-product/roadmap.md`) |
 | Estimated capacity | 3 part-time apprentices alongside their academic workload — capacity is reduced accordingly, see `01-context/scope.md`, Constraints |
 
 ---

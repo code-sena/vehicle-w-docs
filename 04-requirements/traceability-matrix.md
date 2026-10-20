@@ -1,13 +1,14 @@
 # Traceability Matrix
 
 > Connects `04-requirements/functional.md` (RF) → `04-requirements/user-stories.md` (HU) → tests → service.
-> Status as of 2026-10-13. The six microservices (security, customer, booking, operations, payment,
+> Status as of 2026-10-20. The six microservices (security, customer, booking, operations, payment,
 > notification) and the api-gateway are built, merged into `develop`, connected to the web and the
-> Android app and verified end to end against the real database with real accounts.
-> Tests per service: `./mvnw test` in each Java repository (security 129, customer 68, booking 38,
-> operations 45, notification 100, api-gateway 34) and `dotnet test` in payment (domain 113,
-> application 28; 7 integration tests skipped by design because they need a separate database).
-> Web: `ng test`, 36 tests in 35 files.
+> Android app, deployed on the academic Azure server and verified end to end.
+> Full test run of 2026-10-19: web 43, api-gateway 34, security 151, customer 69, booking 43,
+> operations 55, notification 112 and payment 148 (including 7 persistence tests against an isolated
+> database) — 655 automated tests, plus 19 end-to-end tests (`lavarapido-infra/e2e`) and 42 functional
+> cases, all passed. On 2026-10-20 the admin role change was reverted and its 2 security tests left
+> the suite.
 ---
 
 ## How to use this matrix
@@ -34,7 +35,7 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RF-004b | Account lockout after failed logins | HU-AUTH-002 | `AuthenticationServiceTest` (lock, window, reset), `PasswordRecoveryServiceTest` (reset lifts it), `ApiSecurityWebTest` (423) | `security-service` | ✅ Done (5 failures in 15 min → 15-min lock, `login_lockout`, migration 034) |
 | RF-005 | Request booking (date, time, type) | HU-BOOK-001 | `BookingServiceTest`, `BookingTest`, `BookingApiWebTest` | `booking-service` | ✅ Done |
 | RF-006 | Slot availability validation | HU-BOOK-001 | `AvailabilityPolicyTest`, `BookingServiceTest` (full slot → alternatives) | `booking-service` | ✅ Done |
-| RF-007 | Modify/cancel booking before start | HU-BOOK-002 | `BookingTest` (reschedule, cancel, blocked after start), `BookingServiceTest` | `booking-service` | ✅ Done |
+| RF-007 | Customer cancels before start; administrator reschedules | HU-BOOK-002 | `BookingTest` (reschedule, cancel, blocked after start), `BookingServiceTest` | `booking-service` | ✅ Done (the customer cancels without a reason, stored as `CUSTOMER_REQUEST`; rescheduling is done by the administrator, the client screens do not offer it — AM-03) |
 | RF-008 | Automatic operator assignment | HU-BOOK-003 | `AutoAssignmentPolicyTest`, `OperationsServiceTest` (auto-assign, disabled account) | `operations-service`, `booking-service` | ✅ Done (on `booking.confirmed`: client's choice if free, else fewest bookings that day; ADR-014 §10) |
 | RF-009 | Assignment/reassignment by Administrator | HU-BOOK-006 | `AssignmentPolicyTest`, `OperationsServiceTest` (incl. `pastBookingIsNotAssignable`), `ServiceExecutionTest` (reassign only while pending) | `operations-service` | ✅ Done (a booking whose time has passed answers 409 `BOOKING_IN_PAST`, ADR-014 §8) |
 | RF-010 | Operator selection by customer | HU-BOOK-004 | `OperationsServiceTest` (free operators), `OperationsApiWebTest` | `operations-service`, `booking-service` | ✅ Done (`GET /operators/available`; optional `preferredOperatorId` on the booking, web and app) |
@@ -55,8 +56,20 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RF-023 | Operational reports | HU-ADMIN-001 | — | `booking-service`, `operations-service`, `payment-service` | 🟡 In progress (web reports read real bookings and payments; operator weekly metrics — services and trend, punctuality, revenue, worked hours — computed in operations-service, `OperatorMetricsCalculatorTest`; average rating per operator already in ratings) |
 | RF-024 | Manage promotions (create/edit/deactivate) | HU-PROMO-001 | `PromotionTests` (rules, optional price/duration, pause) | `payment-service` | ✅ Done (`/admin/promotions`: discount, required points, start date, pause/resume) |
 | RF-025 | Apply promotion at payment | HU-PROMO-002 | `PromotionTests` (redeem rules), `CustomerPromotionServiceTests` | `payment-service` | ✅ Done (the client redeems a coupon code when paying; once per booking) |
-| RF-026 | Earn/redeem loyalty points | HU-PROMO-002 | `LoyaltyTransactionTests`, `PaymentCommandServiceTests` (points earned, unlocked coupons), `PromotionTests` (`IsUnlockedBy`) | `payment-service` | ✅ Done (points per service set by the admin, credited when the payment is approved, reversed on refund; `LoyaltyPointsEarned` announces the points and the unlocked coupons, ADR-015 §5) |
+| RF-026 | Earn loyalty points that unlock promotions | HU-PROMO-002 | `LoyaltyTransactionTests`, `PaymentCommandServiceTests` (points earned, unlocked coupons), `PromotionTests` (`IsUnlockedBy`) | `payment-service` | ✅ Done (points per service set by the admin, credited when the payment is approved, reversed on refund; `LoyaltyPointsEarned` announces the points and the unlocked coupons, ADR-015 §5) |
 
+| RF-027 | Own account management | — | `UserProfileAndAdministrationTest`, `PersonAddressServiceTest`, `AuthenticationServiceTest` | `security-service` | ✅ Done (an administrator cannot close their own account) |
+| RF-028 | User administration | — | `UserProfileAndAdministrationTest`, `ApiSecurityWebTest` | `security-service` | ✅ Done (create operator/admin accounts, activate or deactivate; an administrator account cannot be deactivated, `ADMIN_CANNOT_BE_DISABLED`; the role change was reverted on 2026-10-20) |
+| RF-029 | Roles and permission matrix | — | `RolePermissionAdministrationServiceTest` | `security-service` | ✅ Done (matrix informative, ADR-015) |
+| RF-030 | Customer vehicles | — | `CustomerVehicleServiceTest`, `LicensePlateTest`, `CustomerApiWebTest` | `customer-service` | ✅ Done |
+| RF-031 | Service catalog and prices | — | `CatalogServiceTest` | `booking-service` | ✅ Done |
+| RF-032 | Wash bays | — | — (functional case CP-30) | `booking-service` | ✅ Done |
+| RF-033 | Administrative booking management | — | `BookingTest`, `BookingServiceTest` | `booking-service` | ✅ Done (status changes and rescheduling) |
+| RF-034 | Shop payment accounts | — | — (functional case CP-32) | `payment-service` | ✅ Done |
+| RF-035 | Refund | — | `PaymentTests`, `PaymentCommandServiceTests` | `payment-service` | ✅ Done |
+| RF-036 | Vehicle inspection report | — | `InspectionReportTest`, `OperationsApiWebTest`, `inspection-flow.test.js` | `operations-service`, `notification-service` | ✅ Done (web and mobile) |
+| RF-037 | Business data | — | `EstablishmentTest`, `BookingApiWebTest` | `booking-service` | ✅ Done |
+| RF-038 | Operator profile | — | `OperatorProfileServiceTest` | `operations-service` | ✅ Done |
 ---
 
 ## RNF → Validation matrix
@@ -64,15 +77,17 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RNF ID | Description | How it is validated | Status |
 |--------|-------------|----------------------|--------|
 | RNF-001 | Performance (p95 < 2 s) | `lavarapido-infra/e2e/performance.js` (p95 of the main reads through the gateway) | ✅ Met on 2026-10-14 (slowest p95 686 ms, `/payments/me`) |
-| RNF-002 | Availability during review sessions | Manual check before each session | 🔴 Pending |
-| RNF-003 | Concurrency and data integrity | Integration tests on booking and payment | 🔴 Pending |
-| RNF-004 | Security (JWT, BCrypt, roles, lockout) | `ApiSecurityWebTest`, `CustomerApiWebTest`, `BookingApiWebTest` (401/403 per role), `PasswordPolicyTest`, `GatewayRoutesTest` (`/internal` not exposed) + web guards | ✅ Done (lockout after 5 failed logins in 15 min, RF-004b; HTTPS is set up when deploying outside development) |
+| RNF-002 | Availability during review sessions | Manual check before each session | ✅ Done (6 services and the gateway answered `200 OK` on 2026-10-09; health checked on the Azure server on 2026-10-19) |
+| RNF-003 | Concurrency and data integrity | Integration tests on booking and payment | 🟡 In progress (rules enforced in code and database: bay overlap trigger, one approved payment per booking, unique reference; integration tests against SQL Server pending) |
+| RNF-004 | Security (JWT, BCrypt, roles, lockout) | `ApiSecurityWebTest`, `CustomerApiWebTest`, `BookingApiWebTest` (401/403 per role), `PasswordPolicyTest`, `GatewayRoutesTest` (`/internal` not exposed) + web guards | ✅ Done (lockout after 5 failed logins in 15 min, RF-004b; the Azure server serves everything over HTTPS with Caddy) |
 | RNF-005 | Observability (service logs) | `/actuator/health` per service, `X-Correlation-Id` in every log line | 🟡 In progress |
 | RNF-006 | Maintainability (PRs, commits, migrations) | GitHub history + code review | 🟡 In progress |
 | RNF-007 | Portability (Docker, no OS dependency) | Local setup reproduced from scratch | 🟡 In progress |
-| RNF-008 | Compatibility (Android 8+, browsers, 360 px) | `lavarapido-infra/e2e/width-360.js` (12 web screens at 360 px); devices by hand | 🟡 In progress (web at 360 px passes; Android 8 device still to try) |
+| RNF-008 | Compatibility (Android 8+, browsers, 360 px) | `lavarapido-infra/e2e/width-360.js` and a wider review; devices by hand | 🟡 In progress (on 2026-10-17, 60 web screens at 360 and 768 px and 26 app screens at 360 px without overflow; Android 8 device still to try) |
 | RNF-009 | Usability (booking in ≤ 5 steps, form messages) | Flow and form review | 🟡 In progress (booking takes 5 steps: vehicle, service, date, time, confirm — choosing the operator is optional; form messages reviewed in 4 languages) |
 | RNF-010 | Localisation (4 languages, COP, date formats) | Manual check per language | 🟡 In progress |
+| RNF-011 | Idempotence of events | Unit tests of the event consumer (`processed_event`) and of the loyalty credit | ✅ Done |
+| RNF-012 | Fault tolerance (SMTP, Expo Push, RabbitMQ down) | Test with the external service stopped | ✅ Done |
 
 ---
 
@@ -107,7 +122,7 @@ If there is code without an HU: possible gold-plating, or a change made without 
 
 | Status | Meaning |
 |--------|---------|
-| ✅ Done | Implemented, tested and merged into `dev` |
+| ✅ Done | Implemented, tested and merged into `develop` |
 | 🟡 In progress | Under development, or validated informally without automation |
 | 🔴 Pending | In the backlog, not started |
 | ⏸ Blocked | Has an external blocker |
@@ -118,7 +133,11 @@ If there is code without an HU: possible gold-plating, or a change made without 
 ## Identified gaps (requirements without coverage)
 
 | Gap type | Description | Required action | Owner |
-|----------|-------------|------------------|-------|
+|-------|-------------|------------------|-------|
+| Code without HU | RF-027 to RF-038 were built without a user story | Write their stories | Whole team |
+| Partial requirement | RF-023: consolidated reports for a chosen period | Build the reports in the backend | Backend lead |
+| Missing screen | The customer cannot reschedule from the web or the app (the API allows it) | Improvement action AM-03 | Frontend lead |
+| Test gap | RF-032 and RF-034 have no automated test of their own; RNF-003 has no integration tests against SQL Server | Add the tests | Backend lead |
 
 ---
 

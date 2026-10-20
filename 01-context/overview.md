@@ -34,9 +34,9 @@ the risks to validate before trusting this hypothesis, in
 
 | Role | Description | What they do in the system |
 |------|-------------|--------------------------|
-|  Administrator | Business owner or manager; no technical background required | Manages operators and schedules; defines services and promotions; reviews and approves payments; oversees overall operation and generates operational reports |   
+|  Administrator | Business owner or manager; no technical background required | Manages operators and schedules; creates operator and administrator accounts and activates or deactivates accounts (the role is set at creation and is not changed later; an administrator account cannot be deactivated); defines services and promotions; reschedules or cancels bookings; reviews and approves payments; oversees overall operation and generates operational reports |
 | Operator | Employee who performs the wash; no technical background required | Records their working availability, views assigned services, updates service status, and receives customer ratings |
-| Customer | Vehicle owner; no technical background required | Registers their vehicle, books time slots (time and service type), picks an operator from those available or lets the system assign one, pays by scanning the shop's QR code and uploading a receipt, applies promotions and rates the service |
+| Customer | Vehicle owner; no technical background required | Registers their vehicle, books time slots (time and service type), picks an operator from those available or lets the system assign one, cancels a booking before its start time, pays by scanning the shop's QR code and uploading a receipt, applies promotions and rates the service |
 
 ## Technology stack
 
@@ -50,9 +50,9 @@ the risks to validate before trusting this hypothesis, in
 
 ## Current status
 
-- **Phase:** Implementation (status at 2026-10-17). Design complete (`02-domain` to `06-data`, 15 ADRs). The six services and the gateway are built, tested and run together with Docker Compose (SQL Server, RabbitMQ, Mailpit and the services): **api-gateway (8080), security (3001), customer (3002), booking (3003), operations (3004), payment (3005, .NET 8) and notification (3006)**. payment-service covers QR accounts, payments with receipt, admin review, refunds, in-person payments, promotions redeemed as coupons and loyalty points, and publishes its events. notification-service delivers inbox, push and email, booking reminders, staff notices (including the alert for bookings without operator) and respects each user's notification switches. The web client and the Android app go through the gateway to all six services. Operator metrics, business data and the vehicle inspection report (web and mobile) are served by the backend. The system is deployed on an Azure VM since 2026-10-16 (`10-devops/production.md`). Since 2026-10-19 every repository runs its tests on GitHub Actions on each change (`10-devops/ci-cd.md`). Known gap: notification texts are generated in Spanish only
-- **Current version:** N/A — the project does not use release versioning yet
-- **Last release:** N/A
+- **Phase:** Implementation (status at 2026-10-20). Design complete (`02-domain` to `06-data`, 15 ADRs). The six services and the gateway are built, tested and run together with Docker Compose (SQL Server, RabbitMQ, Mailpit and the services): **api-gateway (8080), security (3001), customer (3002), booking (3003), operations (3004), payment (3005, .NET 8) and notification (3006)**. payment-service covers QR accounts, payments with receipt, admin review, refunds, in-person payments, promotions redeemed as coupons and loyalty points, and publishes its events. notification-service delivers inbox, push and email, booking reminders, staff notices (including the alert for bookings without operator) and respects each user's notification switches. The web client and the Android app go through the gateway to all six services. Operator metrics, business data and the vehicle inspection report (web and mobile) are served by the backend. The system is deployed on an Azure VM since 2026-10-16 (`10-devops/production.md`). Since 2026-10-19 every repository runs its tests on GitHub Actions on each change (`10-devops/ci-cd.md`). Notifications are written in the language of each account (Spanish, English, French or Portuguese). Known gaps: consolidated reports for a chosen period (RF-023, partial) and rate limiting
+- **Current version:** no release tags yet; the Android app is at version 1.1.0 (versionCode 5, published 2026-10-19)
+- **Last release:** N/A (the Azure server runs the `develop` branch)
 - **Next milestone:** consolidated reports in the backend, rate limiting in the gateway and the first release tag (`v1.0.0`) when `develop` is moved to `main`
 
 ## Project contacts
@@ -60,5 +60,5 @@ the risks to validate before trusting this hypothesis, in
 | Role | Name | Contact |
 |------|------|---------|
 | Project Lead | Brayan Estiven Patiño Cabrera | bspc1507@gmail.com |
-| Frontend Lead | Juan Camilo Guilombo | cguilombo587@gmail.com |
-| Backend Lead | Merari Urbano | GitHub: merari0322 |
+| Frontend Lead | Juan Camilo Guilombo Osorio | cguilombo587@gmail.com |
+| Backend Lead | Merari Urbano Quintero | merariurbano0322@gmail.com (GitHub: merari0322) |

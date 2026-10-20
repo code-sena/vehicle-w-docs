@@ -19,6 +19,9 @@
 | EP-007 User experience & preferences | 3 | Should / Could Have |
 | **Total** | **20** | |
  
+> Status reviewed against the code on 2026-10-20: 19 stories done and HU-ADMIN-001 in progress
+> (RF-023). RF-027 to RF-038 were built without a story (`functional.md`).
+
 > Project-level planning lives in `plan de actividades/scrum1.1.xlsx`.
 > The 21 HUs in that file describe project activities; the stories below
 > specify the software itself.
@@ -69,7 +72,7 @@ Scenario 2: Duplicate email
 |-------|-------|
 | Story Points | 3 |
 | Priority | Must Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `security-service` |
 | Covers | RF-001 |
  
@@ -102,7 +105,7 @@ Scenario 2: Repeated failed attempts
 |-------|-------|
 | Story Points | 3 |
 | Priority | Must Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `security-service` |
 | Covers | RF-002, RF-004b |
  
@@ -146,7 +149,7 @@ Scenario 4: Too many wrong codes
 |-------|-------|
 | Story Points | 2 |
 | Priority | Should Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `security-service` |
 | Covers | RF-003 |
 | Dependencies | Email provider not yet integrated — see `01-context/scope.md`, Out of Scope #6 |
@@ -179,7 +182,7 @@ Scenario 2: Incorrect current password
 |-------|-------|
 | Story Points | 2 |
 | Priority | Should Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `security-service` |
 | Covers | RF-004 |
  
@@ -211,7 +214,7 @@ Scenario 2: Slot already taken
 |-------|-------|
 | Story Points | 5 |
 | Priority | Must Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `booking-service` |
 | Covers | RF-005, RF-006 |
  
@@ -243,9 +246,10 @@ Scenario 2: Cancel while in progress
 |-------|-------|
 | Story Points | 3 |
 | Priority | Must Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `booking-service` |
 | Covers | RF-007 |
+| Notes | The customer cancels from the booking history by confirming a dialog, without writing a reason (stored as `CUSTOMER_REQUEST`), and only before the start time. Rescheduling is done by the administrator; the API accepts it from the customer, but no client screen offers it (improvement action AM-03) |
  
 ---
  
@@ -275,7 +279,7 @@ Scenario 2: No operator available
 |-------|-------|
 | Story Points | 5 |
 | Priority | Must Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `operations-service` |
 | Covers | RF-008 |
 | Technical notes | Tie-break rule when multiple operators are equally available is still undefined — see `04-requirements/functional.md`, Notes |
@@ -308,7 +312,7 @@ Scenario 2: Operator becomes unavailable
 |-------|-------|
 | Story Points | 3 |
 | Priority | Should Have |
-| Status | Backlog |
+| Status | Done |
 | Affected service(s) | `operations-service` |
 | Covers | RF-010 |
  
@@ -340,7 +344,7 @@ Scenario 2: Operator not available
 |-------|-------|
 | Story Points | 3 |
 | Priority | Should Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `operations-service` |
 | Covers | RF-009 |
  
@@ -377,7 +381,7 @@ Scenario 3: Booking not assigned to me
 |-------|-------|
 | Story Points | 3 |
 | Priority | Must Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `operations-service` |
 | Covers | RF-011, RF-012b |
  
@@ -409,7 +413,7 @@ Scenario 2: Service not yet completed
 |-------|-------|
 | Story Points | 2 |
 | Priority | Should Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `operations-service` |
 | Covers | RF-012 |
 | Dependencies | HU-BOOK-007 — the service must be marked as completed first |
@@ -447,7 +451,7 @@ Scenario 3: Receipt reused
 |-------|-------|
 | Story Points | 5 |
 | Priority | Must Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `payment-service` |
 | Covers | RF-013, RF-013b, RF-016 |
  
@@ -479,7 +483,7 @@ Scenario 2: No payments yet
 |-------|-------|
 | Story Points | 2 |
 | Priority | Should Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `payment-service` |
 | Covers | RF-015 |
  
@@ -516,7 +520,7 @@ Scenario 3: Cash payment
 |-------|-------|
 | Story Points | 3 |
 | Priority | Must Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `payment-service` |
 | Covers | RF-014 |
  
@@ -548,7 +552,7 @@ Scenario 2: View reports
 |-------|-------|
 | Story Points | 5 |
 | Priority | Should Have |
-| Status | Backlog |
+| Status | In Progress (RF-023: consolidated reports for a chosen period pending) |
 | Affected service(s) | `booking-service`, `operations-service` |
 | Covers | RF-021, RF-022, RF-023 |
  
@@ -580,7 +584,7 @@ Scenario 2: No data yet
 |-------|-------|
 | Story Points | 5 |
 | Priority | Should Have |
-| Status | Backlog |
+| Status | Done |
 | Affected service(s) | Frontend only |
 | Covers | RF-017 |
  
@@ -612,7 +616,7 @@ Scenario 2: Marking as read
 |-------|-------|
 | Story Points | 3 |
 | Priority | Should Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `notification-service` |
 | Covers | RF-018 |
  
@@ -651,7 +655,7 @@ Scenario 3: Preferences belong to each account
 |-------|-------|
 | Story Points | 3 |
 | Priority | Could Have |
-| Status | In Progress |
+| Status | Done |
 | Affected service(s) | `security-service` |
 | Covers | RF-019, RF-020 |
  
@@ -683,7 +687,7 @@ Scenario 2: Deactivate a promotion
 |-------|-------|
 | Story Points | 3 |
 | Priority | Should Have |
-| Status | Backlog |
+| Status | Done |
 | Affected service(s) | `payment-service` |
 | Covers | RF-024 |
  
@@ -720,7 +724,7 @@ Scenario 3: Earning points
 |-------|-------|
 | Story Points | 5 |
 | Priority | Could Have |
-| Status | Backlog |
+| Status | Done |
 | Affected service(s) | `payment-service`, `payment-service` |
 | Covers | RF-025, RF-026 |
  

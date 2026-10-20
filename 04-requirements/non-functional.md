@@ -21,7 +21,7 @@
  
 | Attribute | Metric | How it is verified |
 |-----------|--------|--------------------|
-| API response time — booking and auth endpoints | p95 < 2 s | Manual measurement with Postman in the local/Docker environment |
+| API response time — booking and auth endpoints | p95 < 2 s | `lavarapido-infra/e2e/performance.js`: 30 requests per endpoint through the gateway in the local Docker environment |
 | Availability query | < 2 s with the seeded test dataset | Manual test |
 | Booking confirmation | Must not wait on asynchronous side-effects (operator notification, receipt); these are queued | Integration test |
  
@@ -36,9 +36,10 @@
 | Environment | Target | Notes |
 |------------|--------|-------|
 | Local / Docker (dev) | Best-effort — not a monitored SLO | The project is not deployed for real users (scope.md, Out of Scope #5) |
+| Academic demo server (Azure VM) | Best-effort — the VM is turned on on demand | Used for reviews and demonstrations (`10-devops/production.md`) |
 | Academic review sessions | The system must be running and operational during each scheduled review | Verified by the team before each session |
  
-**Health checks:** `GET /health` per service, following the Spring Boot Actuator convention.
+**Health checks:** `GET /actuator/health` per service (payment-service also answers `/health`); every service checks the database.
  
 > The original SRS (RNF1) asked for ≥99% uptime with alerting on unplanned outages. That only
 > makes sense for a real production deployment, which is explicitly out of scope. Kept as a future
@@ -55,7 +56,7 @@
 | A second payment being approved for a booking that already has an approved payment, or a receipt's transaction reference being reused across bookings | Must not be possible — enforced by a filtered unique index per booking and a unique index on the transaction reference | Integration test (RF-014, RF-016) |
  
 > This replaces the SRS's original scalability target (1000 concurrent users with cloud
-> auto-scaling): there is no cloud deployment in scope, and what actually matters for this system
+> auto-scaling): the only deployment is a single demo VM, and what actually matters for this system
 > is correctness under concurrency, not volume.
  
 ---
@@ -67,7 +68,7 @@
 | 4.1 | Private endpoints require a valid JWT in the `Authorization: Bearer` header | A request without a token returns 401 |
 | 4.2 | JWT tokens expire after 1 hour | An expired token returns 401 |
 | 4.3 | Passwords are stored hashed with BCrypt, never in plain text | Database inspection |
-| 4.4 | An account locks for 15 minutes after 5 failed login attempts within 15 minutes (RF-004b) | Unit test `LoginLockoutTest` + manual test |
+| 4.4 | An account locks for 15 minutes after 5 failed login attempts within 15 minutes (RF-004b) | `AuthenticationServiceTest` (lock and window) + `ApiSecurityWebTest` (423) |
 | 4.5 | Each role (Administrator, Operator, Customer) can only reach its own endpoints | A cross-role request returns 403 |
 | 4.6 | No card data is ever collected or stored by this system — digital payments are manual QR transfers verified against an uploaded receipt, and cash is confirmed directly by the Administrator (RF-013 to RF-016) | Code and schema review |
 | 4.7 | Credentials and API keys live in environment variables, never in the repository | Code review before each PR |
@@ -81,7 +82,8 @@
 | Pillar | Requirement | How it is verified |
 |--------|-------------|--------------------|
 | Logs | Each service logs incoming requests and errors to standard output, readable via `docker logs` | Manual check |
-| Cross-service tracing | Not defined — open question for the team once asynchronous messaging is built | — |
+| Correlation | Every request carries `X-Correlation-Id`, which each service writes in its log lines and forwards on REST calls | Log review with `docker logs` |
+| Distributed tracing | Not adopted (see the dropped list below) | — |
  
 ---
  
@@ -141,9 +143,25 @@
  
 ---
  
+## RNF-011: Reliability — idempotence
+
+| # | Requirement | How it is verified |
+|---|-------------|--------------------|
+| 11.1 | A domain event received more than once produces a single effect (one notification, one loyalty credit) | Unit tests of the event consumer (`processed_event`) and of the loyalty credit |
+
+---
+
+## RNF-012: Reliability — fault tolerance
+
+| # | Requirement | How it is verified |
+|---|-------------|--------------------|
+| 12.1 | A failure of the SMTP server, Expo Push or RabbitMQ does not prevent confirming a booking or approving a payment; the notification stays in the inbox | Test with the external service stopped |
+
+---
+
 ## Dropped from the original template (not applicable to this project)
  
-- **Disaster Recovery (RTO/RPO)** — there is no production environment to recover
+- **Disaster Recovery (RTO/RPO)** — there is no production environment to recover (the Azure VM is a demo server)
 - **Availability SLOs and error budgets** — nothing is deployed for real users
 - **Auto-scaling policies (CPU thresholds, instance limits)** — no cloud infrastructure in scope
 - **PagerDuty / Alertmanager on-call rotation** — this is an academic team
@@ -154,16 +172,18 @@
  
 | RNF | Priority | Validated how? | Owner |
 |-----|----------|-----------------|-------|
-| RNF-001 Performance | P2 | Manual measurement | Backend lead |
+| RNF-001 Performance | P2 | `e2e/performance.js` | Backend lead |
 | RNF-002 Availability (review sessions) | P1 | Manual check before each session | Whole team |
 | RNF-003 Concurrency and integrity | P1 | Integration tests | Backend lead |
 | RNF-004 Security | P1 | Manual tests + code review | Backend lead |
-| RNF-005 Observability | P3 | Not validated yet | — |
+| RNF-005 Observability | P3 | Log review (`X-Correlation-Id`) | Backend lead |
 | RNF-006 Maintainability | P2 | Code review + GitHub history | Whole team |
 | RNF-007 Portability | P1 | Local setup from scratch | Whole team |
 | RNF-008 Compatibility | P1 | Manual tests on devices and browsers | Frontend lead |
 | RNF-009 Usability | P2 | Informal review | Frontend lead |
 | RNF-010 Localisation | P2 | Manual check per language | Frontend lead |
+| RNF-011 Idempotence | P1 | Unit tests of consumers and loyalty credit | Backend lead |
+| RNF-012 Fault tolerance | P1 | Test with the external service stopped | Backend lead |
  
 ---
 ## Correlations

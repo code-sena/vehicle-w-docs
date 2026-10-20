@@ -6,7 +6,7 @@
 
 ```
 main          ← Stable. Merge from develop for deliveries.
-  └── develop ← Integration. Merge from features (`dev` in this docs repository).
+  └── develop ← Integration. Merge from features (this documentation repository integrates on `docs`).
         └── feat/[description]    ← One branch per feature/user story (`feature/` also used in existing repos)
         └── fix/[description]     ← One branch per bugfix
         └── chore/[description]   ← Infrastructure, docs, dependency changes
@@ -14,15 +14,17 @@ main          ← Stable. Merge from develop for deliveries.
 ```
 
 **Repositories:** one per service (`lavarapido-security-service`, `lavarapido-customer-service`,
-`lavarapido-booking-service`, `lavarapido-notification-service`, `lavarapido-api-gateway`,
-`lavarapido-infra`), the web, the mobile app, and this documentation repository.
+`lavarapido-booking-service`, `lavarapido-operation-service`, `lavarapido-payment-service`,
+`lavarapido-notification-service`, `lavarapido-api-gateway`), `lavarapido-infra`, the web
+(`Front-end-proyecto-web`), the mobile app (`LavadoVehicular-Movil`), this documentation repository
+and the evidence repository (`lavarapido-docs`, working branch `main`).
 
 **Rules:**
 - Nobody commits directly to `main`
 - Features go through a branch and a PR to `develop`; a small fix (a few lines, no new behavior)
   may go straight to `develop`
 - One branch = one task (do not mix different features)
-- Branches are deleted after merge
+- Branches are pushed and kept on GitHub after the merge, as a record of the work
 
 ---
 
@@ -88,9 +90,10 @@ chore(deps): upgrade Spring Boot to 3.2.0
 
 ## Merge policy
 
-- Use **Squash and Merge** for features (keeps `develop` history clean)
+- Code repositories: pull `develop` with `--ff-only`, then `git merge --no-ff <branch>` into `develop`, so each branch stays visible in the history
+- This documentation repository: the branch is merged into `docs`; `lavarapido-docs` merges into `main`
 - Use **Merge Commit** for releases to `main` (preserves full history)
-- **Do not** use Rebase & Merge (creates confusion in shared history)
+- **Do not** use Rebase & Merge on shared branches (creates confusion in shared history)
 
 ---
 

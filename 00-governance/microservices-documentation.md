@@ -18,7 +18,7 @@ Each microservice lives in `09-microservices/services/NN-service-name/` and MUST
 └── runbook.md        🟢 REQUIRED before the service runs in the shared Docker Compose environment
 ```
 
-There is no staging or production environment for this project — every "before deploy" checkpoint below means "before it runs in the team's local Docker environment" (`05-architecture/deployment.md`).
+There is no staging environment for this project — every "before deploy" checkpoint below means "before it runs in the team's Docker Compose environment", locally or on the academic Azure server (`05-architecture/deployment.md`, `10-devops/production.md`).
 
 And its OpenAPI contract in:
 ```

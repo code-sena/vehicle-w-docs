@@ -17,16 +17,16 @@
 | Know what is done and what is missing | [`04-requirements/traceability-matrix.md`](./04-requirements/traceability-matrix.md), [`15-project-control/`](./15-project-control/README.md) |
 | Join the team | [`14-training/technical-onboarding.md`](./14-training/technical-onboarding.md) |
 
-## Status (2026-10-06)
+## Status (2026-10-20)
 
 | Component | State |
 |---|---|
-| api-gateway (8080), security (3001), customer (3002), booking (3003), notification (3006) | Built, tested, running with Docker Compose |
-| operations-service (3004) | Built: operators, shifts, absences, assignment, execution, ratings. In Docker Compose |
-| payment-service (3005, .NET 8) | Partial: payment accounts with QR, payments with receipt, admin review and manual payments. Promotions, loyalty and events pending; not in Docker Compose yet |
-| Web (Angular 21) | Connected through the gateway to all six services |
-| Android app | In development by teammates (already calls operations and payment too) |
-| CI | GitHub Actions (all repositories) |
+| api-gateway (8080) and the six services: security (3001), customer (3002), booking (3003), operations (3004), payment (3005, .NET 8), notification (3006) | Built and tested (655 automated tests passed on 2026-10-19); running with Docker Compose locally and on the Azure server behind Caddy (HTTPS) |
+| Web (Angular 21) | The three roles, connected to the six services through the gateway |
+| Android app (Expo SDK 57, version 1.1.0) | The three roles; the APK is served at `/app/` on the public server |
+| Database | SQL Server 2022: 57 tables in 9 schemas, last migration 039 |
+| Requirements | 40 of 41 functional requirements implemented; RF-023 (consolidated reports) is partial |
+| CI | GitHub Actions in the 10 code repositories, plus a manual deploy workflow in `lavarapido-infra` |
 
 Stack: Java 21 · Spring Boot 4 · Spring Cloud Gateway · .NET 8 (payment) · SQL Server 2022 ·
 Liquibase · RabbitMQ · Angular 21 · React Native (Expo) · Docker.

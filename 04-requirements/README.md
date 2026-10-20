@@ -9,17 +9,17 @@
 
 | File | What it answers |
 |------|-----------------|
-| [`functional.md`](./functional.md) ⭐ | 29 functional requirements (RF-xxx), with owning service, source story and priority |
-| [`non-functional.md`](./non-functional.md) | 10 non-functional requirements (RNF-xxx): performance, availability, security, observability… |
+| [`functional.md`](./functional.md) ⭐ | 41 functional requirements (RF-xxx): 29 with a source story and RF-027 to RF-038 built without one, with owning service and priority |
+| [`non-functional.md`](./non-functional.md) | 12 non-functional requirements (RNF-xxx): performance, availability, security, observability, idempotence, fault tolerance… |
 | [`user-stories.md`](./user-stories.md) | 20 user stories (HU-xxx) with Gherkin acceptance criteria, grouped by epic |
 | [`traceability-matrix.md`](./traceability-matrix.md) ⭐ | RF → story → test → service → status, and every known gap |
 | `_template-hu.md` | Template for a new story |
 
-## Status at 2026-10-04 (from the traceability matrix)
+## Status at 2026-10-20 (from the traceability matrix)
 
-10 Done · 10 In progress · 16 Pending (most wait for operations-service and payment-service) ·
-1 Cancelled. Known gaps called out in the matrix: login attempt limit (RF-004b) and theme/language
-per account (RF-019/020).
+40 of the 41 functional requirements are done; RF-023 (consolidated reports for a chosen period)
+is partial. RF-027 to RF-038 still have no user story. Of the 12 non-functional requirements, 5
+are met and 7 are partial (see the matrix).
 
 ## Rules
 
