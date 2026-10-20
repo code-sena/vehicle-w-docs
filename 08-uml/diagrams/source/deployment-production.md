@@ -17,7 +17,7 @@ flowchart TB
         web["web<br/>nginx + Angular"]
         dl[/"/app/<br/>APK + version.json"/]
         gw["api-gateway :8080"]
-        apps["6 microservices<br/>security :3001 · customer :3002 · booking :3003<br/>operations :3004 · payment :3005 (.NET 8) · notification :3006"]
+        apps["6 microservices<br/>security :3001 · customer :3002<br/>booking :3003 · operations :3004<br/>payment :3005 (.NET 8) · notification :3006"]
         db[("SQL Server 2022 Express<br/>LavaRapido · 57 tables")]
         mq[["RabbitMQ :5672"]]
         init["db-init + payment-migrate<br/>(run once, exit 0)"]

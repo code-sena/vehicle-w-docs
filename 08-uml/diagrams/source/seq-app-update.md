@@ -19,7 +19,7 @@ sequenceDiagram
 
     D->>EAS: Android build (versionCode + 1)
     EAS-->>D: APK link
-    D->>VM: node scripts/publish-apk.mjs → ssh "bash deploy/publish-apk.sh <url> <versionCode> <notes>"
+    D->>VM: node scripts/publish-apk.mjs →<br/>ssh "bash deploy/publish-apk.sh <url> <versionCode> <notes>"
     VM->>VM: downloads the APK apart and swaps it at once
     VM->>CD: deploy/downloads/LavaRapidoVehicular.apk + version.json {versionCode, url, size, notes}
     alt NOTIFY is not 0

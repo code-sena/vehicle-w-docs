@@ -21,7 +21,7 @@ sequenceDiagram
     rect rgb(235, 245, 235)
     Note over P,N: Earning points: when a payment is approved (see SEQ-05)
     P->>DB: loyalty_transaction EARNED (sum of the points of the booking lines)
-    P->>DB: active coupons whose RequiredPoints fall between the old and the new balance
+    P->>DB: active coupons whose RequiredPoints fall<br/>between the old and the new balance
     P->>MQ: payment.loyalty_points_earned {points, balance, unlocked coupons}
     MQ->>N: LOYALTY_POINTS_EARNED (+ PROMOTION_AVAILABLE per unlocked coupon)
     N-->>C: inbox, push and email

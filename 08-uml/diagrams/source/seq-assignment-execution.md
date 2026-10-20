@@ -37,7 +37,7 @@ sequenceDiagram
         OP-->>W: 409 OPERATOR_INACTIVE | OPERATOR_NOT_ON_SHIFT | OPERATOR_ABSENT | OPERATOR_BUSY
     end
 
-    O->>W: assigned services → Start Service (from 15 min before the booked time)
+    O->>W: assigned services → Start Service<br/>(from 15 min before the booked time)
     W->>OP: POST /api/v1/operator/services/{bookingId}/start
     OP->>B: PATCH /operator/bookings/{id}/status IN_PROGRESS (operator JWT)
     OP->>DB: lines → IN_PROGRESS, started_at

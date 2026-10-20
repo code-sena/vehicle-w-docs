@@ -6,7 +6,39 @@ Getters, `restore(...)` factories and the read-only metric records (`OperatorWee
 
 ```mermaid
 classDiagram
+    class OperatorMetricsCalculator {
+        <<domain service>>
+    }
+    class BookingSnapshot {
+        <<value object>>
+        long id
+        String code
+        String status
+        LocalDate date
+        LocalTime startTime
+        LocalTime endTime
+        Long ownerUserId
+        String plate
+        BigDecimal total
+        +lineIds() List~Long~
+        +overlaps(BookingSnapshot) boolean
+    }
+    class Skill {
+        <<value object>>
+        String name
+        Level level
+    }
     direction LR
+    class AssignmentPolicy {
+        <<domain service>>
+        +check(Operator, List~WeeklyAvailability~, List~Absence~, BookingSnapshot, List~BookingSnapshot~)$
+        +blockingReason(...)$ String
+    }
+    class OperatorProfile {
+        <<value object>>
+        String specialty
+        List~Skill~ skills
+    }
     class ServiceExecution {
         <<aggregate root>>
         -Long id
@@ -25,14 +57,6 @@ classDiagram
         +finish(Instant)
         +rate(int stars, String text, Instant)
     }
-    class ExecutionStatus {
-        <<enumeration>>
-        PENDING
-        IN_PROGRESS
-        PAUSED
-        COMPLETED
-        WITH_ISSUE
-    }
     class Operator {
         <<aggregate root>>
         -Integer id
@@ -42,22 +66,6 @@ classDiagram
         +provision(long userId, LocalDate)$ Operator
         +setActive(boolean)
     }
-    class OperatorProfile {
-        <<value object>>
-        String specialty
-        List~Skill~ skills
-    }
-    class Skill {
-        <<value object>>
-        String name
-        Level level
-    }
-    class Level {
-        <<enumeration>>
-        CERTIFIED
-        EXPERT
-        ADVANCED
-    }
     class WeeklyAvailability {
         <<value object>>
         short dayOfWeek
@@ -65,27 +73,17 @@ classDiagram
         LocalTime endsAt
         +covers(LocalTime, LocalTime) boolean
     }
-    class Absence {
-        <<value object>>
-        Integer id
-        Instant startsAt
-        Instant endsAt
-        String reason
-        +overlaps(Instant, Instant) boolean
+    class StartPolicy {
+        <<domain service>>
+        +EARLY_START = 15 min$
+        +startableAt(BookingSnapshot)$ Instant
+        +check(BookingSnapshot, Instant)$
     }
-    class BookingSnapshot {
-        <<value object>>
-        long id
-        String code
-        String status
-        LocalDate date
-        LocalTime startTime
-        LocalTime endTime
-        Long ownerUserId
-        String plate
-        BigDecimal total
-        +lineIds() List~Long~
-        +overlaps(BookingSnapshot) boolean
+    class Level {
+        <<enumeration>>
+        CERTIFIED
+        EXPERT
+        ADVANCED
     }
     class InspectionReport {
         <<aggregate root>>
@@ -106,6 +104,12 @@ classDiagram
         +summary() Summary
         +maskedPlate() String
     }
+    class InspectionPhaseStatus {
+        <<enumeration>>
+        PENDING
+        IN_PROGRESS
+        DONE
+    }
     class InspectionFinding {
         <<entity>>
         Long id
@@ -116,6 +120,27 @@ classDiagram
         List~Long~ photoIds
         Instant createdAt
     }
+    class AutoAssignmentPolicy {
+        <<domain service>>
+        +choose(List~Candidate~, Integer preferredOperatorId)$ Optional~Integer~
+    }
+    class FindingSeverity {
+        <<enumeration>>
+        INFO
+        MINOR
+        MAJOR
+    }
+    class TeamSummaryCalculator {
+        <<domain service>>
+    }
+    class Absence {
+        <<value object>>
+        Integer id
+        Instant startsAt
+        Instant endsAt
+        String reason
+        +overlaps(Instant, Instant) boolean
+    }
     class InspectionPhase {
         <<enumeration>>
         RECEPTION
@@ -124,60 +149,34 @@ classDiagram
         ENGINE
         DELIVERY
     }
-    class InspectionPhaseStatus {
+    class ExecutionStatus {
         <<enumeration>>
         PENDING
         IN_PROGRESS
-        DONE
+        PAUSED
+        COMPLETED
+        WITH_ISSUE
     }
-    class FindingSeverity {
-        <<enumeration>>
-        INFO
-        MINOR
-        MAJOR
-    }
-    class AssignmentPolicy {
-        <<domain service>>
-        +check(Operator, List~WeeklyAvailability~, List~Absence~, BookingSnapshot, List~BookingSnapshot~)$
-        +blockingReason(...)$ String
-    }
-    class AutoAssignmentPolicy {
-        <<domain service>>
-        +choose(List~Candidate~, Integer preferredOperatorId)$ Optional~Integer~
-    }
-    class StartPolicy {
-        <<domain service>>
-        +EARLY_START = 15 min$
-        +startableAt(BookingSnapshot)$ Instant
-        +check(BookingSnapshot, Instant)$
-    }
-    class OperatorMetricsCalculator {
-        <<domain service>>
-    }
-    class TeamSummaryCalculator {
-        <<domain service>>
-    }
-
+    AssignmentPolicy ..> Absence
     ServiceExecution --> ExecutionStatus
+    InspectionReport ..> BookingSnapshot : bookingId (booking-service)
+    TeamSummaryCalculator ..> ServiceExecution
+    InspectionReport --> "5" InspectionPhase : phases
+    Operator "1" -- "0..*" Absence
+    AssignmentPolicy ..> Operator
     ServiceExecution ..> Operator : operatorId
+    Skill --> Level
+    AssignmentPolicy ..> WeeklyAvailability
+    AutoAssignmentPolicy ..> AssignmentPolicy : candidates already pass check
+    InspectionReport "1" *-- "0..*" InspectionFinding
+    InspectionReport ..> InspectionPhaseStatus
     ServiceExecution ..> BookingSnapshot : bookingServiceId (booking-service)
     Operator "1" -- "0..1" OperatorProfile
     OperatorProfile *-- "0..*" Skill
-    Skill --> Level
-    Operator "1" -- "0..*" WeeklyAvailability : shifts
-    Operator "1" -- "0..*" Absence
-    InspectionReport ..> BookingSnapshot : bookingId (booking-service)
-    InspectionReport "1" *-- "0..*" InspectionFinding
-    InspectionReport --> "5" InspectionPhase : phases
-    InspectionReport ..> InspectionPhaseStatus
-    InspectionFinding --> FindingSeverity
-    AssignmentPolicy ..> Operator
-    AssignmentPolicy ..> WeeklyAvailability
-    AssignmentPolicy ..> Absence
-    AutoAssignmentPolicy ..> AssignmentPolicy : candidates already pass check
     StartPolicy ..> BookingSnapshot
     OperatorMetricsCalculator ..> ServiceExecution
-    TeamSummaryCalculator ..> ServiceExecution
+    Operator "1" -- "0..*" WeeklyAvailability : shifts
+    InspectionFinding --> FindingSeverity
 ```
 
 Rules kept by these classes:
