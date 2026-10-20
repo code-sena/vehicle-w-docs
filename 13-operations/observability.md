@@ -9,8 +9,8 @@
 
 | Pillar | Implemented | Where |
 |--------|-------------|-------|
-| Logs | Spring Boot console logs with service name and correlation id on every line; payment-service uses the default ASP.NET Core console log (no correlation id yet) | Terminal of each service, or `docker logs <container>` |
-| Health | `GET /actuator/health` (+ liveness/readiness probes) on every Java service and the gateway; payment-service answers a fixed `{"status":"UP"}` on `/actuator/health` and `/health` | `http://localhost:3001`…`3006/actuator/health`, `:8080` |
+| Logs | Spring Boot console logs with service name and correlation id on every line; payment-service uses the ASP.NET Core console log and its `CorrelationIdMiddleware` takes or creates the id | Terminal of each service, or `docker logs <container>` |
+| Health | `GET /actuator/health` (+ liveness/readiness probes) on every Java service and the gateway; payment-service answers `/actuator/health` and `/health` after checking SQL Server (503 if it does not answer within 3 s) | `http://localhost:3001`…`3006/actuator/health`, `:8080` |
 | Info | `GET /actuator/info` (service name), Java services only | same |
 | Broker | RabbitMQ management panel: queues, message rates, dead-letter queues | http://localhost:15672 |
 | Email | Mailpit inbox for test emails (when `MAIL_HOST` points to it) | http://localhost:8025 |
@@ -33,13 +33,13 @@ Pattern (`logging.pattern.level` in each `application.yml`): `%5p [${spring.appl
 
 ### Correlation id
 
-`CorrelationIdFilter` (every Java service; not in payment-service yet) reads `X-Correlation-Id` from the request — accepted only if it
+`CorrelationIdFilter` (every Java service; `CorrelationIdMiddleware` in payment-service) reads `X-Correlation-Id` from the request — accepted only if it
 matches `^[A-Za-z0-9-]{1,64}$`, so it cannot inject lines into the log — or generates a UUID,
 puts it in the MDC and returns it in the response header.
 
-**Partly done:** booking-service forwards the id on its calls to customer-service, and operations-service on its calls to booking and security, so a booking
-and its vehicle check share one id. **Gap:** customer → security, notification → security, payment → booking and the
-RabbitMQ messages do not carry it yet, and neither the web nor the gateway sends one. Today each service logs its own id; following one user action across
+**Partly done:** booking-service forwards the id on its calls to customer-service, operations-service on its calls to booking and security, and payment-service on its calls to booking, so a booking
+and its vehicle check share one id. **Gap:** customer → security, notification → security and the
+RabbitMQ messages do not carry it yet, and the web does not send one (the gateway only lets the header through for CORS). Today each service logs its own id; following one user action across
 services means matching timestamps. Fix: forward the header in the `RestClient`s and add it as a
 message header when publishing events.
 
@@ -66,7 +66,7 @@ message header when publishing events.
 for p in 3001 3002 3003 3004 3005 3006 8080; do echo "$p $(curl -s localhost:$p/actuator/health)"; done
 ```
 
-- The database is part of the health of every Java service (Spring's datasource indicator). payment-service does not check its database in `/actuator/health`.
+- The database is part of the health of every service: Spring's datasource indicator in the Java services, and a SQL Server check with a 3-second limit in payment-service.
 - RabbitMQ health is checked only when `MESSAGING_ENABLED=true`
   (`management.health.rabbit.enabled`).
 - Mail health is off on purpose: a down SMTP server must not mark a service as down, because email

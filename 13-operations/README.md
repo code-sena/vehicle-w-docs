@@ -1,8 +1,9 @@
 # 13 — Operations
 
 > How the system is kept running: how problems are detected, how the team responds, and what
-> availability is promised. The system runs on the team's machines (no production environment
-> yet), so the commitments here are sized for development, demos and review sessions.
+> availability is promised. The system runs on the team's machines and on an academic demo server
+> (an Azure VM turned on on demand, `10-devops/production.md`); there is no production service for
+> real customers, so the commitments here are sized for development, demos and review sessions.
 
 ---
 
@@ -17,9 +18,9 @@ There is no SLA with an external customer: the project is academic.
 
 **Before a review session (checklist):**
 1. `docker compose up -d` and wait for `lavarapido-sqlserver` to be healthy (`payment-migrate` must end with exit code 0).
-2. Start the services (payment-service with `dotnet run`, it is not in the compose file yet); all health checks `UP` on 3001–3006 and 8080 (see `observability.md`).
+2. Start the services (`docker compose --profile app up -d`, or each one from its folder); all health checks `UP` on 3001–3006 and 8080 (see `observability.md`). For a review on the Azure server, ask the project lead to turn the VM on and check `PUBLIC_URL`.
 3. Run the core flow once with the demo accounts (client, admin and operator). The operator needs a weekly shift that covers the booking time, or the assignment fails with `OPERATOR_NOT_ON_SHIFT`.
-4. RabbitMQ dead-letter queues empty.
+4. RabbitMQ dead-letter queues (`notification-service.events.dlq`, `customer-service.events.dlq`) empty.
 
 ---
 

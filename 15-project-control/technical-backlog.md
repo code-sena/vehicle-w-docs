@@ -1,11 +1,11 @@
 # Technical Backlog
 
 > Things that work but not as they should, found while building and documenting the system.
-> Separate from the product user stories. Last review: **2026-10-16** (checked against the code of every repository).
+> Separate from the product user stories. Last review: **2026-10-20** (checked against the code of every repository).
 
 | ID | Description | Where | Impact if not resolved | Effort | Priority |
 |----|-------------|-------|------------------------|--------|----------|
-| TD-001 | 6 stale spec files stopped the web test suite from compiling | Web | — | 1 SP | ✅ Resolved (the suite compiles and runs: 41 tests in 36 files, `ng test`) |
+| TD-001 | 6 stale spec files stopped the web test suite from compiling | Web | — | 1 SP | ✅ Resolved (the suite compiles and runs: 43 tests in 37 files, `ng test`) |
 | TD-002 | Theme and language were stored per browser, not per account | Web + security-service | — | 3 SP | ✅ Resolved (`GET/PUT /api/v1/users/me/preferences` after login; security-service accepts the 4 palettes, changelog 020) |
 | TD-003 | No login attempt limit | security-service | — | 3 SP | ✅ Resolved (`LoginLockout`: 5 failures in 15 min lock the account 15 min, 423 `ACCOUNT_LOCKED`, changelog 034) |
 | TD-004 | Create the `lavarapido-api-gateway` repository on GitHub and push it | api-gateway | — | 0.5 SP | ✅ Resolved (pushed, `develop` in sync with `origin`) |
@@ -22,7 +22,7 @@
 | TD-015 | payment-service did not publish its events | payment-service | — | 3 SP | ✅ Resolved (payment.confirmed, rejected, refunded, promotion_redeemed and loyalty_points_earned) |
 | TD-016 | A transaction reference could be reused on another payment | payment-service | — | 1 SP | ✅ Resolved (409 `TRANSACTION_REFERENCE_REUSED`) |
 | TD-017 | payment-service had no `X-Correlation-Id` handling and its health did not check the database | payment-service | — | 1 SP | ✅ Resolved (`CorrelationIdMiddleware`; `/health` and `/actuator/health` answer 503 DOWN when SQL Server does not answer within 3 s) |
-| TD-018 | payment-service only tested its domain | payment-service | — | 2 SP | ✅ Resolved (domain, application and integration test projects: 141 tests) |
+| TD-018 | payment-service only tested its domain | payment-service | — | 2 SP | ✅ Resolved (domain, application and integration test projects: 148 tests, 7 of them against SQL Server) |
 | TD-019 | payment changelogs use their own `001`–`020` numbering, repeating the global numbers (`06-data/migration-strategy.md`) | payment-service | Confusing history; risk of picking a wrong number | 0.5 SP | Low |
 | TD-020 | Automatic operator assignment on `booking.confirmed` (RF-008) | operations-service | — | 3 SP | ✅ Resolved (`BookingConfirmedListener` + `AutoAssignmentPolicy`, with the optional operator chosen by the client, RF-010) |
 | TD-021 | `OperatorServiceResponse.startable` was uncommitted | operations-service | — | 0.5 SP | ✅ Resolved (committed with its tests) |

@@ -40,7 +40,9 @@ test class; the 69 test cases do run.
 | **Total** | **655** | |
 
 The same day the 19 end-to-end tests of `lavarapido-infra/e2e` and the 42 functional cases CP-01 to
-CP-42 (Test Documentation of `lavarapido-docs`) passed against the complete system.
+CP-42 (Test Documentation of `lavarapido-docs`) passed against the complete system. On 2026-10-20 the
+admin role change was reverted and its 2 tests left security-service, so a new run will count 2 fewer
+there.
 
 ---
 
@@ -86,7 +88,7 @@ There are **no tests against a real SQL Server** yet: the database schema is val
 
 **Automated** (`lavarapido-infra/e2e`, Node scripts through the gateway, with `E2E_ADMIN_ID`,
 `E2E_OPERATOR_ID` and `E2E_CLIENT_ID` set to the local accounts). Run of 2026-10-16 against the
-`develop` code: 19 of 19 checks green.
+`develop` code: 19 of 19 checks green; run again on 2026-10-19 with the same result (11.2 s).
 
 | Script | What it checks |
 |---|---|
@@ -113,12 +115,14 @@ web slice tests protect each provider's side.
 ## Performance tests
 
 `lavarapido-infra/e2e/performance.js` measures the p95 of the main reads through the gateway (30
-requests each, after a warm-up). Run of 2026-10-16 on the development PC: every endpoint under the
-2 s limit; the slowest p95 was the client's bookings with 90 ms (on 2026-10-14 it was `/payments/me`
+requests each, after a warm-up). Run of 2026-10-19 on the development PC: every endpoint under the
+2 s limit; the slowest p95 was the client's bookings with 49 ms (on 2026-10-14 it was `/payments/me`
 with 686 ms).
 
 **Screen width (RNF-008):** `lavarapido-infra/e2e/width-360.js` opens 12 web screens (public, client,
-admin) at 360 px and fails if any has horizontal scroll; all passed on 2026-10-14 and again on 2026-10-16.
+admin) at 360 px and fails if any has horizontal scroll; all passed on 2026-10-14, 2026-10-16 and 2026-10-19.
+On 2026-10-19 a wider review also checked 33 web screens at 360 and 768 px and 15 mobile screens at
+360 px, with no overflow.
 
 ---
 
@@ -127,7 +131,7 @@ admin) at 360 px and fails if any has horizontal scroll; all passed on 2026-10-1
 ```bash
 ./mvnw test                      # one backend service (from its folder)
 dotnet test                      # payment-service (from lavarapido-payment-service)
-npx ng test --watch=false        # web (blocked today, see gaps)
+npx ng test --watch=false        # web
 ```
 
 Do not run `./mvnw clean` while that same service is running (it deletes the classes in use).

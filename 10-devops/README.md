@@ -1,8 +1,8 @@
 # 10 — DevOps
 
-> How LavaRápido is started, configured, deployed and (soon) built automatically. Development runs
-> on the team's machines with Docker Compose; production runs the same images on one Linux VM behind
-> Caddy.
+> How LavaRápido is started, configured, deployed and built automatically. Development runs on the
+> team's machines with Docker Compose; the academic demo server runs the same Compose files on one
+> Azure Linux VM behind Caddy, turned on on demand.
 
 ---
 
@@ -25,7 +25,7 @@
 | Configuration | One `lavarapido-infra/.env` (template: `.env.example`), read by compose and by each service run with `./mvnw` |
 | Database migrations | Liquibase, run by each service at startup |
 | CI/CD | GitHub Actions: `ci.yml` in the 10 repositories and `deploy.yml` in `lavarapido-infra` |
-| Remote environments | Production on an Azure VM (`production.md`); no staging |
+| Remote environments | Academic demo server ("production") on an Azure VM, turned on on demand (`production.md`); no staging |
 
 ---
 

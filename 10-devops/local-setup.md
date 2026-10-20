@@ -34,9 +34,11 @@ Backend/
 ├── lavarapido-security-service/
 ├── lavarapido-customer-service/
 ├── lavarapido-booking-service/
+├── lavarapido-operation-service/       (singular: the compose file uses this name)
+├── lavarapido-payment-service/         .NET 8
 ├── lavarapido-notification-service/
 └── lavarapido-api-gateway/
-Web/                                  Angular app
+Front-end-proyecto-web/               Angular app
 LavadoVehicular-Movil/                React Native (Expo) app
 ```
 
@@ -80,7 +82,7 @@ Every service reads `../lavarapido-infra/.env` automatically. Required values:
 |---|---|
 | `DB_PASSWORD` | SQL Server `sa` password |
 | `JWT_SECRET` | ≥ 32 bytes, **same for all services** |
-| `INTERNAL_API_KEY` | Shared key security ↔ notification (booking emails and reminders) |
+| `INTERNAL_API_KEY` | Shared key for `/internal/**` between security, booking, operations and notification (booking emails, reminders and automatic operator assignment) |
 | `MAIL_*` | Gmail app password, or leave Mailpit defaults |
 | `MESSAGING_ENABLED=true` | Turn on RabbitMQ events (welcome email, booking notifications, reminders) |
 
@@ -104,7 +106,7 @@ run automatically at startup.
 cd Backend/lavarapido-security-service     && ./mvnw spring-boot:run
 cd Backend/lavarapido-customer-service     && ./mvnw spring-boot:run
 cd Backend/lavarapido-booking-service      && ./mvnw spring-boot:run
-cd Backend/lavarapido-operations-service   && ./mvnw spring-boot:run
+cd Backend/lavarapido-operation-service    && ./mvnw spring-boot:run
 cd Backend/lavarapido-payment-service      && dotnet run --project src/PaymentService.Api   # .NET 8
 cd Backend/lavarapido-notification-service && ./mvnw spring-boot:run
 cd Backend/lavarapido-api-gateway          && ./mvnw spring-boot:run   # required: the web goes through it
@@ -113,13 +115,13 @@ cd Backend/lavarapido-api-gateway          && ./mvnw spring-boot:run   # require
 payment-service does not create its tables on startup: `docker compose up -d` runs the
 `payment-migrate` container (Liquibase) once. It reads the same `lavarapido-infra/.env`.
 
-Alternative (everything in Docker): `docker compose --profile app up -d --build`. payment-service
-is not in the compose file yet: run it with `dotnet run` (see `05-architecture/deployment.md`).
+Alternative (everything in Docker): `docker compose --profile app up -d --build` starts the six
+services (payment-service included) and the gateway in containers (see `05-architecture/deployment.md`).
 
 ### Step 4: Start the web
 
 ```bash
-cd Web
+cd Front-end-proyecto-web
 npm install
 npx ng serve                # http://localhost:4200 — proxy.conf.json sends /api to the gateway (:8080)
 ```
@@ -131,7 +133,7 @@ curl http://localhost:3001/actuator/health   # {"status":"UP"} — same for 3002
 ```
 
 Swagger UI (dev profile): `http://localhost:300N/swagger-ui.html`; payment-service:
-`http://localhost:3005/swagger`.
+`http://localhost:3005/swagger` (only in the Development environment, the default of `dotnet run`).
 Demo accounts (seeded by security-service in dev): `admin@gmail.com`, `operador@gmail.com`,
 `cliente@gmail.com`.
 

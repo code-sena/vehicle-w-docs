@@ -1,8 +1,8 @@
 # Incident Management
 
 > An incident is anything that stops the system from working as expected — in a demo, a review
-> session (RNF-002) or while the team develops. The project runs on the team's machines (no
-> production yet), so this playbook is sized for a small academic team: short, concrete, and
+> session (RNF-002) or while the team develops. The project runs on the team's machines and on an
+> academic demo server (Azure VM turned on on demand; no production service for real customers), so this playbook is sized for a small academic team: short, concrete, and
 > pointing to the tools that actually exist.
 
 ---
@@ -63,10 +63,10 @@ Frequent causes already seen in this project:
 | Every call answers 401 | Different `JWT_SECRET` between services |
 | "Port … already in use" | An instance is still running |
 | Times shifted 5 hours | JVM time zone (fixed in booking-service: JVM runs in UTC) |
-| Booking emails only in the inbox | `INTERNAL_API_KEY` missing or different |
+| Booking emails only in the inbox, or bookings left without an operator | `INTERNAL_API_KEY` missing or different between the services |
 | `./mvnw` cannot read `distributionUrl` | `maven-wrapper.properties` without final newline |
-| Payment screens fail, every other screen works | payment-service not running (it is not in the compose file; start it with `dotnet run`) or its tables missing (`payment-migrate` did not run) |
-| Payment routes fail only with `--profile app` | The `api-gateway` container has no `ROUTE_PAYMENT_URL` and falls back to `localhost:3005` inside the container |
+| Payment screens fail, every other screen works | payment-service not running (`docker compose --profile app up -d payment-service`, or `dotnet run` from its folder) or its tables missing (`payment-migrate` did not run) |
+| Payment routes fail only with `--profile app` | The `api-gateway` container needs `ROUTE_PAYMENT_URL=http://payment-service:3005` (set in `docker-compose.yml`); without it the gateway falls back to `localhost:3005` inside its own container |
 | Operator list empty / cannot assign | No account with role `OPERATOR`, or the operator has no shift for that time (`OPERATOR_NOT_ON_SHIFT`) |
 | 503 `BOOKING_SERVICE_UNAVAILABLE` from operations or payment | booking-service down or `BOOKING_SERVICE_URL` wrong |
 

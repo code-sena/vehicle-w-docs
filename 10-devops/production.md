@@ -126,7 +126,7 @@ Liquibase applies new changesets at startup.
 
 The same update can be launched from GitHub without SSH: `lavarapido-infra` → **Actions → Desplegar
 en Azure → Run workflow** (`ci-cd.md`). Last update: 2026-10-19 at 03:20 (server time), which applied
-migration 039; the evidence is in the deployment document of `lavarapido-docs` (version 1.3).
+migration 039; the evidence is in the deployment document of `lavarapido-docs` (version 1.3; current version 1.4).
 
 ### Access with a personal key
 

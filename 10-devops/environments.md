@@ -35,7 +35,7 @@ variables override it. Main variables:
 | `CORS_ALLOWED_ORIGINS` | services, gateway | `http://localhost:4200,http://localhost:8081` (Angular dev server and `expo start --web`); same default in every service, the gateway and the compose file. In production, `PUBLIC_URL` |
 | `MESSAGING_ENABLED`, `RABBITMQ_*` | security, customer, booking, operations, notification | `true` to use RabbitMQ events |
 | `MAIL_ENABLED`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | security, notification | Gmail (app password) or Mailpit |
-| `INTERNAL_API_KEY` | security, notification | Shared key for `/internal/**` |
+| `INTERNAL_API_KEY` | security, booking, operations, notification | Shared key for `/internal/**` (also needed for automatic assignment) |
 | `PUSH_ENABLED`, `EXPO_ACCESS_TOKEN` | notification | Push through Expo |
 | `REMINDER_LEADS`, `REMINDER_CHECK_INTERVAL` | notification | `24h,1h`, `5m` |
 | `CUSTOMER_SERVICE_URL`, `SECURITY_SERVICE_URL` | booking / customer, operations, notification | Service-to-service URLs |
@@ -55,7 +55,7 @@ In Docker (`--profile app`) the compose file replaces the host names with the co
 
 ## What production still needs
 
-1. A CI pipeline per repository: `./mvnw verify` (Java services), `dotnet test` (payment), `ng build` (web), Docker image build.
+1. Building the Docker images in CI and pushing them to a registry (the CI pipelines already build and test each repository, `ci-cd.md`).
 2. A database user of its own instead of `sa`, and scheduled backups of `sqlserver-data`.
 3. Uptime monitoring of `PUBLIC_URL`.
 4. An Outbox for events (ADR-004) if losing an event during a broker outage is not acceptable.

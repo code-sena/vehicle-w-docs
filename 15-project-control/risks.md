@@ -1,7 +1,7 @@
 # Risk Register
 
 > Risks that can stop LavaRápido from being delivered or demonstrated. Reviewed at each
-> retrospective and whenever a service is merged. Last review: **2026-10-16**.
+> retrospective and whenever a service is merged. Last review: **2026-10-20**.
 
 Level = probability × impact (Low / Medium / High → Low, Medium, High, Critical).
 Owner is a role; the team assigns the person in the sprint board.
@@ -46,8 +46,8 @@ Owner is a role; the team assigns the person in the sprint board.
 
 - **Mitigation:** consumers are idempotent and failures go to dead-letter queues, so a retry is
   safe; customer-service also creates the profile on first use if the event never arrived.
-- **Contingency:** re-create the missing notification manually from the admin notifications
-  screen.
+- **Contingency:** tell the customer directly. The API has a manual notification endpoint
+  (`POST /api/v1/admin/notifications`, `SYSTEM_MESSAGE`), but no screen of the web or the app uses it.
 
 ### R-006 — Uncommitted or colliding work
 
