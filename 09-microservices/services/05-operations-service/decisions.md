@@ -21,6 +21,28 @@ Reassigning is only allowed while every line is `PENDING`.
 assignment (409 with the reason) and the candidates list, so the admin sees in advance who can
 take a booking.
 
+## Assignments are serialized with a lock
+
+**Date:** 2026-10-21
+**Context:** The admin could assign by hand exactly while the automatic assignment chose the same
+operator for another booking at the same time; both checks saw the operator free. Rare, but it would
+leave one operator with two services at once.
+**Decision:** `assign` and `autoAssign` take `sp_getapplock` on `operations-assignment` (transaction
+owner, exclusive, 10 s) before reading the operator's other bookings, the same way booking-service
+locks its schedule. The statement first reads one row of `execution.execution_status` so the
+transaction is really open (the JDBC driver opens it at the first read; without it the lock is
+refused with `-999`).
+**Consequences:** Assignments run one after the other, which is negligible for the shop's volume.
+
+## "Unassigned" is counted by operations
+
+**Date:** 2026-10-21
+**Context:** The admin home and the bookings screen counted the bookings without an operator each in
+its own way, and the numbers did not match.
+**Decision:** `GET /api/v1/admin/assignments/unassigned` returns the count and the ids with one rule:
+`SCHEDULED` or `CONFIRMED`, end time still ahead, no execution line. The web uses it on both screens
+and, only if operations does not answer, applies the same rule to the data it already has.
+
 ## A booking in the past cannot be assigned
 
 **Decision:** Assigning answers 409 `BOOKING_IN_PAST` once the booking's end time has passed, so an

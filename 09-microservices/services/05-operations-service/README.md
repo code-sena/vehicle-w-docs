@@ -35,7 +35,13 @@
 - **Assignment (RF-008/009):** the admin assigns or changes the operator of a booking while it is
   `SCHEDULED` or `CONFIRMED` and its time has not passed (409 `BOOKING_IN_PAST`, ADR-014 §8). `AssignmentPolicy` checks: operator active, on shift for the whole
   booking, not absent, and not busy with another booking at the same time. The candidates endpoint
-  returns every operator with the reason that blocks them, if any.
+  returns every operator with the reason that blocks them, if any. Manual and automatic assignment
+  take the same lock (`sp_getapplock` on `operations-assignment`) before checking who is free, so two
+  assignments at the same moment cannot give one operator two services at the same time.
+- **Unassigned bookings:** `GET /api/v1/admin/assignments/unassigned?from=&to=` answers
+  `{count, bookingIds}` with the bookings that still need an operator: `SCHEDULED` or `CONFIRMED`,
+  not finished yet and without any execution line. The admin home and the bookings screen use this one
+  number, so both show the same count.
 - **Execution (RF-010/011):** the operator starts the service only from 15 minutes before the
   booking time (`StartPolicy`, 409 `SERVICE_TOO_EARLY`; each service carries `startableAt` for the
   screens) and finishes it; the service moves the booking to `IN_PROGRESS` / `COMPLETED` in booking-service. An operator
@@ -93,6 +99,7 @@
 | GET · POST | `/api/v1/admin/operators/{id}/absences` (`?from=&to=`) | ADMIN |
 | DELETE | `/api/v1/admin/operators/{id}/absences/{absenceId}` | ADMIN |
 | GET | `/api/v1/admin/assignments` (`?from=&to=`, default today) | ADMIN |
+| GET | `/api/v1/admin/assignments/unassigned` (`?from=&to=`): `{count, bookingIds}` of the bookings that still need an operator | ADMIN |
 | PUT | `/api/v1/admin/assignments/{bookingId}` | ADMIN |
 | GET | `/api/v1/admin/assignments/{bookingId}/candidates` | ADMIN |
 | GET · POST | `/api/v1/admin/inspections/{bookingId}` (state · start) | ADMIN |
