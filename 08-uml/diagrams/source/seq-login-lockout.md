@@ -1,7 +1,8 @@
 # Sequence — Login, lockout and logout (RF-002, RF-004b)
 
-Source: `security-service` `AuthController` (`/api/v1/auth/login`, `/logout`), `AuthenticationService.login /
-logout`, `LoginLockout`, `JwtTokenIssuer`; checked against the code on 2026-10-19.
+Source: `security-service` `AuthController` (`/api/v1/auth/login`, `/logout`, `/session`), `AuthenticationService.login /
+logout / isActive`, `LoginLockout`, `JwtTokenIssuer`, `ActiveSessionValidator`; gateway `SessionCheckFilter`; checked
+against the code on 2026-10-21.
 
 ```mermaid
 sequenceDiagram
@@ -45,10 +46,24 @@ sequenceDiagram
 
     U->>W: Log out
     W->>GW: POST /api/v1/auth/logout (Bearer token)
+    GW->>GW: forgets the cached session answer of this token
     GW->>S: forward
     S->>DB: user_session revoked
     S-->>W: 204
+
+    Note over W,DB: Later call with the same token (another tab, a copied token)
+    W->>GW: GET /api/v1/bookings (old token)
+    GW->>S: GET /api/v1/auth/session (same token)
+    S->>DB: session of the token open and not expired?
+    S-->>GW: 401 UNAUTHORIZED
+    GW-->>W: 401 UNAUTHORIZED (booking-service is never reached)
+    W->>W: "session expired", back to sign in
 ```
+
+The gateway keeps each answer of `/api/v1/auth/session` for 30 seconds per token, so an open session
+costs one extra call every half minute, not one per request. A session also closes when an
+administrator disables the account or the owner closes it; those reach the other services within the
+same 30 seconds (ADR-006, update 2026-10-21).
 
 The deactivated state is checked only after the password, so only the owner of the account learns it
 is disabled. Recovering the password also clears the lockout ([seq-password-recovery](./seq-password-recovery.md)).

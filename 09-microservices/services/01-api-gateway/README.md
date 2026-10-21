@@ -26,13 +26,19 @@
 - Answer CORS for the browser (preflight included) with the same allowed origins as the services
   (`CORS_ALLOWED_ORIGINS`), and drop the services' own CORS headers so they are not duplicated.
 - Keep `/internal/**` (service-to-service routes, ADR-011 §8) unreachable from outside: 404.
+- Cut tokens of closed sessions (`SessionCheckFilter`, ADR-006 update 2026-10-21): before forwarding a
+  call with a token to any service, ask security-service `GET /api/v1/auth/session` and answer its own
+  401 if the session was closed. The answer is kept 30 seconds per token; `/api/v1/auth/**` is left to
+  security-service, and a logout through the gateway clears the cached answer at once. If
+  security-service does not answer, the call goes on.
 
 ## Out of scope (what it does NOT do)
 
 - **No business logic** — it only routes.
-- **No JWT validation** — each service verifies its own token (ADR-006). The gateway does not
-  add `X-User-*` headers and services never trust such headers.
-- **No data** — stateless.
+- **No JWT validation** — each service verifies its own token (ADR-006); the gateway only asks
+  whether the session is still open. It does not add `X-User-*` headers and services never trust
+  such headers.
+- **No data** — the only state is the short in-memory cache of session answers.
 - Rate limiting is not implemented yet (see `decisions.md`).
 
 ---
@@ -72,7 +78,9 @@ With Docker: `docker compose --profile app up -d` in `lavarapido-infra` (service
 
 `./mvnw test` — `GatewayRoutesTest` starts one fake HTTP server per service and checks that every
 route reaches the right one, that token and query string travel, that `/internal/**` and unknown
-paths are 404, and that CORS works without duplicated headers.
+paths are 404, and that CORS works without duplicated headers. `SessionCheckFilterTest` uses a fake
+security-service: an open session goes through, a closed one gets security-service's 401, the
+answer is cached per token, a logout clears it, and a failing security-service lets the call go on.
 
 ---
 

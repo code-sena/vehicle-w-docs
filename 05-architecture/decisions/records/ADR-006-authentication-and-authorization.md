@@ -39,7 +39,18 @@ The caller forwards the authenticated token and correlation id. The receiving se
 
 ## Consequences
 
-JWT avoids a security-service lookup on every request. The trade-off is that a token cannot be revoked immediately in this version; it can remain valid until expiry.
+JWT avoids a security-service lookup on every request. The trade-off was that a token could not be revoked before expiry. Since 2026-10-21 that is no longer the case (see the update below).
+
+## Update 2026-10-21 — closed sessions
+
+A review found that a token kept working for up to an hour after a logout or after an administrator disabled the account. The decision above stays (each service verifies its own token), and two checks were added on top:
+
+- security-service rejects a token whose session (`sid` claim) is closed or expired, on every one of its endpoints (`ActiveSessionValidator`), and exposes `GET /api/v1/auth/session` (204 open, 401 closed).
+- The gateway asks that endpoint before forwarding a call with a token to any other service (`SessionCheckFilter`). The answer is kept 30 seconds per token, so it is one extra call per token and half minute, not per request; a logout through the gateway clears it at once.
+- If security-service does not answer, the call goes on (the service still checks the signature): the check cannot take the API down.
+- A token without `sid` is not tied to a session. Only someone holding the secret can sign one (the e2e tests do), and that person could put the `sid` of an open session anyway, so requiring it would protect nothing more.
+
+In production only Caddy is published (`docker-compose.prod.yml`), so every outside call goes through the gateway and gets the check.
 
 ## Alternatives
 

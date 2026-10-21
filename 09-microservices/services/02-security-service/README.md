@@ -27,7 +27,9 @@
   2012). Both fields are optional so older app versions keep working.
 - Authenticate with email + password (BCrypt) and issue an **HS256 JWT valid for 1 hour**.
   Claims: `sub` (user id), `roles`, `sid` (session id), `iss`, `aud`, `iat`, `nbf`, `exp`, `jti`.
-- Record sessions (`user_session`); logout stores the session end.
+- Record sessions (`user_session`); logout stores the session end. A token whose session was closed
+  (logout, account disabled or closed) or expired is rejected with 401 (`ActiveSessionValidator`), and
+  `GET /api/v1/auth/session` tells the gateway whether a token's session is still open (204 / 401).
 - Lock an account for 15 minutes after 5 wrong passwords within 15 minutes (RF-004b, `login_lockout`):
   the login answers `423 ACCOUNT_LOCKED`, even with the right password, until it expires; a password
   reset lifts it.
@@ -58,7 +60,8 @@
 ## Out of scope (what it does NOT do)
 
 - Does not store vehicles, bookings or anything of another context.
-- Does not revoke tokens before they expire (ADR-006 trade-off): logout only ends the session record.
+- Does not stop closed-session tokens in the other services by itself: the gateway asks
+  `GET /api/v1/auth/session` for them (ADR-006, update 2026-10-21).
 - Does not send notifications itself, except the password recovery email.
 
 ---
@@ -70,6 +73,7 @@
 | POST | `/api/v1/auth/register` | public |
 | POST | `/api/v1/auth/login` | public |
 | POST | `/api/v1/auth/logout` | token |
+| GET | `/api/v1/auth/session` (204 if the token's session is open, 401 if it was closed or expired; used by the gateway) | token |
 | POST | `/api/v1/auth/password/forgot` · `/verify` · `/reset` | public |
 | GET · PATCH | `/api/v1/users/me` | token |
 | GET · PUT | `/api/v1/users/me/address` (`{ "address": "…" }`, up to 200 characters; empty deletes it) | token |

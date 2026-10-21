@@ -1,7 +1,8 @@
 # Data Model — API Gateway
 
-> The gateway is **stateless**: no database, no cache, no session. Everything it needs is
-> configuration in `src/main/resources/application.yml`, overridable with environment variables.
+> The gateway has no database and no shared cache. Its only state is an in-memory map of session
+> answers (below). Everything else is configuration in `src/main/resources/application.yml`,
+> overridable with environment variables.
 
 ---
 
@@ -11,10 +12,10 @@
 |---|---|
 | Database | None |
 | Cache / shared store | None (no Redis in the stack) |
-| In-memory state | None that outlives a request |
+| In-memory state | Session answers from security-service, by SHA-256 of the token (never the token itself), 30 seconds each, at most 10 000 entries |
 
-Consequence: rate limiting and token revocation are **not** done here (they would need a shared
-store). See `decisions.md`.
+Consequence: rate limiting is **not** done here (it would need a shared store). Closed sessions are
+cut by asking security-service; each gateway instance keeps its own short cache. See `decisions.md`.
 
 ---
 
@@ -30,6 +31,9 @@ store). See `decisions.md`.
 | payment-service URL | route `payment-service` | `ROUTE_PAYMENT_URL` | `http://localhost:3005` |
 | notification-service URL | route `notification-service` | `ROUTE_NOTIFICATION_URL` | `http://localhost:3006` |
 | Allowed web origins | `app.cors.allowed-origins` | `CORS_ALLOWED_ORIGINS` | `http://localhost:4200` |
+| Session check on/off | `app.session-check.enabled` | `SESSION_CHECK_ENABLED` | `true` |
+| How long a session answer is kept | `app.session-check.cache-ttl` | `SESSION_CHECK_CACHE_TTL` | `30s` |
+| Wait for security-service | `app.session-check.timeout` | `SESSION_CHECK_TIMEOUT` | `3s` |
 
 Routes live in `spring.cloud.gateway.server.webmvc.routes` (path predicates per service; full table
 in `README.md`). Changing a route means editing the file and restarting the gateway.

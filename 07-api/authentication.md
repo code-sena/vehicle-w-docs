@@ -12,6 +12,7 @@ POST /api/v1/auth/login {email, password}
   → security-service checks the BCrypt hash and that the account is active
   → opens a session (security.user_session) and returns a signed JWT + expiry
 Client sends   Authorization: Bearer <token>   on every protected call
+Gateway        asks security-service whether the token's session is still open (cached 30 s)
 Each service   verifies signature, issuer, audience, expiry → roles → authorization
 POST /api/v1/auth/logout  → closes the session in security-service
 ```
@@ -34,9 +35,20 @@ user signs in again.
 | `iat`, `exp` | Issued at, expiry (`JWT_ACCESS_TOKEN_TTL`, default `1h`) |
 | Personal data | **None** (no email, no name) |
 
-The services validate signature, `iss`, `aud` and `exp`. They do **not** check whether the session
-was closed: after logout a token keeps working in the other services until it expires (accepted for
-the 1-hour lifetime; stated in `05-architecture/security-threat-model.md`).
+The services validate signature, `iss`, `aud` and `exp`. Whether the session is still open is
+checked in two places (ADR-006, update 2026-10-21):
+
+- security-service rejects a token of a closed or expired session on its own endpoints and answers
+  `GET /api/v1/auth/session` with 204 (open) or 401 (closed).
+- The gateway calls that endpoint before forwarding a call with a token to any other service and
+  keeps the answer 30 seconds per token (`SESSION_CHECK_CACHE_TTL`). A closed session gets the same
+  `401 UNAUTHORIZED` body security-service returns, with its CORS headers, so the web shows "session
+  expired" as with an expired token.
+
+A session closes on logout, when an administrator disables the account and when the owner closes it.
+A logout through the gateway takes effect at once; the other two reach the services within 30 seconds.
+If security-service does not answer, the gateway lets the call go on (the service still checks the
+signature).
 
 ---
 

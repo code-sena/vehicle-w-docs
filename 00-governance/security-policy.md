@@ -35,8 +35,9 @@
 
 ### Session tracking and token revocation
 
-- `security.user_session` records who logged in, when, and whether the session was closed — it answers "who was connected and when," it is **not** checked on every request (ADR-006)
-- **A JWT cannot be revoked before it expires.** Logging out closes the session row, and a lockout (RF-004b) blocks new logins, but a token issued before that moment stays valid until its hour runs out. This is an accepted trade-off (`05-architecture/overview.md`, AT-007), not an oversight — checking `user_session` on every request would turn `security-service` into a bottleneck all six services depend on
+- `security.user_session` records who logged in, when, and whether the session was closed (logout, account disabled by an administrator, account closed by its owner)
+- **A token of a closed session stops working** (since 2026-10-21, ADR-006 update). security-service rejects it on its own endpoints, and the gateway asks security-service (`GET /api/v1/auth/session`) before forwarding a call to any other service, keeping the answer 30 seconds per token (`SESSION_CHECK_CACHE_TTL`). A logout that goes through the gateway takes effect at once; disabling an account reaches the other services within those 30 seconds
+- If security-service does not answer, the gateway lets the call go on: the service behind it still checks signature and expiry, so an outage of security-service does not take the rest of the API down. A lockout (RF-004b) only blocks new logins; it does not close sessions already open
 
 ---
 

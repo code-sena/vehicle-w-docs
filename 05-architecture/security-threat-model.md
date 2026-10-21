@@ -63,6 +63,8 @@ The current design uses:
 - JWT Bearer authentication
 - HS256 shared secret from environment configuration
 - one-hour token lifetime
+- tokens of closed sessions (logout, disabled or closed account) rejected by security-service and,
+  before any other service, by the gateway (`SessionCheckFilter`, answer cached 30 seconds)
 - BCrypt password hashing
 - role claims
 - ownership checks in the service
