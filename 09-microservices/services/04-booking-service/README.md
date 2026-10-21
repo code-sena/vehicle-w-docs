@@ -39,6 +39,11 @@
   bookings through `IN_PROGRESS`, `COMPLETED`, `NO_SHOW` or `CANCELLED` (choosing a reason from
   `cancellation_reason`; `CUSTOMER_REQUEST` when none is sent). The API also has a client reschedule
   (`PUT /bookings/{id}`), but the web and the app do not use it.
+- **Expired bookings:** every 5 minutes (`ExpiredBookingsJob`) the bookings still `SCHEDULED` or
+  `CONFIRMED` one hour after their end are closed: `CONFIRMED` → `NO_SHOW` (no automatic refund),
+  `SCHEDULED` → `CANCELLED` with the system reason `EXPIRED`. It takes the same schedule lock as
+  booking, and only the cancelled ones publish `BookingCancelled`. The reason `EXPIRED` is not listed
+  in `/bookings/cancellation-reasons`.
 - **Schedule history:** every change of the weekly hours, exceptions and bays is recorded in
   `booking.schedule_history` (`GET /api/v1/admin/schedule/history`).
 - **Establishment:** the shop's public data (name, address, contact).
@@ -101,6 +106,8 @@ cd lavarapido-booking-service
 | `BOOKING_ZONE` | `America/Bogota` | Shop time zone |
 | `BOOKING_SLOT_MINUTES` | `30` | Availability grid |
 | `BOOKING_MAX_DAYS_AHEAD` | `60` | How far ahead clients can book |
+| `BOOKING_EXPIRY_GRACE_MINUTES` | `60` | How long after its end an open booking is closed by the system |
+| `BOOKING_EXPIRY_CHECK_ENABLED`, `BOOKING_EXPIRY_CHECK_INTERVAL` | `true`, `PT5M` | Turn the expired-bookings job on or off and how often it runs |
 | `MESSAGING_ENABLED`, `RABBITMQ_*` | `false` | Publish booking events |
 
 ---

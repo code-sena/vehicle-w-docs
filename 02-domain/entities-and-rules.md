@@ -177,12 +177,16 @@ SCHEDULED ── confirm (needs a bay) ──▶ CONFIRMED
 CONFIRMED ── start ──▶ IN_PROGRESS ── complete ──▶ COMPLETED
 CONFIRMED ── no-show ──▶ NO_SHOW
 SCHEDULED / CONFIRMED ── cancel (reason stored) ──▶ CANCELLED
+CONFIRMED ── still open 1 h after its end (system) ──▶ NO_SHOW
+SCHEDULED ── still open 1 h after its end (system, reason EXPIRED) ──▶ CANCELLED
 SCHEDULED / CONFIRMED ── reschedule (admin) ──▶ same state, new time and bay (prices kept)
 ```
 
 Only `SCHEDULED` and `CONFIRMED` can be changed or cancelled (RF-007). The client cancels before the
 start time without giving a reason (the booking stores `CUSTOMER_REQUEST`); the admin reschedules and
-may choose the cancellation reason. Diagram:
+may choose the cancellation reason. A booking nobody closed does not stay open: one hour after its
+end (`BOOKING_EXPIRY_GRACE_MINUTES`) the system moves it as shown above, so the operator and the bay
+are free again and the "unassigned" counts stop including it. Diagram:
 `08-uml/diagrams/source/state-booking.md`.
 
 ### Booking rules

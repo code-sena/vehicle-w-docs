@@ -1141,7 +1141,7 @@ CREATE TABLE [booking].cancellation_reason (
 | Column | Type | Nullable | Description | Constraints |
 |--------|------|----------|--------------|-------------|
 | `cancellation_reason_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
-| `code` | NVARCHAR(30) | No | `CUSTOMER_REQUEST`, `SCHEDULE_CONFLICT`, `VEHICLE_ISSUE`, `SHOP_ISSUE`, `LATE_ARRIVAL` (customer fault), `OTHER` (seed `104`). | Unique |
+| `code` | NVARCHAR(30) | No | `CUSTOMER_REQUEST`, `SCHEDULE_CONFLICT`, `VEHICLE_ISSUE`, `SHOP_ISSUE`, `LATE_ARRIVAL` (customer fault), `OTHER` (seed `104`); `EXPIRED` (seed `112`), used only by the system when it closes a booking nobody confirmed, never offered to the admin. | Unique |
 | `name` | NVARCHAR(60) | No | Label. | — |
 | `is_customer_fault` | BIT | No | Distinguishes reasons attributable to the customer, used for reporting and penalty decisions. | — |
 | `display_order` | SMALLINT | No | Sort order. | — |

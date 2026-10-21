@@ -1,18 +1,18 @@
 # State — Booking lifecycle (RF-006, RF-007)
 
-Source: `booking-service` `Booking.moveTo`, `Booking.cancel`, `Booking.reschedule`, `BookingStatus`.
-Checked on 2026-10-20.
+Source: `booking-service` `Booking.moveTo`, `Booking.cancel`, `Booking.reschedule`, `Booking.expire`,
+`BookingStatus`, `ExpiredBookingsJob`. Checked on 2026-10-21.
 
 ```mermaid
 stateDiagram-v2
     direction LR
     [*] --> CONFIRMED : create
     SCHEDULED --> CONFIRMED : confirm
-    SCHEDULED --> CANCELLED : cancel
+    SCHEDULED --> CANCELLED : cancel or expired
     CONFIRMED --> CONFIRMED : reschedule (admin)
     CONFIRMED --> IN_PROGRESS : start
     CONFIRMED --> CANCELLED : cancel
-    CONFIRMED --> NO_SHOW : no show
+    CONFIRMED --> NO_SHOW : no show or expired
     IN_PROGRESS --> COMPLETED : complete
     COMPLETED --> [*]
     CANCELLED --> [*]
@@ -27,5 +27,6 @@ stateDiagram-v2
 | `start` and `complete` happen when the operator starts and finishes the service; `no show` when the client did not come | `Booking.moveTo` |
 | Only `SCHEDULED` and `CONFIRMED` can be changed or cancelled (RF-007); the client, only before the start time | `BookingStatus.isChangeable()`, `Booking.changeableByCustomer` |
 | `SCHEDULED`, `CONFIRMED`, `IN_PROGRESS` occupy the bay | `BookingStatus.occupiesBay()`, trigger `tr_booking_bay_overlap` |
+| `expired`: every 5 minutes a job closes the bookings still `SCHEDULED` or `CONFIRMED` one hour after their end. A `CONFIRMED` one becomes `NO_SHOW` (the client did not come; paid or not, nothing is refunded automatically) and a `SCHEDULED` one is cancelled with the system reason `EXPIRED`, which the admin cannot pick by hand. This frees the operator and the bay, and only the cancelled ones publish `BookingCancelled` | `ExpiredBookingsJob`, `BookingService.closeExpired`, `Booking.isExpired / expire` |
 | Any other move → 409 `INVALID_STATUS_TRANSITION` | `Booking.moveTo` |
 | `SCHEDULED` exists in the model (status id 1) but the current flow never creates it | `Booking.confirmNew` |

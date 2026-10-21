@@ -8,7 +8,7 @@ booking is still saved and the error is logged (the Outbox pattern is not adopte
 | Event | Routing key | When | Payload |
 |---|---|---|---|
 | `BookingConfirmed` | `booking.confirmed` | A booking is created, or rescheduled (by the admin) | `bookingId`, `bookingCode`, `customerUserId`, `customerVehicleId`, `scheduledStart` (UTC), `serviceBayId`, and `preferredOperatorId` when the client chose one (RF-010, only on creation) |
-| `BookingCancelled` | `booking.cancelled` | Cancelled by the client (reason `CUSTOMER_REQUEST`) or the admin (reason chosen) | same + `reason` |
+| `BookingCancelled` | `booking.cancelled` | Cancelled by the client (reason `CUSTOMER_REQUEST`), the admin (reason chosen) or the system when a `SCHEDULED` booking expired (reason `EXPIRED`) | same + `reason` |
 
 `customerUserId` is the client (the caller, or the vehicle owner when the admin books), so
 notification-service knows whom to notify without asking booking.

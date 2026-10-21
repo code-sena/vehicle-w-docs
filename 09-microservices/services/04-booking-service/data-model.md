@@ -41,7 +41,8 @@ Liquibase, changelog table `DATABASECHANGELOG_BOOKING`:
 `005-create-booking-schemas` (tables + triggers) · `018-booking-adr-010` ·
 `021-booking-schedule-history` · `022-booking-catalog-loyalty-points` · `024-booking-revert-bay-operator` ·
 seeds `103-seed-catalog` (categories, BASIC/PREMIUM/FULL with prices for the 6 vehicle types),
-`104-seed-booking-catalogs` (statuses, cancellation reasons), `109-seed-establishment-schedule`
+`104-seed-booking-catalogs` (statuses, cancellation reasons), `112-seed-expired-cancellation-reason`
+(the system reason `EXPIRED`), `109-seed-establishment-schedule`
 (shop, weekly hours, 4 bays), `032-booking-establishment-business-data` (legal, tax and channel
 columns of the shop), `110-seed-establishment-business-data` (their example values) and
 `111-clear-example-business-data` (empties them again so the real business fills them in).
