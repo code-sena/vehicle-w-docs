@@ -26,7 +26,9 @@
   report, payment confirmed/rejected/refunded, coupon redeemed, loyalty points earned and coupons
   unlocked). Idempotent by `eventId` (`processed_event`).
 - Staff notifications (ADR-011 §10): the assigned operator and the admins hear about new, rescheduled,
-  cancelled and unassigned bookings (`booking_tracking` keeps the last known state of each booking).
+  cancelled and unassigned bookings (`booking_tracking` keeps the last known state of each booking),
+  and about a service that ended and nobody registered (`ServiceNotStarted` / `ServiceNotFinished`
+  from operations-service).
 - Alert to every active admin when a booking is about to start without an operator (ADR-011 §14).
 - Inbox per user: list with filters, unread count, mark read/unread, mark all read, delete.
 - Push to the user's registered devices through Expo (ADR-011 §2).

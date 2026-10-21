@@ -60,6 +60,19 @@ booking status. A service can only be started from 15 minutes before the booking
 **Decision:** The rating is a set of columns in `service_execution` (1–5, once, only when the
 booking is `COMPLETED`). There is no separate rating table (`06-data/models.md`, decision 3).
 
+## A booking with an operator is never closed as no-show by itself
+
+**Date:** 2026-10-21
+**Context:** An operator can attend a car and forget to press Start. Marking it `NO_SHOW` would tell
+the client's history, the reports and the operator's metrics something false, and `NO_SHOW` is final.
+**Decision:** `FollowUpPolicy` (pure domain code) sorts an ended booking: no operator → `NO_SHOW`
+through booking-service; with an operator and not started, or started and not finished → the admin's
+**To close** list plus one notice to the operator and the admins (`follow_up_notice_at`, migration
+040; starting the service clears it, so a later "not finished" notice can still go out). The admin's
+**Attended** completes the lines without start or end time instead of inventing them.
+**Consequences:** No false no-shows. A service closed by the admin counts as done and as revenue but
+not for punctuality or worked hours, which is the honest reading of what is known.
+
 ## Port variable
 
 The port is read from `OPERATIONS_PORT` (default 3004), not from `PORT` like the other Java

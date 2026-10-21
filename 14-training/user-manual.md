@@ -92,6 +92,7 @@ rating shows who served you ("Served by Juan Camilo").
 | Task | Where |
 |---|---|
 | See and filter bookings | **Reservations**. The dashboard lists the **bookings without operator** |
+| Close a booking nobody registered | Dashboard → **To close** (only shown when there is something): bookings whose time ended with an operator who did not press Start, or started and not finished. Press **Attended** if the car was washed (it counts in reports and in the operator's services) or **No-show** if the client did not come. A booking that never had an operator becomes no-show by itself one hour after its end |
 | Book for a client | **Reservations → New** → search the vehicle by plate → services → date/time. The bay is assigned automatically |
 | Move a booking forward | Booking detail → **Start** → **Complete**; or **No show**; or **Cancel** (the client is notified) |
 | Business hours, lunch break, exceptions (holidays, closed days) | **Schedule**. In an exception that opens, the closing time must be after the opening time |
@@ -111,9 +112,10 @@ rating shows who served you ("Served by Juan Camilo").
 | Operator's week | **Operators** → an operator: services finished this week and the change against last week, punctuality (started at most 10 minutes late), revenue of the finished services and worked hours against the weekly shift. "—" means there is no data yet |
 | Vehicle inspection | **Reservations** → a booking of 3 hours or more → **Inspection**: fill the 5 phases with findings and photos (up to 5 per finding), **Publish** and copy the link, then **Notify client** (inbox, push and email with the summary and the link). The client opens the link from any device without logging in; the plate shows masked. In the mobile app: booking detail → **Inspection**; photos come from the camera or the gallery, are shrunk on the phone before uploading, and the link is shared with the phone's share menu |
 
-**Notices you receive** (inbox and push, never email): new, rescheduled and cancelled bookings, and
+**Notices you receive** (inbox and push, never email): new, rescheduled and cancelled bookings,
 **"Booking without operator"** when a booking starts in less than 2 hours — or started less than 1
-hour ago — and nobody is assigned.
+hour ago — and nobody is assigned, and **"Service not registered"** when a booking with an operator
+ended and nobody pressed Start (or Finish): close it from **To close**.
 
 
 ---
@@ -128,7 +130,8 @@ hour ago — and nobody is assigned.
 | See your shift | **My Schedule** (the administrator sets it) |
 | See your finished services | **Service history**: newest first; clicking a row opens its detail and, if the client rated it, a **Go to ratings** button |
 | See your ratings | **Ratings**: stars, comments, the client's name and plate, and your average |
-| Notices | You are told when a service is assigned to you, rescheduled, cancelled or given to someone else (inbox and push) |
+| Notices | You are told when a service is assigned to you, rescheduled, cancelled or given to someone else (inbox and push), and **"Did you attend this service?"** when its time ended and you did not press Start |
+| You forgot to press Start | If you see it the same day, press **Start** and then **Finish** in **Assigned services** (it is recorded as late); otherwise tell the administrator, who closes it as attended |
 
 ---
 

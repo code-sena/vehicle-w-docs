@@ -41,15 +41,20 @@ ran in Colombian time.
 
 **Decision:** `RES-` + the zero-padded id (e.g. `RES-000123`); no extra column.
 
-## Bookings nobody closed are closed by the system
+## Bookings nobody closed: the system only decides when it is sure
 
 **Date:** 2026-10-21
-**Context:** A booking whose client never came stayed `CONFIRMED` forever. It kept counting as
-"unassigned" on the admin screens and, while open, the operator and the bay looked busy.
-**Decision:** A scheduled job (`ExpiredBookingsJob`, every 5 minutes) closes the bookings still
-`SCHEDULED` or `CONFIRMED` one hour after their end (`BOOKING_EXPIRY_GRACE_MINUTES`). `CONFIRMED`
-becomes `NO_SHOW`, even if it was paid (refunds stay a decision of the admin). `SCHEDULED` is
-cancelled with the reason `EXPIRED` (`Venció sin confirmarse`), which only the system uses. The job
-takes the schedule lock and logs a warning if a run fails; the next run tries again.
-**Consequences:** The hour of margin leaves time for a late client or an operator who finishes late.
-The operator is free again because operations only blocks an operator by overlapping times.
+**Context:** A booking whose client never came stayed `CONFIRMED` forever. The first version (same
+day) closed every open booking as `NO_SHOW` one hour after its end. A review by the team found the
+flaw: if the operator washed the car and forgot to press Start, the system recorded that the client
+did not come, the service disappeared from the reports and the operator's numbers, and `NO_SHOW` is
+final, so nobody could fix it.
+**Decision:** booking-service cancels by itself only a `SCHEDULED` booking (reason `EXPIRED`, which
+only the system uses). A `CONFIRMED` one is decided by operations-service, which knows the
+assignments: without an operator it asks booking to make it `NO_SHOW` (`POST
+/internal/v1/bookings/{id}/no-show`, `Booking.markUnattended` checks the margin again); with an
+operator it goes to the admin's **To close** list, where the admin picks Attended or No-show. Paid
+or not, nothing is refunded automatically.
+**Consequences:** A forgotten Start no longer turns into a false no-show. Bookings with an operator
+need one click from the admin, and the operator and the admins are notified so it happens the same
+day. The hour of margin (`BOOKING_EXPIRY_GRACE_MINUTES`) is shared by both services.

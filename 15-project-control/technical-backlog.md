@@ -29,8 +29,9 @@
 | TD-022 | No request rate limit in the gateway or in Caddy (the account lockout only protects one account at a time) | api-gateway, infra | Request floods against the public server | 2 SP | Medium |
 | TD-023 | `audit.audit_log` exists but no trigger or service writes to it (ADR-009) | All services | No record of who changed what beyond the audit columns of each row | 3 SP | Low |
 | TD-024 | A token kept working up to an hour after logout or after the account was disabled | security-service, api-gateway | — | 3 SP | ✅ Resolved 2026-10-21 (`ActiveSessionValidator` in security, `SessionCheckFilter` in the gateway, ADR-006 update) |
-| TD-025 | Bookings nobody closed stayed `CONFIRMED` forever and each admin screen counted "unassigned" its own way | booking-service, operations-service, Web | — | 3 SP | ✅ Resolved 2026-10-21 (`ExpiredBookingsJob` closes them 1 h after the end; `GET /api/v1/admin/assignments/unassigned` is the one count) |
+| TD-025 | Bookings nobody closed stayed `CONFIRMED` forever and each admin screen counted "unassigned" its own way | booking-service, operations-service, Web | — | 3 SP | ✅ Resolved 2026-10-21 (a booking without operator becomes no-show 1 h after the end; one with an operator goes to the admin's **To close** list with a notice, never a false no-show; `GET /api/v1/admin/assignments/unassigned` is the one count) |
 | TD-026 | Manual and automatic assignment could give one operator two services at the same time | operations-service | — | 1 SP | ✅ Resolved 2026-10-21 (`sp_getapplock` on `operations-assignment`) |
+| TD-028 | An event with a `null` payload field failed to parse in notification-service and went to the DLQ | notification-service | — | 0.5 SP | ✅ Resolved 2026-10-21 (null fields are ignored; `DomainEventEnvelopeTest`) |
 | TD-027 | 12 admin screens had no real tests | Web | — | 2 SP | ✅ Resolved for bookings, management and reports (store, filters, roles, counts); other admin screens still only check that they load |
 
 ---

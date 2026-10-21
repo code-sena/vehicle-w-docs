@@ -44,7 +44,8 @@ variables override it. Main variables:
 | `ROUTE_*_URL`, `GATEWAY_PORT` | api-gateway | Where each service is: `ROUTE_SECURITY_URL` (3001), `ROUTE_CUSTOMER_URL` (3002), `ROUTE_BOOKING_URL` (3003), `ROUTE_OPERATIONS_URL` (3004), `ROUTE_PAYMENT_URL` (3005), `ROUTE_NOTIFICATION_URL` (3006) |
 | `BOOKING_ZONE` | booking, operations | `America/Bogota` |
 | `BOOKING_SLOT_MINUTES`, `BOOKING_MAX_DAYS_AHEAD` | booking | `30` (start times offered every 30 min), `60` (how far ahead a client can book) |
-| `BOOKING_EXPIRY_GRACE_MINUTES`, `BOOKING_EXPIRY_CHECK_ENABLED`, `BOOKING_EXPIRY_CHECK_INTERVAL` | booking | `60` (an open booking is closed 1 h after its end), `true`, `PT5M` (the job runs every 5 minutes) |
+| `BOOKING_EXPIRY_GRACE_MINUTES`, `BOOKING_EXPIRY_CHECK_ENABLED`, `BOOKING_EXPIRY_CHECK_INTERVAL` | booking, operations (only the margin) | `60` (margin after the end: a scheduled booking is cancelled, one that never had an operator becomes no-show), `true`, `PT5M` (the job runs every 5 minutes) |
+| `FOLLOW_UP_ENABLED`, `FOLLOW_UP_INTERVAL` | operations | `true`, `PT5M`: the job that closes bookings without operator and notifies the ones the admin has to close |
 | `SESSION_CHECK_ENABLED`, `SESSION_CHECK_CACHE_TTL`, `SESSION_CHECK_TIMEOUT` | api-gateway | `true`, `30s` (how long the answer about a token's session is kept), `3s` (wait for security-service before letting the call go on) |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_FIRST_NAME`, `ADMIN_LAST_NAME`, `ADMIN_DOCUMENT`, `ADMIN_PHONE` | security | First administrator created at startup when there is none (production; empty locally) |
 | `AUTO_ASSIGN_ENABLED` | operations | Automatic operator assignment when a booking is confirmed |

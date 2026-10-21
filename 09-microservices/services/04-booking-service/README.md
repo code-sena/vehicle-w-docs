@@ -39,11 +39,13 @@
   bookings through `IN_PROGRESS`, `COMPLETED`, `NO_SHOW` or `CANCELLED` (choosing a reason from
   `cancellation_reason`; `CUSTOMER_REQUEST` when none is sent). The API also has a client reschedule
   (`PUT /bookings/{id}`), but the web and the app do not use it.
-- **Expired bookings:** every 5 minutes (`ExpiredBookingsJob`) the bookings still `SCHEDULED` or
-  `CONFIRMED` one hour after their end are closed: `CONFIRMED` → `NO_SHOW` (no automatic refund),
-  `SCHEDULED` → `CANCELLED` with the system reason `EXPIRED`. It takes the same schedule lock as
-  booking, and only the cancelled ones publish `BookingCancelled`. The reason `EXPIRED` is not listed
-  in `/bookings/cancellation-reasons`.
+- **Expired bookings:** every 5 minutes (`ExpiredBookingsJob`) a `SCHEDULED` booking still open one
+  hour after its end is cancelled with the system reason `EXPIRED` (publishes `BookingCancelled`; the
+  reason is not listed in `/bookings/cancellation-reasons`). A `CONFIRMED` one is never closed by
+  booking itself: operations-service knows whether it had an operator and, only when it never had
+  one, asks `POST /internal/v1/bookings/{id}/no-show`; booking checks the margin again (409
+  `BOOKING_NOT_EXPIRED` otherwise). A booking with an operator is resolved by the admin.
+- The operator's lists (`/operator/bookings`) leave out cancelled and no-show bookings.
 - **Schedule history:** every change of the weekly hours, exceptions and bays is recorded in
   `booking.schedule_history` (`GET /api/v1/admin/schedule/history`).
 - **Establishment:** the shop's public data (name, address, contact).
@@ -73,6 +75,7 @@
 | GET | `/api/v1/bookings/me` · `/bookings/{id}` · `/bookings/cancellation-reasons` | client |
 | PUT · POST | `/api/v1/bookings/{id}` (reschedule, not used by the web or the app) · `/bookings/{id}/cancel` (no body needed, reason `CUSTOMER_REQUEST`) | client |
 | GET · POST | `/api/v1/admin/bookings` (`?from=&to=&status=`) | ADMIN |
+| POST | `/internal/v1/bookings/{id}/no-show` (a confirmed booking past its end and margin that never had an operator) | internal key (operations-service) |
 | GET | `/api/v1/admin/schedule/history` (changes of hours, exceptions and bays) | ADMIN |
 | GET | `/api/v1/admin/bookings/day-summary` (`?date=`, default today in the shop zone): bookings of the day vs the day before, for the admin home | ADMIN |
 | GET · PUT | `/api/v1/admin/bookings/{id}` | ADMIN |
@@ -106,7 +109,7 @@ cd lavarapido-booking-service
 | `BOOKING_ZONE` | `America/Bogota` | Shop time zone |
 | `BOOKING_SLOT_MINUTES` | `30` | Availability grid |
 | `BOOKING_MAX_DAYS_AHEAD` | `60` | How far ahead clients can book |
-| `BOOKING_EXPIRY_GRACE_MINUTES` | `60` | How long after its end an open booking is closed by the system |
+| `BOOKING_EXPIRY_GRACE_MINUTES` | `60` | How long after its end a scheduled booking is cancelled, or one without operator becomes no-show (operations-service reads the same variable) |
 | `BOOKING_EXPIRY_CHECK_ENABLED`, `BOOKING_EXPIRY_CHECK_INTERVAL` | `true`, `PT5M` | Turn the expired-bookings job on or off and how often it runs |
 | `MESSAGING_ENABLED`, `RABBITMQ_*` | `false` | Publish booking events |
 

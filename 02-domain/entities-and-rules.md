@@ -177,16 +177,19 @@ SCHEDULED ── confirm (needs a bay) ──▶ CONFIRMED
 CONFIRMED ── start ──▶ IN_PROGRESS ── complete ──▶ COMPLETED
 CONFIRMED ── no-show ──▶ NO_SHOW
 SCHEDULED / CONFIRMED ── cancel (reason stored) ──▶ CANCELLED
-CONFIRMED ── still open 1 h after its end (system) ──▶ NO_SHOW
+CONFIRMED ── never had an operator, still open 1 h after its end (system) ──▶ NO_SHOW
+CONFIRMED / IN_PROGRESS ── had an operator and nobody registered it ──▶ "To close": the admin decides
 SCHEDULED ── still open 1 h after its end (system, reason EXPIRED) ──▶ CANCELLED
 SCHEDULED / CONFIRMED ── reschedule (admin) ──▶ same state, new time and bay (prices kept)
 ```
 
 Only `SCHEDULED` and `CONFIRMED` can be changed or cancelled (RF-007). The client cancels before the
 start time without giving a reason (the booking stores `CUSTOMER_REQUEST`); the admin reschedules and
-may choose the cancellation reason. A booking nobody closed does not stay open: one hour after its
-end (`BOOKING_EXPIRY_GRACE_MINUTES`) the system moves it as shown above, so the operator and the bay
-are free again and the "unassigned" counts stop including it. Diagram:
+may choose the cancellation reason. A booking nobody closed does not stay open forever, but the
+system only decides by itself when it is sure: a booking that never had an operator cannot have been
+attended, so one hour after its end (`BOOKING_EXPIRY_GRACE_MINUTES`) it becomes `NO_SHOW`. A booking
+with an operator may have been attended and not registered, so it waits in the admin's **To close**
+list (`Attended` or `No-show`) and the operator and the admins are notified once. Diagram:
 `08-uml/diagrams/source/state-booking.md`.
 
 ### Booking rules

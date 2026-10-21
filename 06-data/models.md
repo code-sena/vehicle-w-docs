@@ -1469,6 +1469,7 @@ CREATE TABLE [execution].service_execution (
     quality_comment      NVARCHAR(500) NULL,
     rated_at             DATETIME2(3)  NULL,
     is_comment_visible   BIT           NOT NULL CONSTRAINT df_sexec_visible DEFAULT 1,
+    follow_up_notice_at  DATETIME2(3)  NULL,                          -- migración 040
     created_at           DATETIME2(3)  NOT NULL CONSTRAINT df_sexec_created DEFAULT SYSUTCDATETIME(),
     created_by           BIGINT        NULL,
     updated_at           DATETIME2(3)  NULL,
@@ -1510,6 +1511,7 @@ CREATE TABLE [execution].service_execution (
 | `quality_comment` | NVARCHAR(500) | Yes | Written feedback. | `ck_sexec_comment` |
 | `rated_at` | DATETIME2(3) | Yes | When the rating was given; must be set together with `quality_rating`, never one without the other. | — |
 | `is_comment_visible` | BIT | No | Lets an admin hide an inappropriate comment without deleting it. | — |
+| `follow_up_notice_at` | DATETIME2(3) | Yes | When the operator and the admins were told the service ended and nobody registered it (so it is told once). Starting the service clears it. A line closed by the admin as attended is `COMPLETED` with `started_at` / `finished_at` empty. | — |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
 **Modeling decisions:**

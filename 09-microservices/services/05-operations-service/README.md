@@ -62,6 +62,22 @@
   the client chose (RF-010) if still free, otherwise the free one with the fewest bookings that day.
   Reads the booking through booking-service's internal routes (`INTERNAL_API_KEY`); skips accounts
   disabled in security. `AUTO_ASSIGN_ENABLED=false` leaves it to the admin.
+- **Bookings that ended and nobody closed (`FollowUpPolicy`, `FollowUpJob` every 5 minutes):** the
+  system only decides by itself when it is sure.
+  - Never had an operator and still `CONFIRMED` one hour after its end: nobody could attend it, so it
+    asks booking-service to make it `NO_SHOW` (`POST /internal/v1/bookings/{id}/no-show`).
+  - Had an operator and nobody pressed Start once its time ended (`NOT_STARTED`), or was started and
+    nobody pressed Finish one hour after its end (`NOT_FINISHED`): it goes to the admin's **To close**
+    list (`GET /api/v1/admin/assignments/to-close`) and publishes `ServiceNotStarted` /
+    `ServiceNotFinished` once (`service_execution.follow_up_notice_at`), so the operator and the admins
+    are notified.
+  - **Attended** (`POST /api/v1/admin/assignments/{bookingId}/attended`): the lines become
+    `COMPLETED` without inventing times (no start time means it does not count for punctuality, no
+    end time means no worked hours, but it counts as a service done and as revenue) and the booking
+    goes to `COMPLETED`. `ServiceCompleted` is not published, so the client is not told "you can pick
+    it up" hours later. **No-show** is the admin's status change in booking-service.
+  - The operator can still register a past service late (Start has no upper limit); its real times
+    then count, late as they are.
 - **Free operators for the client (RF-010):** `GET /api/v1/operators/available` with only the first name
   and the rating. The client also sees who serves each of their bookings (`GET /api/v1/operators/my-bookings`,
   first name only, bookings that already have an operator).
@@ -101,6 +117,8 @@
 | GET | `/api/v1/admin/assignments` (`?from=&to=`, default today) | ADMIN |
 | GET | `/api/v1/admin/assignments/unassigned` (`?from=&to=`): `{count, bookingIds}` of the bookings that still need an operator | ADMIN |
 | PUT | `/api/v1/admin/assignments/{bookingId}` | ADMIN |
+| GET | `/api/v1/admin/assignments/to-close` (`?from=&to=`, default the last 7 days): bookings with an operator that ended and nobody registered, with the reason `NOT_STARTED` or `NOT_FINISHED` | ADMIN |
+| POST | `/api/v1/admin/assignments/{bookingId}/attended`: the admin confirms it was attended (204; 409 `BOOKING_NOT_TO_CLOSE` if it is not in the list) | ADMIN |
 | GET | `/api/v1/admin/assignments/{bookingId}/candidates` | ADMIN |
 | GET · POST | `/api/v1/admin/inspections/{bookingId}` (state · start) | ADMIN |
 | PATCH | `/api/v1/admin/inspections/{bookingId}/phases/{phase}` | ADMIN |
@@ -141,6 +159,8 @@ cd lavarapido-operation-service
 | `BOOKING_SERVICE_TIMEOUT`, `SECURITY_SERVICE_TIMEOUT` | `3s` | REST timeouts |
 | `BOOKING_ZONE` | `America/Bogota` | Shifts, absences and dates are read in this zone |
 | `MESSAGING_ENABLED`, `RABBITMQ_*` | `false` | Publish execution events |
+| `FOLLOW_UP_ENABLED`, `FOLLOW_UP_INTERVAL` | `true`, `PT5M` | The job that closes bookings without operator and notifies the ones to close (needs `INTERNAL_API_KEY`) |
+| `BOOKING_EXPIRY_GRACE_MINUTES` | `60` | Margin after the end before a booking without operator becomes no-show, or a started one counts as not finished (same variable as booking-service) |
 
 ---
 

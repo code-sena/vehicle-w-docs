@@ -14,6 +14,8 @@ Queue `notification-service.events` bound to `carwash.events` (DLQ `notification
 | `execution.operator_assigned` | `OperatorAssigned` | `OPERATOR_ASSIGNED` | no |
 | `execution.service_started` | `ServiceStarted` | `SERVICE_STARTED` (and cancels the pending reminders, ADR-011 §13) | no |
 | `execution.service_completed` | `ServiceCompleted` | `SERVICE_COMPLETED` (and cancels the pending reminders) | no |
+| `execution.service_not_started` | `ServiceNotStarted` | `OPERATOR_SERVICE_NOT_REGISTERED` to the operator ("Did you attend this service?") and `ADMIN_SERVICE_NOT_REGISTERED` to every active administrator; operations-service sends it once per booking | no |
+| `execution.service_not_finished` | `ServiceNotFinished` | The same two types, worded for a service that was started and not finished | no |
 | `execution.inspection_shared` | `InspectionShared` | `INSPECTION_REPORT` to the client: summary and public link (`WEB_URL` + `/report/{token}`, ADR-014 §9) | yes |
 | `payment.confirmed` | `PaymentConfirmed` | `PAYMENT_CONFIRMED` | yes |
 | `payment.rejected` | `PaymentRejected` | `PAYMENT_REJECTED` | yes |
@@ -23,7 +25,9 @@ Queue `notification-service.events` bound to `carwash.events` (DLQ `notification
 | | | `PROMOTION_AVAILABLE` ("¡Tienes un cupón canjeable!"), one per entry in `unlockedPromotions` | yes |
 
 security-service, booking-service, operations-service and payment-service publish. Booking events
-also produce the staff notifications of ADR-011 §10 (inbox and push only, never email).
+also produce the staff notifications of ADR-011 §10 (inbox and push only, never email). A payload
+field that comes as `null` is ignored (before 2026-10-21 it made the whole message fail and go to the
+DLQ).
 
 Customer emails and reminders read the current address from security-service
 (`GET /internal/v1/users/{id}/contact`, ADR-011 §8); without it they still reach the inbox and push.

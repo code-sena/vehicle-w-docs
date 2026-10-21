@@ -24,4 +24,5 @@ Liquibase, changelog table `DATABASECHANGELOG_NOTIFICATION`:
 seed `108-seed-notification-type` · `025-notification-promotion-redeemed-type` ·
 `027-notification-staff-notifications` · `028-notification-payment-refunded-type` ·
 `029-notification-loyalty-and-inspection-types` · `031-notification-unassigned-booking-alert` ·
-`038-notification-app-update-type`.
+`038-notification-app-update-type` · `041-notification-service-not-registered-types`
+(`OPERATOR_SERVICE_NOT_REGISTERED`, `ADMIN_SERVICE_NOT_REGISTERED`).
