@@ -1,4 +1,4 @@
-# Generated from the running operations-service (springdoc, GET /v3/api-docs) on 2026-10-19.
+# Generated from the running operations-service (springdoc, GET /v3/api-docs) on 2026-10-21.
 # Do not edit by hand: regenerate from the code so the contract never drifts.
 openapi: "3.1.0"
 info:
@@ -688,6 +688,31 @@ paths:
                 type: "array"
                 items:
                   "$ref": "#/components/schemas/CandidateResponse"
+  "/api/v1/admin/assignments/unassigned":
+    get:
+      tags:
+        - "admin-operations-controller"
+      operationId: "unassigned"
+      parameters:
+        - name: "from"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "to"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/UnassignedResponse"
   "/api/v1/admin/operators/{id}/absences/{absenceId}":
     delete:
       tags:
@@ -1269,3 +1294,14 @@ components:
           type: "boolean"
         unavailableReason:
           type: "string"
+    UnassignedResponse:
+      type: "object"
+      properties:
+        count:
+          type: "integer"
+          format: "int32"
+        bookingIds:
+          type: "array"
+          items:
+            type: "integer"
+            format: "int64"
