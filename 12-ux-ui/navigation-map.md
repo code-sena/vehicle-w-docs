@@ -85,7 +85,7 @@ Status: **API** = reads and writes the backend · **Partial** = some data still 
 | Schedule and bays | `/admin/schedule` | ADMIN | booking | API |
 | Management — users | `/admin/management` | ADMIN | security | API |
 | Management — services | `/admin/management` | ADMIN | booking (catalog, prices per vehicle type) | API |
-| Management — roles, promotions | `/admin/management` | ADMIN | security (role permissions); payment (promotions, loyalty) | API (ADR-015: roles fixed with editable permissions; promotions are redeemable coupons gated by loyalty points) |
+| Management — roles, promotions | `/admin/management` | ADMIN | security (role permissions); payment (promotions, loyalty) | API (ADR-015: the 3 roles are fixed and the screen says so; the permission matrix is saved but is only a reference, what a user can do comes from their role; promotions are redeemable coupons gated by loyalty points) |
 | Operators, calendar | `/admin/operators/**` | ADMIN | operations (operators, shifts, absences) | API |
 | Payments | `/admin/payments` | ADMIN | payment (review, approve/reject, manual payment) | API |
 | Reports | `/admin/reports` | ADMIN | booking, payment | Partial |
@@ -179,6 +179,8 @@ The same table is used for push notifications in the app (`notificationRoutes.ts
 | Authentication | `/client`, `/operator`, `/admin` require a session (`authGuard`); without one → `/auth?returnUrl=…` |
 | Authorization | Each area declares its role (`data.roles`); a signed-in user of another role is sent to their own home. This is UX only: the backend enforces the roles |
 | Guests only | `/auth/**` (`guestGuard`): a signed-in user is sent to their home |
+| Several tabs | The session is shared by the tabs of the same browser. Signing out in one tab sends the others to `/auth`; signing in with another account reloads the others so no screen keeps the previous user's data (`AuthService`, `storage` event) |
+| Session closed elsewhere | A call answered 401 (token expired, or session closed by logout or by an administrator) shows "session expired" and goes back to `/auth` |
 | Confirmation | Destructive actions (delete, cancel, deactivate) open a confirmation dialog |
 | Errors | Backend errors carry a `code`, translated through `API_ERRORS.<code>` in the 4 languages |
 | 404 | The wildcard route (`**`) opens the not-found page, with a link to the home of each role |

@@ -50,6 +50,9 @@ one of the three roles (no free-text name) and checks/unchecks permissions for i
 (`GET`/`PUT /api/v1/admin/roles-permissions`). This has **no effect on real authorization yet**: the
 JWT's role claim (`RoleCode`, ADR-006) is still what every `@PreAuthorize`/gateway route checks: the
 permission matrix is, for now, informational/future-facing, same as ADR-010 originally scoped it.
+Since 2026-10-21 the screen says this plainly: the roles tab notes that the three roles are fixed
+and the edit dialog states that the permissions are a reference, so nobody expects a checkbox to
+change what a user can do.
 
 ### 3. Promotions — ADR-010 amended
 
