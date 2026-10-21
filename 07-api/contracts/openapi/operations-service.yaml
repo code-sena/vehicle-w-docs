@@ -337,6 +337,21 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/InspectionResponse"
+  "/api/v1/admin/assignments/{bookingId}/attended":
+    post:
+      tags:
+        - "follow-up-controller"
+      operationId: "attended"
+      parameters:
+        - name: "bookingId"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "204":
+          description: "No Content"
   "/api/v1/admin/operators/{id}/status":
     patch:
       tags:
@@ -713,6 +728,33 @@ paths:
             "*/*":
               schema:
                 "$ref": "#/components/schemas/UnassignedResponse"
+  "/api/v1/admin/assignments/to-close":
+    get:
+      tags:
+        - "follow-up-controller"
+      operationId: "toClose"
+      parameters:
+        - name: "from"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+        - name: "to"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            format: "date"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                type: "array"
+                items:
+                  "$ref": "#/components/schemas/ToCloseResponse"
   "/api/v1/admin/operators/{id}/absences/{absenceId}":
     delete:
       tags:
@@ -1305,3 +1347,14 @@ components:
           items:
             type: "integer"
             format: "int64"
+    ToCloseResponse:
+      type: "object"
+      properties:
+        bookingId:
+          type: "integer"
+          format: "int64"
+        reason:
+          type: "string"
+        operatorId:
+          type: "integer"
+          format: "int32"

@@ -1,4 +1,4 @@
-# Generated from the running booking-service (springdoc, GET /v3/api-docs) on 2026-10-19.
+# Generated from the running booking-service (springdoc, GET /v3/api-docs) on 2026-10-21.
 # Do not edit by hand: regenerate from the code so the contract never drifts.
 openapi: "3.1.0"
 info:
@@ -265,6 +265,25 @@ paths:
       responses:
         "204":
           description: "No Content"
+  "/internal/v1/bookings/{id}/no-show":
+    post:
+      tags:
+        - "internal-booking-controller"
+      operationId: "noShow"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/BookingResponse"
   "/api/v1/bookings":
     post:
       tags:
