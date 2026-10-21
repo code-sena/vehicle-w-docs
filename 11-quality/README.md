@@ -9,8 +9,8 @@
 
 | Item | State |
 |---|---|
-| Backend automated tests | 629, all green on 2026-10-21: Java 479 (security 155, customer 69, booking 47, operations 56, notification 112, api-gateway 40) + payment .NET 150 (7 of them persistence tests against an isolated database) |
-| Web automated tests | 60 Vitest tests in 41 spec files, all green on 2026-10-21 |
+| Backend automated tests | 645, all green on 2026-10-21: Java 495 (security 155, customer 69, booking 50, operations 67, notification 114, api-gateway 40) + payment .NET 150 (7 of them persistence tests against an isolated database) |
+| Web automated tests | 62 Vitest tests in 41 spec files, all green on 2026-10-21 |
 | End-to-end | 19 automated tests in `lavarapido-infra/e2e`, all green on 2026-10-21; the 42 functional cases passed on 2026-10-19 |
 | CI | GitHub Actions in the 10 repositories (`10-devops/ci-cd.md`) |
 | Coverage tool | None yet |

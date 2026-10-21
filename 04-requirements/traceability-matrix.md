@@ -4,9 +4,9 @@
 > Status as of 2026-10-21. The six microservices (security, customer, booking, operations, payment,
 > notification) and the api-gateway are built, merged into `develop`, connected to the web and the
 > Android app, deployed on the academic Azure server and verified end to end.
-> Full test run of 2026-10-21: web 60, api-gateway 40, security 155, customer 69, booking 47,
-> operations 56, notification 112 and payment 150 (including 7 persistence tests against an isolated
-> database) — 689 automated tests, plus 19 end-to-end tests (`lavarapido-infra/e2e`), all passed. The
+> Full test run of 2026-10-21: web 62, api-gateway 40, security 155, customer 69, booking 50,
+> operations 67, notification 114 and payment 150 (including 7 persistence tests against an isolated
+> database) — 707 automated tests, plus 19 end-to-end tests (`lavarapido-infra/e2e`), all passed. The
 > 42 functional cases were last run in full on 2026-10-19.
 ---
 
