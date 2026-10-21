@@ -21,7 +21,7 @@
 
 | Component | State |
 |---|---|
-| api-gateway (8080) and the six services: security (3001), customer (3002), booking (3003), operations (3004), payment (3005, .NET 8), notification (3006) | Built and tested (655 automated tests passed on 2026-10-19); running with Docker Compose locally and on the Azure server behind Caddy (HTTPS) |
+| api-gateway (8080) and the six services: security (3001), customer (3002), booking (3003), operations (3004), payment (3005, .NET 8), notification (3006) | Built and tested (689 automated tests passed on 2026-10-21); running with Docker Compose locally and on the Azure server behind Caddy (HTTPS) |
 | Web (Angular 21) | The three roles, connected to the six services through the gateway |
 | Android app (Expo SDK 57, version 1.1.0) | The three roles; the APK is served at `/app/` on the public server |
 | Database | SQL Server 2022: 57 tables in 9 schemas, last migration 039 |

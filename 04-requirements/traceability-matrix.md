@@ -1,14 +1,13 @@
 # Traceability Matrix
 
 > Connects `04-requirements/functional.md` (RF) → `04-requirements/user-stories.md` (HU) → tests → service.
-> Status as of 2026-10-20. The six microservices (security, customer, booking, operations, payment,
+> Status as of 2026-10-21. The six microservices (security, customer, booking, operations, payment,
 > notification) and the api-gateway are built, merged into `develop`, connected to the web and the
 > Android app, deployed on the academic Azure server and verified end to end.
-> Full test run of 2026-10-19: web 43, api-gateway 34, security 151, customer 69, booking 43,
-> operations 55, notification 112 and payment 148 (including 7 persistence tests against an isolated
-> database) — 655 automated tests, plus 19 end-to-end tests (`lavarapido-infra/e2e`) and 42 functional
-> cases, all passed. On 2026-10-20 the admin role change was reverted and its 2 security tests left
-> the suite.
+> Full test run of 2026-10-21: web 60, api-gateway 40, security 155, customer 69, booking 47,
+> operations 56, notification 112 and payment 150 (including 7 persistence tests against an isolated
+> database) — 689 automated tests, plus 19 end-to-end tests (`lavarapido-infra/e2e`), all passed. The
+> 42 functional cases were last run in full on 2026-10-19.
 ---
 
 ## How to use this matrix

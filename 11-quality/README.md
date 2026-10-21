@@ -9,9 +9,9 @@
 
 | Item | State |
 |---|---|
-| Backend automated tests | 612, all green on 2026-10-19: Java 464 (security 151, customer 69, booking 43, operations 55, notification 112, api-gateway 34) + payment .NET 148 (7 of them persistence tests against an isolated database). On 2026-10-20 the reverted role change took 2 tests out of security-service |
-| Web automated tests | 43 Vitest tests in 37 spec files, all green |
-| End-to-end | 19 automated tests in `lavarapido-infra/e2e`, all green on 2026-10-19; 42 functional cases passed the same day |
+| Backend automated tests | 629, all green on 2026-10-21: Java 479 (security 155, customer 69, booking 47, operations 56, notification 112, api-gateway 40) + payment .NET 150 (7 of them persistence tests against an isolated database) |
+| Web automated tests | 60 Vitest tests in 41 spec files, all green on 2026-10-21 |
+| End-to-end | 19 automated tests in `lavarapido-infra/e2e`, all green on 2026-10-21; the 42 functional cases passed on 2026-10-19 |
 | CI | GitHub Actions in the 10 repositories (`10-devops/ci-cd.md`) |
 | Coverage tool | None yet |
 
