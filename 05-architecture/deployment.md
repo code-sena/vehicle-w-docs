@@ -110,9 +110,10 @@ before a demo → `13-operations/README.md`.
 ## 9. CI/CD boundary
 
 CI runs on GitHub Actions in every repository. The Azure server is updated by hand from `develop`
-(`update-server.sh`, or the manual `deploy.yml` workflow once its secret exists). Continuous
-deployment from `main` is prepared in local branches and not tested yet (ADR-017); details in
-`10-devops/ci-cd.md`.
+(`BRANCH=develop update-server.sh`, or the manual `deploy.yml` workflow once its secret exists).
+Continuous deployment from `main` (with `:prev` images, `rollback.sh` and the guard that never
+downgrades a repository) is merged into `develop` of the 10 repositories since 2026-10-24 but has not
+run yet (ADR-017); details in `10-devops/ci-cd.md`.
 
 ## References
 
