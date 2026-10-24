@@ -24,15 +24,36 @@
 - Register clients and let the administrator create accounts (operator, admin) with a temporary password.
   A self-registered account stores when the person accepted the Terms and the Data Processing Policy
   (`acceptsTerms` and `acceptsDataPolicy` in `POST /api/v1/auth/register`, migration 039, Law 1581 of
-  2012). Both fields are optional so older app versions keep working.
+  2012). Both fields are optional so older app versions keep working, which means the server does not
+  **require** the consent yet (SEC-07, open).
+- Email domains (A-01, 2026-10-23): sign-up, admin account creation (operators and admins) and email
+  change only accept the domains in `ALLOWED_EMAIL_DOMAINS` (comma separated, default `gmail.com`,
+  compared without case after trimming); otherwise `400 EMAIL_DOMAIN_NOT_ALLOWED`. Login, password
+  recovery and the accounts already stored are not checked, so older accounts on other domains still
+  work. In the profile, keeping the current email is always accepted.
 - Authenticate with email + password (BCrypt) and issue an **HS256 JWT valid for 1 hour**.
   Claims: `sub` (user id), `roles`, `sid` (session id), `iss`, `aud`, `iat`, `nbf`, `exp`, `jti`.
 - Record sessions (`user_session`); logout stores the session end. A token whose session was closed
-  (logout, account disabled or closed) or expired is rejected with 401 (`ActiveSessionValidator`), and
-  `GET /api/v1/auth/session` tells the gateway whether a token's session is still open (204 / 401).
+  or expired is rejected with 401 (`ActiveSessionValidator`), and `GET /api/v1/auth/session` tells the
+  gateway whether a token's session is still open (204 / 401). Sessions are closed by:
+
+  | Event | Sessions closed | Since |
+  |---|---|---|
+  | Logout | That session | 2026-10-21 |
+  | Account disabled by the admin or closed by its owner | All of the account | 2026-10-21 |
+  | Password changed (`PUT /users/me/password`) | All the **other** sessions; the current one stays | 2026-10-22 |
+  | Password recovered (`POST /auth/password/reset`) | All of the account | 2026-10-22 |
+  | A role in the token is no longer in `security.user_role`, or the account is inactive (E-02) | All of the account, at the first check of any of its tokens | 2026-10-23 |
+
+  E-02: there is no endpoint to remove a role (roles are fixed); retiring an administrator is a manual
+  change in `security.user_role`, after which their tokens stop working (the gateway sees it within its
+  30-second cache). **Open (SEC-01):** with `bearer` in lower case the gateway skips the check, so in the
+  other five services the token still works until it expires.
 - Lock an account for 15 minutes after 5 wrong passwords within 15 minutes (RF-004b, `login_lockout`):
   the login answers `423 ACCOUNT_LOCKED`, even with the right password, until it expires; a password
-  reset lifts it.
+  reset lifts it. Since 2026-10-22 concurrent failed logins of the same account are counted one at a
+  time with `sp_getapplock` (exclusive, transaction owner, 10 s), so parallel attempts cannot get more
+  than five tries. Only existing accounts are locked; an unknown email always answers 401.
 - Password recovery with a 6-digit code by email (BCrypt-hashed, 15 min, single use, 5 failed attempts burn it).
   The new password cannot be the current one (`400 SAME_PASSWORD`, checked before the code is spent, so the
   user can try again with another one).
@@ -96,9 +117,16 @@ Errors are RFC 9457 `ProblemDetail` with a stable `code` the frontend translates
 
 ```bash
 cd lavarapido-security-service
-./mvnw spring-boot:run           # http://localhost:3001 — Swagger: /swagger-ui.html (dev profile)
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev   # http://localhost:3001 — Swagger: /swagger-ui.html
 curl http://localhost:3001/actuator/health
+./mvnw verify                    # 171 tests (CI run of 2026-10-23), no database needed
 ```
+
+There is **no default profile** since 2026-10-23 (E-05): without `dev` there is no Swagger and no demo
+account, so a deployment that forgets the profile does not expose them. With `dev`, `admin@gmail.com`,
+`operador@gmail.com` and `cliente@gmail.com` are created only for the `DEMO_*_PASSWORD` values set in
+`.env`; no password is in the code. `docker-compose.yml` already sets `SPRING_PROFILES_ACTIVE=dev`;
+production sets `prod`.
 
 Main variables (from `lavarapido-infra/.env`):
 
@@ -109,10 +137,14 @@ Main variables (from `lavarapido-infra/.env`):
 | `MAIL_ENABLED`, `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | Recovery email (Gmail or Mailpit) |
 | `MESSAGING_ENABLED`, `RABBITMQ_*` | Publish `UserRegistered` |
 | `INTERNAL_API_KEY` | Key for `/internal/**` (empty = closed) |
+| `ALLOWED_EMAIL_DOMAINS` | Domains accepted on sign-up, account creation and email change (default `gmail.com`) |
+| `DEMO_ADMIN_PASSWORD`, `DEMO_OPERATOR_PASSWORD`, `DEMO_CLIENT_PASSWORD` | Demo accounts, `dev` profile only; empty = not created |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` (+ names, document, phone) | First administrator when there is none |
 
 ---
 
 ## Related documents
 
 - [data-model.md](./data-model.md) · [events.md](./events.md) · [decisions.md](./decisions.md) · [runbook.md](./runbook.md)
-- ADR-006 (authentication), ADR-010 (data model vs frontend), ADR-011 §8 (internal contact route)
+- ADR-006 (authentication, sessions, E-02), ADR-005 (session check in the gateway), ADR-010 (data model vs frontend), ADR-011 §8 (internal contact route), ADR-020 (JWT in `localStorage`, accepted risk)
+- Open findings of 2026-10-23 (SEC-01, SEC-04 rate limit, SEC-05 recovery code counter, SEC-07 consent): `15-project-control/risks.md`

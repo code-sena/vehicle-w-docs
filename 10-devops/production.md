@@ -109,9 +109,13 @@ nginx adds these headers to every web response (`nginx-security-headers.conf`, i
 | `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` |
 | `Content-Security-Policy` | `frame-ancestors 'self'; object-src 'none'; base-uri 'self'` |
 
-The CSP does not restrict scripts or styles yet: Angular's `index.html` loads its stylesheet with an
-inline `onload`, which a strict `script-src` would block. Tightening it means turning off critical CSS
-inlining in `angular.json` first.
+In production those values are replaced by Caddy (`deploy/Caddyfile`, `header { defer … }`), which also
+sends `Strict-Transport-Security`, removes `Server` and sets the CSP actually in force for the web:
+`default-src 'self'; script-src 'self' 'unsafe-hashes' 'sha256-…'` (the hash allows only the inline
+`onload` Angular adds to load its stylesheet), `style-src` and `font-src` with Google Fonts and jsDelivr,
+`img-src 'self' data: blob:`, `connect-src 'self'`, `object-src 'none'`, `frame-ancestors 'self'`. If
+Angular changes that `onload`, the page loads without styles and the browser console shows the new hash
+to put in the `Caddyfile`.
 
 The Firebase key in the mobile `google-services.json` is meant to be public in an Android app, but it
 should be restricted to the package `com.vehiclecarwash.app` in the Google Cloud console.

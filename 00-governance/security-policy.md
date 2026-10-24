@@ -25,8 +25,8 @@
 | Signing algorithm | HS256, shared secret delivered to every service as an environment variable (ADR-006) |
 | Access token expiration | 1 hour (`exp`) — RNF-004.2 |
 | Refresh token | **Not used in this version.** When the token expires, the user logs in again (ADR-006, evaluated and deferred — see "Planned evolution" in `05-architecture/overview.md`) |
-| Required claims | Identifiers and role codes only — `sub` (user id), `pid` (person id, links the user to their customer data), `roles`, `sid` (session id, used on logout). No personal data beyond what authorization needs (RNF-004.9) |
-| Client storage | Whatever Angular/React Native storage the client implementation chooses; the token is never logged |
+| Required claims | Identifiers and role codes only — `sub` (user id), `roles`, `sid` (session id), `iss`, `aud`, `iat`, `nbf`, `exp`, `jti`. No personal data beyond what authorization needs (RNF-004.9) |
+| Client storage | Web: `localStorage` (`auth_session`), an accepted risk for version 1 (H-18, ADR-020); mobile: SecureStore on the phone. The token is never logged |
 
 **Prohibited in the payload:**
 - Passwords
@@ -35,9 +35,10 @@
 
 ### Session tracking and token revocation
 
-- `security.user_session` records who logged in, when, and whether the session was closed (logout, account disabled by an administrator, account closed by its owner)
+- `security.user_session` records who logged in, when, and whether the session was closed: logout, account disabled by an administrator, account closed by its owner, password changed (the other sessions, since 2026-10-22), password recovered (all, since 2026-10-22) and a role removed from `security.user_role` (all, E-02, since 2026-10-23)
 - **A token of a closed session stops working** (since 2026-10-21, ADR-006 update). security-service rejects it on its own endpoints, and the gateway asks security-service (`GET /api/v1/auth/session`) before forwarding a call to any other service, keeping the answer 30 seconds per token (`SESSION_CHECK_CACHE_TTL`). A logout that goes through the gateway takes effect at once; disabling an account reaches the other services within those 30 seconds
 - If security-service does not answer, the gateway lets the call go on: the service behind it still checks signature and expiry, so an outage of security-service does not take the rest of the API down. A lockout (RF-004b) only blocks new logins; it does not close sessions already open
+- **Open gap (SEC-01, 2026-10-23):** the gateway only checks headers that start with `Bearer ` (capital B). Services also accept `bearer`, so a closed-session token sent that way keeps working until it expires (≤ 1 hour) in every service except security-service. Fix pending in `SessionCheckFilter` (`15-project-control/risks.md`)
 
 ---
 
@@ -90,12 +91,12 @@ The `security` schema also defines granular `permission` and `role_permission` t
 ✗ NEVER in client error messages
 ✓ Environment variables, read from a local .env file that is git-ignored (Docker Compose)
 ✓ .env.example in the repository, with placeholder values only
-✓ Target: one database login per service, with rights only on its own schemas (ADR-003 / ADR-009). Today every service still uses `sa` (open preventive action AP-08 in `lavarapido-docs`)
+✓ Target: one database login per service, with rights only on its own schemas (ADR-003 / ADR-009). Today every service still uses `sa`: accepted risk for version 1 (H-10, ADR-020; preventive action AP-08 in `lavarapido-docs`)
 ```
 
 **Secret rotation:**
 - The JWT secret (at least 32 characters, HS256) and the database passwords are changed before any shared or public deployment, and immediately if a compromise is suspected
-- Demo credentials from the seed data never reach a public deployment
+- Demo credentials never reach a public deployment: since 2026-10-23 (E-05) security-service has no default profile and the demo passwords come only from `DEMO_*_PASSWORD` in the local `.env`; production runs the `prod` profile, which creates no demo account
 - TLS certificates: renewed before expiration (Let's Encrypt)
 
 ---
