@@ -1,11 +1,11 @@
-# Contract of api-gateway, rebuilt on 2026-10-23 from the code on origin/develop (see 07-api/README.md).
+# Contract of api-gateway, rebuilt on 2026-10-24 from the code on origin/develop (see 07-api/README.md).
 # Regenerate it from the code instead of editing by hand, so it never drifts.
 openapi: 3.0.3
 info:
   title: LavaRápido API gateway
   version: v1
   description: |-
-    Single entry point (ADR-005), Spring Cloud Gateway Server MVC. Rebuilt from `src/main/resources/application.yml` of `lavarapido-api-gateway` on `origin/develop` (`3f5eae3`, 2026-10-23). The gateway has no business endpoints: it forwards each request unchanged (path, `Authorization`, `X-Correlation-Id`) to the service whose `Path` predicate matches, so the business contracts are those of each service. Every route removes the CORS headers of the service (`RemoveResponseHeader`) because the gateway answers CORS itself (`CorsConfig`, `CORS_ALLOWED_ORIGINS`).
+    Single entry point (ADR-005), Spring Cloud Gateway Server MVC. Rebuilt from `src/main/resources/application.yml` of `lavarapido-api-gateway` on `origin/develop` (`c8b607a`, 2026-10-24). The gateway has no business endpoints: it forwards each request unchanged (path, `Authorization`, `X-Correlation-Id`) to the service whose `Path` predicate matches, so the business contracts are those of each service. Every route removes the CORS headers of the service (`RemoveResponseHeader`) because the gateway answers CORS itself (`CorsConfig`, `CORS_ALLOWED_ORIGINS`).
 
     **Routes** (in this order; the first matching predicate wins):
 
@@ -20,7 +20,13 @@ info:
 
     **Not published.** Any path without a route answers 404 here. That includes every `/internal/**` route (service-to-service, `X-Internal-Key`) and, since E-01, `/api/v1/operator/bookings/**` of booking-service, which only operations-service calls with the internal key. The operator's own API is `/api/v1/operator/services/**` and `/api/v1/operator/ratings` (operations-service).
 
-    **Session check** (`SessionCheckFilter`, `app.session-check.*`): for every `/api/**` request with `Authorization: Bearer …` (except `/api/v1/auth/**`, but including `/api/v1/auth/logout`) the gateway asks security-service `GET /api/v1/auth/session`. A 401 is returned to the client as is (its ProblemDetail, `code` `UNAUTHORIZED`); the answer is cached by SHA-256 of the token for `SESSION_CHECK_CACHE_TTL` (30 s); if security-service does not answer within `SESSION_CHECK_TIMEOUT` (3 s) the request goes on. There is no rate limiting in the gateway today.
+    **Session check** (`SessionCheckFilter`, `app.session-check.*`): for every request with a non-empty `Authorization` header, whatever its scheme or path (SEC-01; except `/api/v1/auth/**`, but including `/api/v1/auth/logout`), the gateway asks security-service `GET /api/v1/auth/session`. A 401 is returned to the client as is (its ProblemDetail, `code` `UNAUTHORIZED`); the answer is cached by SHA-256 of the token alone (`bearer`, `Bearer` and `BEARER` share it) for `SESSION_CHECK_CACHE_TTL` (30 s), and a logout clears it before and after forwarding; if security-service does not answer within `SESSION_CHECK_TIMEOUT` (3 s) the request goes on.
+
+    **Rate limit** (`AuthRateLimitFilter`, SEC-04, `app.rate-limit.auth.*`): every request to `/api/v1/auth` or `/api/v1/auth/**` (except `OPTIONS`) takes a token from the bucket of its client IP: `AUTH_RATE_LIMIT_REQUESTS` (60) requests, refilled over `AUTH_RATE_LIMIT_WINDOW` (1 min). With the bucket empty the gateway answers **429** `application/problem+json` with `code` `RATE_LIMITED` and a `Retry-After` header (seconds) before reaching security-service. `AUTH_RATE_LIMIT_ENABLED=false` turns it off. The buckets live in memory: with several gateway replicas each one counts on its own.
+
+    **Client IP** (`ClientIpResolver`, SEC-11): `X-Forwarded-For` is trusted only when the connection comes from `TRUSTED_PROXIES` (default loopback and the private Docker networks, where Caddy runs); otherwise the remote address is used. `ClientIpHeadersFilter` sends that IP to the services in `X-Forwarded-For`, never the value the client wrote.
+
+    **Timeouts** (SEC-16, `spring.http.clients`): `ROUTE_CONNECT_TIMEOUT` (5 s) to connect to a service and `ROUTE_READ_TIMEOUT` (60 s) until its whole answer arrives (photo uploads included).
 servers:
   - url: http://localhost:8080
     description: Local (`GATEWAY_PORT`)
