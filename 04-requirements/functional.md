@@ -105,5 +105,7 @@ are stated in the SRS (`lavarapido-docs`, section 5) and still need their user s
 >   conversion: accumulated points **unlock promotions** (`promotion.promotion.required_points`);
 >   once unlocked, the customer redeems the promotion's own coupon code on the payment screen for
 >   a real percentage discount (`discount_type_id` = `PERCENT`, `discount_value` = the percent,
->   20/30/50/100 = free), recorded in `promotion.booking_promotion`. A successful redemption
+>   1–99 % since 2026-10-23, E-07: a coupon never leaves the booking at 0), recorded in
+>   `promotion.booking_promotion`, at most one per booking (E-09) and removable by the client while
+>   the booking has no payment (E-08). A successful redemption
 >   notifies the customer in-app and by email (`PromotionRedeemed`, ADR-011).
