@@ -1,8 +1,8 @@
 # Data model — Payment Service
 
-Schemas `promotion` and `payment` in the shared SQL Server database `LavaRapido` (one owning service per schema, ADR-003/ADR-009): 12 tables, 175 columns. No foreign key leaves these schemas; references to other services are plain columns (last section).
+Schemas `promotion` and `payment` in the shared SQL Server database `LavaRapido` (one owning service per schema, ADR-003/ADR-009): 12 tables, 177 columns. No foreign key leaves these schemas; references to other services are plain columns (last section).
 
-> **Source:** the Liquibase changelogs of `lavarapido-payment-service` on `origin/develop` (`16a6fac`, 2026-10-23), applied in the order of `db/changelog/db.changelog-master.yaml`. The tables below were generated from those changelogs and are checked against them, against the EF Core configuration and against the ERD (`08-uml/diagrams/source/erd-payment.md`) by the script described in `06-data/migration-strategy.md` ("How the docs are checked"). The rationale of each table is in `06-data/models.md`.
+> **Source:** the Liquibase changelogs of `lavarapido-payment-service` on `origin/develop` (`3b8730e`, 2026-10-24), applied in the order of `db/changelog/db.changelog-master.yaml`. The tables below were generated from those changelogs and are checked against them, against the EF Core configuration and against the ERD (`08-uml/diagrams/source/erd-payment.md`) by the script described in `06-data/migration-strategy.md` ("How the docs are checked"). The rationale of each table is in `06-data/models.md`.
 
 ## Tables
 
@@ -12,16 +12,16 @@ Schemas `promotion` and `payment` in the shared SQL Server database `LavaRapido`
 | `promotion.promotion` | Promotion or coupon: code, discount type and value, limits, validity, `required_points` to unlock it (018), and the package card fields (017). `is_public` and `min_completed_booking` are not mapped by the code (the database defaults apply). | 004 |
 | `promotion.promotion_service` | Services a promotion is limited to (`service_id` points to `catalog.service` without FK). No entity uses it yet. | 005 |
 | `promotion.promotion_customer` | Customers a private promotion is assigned to. No entity uses it yet. | 006 |
-| `promotion.booking_promotion` | Coupon applied to a booking and the amount it discounted (`applied_amount`, frozen). Since 021 a booking has at most one (`ux_booking_promotion_one_per_booking`). Removing a coupon (`DELETE /api/v1/loyalty/redemptions/{bookingId}/{promotionId}`) deletes the row. | 007 |
+| `promotion.booking_promotion` | Coupon applied to a booking and the amount it discounted the day it was applied (`applied_amount`). For a percentage coupon, `discount_percent` and `max_discount_amount` (022) keep its percentage and cap, so the discount is recomputed from the current total of the booking; for a fixed coupon they are NULL. Since 021 a booking has at most one (`ux_booking_promotion_one_per_booking`). Removing a coupon (`DELETE /api/v1/loyalty/redemptions/{bookingId}/{promotionId}`) deletes the row. | 007 |
 | `payment.payment_method_type` | Payment methods `EFECTIVO`, `NEQUI`, `DAVIPLATA`, `TRANSFERENCIA` (seed 015) with `requires_account` and `requires_receipt`. | 008 |
 | `payment.payment_account` | The shop's account per method: holder, number, QR image (data URL, `NVARCHAR(MAX)` since 016), instructions. Seed 015 creates the cash row "Caja del establecimiento". | 009 |
 | `payment.payment_status` | Payment states, ids 1–5 in this order: `PENDING`, `IN_REVIEW`, `APPROVED`, `REJECTED`, `REFUNDED` (seed 015, checked by 015 and 019). `APPROVED` = 3 is hard-coded in `ux_payment_one_approved_per_booking` and in the code (`PaymentStatusIds`). | 010 |
-| `payment.payment` | One payment attempt of a booking: account, state, amount, when it was processed, who approved it, rejection reason. At most one approved payment per booking. | 011 |
-| `payment.payment_receipt` | Proof of payment uploaded by the client: image (data URL, `NVARCHAR(MAX)` since 016), transaction reference, reported amount, upload and review data. | 012 |
+| `payment.payment` | One payment attempt of a booking: account, state, amount, when it was processed, who approved it, rejection reason. At most one approved payment per booking and, since 023, at most one open payment (`PENDING` or `IN_REVIEW`, `ux_payment_one_open_per_booking`). | 011 |
+| `payment.payment_receipt` | Proof of payment uploaded by the client: image (data URL, `NVARCHAR(MAX)` since 016), transaction reference, reported amount, upload and review data. Since 023 a transaction reference backs only one live payment (view `v_live_transaction_reference`). | 012 |
 | `payment.loyalty_movement_type` | Point movement kinds with their sign: `EARNED` +1, `REDEEMED` −1, `EXPIRED` −1, `ADJUSTED` +1 (seed 015) and `REVERSED` −1 (020). The code writes `EARNED` and `REVERSED`. | 013 |
 | `payment.loyalty_transaction` | Points ledger, the source of truth for balances. `customer_id` holds the client's **user id** (`security.app_user`, ADR-015). `sequence_no` (020) numbers the movements of each client and is unique per client, so two concurrent movements on the same balance cannot both be saved. | 014 |
 
-- No table has a touch trigger: `EfUnitOfWork` increments `row_version` (EF Core concurrency token) and sets the audit columns before saving; a stale `row_version` answers 409.
+- No table has a touch trigger: `EfUnitOfWork` increments `row_version` (EF Core concurrency token) and sets the audit columns before saving; a stale `row_version` answers 409. It also turns a violation of `ux_payment_one_open_per_booking` into 409 `PAYMENT_ALREADY_REPORTED` and one of `ux_live_transaction_reference` into 409 `TRANSACTION_REFERENCE_REUSED`.
 - The .NET service does **not** apply migrations on startup: the `payment-migrate` container (`liquibase/liquibase:4.29`, `lavarapido-infra/docker-compose.yml`) runs them once before the service starts.
 - `booking_promotion` rows are deleted physically when the client removes a coupon; promotions are soft-deleted.
 
@@ -142,8 +142,10 @@ Schemas `promotion` and `payment` in the shared SQL Server database `LavaRapido`
 | `deleted_at` | DATETIME2(3) | Yes | — | — | 007 |
 | `deleted_by` | BIGINT | Yes | — | — | 007 |
 | `row_version` | INT | No | `1` | — | 007 |
+| `discount_percent` | DECIMAL(5,2) | Yes | — | — | 022 |
+| `max_discount_amount` | DECIMAL(12,2) | Yes | — | — | 022 |
 
-- Constraints: `pk_booking_promotion` PRIMARY KEY (booking_promotion_id) · `uq_booking_promotion` UNIQUE (booking_id, promotion_id) · `fk_booking_promotion_promotion` FOREIGN KEY (promotion_id) → promotion.promotion (promotion_id) · `ck_bpromo_amount` CHECK `applied_amount > 0`
+- Constraints: `pk_booking_promotion` PRIMARY KEY (booking_promotion_id) · `uq_booking_promotion` UNIQUE (booking_id, promotion_id) · `fk_booking_promotion_promotion` FOREIGN KEY (promotion_id) → promotion.promotion (promotion_id) · `ck_bpromo_amount` CHECK `applied_amount > 0` · `ck_bpromo_discount_percent` CHECK `discount_percent IS NULL OR (discount_percent > 0 AND discount_percent <= 100)` · `ck_bpromo_max_discount` CHECK `max_discount_amount IS NULL OR max_discount_amount > 0`
 - Indexes: `ix_booking_promotion_booking` (booking_id) · `ux_booking_promotion_one_per_booking` UNIQUE (booking_id)
 - Triggers: —
 
@@ -236,7 +238,7 @@ Schemas `promotion` and `payment` in the shared SQL Server database `LavaRapido`
 | `row_version` | INT | No | `1` | — | 011 |
 
 - Constraints: `pk_payment` PRIMARY KEY (payment_id) · `fk_payment_account` FOREIGN KEY (payment_account_id) → payment.payment_account (payment_account_id) · `fk_payment_status` FOREIGN KEY (payment_status_id) → payment.payment_status (payment_status_id) · `ck_payment_amount` CHECK `amount > 0`
-- Indexes: `ix_payment_booking` (booking_id) · `ix_payment_status` (payment_status_id) · `ix_payment_approved_by` (approved_by) · `ux_payment_one_approved_per_booking` UNIQUE (booking_id) WHERE `payment_status_id = 3 AND deleted_at IS NULL`
+- Indexes: `ix_payment_booking` (booking_id) · `ix_payment_status` (payment_status_id) · `ix_payment_approved_by` (approved_by) · `ux_payment_one_approved_per_booking` UNIQUE (booking_id) WHERE `payment_status_id = 3 AND deleted_at IS NULL` · `ux_payment_one_open_per_booking` UNIQUE (booking_id) WHERE `payment_status_id IN (1, 2) AND deleted_at IS NULL`
 - Triggers: —
 
 ### `payment.payment_receipt`
@@ -316,6 +318,22 @@ Schemas `promotion` and `payment` in the shared SQL Server database `LavaRapido`
 
 None.
 
+## Views
+
+| View | Unique index | Created in | What it guarantees |
+|---|---|---|---|
+| `payment.v_live_transaction_reference` (indexed, `WITH SCHEMABINDING`) | `ux_live_transaction_reference` UNIQUE CLUSTERED (transaction_reference) | 023 (onFail:CONTINUE) | One transaction reference backs at most one live payment (`PENDING`, `IN_REVIEW` or `APPROVED`, ids 1–3). A rejected or refunded payment no longer counts, so the client can upload the same receipt again. If a reference is already repeated, the view is not created (`onFail:CONTINUE`) and the service check still applies. |
+
+```sql
+SELECT r.transaction_reference
+  FROM [payment].payment_receipt r
+  JOIN [payment].payment p ON p.payment_id = r.payment_id
+  WHERE r.transaction_reference IS NOT NULL
+  AND r.deleted_at IS NULL
+  AND p.deleted_at IS NULL
+  AND p.payment_status_id <= 3
+```
+
 ## Seed data
 
 - `015-seed-reference-data`: discount types, 4 payment methods, the cash account, the 5 payment states (one INSERT each, so `APPROVED` = 3, checked with `onFail:HALT`) and 4 movement types.
@@ -348,6 +366,8 @@ Liquibase, changelog table `DATABASECHANGELOG_PAYMENT` (lock table `DATABASECHAN
 | 19 | `changes/019-verify-catalog-ids.sql` | 3 | onFail:HALT | Yes | Checks only (`onFail:HALT`): payment state ids 1–5 and the discount and movement codes the code needs |
 | 20 | `changes/020-loyalty-reversal-and-sequence.sql` | 5 | onFail:MARK_RAN (3 without) | Yes | Movement type `REVERSED`; column `loyalty_transaction.sequence_no` (backfilled, then NOT NULL) and unique index per client |
 | 21 | `changes/021-promotion-one-per-booking.sql` | 1 | onFail:CONTINUE | Yes | Unique index `ux_booking_promotion_one_per_booking` (E-09: one coupon per booking; `onFail:CONTINUE` if duplicates exist) |
+| 22 | `changes/022-redemption-discount-percent.sql` | 2 | onFail:MARK_RAN (1 without) | Yes | Columns `booking_promotion.discount_percent` and `max_discount_amount` with their checks (BIZ-05) and their backfill from the promotion for percentage coupons |
+| 23 | `changes/023-payment-one-open-and-unique-reference.sql` | 3 | onFail:HALT, onFail:CONTINUE (1 without) | Yes | A-16: older duplicate open payments rejected; unique index `ux_payment_one_open_per_booking` (`onFail:HALT`); indexed view `v_live_transaction_reference` (`onFail:CONTINUE` if a reference is already repeated) |
 
 **Changesets** = `--changeset` blocks in the file; **Precondition** = what Liquibase does when the check fails (`MARK_RAN`: mark as run without executing; `CONTINUE`: skip now and try again on the next update; `HALT`: stop the migration). Numbering and rules: `06-data/migration-strategy.md`.
 
