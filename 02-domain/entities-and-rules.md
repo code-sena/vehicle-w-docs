@@ -179,7 +179,6 @@ CONFIRMED ── no-show ──▶ NO_SHOW
 SCHEDULED / CONFIRMED ── cancel (reason stored) ──▶ CANCELLED
 CONFIRMED ── never had an operator, still open 1 h after its end (system) ──▶ NO_SHOW
 CONFIRMED / IN_PROGRESS ── had an operator and nobody registered it ──▶ "To close": the admin decides
-SCHEDULED ── still open 1 h after its end (system, reason EXPIRED) ──▶ CANCELLED
 SCHEDULED / CONFIRMED ── reschedule (admin) ──▶ same state, new time and bay (prices kept)
 ```
 

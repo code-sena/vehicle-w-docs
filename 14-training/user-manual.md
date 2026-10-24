@@ -131,7 +131,7 @@ ended and nobody pressed Start (or Finish): close it from **To close**.
 | See your finished services | **Service history**: newest first; clicking a row opens its detail and, if the client rated it, a **Go to ratings** button |
 | See your ratings | **Ratings**: stars, comments, the client's name and plate, and your average |
 | Notices | You are told when a service is assigned to you, rescheduled, cancelled or given to someone else (inbox and push), and **"Did you attend this service?"** when its time ended and you did not press Start |
-| You forgot to press Start | If you see it the same day, press **Start** and then **Finish** in **Assigned services** (it is recorded as late); otherwise tell the administrator, who closes it as attended |
+| You forgot to press Start | Until **4 hours after** the booking's end time you can still press **Start** and then **Finish** in **Assigned services** (it is recorded as late); after that the button says it can no longer be started: tell the administrator, who closes it as attended |
 
 ---
 
