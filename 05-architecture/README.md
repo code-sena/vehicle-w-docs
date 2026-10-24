@@ -1,6 +1,6 @@
 # 05 — Architecture
 
-This section documents the main architectural decisions of Express car wash: how the system is divided, how services communicate, how the shared SQL Server database is organised, how services are deployed, and which cross-cutting rules apply to all backend services.
+This section documents the main architectural decisions of LavaRápido: how the system is divided, how services communicate, how the shared SQL Server database is organised, how services are deployed, and which cross-cutting rules apply to all backend services.
 
 ## What is here
 

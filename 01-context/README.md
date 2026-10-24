@@ -1,6 +1,6 @@
 # 01 — Project Context
 
-> The "why" of LavaRápido (Express car wash): the problem, the people who use it, what is in and
+> The "why" of LavaRápido (Vehicle Washing): the problem, the people who use it, what is in and
 > out of scope, and the words the team uses. Read this first.
 
 ---
