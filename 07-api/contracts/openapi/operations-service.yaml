@@ -1,11 +1,11 @@
-# Contract of operations-service, rebuilt on 2026-10-23 from the code on origin/develop (see 07-api/README.md).
+# Contract of operations-service, rebuilt on 2026-10-24 from the code on origin/develop (see 07-api/README.md).
 # Regenerate it from the code instead of editing by hand, so it never drifts.
 openapi: 3.0.3
 info:
   title: LavaRápido operations-service API
   version: v1
   description: |-
-    Contract of operations-service, rebuilt from the controllers of `lavarapido-operations-service` on `origin/develop` (`71df4b2`, 2026-10-23) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
+    Contract of operations-service, rebuilt from the controllers of `lavarapido-operations-service` on `origin/develop` (`37e32ff`, 2026-10-24) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
 
     **Security.** Operations without `security` use the bearer JWT (`bearerAuth`). `security: []` = public. `x-roles` = roles the service accepts on that path (from its `SecurityConfig`); `x-access` = `public`, `authenticated` (any role), `roles`, `internal` (only `X-Internal-Key`, not published by the gateway) or `roles + internal key`. Ownership checks (a client only sees its own data) answer 404, not 403.
 
@@ -60,8 +60,12 @@ info:
     | `OPERATOR_NOT_ON_SHIFT` | 409 | `ConflictException` — `PUT /api/v1/admin/assignments/{bookingId}` |
     | `SERVICE_NOT_COMPLETED` | 409 | `ConflictException` — `POST /api/v1/ratings/{bookingId}` |
     | `SERVICE_TOO_EARLY` | 409 | `ConflictException` — `POST /api/v1/operator/services/{bookingId}/start` |
+    | `SERVICE_TOO_LATE` | 409 | `ConflictException` — `POST /api/v1/operator/services/{bookingId}/start` |
     | `INTERNAL_ERROR` | 500 | Unexpected error (logged with its correlation id) |
     | `BOOKING_SERVICE_UNAVAILABLE` | 503 | `DependencyUnavailableException` — 25 operations (see `x-codes` of each response) |
+    | `DATABASE_UNAVAILABLE` | 503 | `ApiExceptionHandler` — The database does not answer (connection, timeout or transaction could not start) |
+    | `NOTIFICATION_NOT_SENT` | 503 | `DependencyUnavailableException` — `POST /api/v1/admin/inspections/{bookingId}/share` |
+    | `SECURITY_SERVICE_UNAVAILABLE` | 503 | `DependencyUnavailableException` — `PUT /api/v1/admin/assignments/{bookingId}`, `GET /api/v1/admin/assignments/{bookingId}/candidates` |
 servers:
   - url: http://localhost:8080
     description: Through the API gateway (ADR-005); `/internal/**` is not reachable here
@@ -235,9 +239,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "503":
-          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`, `SECURITY_SERVICE_UNAVAILABLE`."
           x-codes:
             - BOOKING_SERVICE_UNAVAILABLE
+            - SECURITY_SERVICE_UNAVAILABLE
           content:
             application/problem+json:
               schema:
@@ -387,9 +392,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "503":
-          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`, `SECURITY_SERVICE_UNAVAILABLE`."
           x-codes:
             - BOOKING_SERVICE_UNAVAILABLE
+            - SECURITY_SERVICE_UNAVAILABLE
           content:
             application/problem+json:
               schema:
@@ -940,7 +946,7 @@ paths:
       x-access: roles
       x-roles:
         - ADMIN
-      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:117
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:120
       parameters:
         - name: bookingId
           in: path
@@ -1069,11 +1075,11 @@ paths:
       tags:
         - Admin Inspection
       operationId: share
-      description: "Javadoc: Avisa al cliente (bandeja, push y correo) con el resumen y el enlace publico."
+      description: "Javadoc: Avisa al cliente (bandeja, push y correo) con el resumen y el enlace publico. OPS-08: 503 NOTIFICATION_NOT_SENT si el aviso no se pudo publicar (RabbitMQ caido o mensajeria apagada)."
       x-access: roles
       x-roles:
         - ADMIN
-      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:112
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:115
       parameters:
         - name: bookingId
           in: path
@@ -1128,9 +1134,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "503":
-          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`, `NOTIFICATION_NOT_SENT`."
           x-codes:
             - BOOKING_SERVICE_UNAVAILABLE
+            - NOTIFICATION_NOT_SENT
           content:
             application/problem+json:
               schema:
@@ -1989,6 +1996,7 @@ paths:
       tags:
         - Operator
       operationId: operatorStart
+      description: "The operator can start from 15 minutes before the booking time (`SERVICE_TOO_EARLY` before that) until the end of the booking plus `START_LATE_LIMIT` (4 h by default, A-12; `SERVICE_TOO_LATE` after it: the administrator closes it from \"Por cerrar\"). The list of the operator's services returns `startableUntil` so the screens can disable the button."
       x-access: roles
       x-roles:
         - OPERATOR
@@ -2044,12 +2052,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "409":
-          description: "Conflict. `code`: `BOOKING_STATE_CONFLICT`, `OPERATOR_BUSY`, `OPERATOR_INACTIVE`, `SERVICE_TOO_EARLY`."
+          description: "Conflict. `code`: `BOOKING_STATE_CONFLICT`, `OPERATOR_BUSY`, `OPERATOR_INACTIVE`, `SERVICE_TOO_EARLY`, `SERVICE_TOO_LATE`."
           x-codes:
             - BOOKING_STATE_CONFLICT
             - OPERATOR_BUSY
             - OPERATOR_INACTIVE
             - SERVICE_TOO_EARLY
+            - SERVICE_TOO_LATE
           content:
             application/problem+json:
               schema:
@@ -2186,7 +2195,7 @@ paths:
       operationId: publicInspectionGet
       security: []
       x-access: public
-      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:134
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:137
       parameters:
         - name: token
           in: path
@@ -2240,7 +2249,7 @@ paths:
       operationId: publicInspectionPhoto
       security: []
       x-access: public
-      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:139
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:142
       parameters:
         - name: token
           in: path
@@ -2573,7 +2582,7 @@ components:
         ratingsCount:
           type: integer
           format: int32
-      x-java: com/lavarapido/operations/domain/port/in/OperationsUseCase.java:75
+      x-java: com/lavarapido/operations/domain/port/in/OperationsUseCase.java:77
     BayResponse:
       type: object
       properties:
@@ -2617,7 +2626,7 @@ components:
         operatorName:
           type: string
       description: Operario de una reserva del cliente (solo su primer nombre).
-      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:175
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:176
     CandidateResponse:
       type: object
       properties:
@@ -2816,6 +2825,11 @@ components:
           format: date-time
         clientName:
           type: string
+        startableUntil:
+          type: string
+          format: date-time
+        notes:
+          type: string
       description: Reserva vista por el operario, con el estado de su ejecucion.
       x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:160
     PhaseDto:
@@ -2953,7 +2967,7 @@ components:
           type: string
         clientName:
           type: string
-      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:182
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:183
     ReportDto:
       type: object
       properties:
@@ -3125,6 +3139,7 @@ x-error-codes:
   BOOKING_WITHOUT_CLIENT: 400
   COMMENT_TOO_LONG: 400
   CONFLICT: 409
+  DATABASE_UNAVAILABLE: 503
   DUPLICATED_DAY: 400
   EXECUTION_ALREADY_COMPLETED: 409
   EXECUTION_ALREADY_STARTED: 409
@@ -3146,6 +3161,7 @@ x-error-codes:
   INVALID_SLOT: 400
   INVALID_TOKEN: 400
   METHOD_NOT_ALLOWED: 405
+  NOTIFICATION_NOT_SENT: 503
   NOT_FOUND: 404
   OPERATOR_ABSENT: 409
   OPERATOR_ACCOUNT_DISABLED: 409
@@ -3154,8 +3170,10 @@ x-error-codes:
   OPERATOR_NOT_FOUND: 404
   OPERATOR_NOT_ON_SHIFT: 409
   PHOTO_NOT_FOUND: 404
+  SECURITY_SERVICE_UNAVAILABLE: 503
   SERVICE_NOT_COMPLETED: 409
   SERVICE_TOO_EARLY: 409
+  SERVICE_TOO_LATE: 409
   TOO_MANY_PHOTOS: 400
   UNAUTHORIZED: 401
   VALIDATION_ERROR: 400

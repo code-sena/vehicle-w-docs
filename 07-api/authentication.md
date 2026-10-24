@@ -2,7 +2,7 @@
 
 > How clients authenticate and how every service decides what a caller may do. Decision record:
 > ADR-006. Implementation: `security-service` issues tokens; every service validates them.
-> Checked against `origin/develop` on 2026-10-23.
+> Checked against `origin/develop` on 2026-10-24.
 
 ---
 
@@ -43,20 +43,28 @@ skew). Whether the session is still valid is checked in two places (ADR-006):
   **E-02**, a token whose account was disabled or no longer has one of the token's roles. In that case
   it also revokes every session of the account, so the person signs in again with the roles they have
   today. `GET /api/v1/auth/session` answers 204 (valid) or 401 (not valid).
-- The gateway calls that endpoint before forwarding any `/api/**` call with `Authorization: Bearer …`
-  (except `/api/v1/auth/**`, but including `/api/v1/auth/logout`) and keeps the answer 30 seconds per
-  token (`SESSION_CHECK_CACHE_TTL`, key = SHA-256 of the token). A rejected token gets the same
+- The gateway calls that endpoint before forwarding any call with a non-empty `Authorization` header,
+  whatever its scheme or path (except `/api/v1/auth/**`, but including `/api/v1/auth/logout`), and keeps
+  the answer 30 seconds per token (`SESSION_CHECK_CACHE_TTL`, key = SHA-256 of the token alone, so
+  `bearer`, `Bearer` and `BEARER` share it). A rejected token gets the same
   `401 UNAUTHORIZED` body security-service returns, so the web shows "session expired" as with an
   expired token. If security-service does not answer within 3 s (`SESSION_CHECK_TIMEOUT`), the call goes
   on (the service still checks the signature).
 
 A session closes on logout, when an administrator disables the account, when the owner closes it,
 and when the account loses a role of the token (E-02). A logout through the gateway takes effect at
-once; the others reach the other services within the 30-second cache.
+once (the cached answer is cleared before and after forwarding it); the others reach the other
+services within the 30-second cache.
 
-Known gap (SEC-01, open): the gateway only checks headers that start with `Bearer ` exactly, while
-Spring Security in the services also accepts other casing (`bearer …`); such a call skips the session
-check and is limited only by the token's expiry.
+SEC-01 (fixed; checked on 2026-10-24): the gateway used to check only headers that started with `Bearer `
+exactly, while Spring Security in the services also accepts other casing (`bearer …`); now every
+non-empty `Authorization` header is checked.
+
+Rate limit (SEC-04): the gateway allows each client IP `AUTH_RATE_LIMIT_REQUESTS` (60) calls to
+`/api/v1/auth/**` per `AUTH_RATE_LIMIT_WINDOW` (1 min, refilled gradually); beyond that it answers 429
+`RATE_LIMITED` with `Retry-After`, before security-service. The client IP is the remote address, or
+`X-Forwarded-For` only when the connection comes from `TRUSTED_PROXIES` (Caddy); the gateway forwards
+that IP to the services in `X-Forwarded-For` (SEC-11).
 
 ---
 
@@ -64,9 +72,13 @@ check and is limited only by the token's expiry.
 
 | Role | Can |
 |---|---|
-| `CLIENT` | Own profile, own vehicles, catalog, availability, own bookings (create, change date and time, cancel with a client-side reason before start), own payments (`/api/v1/payments/**`, role `CLIENT`), coupons and loyalty points (`/api/v1/loyalty/**`, role `CLIENT`), rating of own completed bookings (`/api/v1/ratings/**`), the operator of own bookings (`/api/v1/operators/my-bookings`), own notifications |
+| `CLIENT` | Own profile, own vehicles (`/api/v1/vehicles/**`, role `CLIENT`), catalog, availability, own bookings (`/api/v1/bookings/**`, role `CLIENT`: create, change date and time, cancel with a client-side reason before start), own payments (`/api/v1/payments/**`, role `CLIENT`), coupons and loyalty points (`/api/v1/loyalty/**`, role `CLIENT`), rating of own completed bookings (`/api/v1/ratings/**`), the operator of own bookings (`/api/v1/operators/my-bookings`), own notifications |
 | `OPERATOR` | Own profile and notifications, the services assigned to them in operations-service (`/api/v1/operator/services/**`: list, start, finish; `/api/v1/operator/ratings`), and the vehicle lookup `GET /api/v1/admin/vehicles` |
-| `ADMIN` | Everything under `/api/v1/admin/**`: users, roles and permissions, all vehicles, all bookings and their status, catalog and prices, schedule, bays, business data, operators and assignments, inspection reports, payments, payment accounts, promotions, manual notifications |
+| `ADMIN` | Everything under `/api/v1/admin/**`: users, roles and permissions, all vehicles, all bookings and their status, catalog and prices, schedule, bays, business data, operators and assignments, inspection reports, payments, payment accounts, promotions, manual notifications. Also `GET /api/v1/bookings/availability` and `/cancellation-reasons` (the booking form of the web) |
+
+Since BIZ-12 / A-10, `/api/v1/bookings/**` (booking-service) and `/api/v1/vehicles/**`
+(customer-service) are only for `CLIENT`, except the two booking reads above: an administrator or
+operator gets 403 there, and no longer gets a customer profile provisioned by calling them.
 
 Roles are fixed (ADR-010). Any authenticated role may call the other `/api/v1/**` paths of a service
 (for example `GET /api/v1/payment-accounts`, `GET /api/v1/operators/available`); the exact rule of
@@ -110,6 +122,7 @@ Everything else under `/api/v1/**` needs a token; `/api/v1/admin/**` needs `ADMI
 | booking → customer, payment → booking, operations → booking `/api/v1/admin/bookings` | The user's JWT, forwarded |
 | operations → booking `/api/v1/operator/bookings/**` (E-01) | The operator's JWT **and** `X-Internal-Key` |
 | operations → booking `/internal/v1/bookings` (automatic assignment, free operators, to-close list, no-show) | `X-Internal-Key`; without `INTERNAL_API_KEY` operations answers 503 `BOOKING_SERVICE_UNAVAILABLE` |
+| customer → booking `/internal/v1/bookings/active-count` (BIZ-08, before retiring a vehicle) | `X-Internal-Key`; without `INTERNAL_API_KEY`, or if booking does not answer, customer answers 503 `BOOKING_SERVICE_UNAVAILABLE` |
 | notification and operations → security `/internal/v1/users/{id}/contact`, notification → `/internal/v1/users/admins` | `X-Internal-Key` |
 | `deploy/publish-apk.sh` → notification `/internal/v1/notifications/app-update` | `X-Internal-Key`, from inside the Docker network |
 
@@ -126,10 +139,15 @@ are never routed by the gateway (ADR-011 §8). The contracts mark them with `x-i
   require a domain listed in `ALLOWED_EMAIL_DOMAINS` (default `gmail.com`, compared without case after
   trimming); otherwise 400 `EMAIL_DOMAIN_NOT_ALLOWED`. Login and password recovery only check the
   format, so existing accounts with other domains can still sign in.
-- Registration stores when the Terms and the Data Policy were accepted (Law 1581).
+- Registration requires both consents (`acceptsTerms`, `acceptsDataPolicy`; 400 `CONSENT_REQUIRED`,
+  SEC-07) and stores when they were accepted (Law 1581).
 - Password policy enforced by security-service (`PasswordPolicy`, 400 `WEAK_PASSWORD` with
   `violations`); hashes with BCrypt.
-- Recovery: a 6-digit code sent by e-mail, valid 15 minutes, burnt after 5 wrong attempts.
+- Recovery: a 6-digit code sent by e-mail, valid 15 minutes, burnt after 5 wrong attempts; the attempt
+  that burns it and the next ones answer 423 `TOO_MANY_ATTEMPTS` (SEC-05).
+- Changing the password or the e-mail and closing one's own account ask for the current password; a
+  wrong one counts as a failed login and, with the account locked, they answer 423
+  `TOO_MANY_ATTEMPTS` (SEC-12).
 - Login answers the same error for unknown e-mail and wrong password (401 `INVALID_CREDENTIALS`).
 - Lockout (RF-004b): 5 failed logins within 15 minutes lock the account for 15 minutes (`LoginLockout`,
   table `security.login_lockout`); login answers **423** `ACCOUNT_LOCKED` meanwhile. A successful login or a

@@ -1,6 +1,6 @@
 # ER — Schemas promotion and payment (payment-service, 12 tables)
 
-Source: the Liquibase changelogs of `lavarapido-payment-service` on `origin/develop` (`16a6fac`, 2026-10-23), every changeset applied (last structural file: `021-promotion-one-per-booking.sql`). Each entity lists all its columns except the standard audit block, which is in the table under the diagram. Types are the SQL Server base type; lengths, precision and defaults are in `09-microservices/services/06-payment-service/data-model.md`. `PK`, `FK` and `UK` (unique, alone or filtered) are the database keys; "nullable" marks columns that accept NULL. One relationship per foreign key, labelled with its column.
+Source: the Liquibase changelogs of `lavarapido-payment-service` on `origin/develop` (`3b8730e`, 2026-10-24), every changeset applied (last structural file: `023-payment-one-open-and-unique-reference.sql`). Each entity lists all its columns except the standard audit block, which is in the table under the diagram. Types are the SQL Server base type; lengths, precision and defaults are in `09-microservices/services/06-payment-service/data-model.md`. `PK`, `FK` and `UK` (unique, alone or filtered) are the database keys; "nullable" marks columns that accept NULL. One relationship per foreign key, labelled with its column.
 
 ```mermaid
 erDiagram
@@ -51,6 +51,8 @@ erDiagram
         bigint booking_id UK "booking.booking, no FK"
         int promotion_id FK
         decimal applied_amount
+        decimal discount_percent "nullable"
+        decimal max_discount_amount "nullable"
     }
     payment_method_type {
         smallint payment_method_type_id PK
@@ -148,6 +150,10 @@ The standard block is `created_at`, `created_by`, `updated_at`, `updated_by`, `d
 | `payment.payment_receipt` | all seven |
 | `payment.loyalty_movement_type` | all seven |
 | `payment.loyalty_transaction` | all seven |
+
+## Views
+
+Not entities of the diagram: `payment.v_live_transaction_reference` (023, unique index `ux_live_transaction_reference`) joins `payment_receipt` and `payment`. Details in `data-model.md`.
 
 ## References to other services
 

@@ -1,8 +1,8 @@
 # Migration Strategy
 
-**Last checked:** 2026-10-23, against `origin/develop` of the six service repositories (security
-`113fc4d`, customer `02cdb46`, booking `38681b2`, operations `71df4b2`, payment `16a6fac`,
-notification `0831ce7`).
+**Last checked:** 2026-10-24, against `origin/develop` of the six service repositories (security
+`b5fe56e`, customer `3181cae`, booking `5dd6794`, operations `37e32ff`, payment `3b8730e`,
+notification `c5429ad`).
 
 ## Source of truth: the Liquibase changelogs
 
@@ -49,14 +49,14 @@ same database independently:
 - payment-service has **its own sequence** (`changes/001`…), independent of the global one: its
   numbers repeat global ones (both have a `021`), and the changeset ids (`pay-0NN-…`) and its
   changelog table keep them apart.
-- Numbers that are not in the list below (structure `006`, `008`, `009`, `011`–`013`; seeds `106`,
-  `107`) were never used by a changelog. Do not fill gaps: always take the next free number.
+- Numbers that are not in the list below (structure `006`, `008`, `009`, `011`–`013`, `046`; seeds `106`,
+  `107`, `114`, `115`) were never used by a changelog. Do not fill gaps: always take the next free number.
 
-Current values (2026-10-23, `origin/develop`):
+Current values (2026-10-24, `origin/develop`):
 
-- Java structure high-water mark: **043** (`booking-service`, `043-booking-service-loyalty-points`) — next free structure number: **044**.
-- Java seed high-water mark: **112** (`booking-service`, `seed/112-seed-expired-cancellation-reason`) — next free seed number: **113**.
-- payment-service high-water mark: **021** (`021-promotion-one-per-booking`) — next free payment number: **022**.
+- Java structure high-water mark: **047** (`notification-service`, `047-notification-pending-delivery`) — next free structure number: **048**.
+- Java seed high-water mark: **116** (`notification-service`, `seed/116-seed-notification-booking-no-show-type`) — next free seed number: **117**.
+- payment-service high-water mark: **023** (`023-payment-one-open-and-unique-reference`) — next free payment number: **024**.
 
 A number taken by a branch that is not merged yet is also taken: before creating a file, run
 `git fetch` and check `origin/develop` (and the open branches) of the five Java repositories.
@@ -105,12 +105,15 @@ notification 12/19, payment 21/34).
 | 5 | `024-booking-revert-bay-operator.sql` | 1 | onFail:MARK_RAN | Yes | Drops `service_bay.operator_id` if an earlier local attempt created it (otherwise MARK_RAN) |
 | 6 | `032-booking-establishment-business-data.sql` | 1 | onFail:MARK_RAN | Yes | 14 nullable columns with the legal, tax and channel data of `establishment` |
 | 7 | `043-booking-service-loyalty-points.sql` | 2 | onFail:MARK_RAN (1 without) | Yes | Column `booking_service.loyalty_points` (A-09: points frozen when booking) and its backfill from the current catalog |
-| 8 | `seed/103-seed-catalog.sql` | 3 | onFail:MARK_RAN | No | Seed: 5 categories, services `BASIC`, `PREMIUM`, `FULL` and their 18 prices (6 vehicle types) |
-| 9 | `seed/104-seed-booking-catalogs.sql` | 2 | onFail:MARK_RAN | No | Seed: the 6 booking states (fixed ids) and 6 cancellation reasons |
-| 10 | `seed/109-seed-establishment-schedule.sql` | 3 | onFail:MARK_RAN | No | Seed: the establishment row, the weekly hours (Sunday closed) and 4 bays (bay 4 in maintenance) |
-| 11 | `seed/110-seed-establishment-business-data.sql` | 1 | onFail:MARK_RAN | No | Seed: example values for the 032 columns |
-| 12 | `seed/111-clear-example-business-data.sql` | 1 | onFail:MARK_RAN | No | Empties the example values of 110 again (only if they are still the examples) |
-| 13 | `seed/112-seed-expired-cancellation-reason.sql` | 1 | onFail:MARK_RAN | Yes | Seed: cancellation reason `EXPIRED` |
+| 8 | `044-booking-service-price-positive.sql` | 1 | onFail:MARK_RAN | Yes | Check `ck_service_price_positive` (BIZ-04: the current price is greater than 0); created `WITH NOCHECK` if a current price is already 0 |
+| 9 | `045-booking-row-version-optimistic-lock.sql` | 1 | onFail:MARK_RAN | Yes | `ALTER TRIGGER tr_touch_booking` (BIZ-09, E-11): it no longer bumps `row_version` when the `UPDATE` already changed it (Hibernate `@Version`); `updated_at` is still set |
+| 10 | `seed/103-seed-catalog.sql` | 3 | onFail:MARK_RAN | No | Seed: 5 categories, services `BASIC`, `PREMIUM`, `FULL` and their 18 prices (6 vehicle types) |
+| 11 | `seed/104-seed-booking-catalogs.sql` | 2 | onFail:MARK_RAN | No | Seed: the 6 booking states (fixed ids) and 6 cancellation reasons |
+| 12 | `seed/109-seed-establishment-schedule.sql` | 3 | onFail:MARK_RAN | No | Seed: the establishment row, the weekly hours (Sunday closed) and 4 bays (bay 4 in maintenance) |
+| 13 | `seed/110-seed-establishment-business-data.sql` | 1 | onFail:MARK_RAN | No | Seed: example values for the 032 columns |
+| 14 | `seed/111-clear-example-business-data.sql` | 1 | onFail:MARK_RAN | No | Empties the example values of 110 again (only if they are still the examples) |
+| 15 | `seed/112-seed-expired-cancellation-reason.sql` | 1 | onFail:MARK_RAN | Yes | Seed: cancellation reason `EXPIRED` |
+| 16 | `seed/113-clear-example-establishment.sql` | 1 | onFail:MARK_RAN | Yes | Removes the example business of 109 (legal and trade name, tax id, address, phone, e-mail; E-19), only the values still equal to the example |
 
 **operations-service** — `src/main/resources/db/changelog/db.changelog-master.xml`, table `DATABASECHANGELOG_OPERATIONS`
 
@@ -148,6 +151,8 @@ notification 12/19, payment 21/34).
 | 19 | `changes/019-verify-catalog-ids.sql` | 3 | onFail:HALT | Yes | Checks only (`onFail:HALT`): payment state ids 1–5 and the discount and movement codes the code needs |
 | 20 | `changes/020-loyalty-reversal-and-sequence.sql` | 5 | onFail:MARK_RAN (3 without) | Yes | Movement type `REVERSED`; column `loyalty_transaction.sequence_no` (backfilled, then NOT NULL) and unique index per client |
 | 21 | `changes/021-promotion-one-per-booking.sql` | 1 | onFail:CONTINUE | Yes | Unique index `ux_booking_promotion_one_per_booking` (E-09: one coupon per booking; `onFail:CONTINUE` if duplicates exist) |
+| 22 | `changes/022-redemption-discount-percent.sql` | 2 | onFail:MARK_RAN (1 without) | Yes | Columns `booking_promotion.discount_percent` and `max_discount_amount` with their checks (BIZ-05) and their backfill from the promotion for percentage coupons |
+| 23 | `changes/023-payment-one-open-and-unique-reference.sql` | 3 | onFail:HALT, onFail:CONTINUE (1 without) | Yes | A-16: older duplicate open payments rejected; unique index `ux_payment_one_open_per_booking` (`onFail:HALT`); indexed view `v_live_transaction_reference` (`onFail:CONTINUE` if a reference is already repeated) |
 
 **notification-service** — `src/main/resources/db/changelog/db.changelog-master.xml`, table `DATABASECHANGELOG_NOTIFICATION`
 
@@ -158,13 +163,15 @@ notification 12/19, payment 21/34).
 | 3 | `017-create-notification-processed-event.sql` | 1 | onFail:MARK_RAN | No | Table `processed_event` (idempotency, ADR-011) |
 | 4 | `019-create-notification-booking-reminder.sql` | 1 | onFail:MARK_RAN | No | Table `booking_reminder` and its filtered index of due reminders |
 | 5 | `seed/108-seed-notification-type.sql` | 1 | none | No | Seed: 12 notification types (`MERGE`, only the missing ones) |
-| 6 | `025-notification-promotion-redeemed-type.sql` | 1 | onFail:MARK_RAN | No | Type `PROMOTION_REDEEMED` |
-| 7 | `027-notification-staff-notifications.sql` | 2 | onFail:MARK_RAN (1 without) | 1 of 2 | Table `booking_tracking` and 6 staff types (`OPERATOR_SERVICE_*`, `ADMIN_BOOKING_*`) |
-| 8 | `028-notification-payment-refunded-type.sql` | 1 | onFail:MARK_RAN | No | Type `PAYMENT_REFUNDED` |
-| 9 | `029-notification-loyalty-and-inspection-types.sql` | 1 | none | No | Types `LOYALTY_POINTS_EARNED` and `INSPECTION_REPORT` |
-| 10 | `031-notification-unassigned-booking-alert.sql` | 2 | onFail:MARK_RAN (1 without) | 1 of 2 | Column `booking_tracking.unassigned_alert_at` and type `ADMIN_BOOKING_UNASSIGNED` |
-| 11 | `038-notification-app-update-type.sql` | 1 | none | Yes | Type `APP_UPDATE_AVAILABLE` |
-| 12 | `041-notification-service-not-registered-types.sql` | 1 | none | Yes | Types `OPERATOR_SERVICE_NOT_REGISTERED` and `ADMIN_SERVICE_NOT_REGISTERED` |
+| 6 | `seed/116-seed-notification-booking-no-show-type.sql` | 1 | none | Yes | Seed: notification type `BOOKING_NO_SHOW` (A-11) |
+| 7 | `025-notification-promotion-redeemed-type.sql` | 1 | onFail:MARK_RAN | No | Type `PROMOTION_REDEEMED` |
+| 8 | `027-notification-staff-notifications.sql` | 2 | onFail:MARK_RAN (1 without) | 1 of 2 | Table `booking_tracking` and 6 staff types (`OPERATOR_SERVICE_*`, `ADMIN_BOOKING_*`) |
+| 9 | `028-notification-payment-refunded-type.sql` | 1 | onFail:MARK_RAN | No | Type `PAYMENT_REFUNDED` |
+| 10 | `029-notification-loyalty-and-inspection-types.sql` | 1 | none | No | Types `LOYALTY_POINTS_EARNED` and `INSPECTION_REPORT` |
+| 11 | `031-notification-unassigned-booking-alert.sql` | 2 | onFail:MARK_RAN (1 without) | 1 of 2 | Column `booking_tracking.unassigned_alert_at` and type `ADMIN_BOOKING_UNASSIGNED` |
+| 12 | `038-notification-app-update-type.sql` | 1 | none | Yes | Type `APP_UPDATE_AVAILABLE` |
+| 13 | `041-notification-service-not-registered-types.sql` | 1 | none | Yes | Types `OPERATOR_SERVICE_NOT_REGISTERED` and `ADMIN_SERVICE_NOT_REGISTERED` |
+| 14 | `047-notification-pending-delivery.sql` | 1 | onFail:MARK_RAN | Yes | Table `pending_delivery` (OPS-05, E-14: push and e-mail deliveries with retries) and its filtered index |
 <!-- migrations:end -->
 
 ## How a changeset looks
@@ -191,19 +198,19 @@ ALTER TABLE [booking].booking_service ADD loyalty_points INT NULL;
 
 | Behaviour | Where | What it means |
 |---|---|---|
-| `onFail:MARK_RAN` + `expectedResult:0` (the object does not exist yet) | Every structural changeset of the Java services, payment `001`, `002`, `016`, `018` and `020` | If the schema, table, column, index or trigger already exists, the changeset is marked as run without executing. A database migrated by hand converges instead of failing |
-| `onFail:MARK_RAN` + `expectedResult:1` | security `026` (drop `custom_role`), booking `024` (drop `service_bay.operator_id`), booking seeds `110` and `111` | Run only when the thing to drop or update is there |
+| `onFail:MARK_RAN` + `expectedResult:0` (the object does not exist yet) | Every structural changeset of the Java services, payment `001`, `002`, `016`, `018`, `020` and the column changeset of `022` | If the schema, table, column, index or trigger already exists, the changeset is marked as run without executing. A database migrated by hand converges instead of failing |
+| `onFail:MARK_RAN` + `expectedResult:1` | security `026` (drop `custom_role`), booking `024` (drop `service_bay.operator_id`), booking `045` (`ALTER TRIGGER tr_touch_booking`), booking seeds `110`, `111` and `113` | Run only when the thing to drop or update is there |
 | `onFail:MARK_RAN` + seed check `SELECT COUNT(*) … = 0` | Seeds `102`, `103`, `104`, `105`, `109`, `112`, security `026` seeds | Insert only into an empty table, so a seeded database does not break the `UNIQUE (code)` constraints |
-| `onFail:CONTINUE` | payment `021` (`ux_booking_promotion_one_per_booking`) | If some booking already has two coupons, the index is **not** created and Liquibase tries again on the next update. Find them with `SELECT booking_id, COUNT(*) FROM [promotion].booking_promotion GROUP BY booking_id HAVING COUNT(*) > 1` |
-| `onFail:HALT` | payment `015` (`APPROVED` must be id 3) and `019` (payment status ids 1–5, discount and movement codes) | Stops the whole migration: the code and `ux_payment_one_approved_per_booking` depend on those values |
-| No precondition | security `101` (idempotent `WHERE NOT EXISTS`) and `036` backfill; booking `043` backfill (`WHERE loyalty_points IS NULL`); notification type inserts `108`, `027`, `029`, `031`, `038`, `041` (idempotent `MERGE … WHEN NOT MATCHED`); payment `003`–`014`, five of the six changesets of `015`, `017`, the check of `018` and three changesets of `020` | Idempotent by their own SQL, or (payment) guarded only by the changelog table |
+| `onFail:CONTINUE` | payment `021` (`ux_booking_promotion_one_per_booking`) and `023` (`v_live_transaction_reference`) | If some booking already has two coupons, the index is **not** created and Liquibase tries again on the next update. Find them with `SELECT booking_id, COUNT(*) FROM [promotion].booking_promotion GROUP BY booking_id HAVING COUNT(*) > 1`. Likewise, if a transaction reference is already repeated among live payments, the view is not created; the query that finds them is in the header of `023` |
+| `onFail:HALT` | payment `015` (`APPROVED` must be id 3), `019` (payment status ids 1–5, discount and movement codes) and `023` (no booking with two open payments left after its first changeset) | Stops the whole migration: the code, `ux_payment_one_approved_per_booking` and `ux_payment_one_open_per_booking` depend on those values |
+| No precondition | security `101` (idempotent `WHERE NOT EXISTS`) and `036` backfill; booking `043` backfill (`WHERE loyalty_points IS NULL`); notification type inserts `108`, `027`, `029`, `031`, `038`, `041`, `116` (idempotent `MERGE … WHEN NOT MATCHED`); payment `003`–`014`, five of the six changesets of `015`, `017`, the check of `018`, three changesets of `020`, the backfill of `022` and the first changeset of `023` (rejects older duplicate open payments) | Idempotent by their own SQL, or (payment) guarded only by the changelog table |
 
 ## Rollback
 
 Changesets carry a `--rollback` block from the `021`–`023` era on, so the old rule "forward-only, no
 rollback blocks" no longer holds:
 
-- **payment-service:** all 34 changesets have one.
+- **payment-service:** all 39 changesets have one.
 - **Java services:** every structural file numbered `021` or higher has one, except security `026`
   and the notification type inserts of `025`, `027` (second changeset), `028`, `029` and `031`
   (second changeset). Files before `021` (`001`–`020` and seeds `101`–`111`) have none. The
@@ -221,7 +228,8 @@ There is no generic trigger generator. Each changeset that creates an edited tab
 There are 16: `security.user_preference`; the three `customer` tables; `catalog.service`,
 `service_price`; `booking.establishment`, `business_hour`, `business_hour_exception`, `service_bay`,
 `booking`; `execution.operator`, `operator_availability`, `operator_absence`, `service_execution`,
-`inspection_report`. Three business triggers live with their tables: `tr_service_price_immutable` and
+`inspection_report`. Booking `045` changed `tr_touch_booking`: it still sets `updated_at`, but bumps
+`row_version` only when the `UPDATE` did not (Hibernate `@Version` already does it). Three business triggers live with their tables: `tr_service_price_immutable` and
 `tr_booking_bay_overlap` (booking `005`) and `tr_operator_absence_overlap` (operations `007`).
 notification-service and payment-service have no triggers.
 
@@ -289,9 +297,10 @@ they can ship in different releases.
 
 ## How the docs are checked
 
-On 2026-10-23 a script rebuilt the final model from the 68 files above (152 changesets: `CREATE`,
-`ALTER … ADD/DROP/ALTER COLUMN`, `DROP TABLE`, indexes and triggers, in master order) — 57 tables,
-664 columns, 40 indexes that are not constraints, 19 triggers — and compared it with:
+On 2026-10-24 a script rebuilt the final model from the 75 files above (162 changesets: `CREATE`,
+`ALTER … ADD/DROP/ALTER COLUMN`, `DROP TABLE`, indexes, triggers and their `ALTER`, and the indexed
+view, in master order) — 58 tables, 678 columns, 43 indexes that are not constraints (one of them on
+the view), 19 triggers, 1 view — and compared it with:
 
 - `06-data/models.md` (every `CREATE TABLE` block, its constraints, indexes, triggers and data
   dictionary), each `data-model.md` (type, NULL, default and IDENTITY of every column, every

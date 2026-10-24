@@ -2,7 +2,7 @@
 
 Schemas `catalog` and `booking` in the shared SQL Server database `LavaRapido` (one owning service per schema, ADR-003/ADR-009): 13 tables, 183 columns. No foreign key leaves these schemas; references to other services are plain columns (last section).
 
-> **Source:** the Liquibase changelogs of `lavarapido-booking-service` on `origin/develop` (`38681b2`, 2026-10-23), applied in the order of `src/main/resources/db/changelog/db.changelog-master.xml`. The tables below were generated from those changelogs and are checked against them, against the JPA entities and against the ERD (`08-uml/diagrams/source/erd-booking.md`) by the script described in `06-data/migration-strategy.md` ("How the docs are checked"). The rationale of each table is in `06-data/models.md`.
+> **Source:** the Liquibase changelogs of `lavarapido-booking-service` on `origin/develop` (`5dd6794`, 2026-10-24), applied in the order of `src/main/resources/db/changelog/db.changelog-master.xml`. The tables below were generated from those changelogs and are checked against them, against the JPA entities and against the ERD (`08-uml/diagrams/source/erd-booking.md`) by the script described in `06-data/migration-strategy.md` ("How the docs are checked"). The rationale of each table is in `06-data/models.md`.
 
 ## Tables
 
@@ -10,20 +10,21 @@ Schemas `catalog` and `booking` in the shared SQL Server database `LavaRapido` (
 |---|---|---|
 | `catalog.service_category` | Service categories: `LAVADO`, `POLICHADO`, `DETALLADO`, `INTERIOR`, `PAQUETES` (seed 103; combos are services of `PAQUETES`, ADR-010). | 005 |
 | `catalog.service` | Service without price (2NF): code, name, description, category, active flag and the loyalty points it earns (022). | 005 |
-| `catalog.service_price` | Price and estimated minutes per (service, vehicle type), valid from/to. **Immutable** (`tr_service_price_immutable`): a new price closes the row (`valid_to`) and inserts another; one current row per pair (`ux_service_price_current`). | 005 |
-| `booking.establishment` | The shop (a single row, `singleton = 1`): contact data plus the legal, tax and channel data edited in Settings (032). The example values of seed 110 were emptied again by seed 111. | 005 |
+| `catalog.service_price` | Price and estimated minutes per (service, vehicle type), valid from/to. **Immutable** (`tr_service_price_immutable`): a new price closes the row (`valid_to`) and inserts another; one current row per pair (`ux_service_price_current`). Since 044 the current price must be greater than 0 (`ck_service_price_positive`; closed or deleted rows may stay at 0). | 005 |
+| `booking.establishment` | The shop (a single row, `singleton = 1`): contact data plus the legal, tax and channel data edited in Settings (032). The example values of seed 110 were emptied again by seed 111, and seed 113 removes the invented business that seed 109 created (only the values still equal to the example). | 005 |
 | `booking.business_hour` | Weekly hours, one row per weekday (1 = Monday … 7 = Sunday), with an optional break (018) that falls inside the opening hours. | 005 |
 | `booking.business_hour_exception` | Holiday (closed all day) or special day with other hours, one per date. Soft delete; a soft-deleted row with the same date is physically deleted before reusing the date (`SchedulePersistenceAdapter`). | 005 |
 | `booking.service_bay` | Wash bays with their state (`bay_status_id`, 018; it replaced `is_active`). Capacity is the number of bays that accept bookings. | 005 |
 | `booking.booking_status` | Booking states with fixed ids: 1 `SCHEDULED`, 2 `CONFIRMED`, 3 `IN_PROGRESS`, 4 `COMPLETED`, 5 `CANCELLED`, 6 `NO_SHOW` (seed 104). Ids 1–3 (active) and 5 are hard-coded in `tr_booking_bay_overlap` and `ck_booking_cancel`. | 005 |
 | `booking.cancellation_reason` | Cancellation reasons (seed 104) plus the system reason `EXPIRED` (seed 112) used when a scheduled booking reaches its time without confirmation. | 005 |
-| `booking.booking` | The booking: vehicle (no FK), bay, start/end in UTC, status, who booked (no FK), cancellation reason, notes. No total column: the total is computed from its lines. | 005 |
+| `booking.booking` | The booking: vehicle (no FK), bay, start/end in UTC, status, who booked (no FK), cancellation reason, notes. No total column: the total is computed from its lines. `row_version` is the optimistic lock of `BookingJpaEntity` (`@Version`, 045). | 005 |
 | `booking.booking_service` | Booking lines. Each one points to the immutable `service_price` row it was charged with, and since 043 keeps the loyalty points the service was worth when booked (lines older than 043 got the points current at migration time). | 005 |
 | `booking.bay_status` | Bay states with fixed ids: 1 `ACTIVE` (accepts bookings), 2 `MAINTENANCE`, 3 `INACTIVE` (018, ADR-010). | 018 |
 | `booking.schedule_history` | Insert-only log of changes to the weekly hours (`WEEK`), the exceptions (`EXCEPTION`) and the bays (`BAY`), shown in Schedule and bays (021). No audit block: it is never edited or deleted. | 021 |
 
 - Status codes are in English (ADR-010); the web and the app translate them.
 - `booking_service`, `service_category`, `booking_status`, `cancellation_reason` and `bay_status` carry `row_version` but have no touch trigger, so it stays at 1 when they change.
+- `booking.row_version` is the optimistic lock (`@Version` in `BookingJpaEntity`, BIZ-09): two requests that change the same booking cannot both win, and the second answers 409. Since 045 `tr_touch_booking` only bumps it when the `UPDATE` did not (a manual script).
 
 ## Columns, keys and indexes
 
@@ -93,7 +94,7 @@ Schemas `catalog` and `booking` in the shared SQL Server database `LavaRapido` (
 | `deleted_by` | BIGINT | Yes | — | — | 005 |
 | `row_version` | INT | No | `1` | — | 005 |
 
-- Constraints: `pk_service_price` PRIMARY KEY (service_price_id) · `fk_service_price_service` FOREIGN KEY (service_id) → catalog.service (service_id) · `ck_service_price_price` CHECK `price >= 0` · `ck_service_price_minutes` CHECK `estimated_minutes > 0` · `ck_service_price_range` CHECK `valid_to IS NULL OR valid_to > valid_from`
+- Constraints: `pk_service_price` PRIMARY KEY (service_price_id) · `fk_service_price_service` FOREIGN KEY (service_id) → catalog.service (service_id) · `ck_service_price_price` CHECK `price >= 0` · `ck_service_price_minutes` CHECK `estimated_minutes > 0` · `ck_service_price_range` CHECK `valid_to IS NULL OR valid_to > valid_from` · `ck_service_price_positive` CHECK `price > 0 OR valid_to IS NOT NULL OR deleted_at IS NOT NULL` (044; created `WITH NOCHECK` if existing rows broke it)
 - Indexes: `ux_service_price_current` UNIQUE (service_id, vehicle_type_id) WHERE `valid_to IS NULL AND deleted_at IS NULL` · `ix_service_price_vehicle_type` (vehicle_type_id)
 - Triggers: `tr_service_price_immutable` (AFTER UPDATE) · `tr_touch_service_price` (AFTER UPDATE, sets `updated_at` and `row_version`)
 
@@ -270,7 +271,7 @@ Schemas `catalog` and `booking` in the shared SQL Server database `LavaRapido` (
 
 - Constraints: `pk_booking` PRIMARY KEY (booking_id) · `fk_booking_bay` FOREIGN KEY (service_bay_id) → booking.service_bay (service_bay_id) · `fk_booking_status` FOREIGN KEY (booking_status_id) → booking.booking_status (booking_status_id) · `fk_booking_cancellation` FOREIGN KEY (cancellation_reason_id) → booking.cancellation_reason (cancellation_reason_id) · `ck_booking_range` CHECK `scheduled_end > scheduled_start` · `ck_booking_cancel` CHECK `cancellation_reason_id IS NULL OR booking_status_id = 5` · `ck_booking_points` CHECK `(points_redeemed = 0 AND points_discount_amount = 0) OR (points_redeemed > 0 AND points_discount_amount > 0)`
 - Indexes: `ix_booking_start_status` (scheduled_start, booking_status_id) · `ix_booking_customer_vehicle` (customer_vehicle_id) · `ix_booking_bay_start` (service_bay_id, scheduled_start) · `ix_booking_booked_by` (booked_by)
-- Triggers: `tr_booking_bay_overlap` (AFTER INSERT, UPDATE) · `tr_touch_booking` (AFTER UPDATE, sets `updated_at` and `row_version`)
+- Triggers: `tr_booking_bay_overlap` (AFTER INSERT, UPDATE) · `tr_touch_booking` (AFTER UPDATE, sets `updated_at`; bumps `row_version` only if the UPDATE did not (045))
 
 ### `booking.booking_service`
 
@@ -341,7 +342,7 @@ Schemas `catalog` and `booking` in the shared SQL Server database `LavaRapido` (
 | `tr_touch_business_hour` | `booking.business_hour` | AFTER UPDATE | Sets `updated_at = SYSUTCDATETIME()` and `row_version + 1` on the updated rows (skips nested calls) |
 | `tr_touch_business_hour_exception` | `booking.business_hour_exception` | AFTER UPDATE | Sets `updated_at = SYSUTCDATETIME()` and `row_version + 1` on the updated rows (skips nested calls) |
 | `tr_touch_service_bay` | `booking.service_bay` | AFTER UPDATE | Sets `updated_at = SYSUTCDATETIME()` and `row_version + 1` on the updated rows (skips nested calls) |
-| `tr_touch_booking` | `booking.booking` | AFTER UPDATE | Sets `updated_at = SYSUTCDATETIME()` and `row_version + 1` on the updated rows (skips nested calls) |
+| `tr_touch_booking` | `booking.booking` | AFTER UPDATE | Sets `updated_at = SYSUTCDATETIME()` on the updated rows and `row_version + 1` only on those whose `UPDATE` left `row_version` unchanged, so it does not fight Hibernate `@Version` (changed in 045; skips nested calls) |
 
 ## Seed data
 
@@ -351,6 +352,7 @@ Schemas `catalog` and `booking` in the shared SQL Server database `LavaRapido` (
 - `110-seed-establishment-business-data`: example values for the 032 columns.
 - `111-clear-example-business-data`: Empties the example values of 110 again (only if they are still the examples).
 - `112-seed-expired-cancellation-reason`: cancellation reason `EXPIRED`.
+- `113-clear-example-establishment`: Removes the example business of 109 (legal and trade name, tax id, address, phone, e-mail; E-19), only the values still equal to the example.
 - `018-booking-adr-010` also inserts the 3 rows of `bay_status` (ids 1–3) with its table.
 
 ## Migrations
@@ -366,12 +368,15 @@ Liquibase, changelog table `DATABASECHANGELOG_BOOKING` (lock table `DATABASECHAN
 | 5 | `024-booking-revert-bay-operator.sql` | 1 | onFail:MARK_RAN | Yes | Drops `service_bay.operator_id` if an earlier local attempt created it (otherwise MARK_RAN) |
 | 6 | `032-booking-establishment-business-data.sql` | 1 | onFail:MARK_RAN | Yes | 14 nullable columns with the legal, tax and channel data of `establishment` |
 | 7 | `043-booking-service-loyalty-points.sql` | 2 | onFail:MARK_RAN (1 without) | Yes | Column `booking_service.loyalty_points` (A-09: points frozen when booking) and its backfill from the current catalog |
-| 8 | `seed/103-seed-catalog.sql` | 3 | onFail:MARK_RAN | No | Seed: 5 categories, services `BASIC`, `PREMIUM`, `FULL` and their 18 prices (6 vehicle types) |
-| 9 | `seed/104-seed-booking-catalogs.sql` | 2 | onFail:MARK_RAN | No | Seed: the 6 booking states (fixed ids) and 6 cancellation reasons |
-| 10 | `seed/109-seed-establishment-schedule.sql` | 3 | onFail:MARK_RAN | No | Seed: the establishment row, the weekly hours (Sunday closed) and 4 bays (bay 4 in maintenance) |
-| 11 | `seed/110-seed-establishment-business-data.sql` | 1 | onFail:MARK_RAN | No | Seed: example values for the 032 columns |
-| 12 | `seed/111-clear-example-business-data.sql` | 1 | onFail:MARK_RAN | No | Empties the example values of 110 again (only if they are still the examples) |
-| 13 | `seed/112-seed-expired-cancellation-reason.sql` | 1 | onFail:MARK_RAN | Yes | Seed: cancellation reason `EXPIRED` |
+| 8 | `044-booking-service-price-positive.sql` | 1 | onFail:MARK_RAN | Yes | Check `ck_service_price_positive` (BIZ-04: the current price is greater than 0); created `WITH NOCHECK` if a current price is already 0 |
+| 9 | `045-booking-row-version-optimistic-lock.sql` | 1 | onFail:MARK_RAN | Yes | `ALTER TRIGGER tr_touch_booking` (BIZ-09, E-11): it no longer bumps `row_version` when the `UPDATE` already changed it (Hibernate `@Version`); `updated_at` is still set |
+| 10 | `seed/103-seed-catalog.sql` | 3 | onFail:MARK_RAN | No | Seed: 5 categories, services `BASIC`, `PREMIUM`, `FULL` and their 18 prices (6 vehicle types) |
+| 11 | `seed/104-seed-booking-catalogs.sql` | 2 | onFail:MARK_RAN | No | Seed: the 6 booking states (fixed ids) and 6 cancellation reasons |
+| 12 | `seed/109-seed-establishment-schedule.sql` | 3 | onFail:MARK_RAN | No | Seed: the establishment row, the weekly hours (Sunday closed) and 4 bays (bay 4 in maintenance) |
+| 13 | `seed/110-seed-establishment-business-data.sql` | 1 | onFail:MARK_RAN | No | Seed: example values for the 032 columns |
+| 14 | `seed/111-clear-example-business-data.sql` | 1 | onFail:MARK_RAN | No | Empties the example values of 110 again (only if they are still the examples) |
+| 15 | `seed/112-seed-expired-cancellation-reason.sql` | 1 | onFail:MARK_RAN | Yes | Seed: cancellation reason `EXPIRED` |
+| 16 | `seed/113-clear-example-establishment.sql` | 1 | onFail:MARK_RAN | Yes | Removes the example business of 109 (legal and trade name, tax id, address, phone, e-mail; E-19), only the values still equal to the example |
 
 **Changesets** = `--changeset` blocks in the file; **Precondition** = what Liquibase does when the check fails (`MARK_RAN`: mark as run without executing; `CONTINUE`: skip now and try again on the next update; `HALT`: stop the migration). Numbering and rules: `06-data/migration-strategy.md`.
 

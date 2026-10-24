@@ -1,6 +1,6 @@
 # ER — Schema customer (customer-service, 3 tables)
 
-Source: the Liquibase changelogs of `lavarapido-customer-service` on `origin/develop` (`02cdb46`, 2026-10-23), every changeset applied (last structural file: `015-add-customer-vehicle-model.sql`). Each entity lists all its columns except the standard audit block, which is in the table under the diagram. Types are the SQL Server base type; lengths, precision and defaults are in `09-microservices/services/03-customer-service/data-model.md`. `PK`, `FK` and `UK` (unique, alone or filtered) are the database keys; "nullable" marks columns that accept NULL. One relationship per foreign key, labelled with its column.
+Source: the Liquibase changelogs of `lavarapido-customer-service` on `origin/develop` (`3181cae`, 2026-10-24), every changeset applied (last structural file: `015-add-customer-vehicle-model.sql`). Each entity lists all its columns except the standard audit block, which is in the table under the diagram. Types are the SQL Server base type; lengths, precision and defaults are in `09-microservices/services/03-customer-service/data-model.md`. `PK`, `FK` and `UK` (unique, alone or filtered) are the database keys; "nullable" marks columns that accept NULL. One relationship per foreign key, labelled with its column.
 
 ```mermaid
 erDiagram

@@ -1,11 +1,11 @@
-# Contract of booking-service, rebuilt on 2026-10-23 from the code on origin/develop (see 07-api/README.md).
+# Contract of booking-service, rebuilt on 2026-10-24 from the code on origin/develop (see 07-api/README.md).
 # Regenerate it from the code instead of editing by hand, so it never drifts.
 openapi: 3.0.3
 info:
   title: LavaRápido booking-service API
   version: v1
   description: |-
-    Contract of booking-service, rebuilt from the controllers of `lavarapido-booking-service` on `origin/develop` (`38681b2`, 2026-10-23) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
+    Contract of booking-service, rebuilt from the controllers of `lavarapido-booking-service` on `origin/develop` (`5dd6794`, 2026-10-24) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
 
     **Security.** Operations without `security` use the bearer JWT (`bearerAuth`). `security: []` = public. `x-roles` = roles the service accepts on that path (from its `SecurityConfig`); `x-access` = `public`, `authenticated` (any role), `roles`, `internal` (only `X-Internal-Key`, not published by the gateway) or `roles + internal key`. Ownership checks (a client only sees its own data) answer 404, not 403.
 
@@ -24,11 +24,11 @@ info:
     | `ESTABLISHMENT_REQUIRED_FIELD` | 400 | `InvalidValueException` — `PUT /api/v1/admin/establishment` |
     | `INVALID_BAY_NAME` | 400 | `InvalidValueException` — `POST /api/v1/admin/bays`, `PUT /api/v1/admin/bays/{id}` |
     | `INVALID_BAY_STATUS` | 400 | `InvalidValueException` — `POST /api/v1/admin/bays`, `PUT /api/v1/admin/bays/{id}` |
-    | `INVALID_BREAK` | 400 | `InvalidValueException` — 7 operations (see `x-codes` of each response) |
+    | `INVALID_BREAK` | 400 | `InvalidValueException` — 9 operations (see `x-codes` of each response) |
     | `INVALID_CANCELLATION_REASON` | 400 | `InvalidValueException` — `PATCH /api/v1/admin/bookings/{id}/status`, `POST /api/v1/bookings/{id}/cancel` |
     | `INVALID_CATEGORY` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
-    | `INVALID_DATE` | 400 | `InvalidValueException` — 9 operations (see `x-codes` of each response) |
-    | `INVALID_DAY` | 400 | `InvalidValueException` — 7 operations (see `x-codes` of each response) |
+    | `INVALID_DATE` | 400 | `InvalidValueException` — 10 operations (see `x-codes` of each response) |
+    | `INVALID_DAY` | 400 | `InvalidValueException` — 9 operations (see `x-codes` of each response) |
     | `INVALID_DURATION` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
     | `INVALID_HOURS` | 400 | `InvalidValueException` — 11 operations (see `x-codes` of each response) |
     | `INVALID_LOYALTY_POINTS` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
@@ -36,12 +36,12 @@ info:
     | `INVALID_PRICE` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
     | `INVALID_QUANTITY` | 400 | `InvalidValueException` — 4 operations (see `x-codes` of each response) |
     | `INVALID_RANGE` | 400 | `InvalidValueException` — 7 operations (see `x-codes` of each response) |
-    | `INVALID_REASON` | 400 | `InvalidValueException` — 11 operations (see `x-codes` of each response) |
+    | `INVALID_REASON` | 400 | `InvalidValueException` — 12 operations (see `x-codes` of each response) |
     | `INVALID_SERVICE_CODE` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services` |
     | `INVALID_SERVICE_NAME` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
     | `INVALID_STATUS` | 400 | `InvalidValueException` — `GET /api/v1/admin/bookings`, `PATCH /api/v1/admin/bookings/{id}/status`, `PATCH /api/v1/operator/bookings/{id}/status` |
     | `INVALID_TOKEN` | 400 | `InvalidValueException` — 26 operations (see `x-codes` of each response) |
-    | `INVALID_VEHICLE` | 400 | `InvalidValueException` — `POST /api/v1/admin/bookings`, `POST /api/v1/bookings` |
+    | `INVALID_VEHICLE` | 400 | `InvalidValueException` — `POST /api/v1/admin/bookings`, `POST /api/v1/bookings`, `GET /internal/v1/bookings/active-count` |
     | `INVALID_VEHICLE_TYPE` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
     | `INVALID_WEEK` | 400 | `InvalidValueException` — `PUT /api/v1/admin/schedule/business-hours` |
     | `PRICES_REQUIRED` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
@@ -50,7 +50,7 @@ info:
     | `VALIDATION_ERROR` | 400 | Bean Validation failed on the body (`errors`: field → message) or, where the service maps it, a path/query parameter has the wrong type |
     | `VEHICLE_REQUIRED` | 400 | `InvalidValueException` — `POST /api/v1/admin/bookings`, `POST /api/v1/bookings` |
     | `UNAUTHORIZED` | 401 | No `Authorization: Bearer` token, invalid or expired token, closed session (the gateway checks it), or missing/wrong `X-Internal-Key` on `/internal/**` |
-    | `FORBIDDEN` | 403 | The token is valid but its role is not allowed on this path |
+    | `FORBIDDEN` | 403 | The token is valid but its role is not allowed on this path. Also `ForbiddenException` — 13 operations (see `x-codes` of each response) |
     | `BAY_NOT_FOUND` | 404 | `NotFoundException` — `PUT /api/v1/admin/bays/{id}`, `DELETE /api/v1/admin/bays/{id}` |
     | `BOOKING_NOT_FOUND` | 404 | `NotFoundException` — 13 operations (see `x-codes` of each response) |
     | `ESTABLISHMENT_NOT_FOUND` | 404 | `NotFoundException` — `GET /api/v1/establishment`, `GET /api/v1/admin/establishment`, `PUT /api/v1/admin/establishment` |
@@ -63,16 +63,19 @@ info:
     | `BAY_NAME_TAKEN` | 409 | `ConflictException` — `POST /api/v1/admin/bays`, `PUT /api/v1/admin/bays/{id}` |
     | `BOOKING_NOT_CHANGEABLE` | 409 | `ConflictException` — 4 operations (see `x-codes` of each response) |
     | `BOOKING_NOT_EXPIRED` | 409 | `ConflictException` — `POST /internal/v1/bookings/{id}/no-show` |
-    | `CONFLICT` | 409 | The database rejected the change (unique index, trigger or check) after the code's own checks |
+    | `BOOKING_SERVICES_LOCKED` | 409 | `ConflictException` — `PUT /api/v1/admin/bookings/{id}`, `PUT /api/v1/bookings/{id}` |
+    | `CONFLICT` | 409 | The database rejected the change (unique index, trigger or check) after the code's own checks. In booking-service also when another request changed the booking first (`row_version`, `@Version`, BIZ-09) |
     | `EXCEPTION_DATE_TAKEN` | 409 | `ConflictException` — `POST /api/v1/admin/schedule/exceptions`, `PUT /api/v1/admin/schedule/exceptions/{id}` |
     | `INVALID_STATUS_TRANSITION` | 409 | `ConflictException` — `PATCH /api/v1/admin/bookings/{id}/status`, `POST /internal/v1/bookings/{id}/no-show`, `PATCH /api/v1/operator/bookings/{id}/status` |
-    | `SCHEDULE_BUSY` | 409 | `ConflictException` — 5 operations (see `x-codes` of each response) |
+    | `SCHEDULE_BUSY` | 409 | `ConflictException` — 13 operations (see `x-codes` of each response) |
+    | `SCHEDULE_CONFLICTS_BOOKINGS` | 409 | `ScheduleConflictException` — 5 operations (see `x-codes` of each response) |
     | `SERVICE_CODE_TAKEN` | 409 | `ConflictException` — `POST /api/v1/admin/catalog/services` |
     | `SERVICE_NOT_AVAILABLE_FOR_VEHICLE` | 409 | `ConflictException` — 5 operations (see `x-codes` of each response) |
     | `SERVICE_TOO_EARLY` | 409 | `ConflictException` — `PATCH /api/v1/operator/bookings/{id}/status` |
     | `SLOT_UNAVAILABLE` | 409 | `SlotUnavailableException` — 4 operations (see `x-codes` of each response) |
     | `VEHICLE_ALREADY_BOOKED` | 409 | `ConflictException` — 4 operations (see `x-codes` of each response) |
     | `INTERNAL_ERROR` | 500 | Unexpected error (logged with its correlation id) |
+    | `BOOKING_SERVICE_UNAVAILABLE` | 503 | `ApiExceptionHandler` — The database does not answer (connection, timeout or transaction could not start; BIZ-13, E-18) |
     | `CUSTOMER_SERVICE_UNAVAILABLE` | 503 | `DependencyUnavailableException` — 13 operations (see `x-codes` of each response) |
 servers:
   - url: http://localhost:8080
@@ -247,9 +250,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "409":
-          description: "Conflict. `code`: `BAY_NAME_TAKEN`."
+          description: "Conflict. `code`: `BAY_NAME_TAKEN`, `SCHEDULE_BUSY`, `SCHEDULE_CONFLICTS_BOOKINGS`."
           x-codes:
             - BAY_NAME_TAKEN
+            - SCHEDULE_BUSY
+            - SCHEDULE_CONFLICTS_BOOKINGS
           content:
             application/problem+json:
               schema:
@@ -629,9 +634,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "409":
-          description: "Conflict. `code`: `BOOKING_NOT_CHANGEABLE`, `SCHEDULE_BUSY`, `SERVICE_NOT_AVAILABLE_FOR_VEHICLE`, `SLOT_UNAVAILABLE`, `VEHICLE_ALREADY_BOOKED`."
+          description: "Conflict. `code`: `BOOKING_NOT_CHANGEABLE`, `BOOKING_SERVICES_LOCKED`, `SCHEDULE_BUSY`, `SERVICE_NOT_AVAILABLE_FOR_VEHICLE`, `SLOT_UNAVAILABLE`, `VEHICLE_ALREADY_BOOKED`."
           x-codes:
             - BOOKING_NOT_CHANGEABLE
+            - BOOKING_SERVICES_LOCKED
             - SCHEDULE_BUSY
             - SERVICE_NOT_AVAILABLE_FOR_VEHICLE
             - SLOT_UNAVAILABLE
@@ -719,10 +725,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "409":
-          description: "Conflict. `code`: `BOOKING_NOT_CHANGEABLE`, `INVALID_STATUS_TRANSITION`."
+          description: "Conflict. `code`: `BOOKING_NOT_CHANGEABLE`, `INVALID_STATUS_TRANSITION`, `SCHEDULE_BUSY`."
           x-codes:
             - BOOKING_NOT_CHANGEABLE
             - INVALID_STATUS_TRANSITION
+            - SCHEDULE_BUSY
           content:
             application/problem+json:
               schema:
@@ -1211,12 +1218,14 @@ paths:
                 items:
                   $ref: "#/components/schemas/BusinessHourDto"
         "400":
-          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_BREAK`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_TOKEN`, `INVALID_WEEK`."
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_BREAK`, `INVALID_DATE`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_REASON`, `INVALID_TOKEN`, `INVALID_WEEK`."
           x-codes:
             - BAD_REQUEST
             - INVALID_BREAK
+            - INVALID_DATE
             - INVALID_DAY
             - INVALID_HOURS
+            - INVALID_REASON
             - INVALID_TOKEN
             - INVALID_WEEK
           content:
@@ -1235,6 +1244,15 @@ paths:
           description: "Forbidden. `code`: `FORBIDDEN`."
           x-codes:
             - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `SCHEDULE_BUSY`, `SCHEDULE_CONFLICTS_BOOKINGS`."
+          x-codes:
+            - SCHEDULE_BUSY
+            - SCHEDULE_CONFLICTS_BOOKINGS
           content:
             application/problem+json:
               schema:
@@ -1299,9 +1317,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "409":
-          description: "Conflict. `code`: `EXCEPTION_DATE_TAKEN`."
+          description: "Conflict. `code`: `EXCEPTION_DATE_TAKEN`, `SCHEDULE_BUSY`, `SCHEDULE_CONFLICTS_BOOKINGS`."
           x-codes:
             - EXCEPTION_DATE_TAKEN
+            - SCHEDULE_BUSY
+            - SCHEDULE_CONFLICTS_BOOKINGS
           content:
             application/problem+json:
               schema:
@@ -1336,10 +1356,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/ExceptionResponse"
         "400":
-          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DATE`, `INVALID_HOURS`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_BREAK`, `INVALID_DATE`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
           x-codes:
             - BAD_REQUEST
+            - INVALID_BREAK
             - INVALID_DATE
+            - INVALID_DAY
             - INVALID_HOURS
             - INVALID_REASON
             - INVALID_TOKEN
@@ -1373,9 +1395,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "409":
-          description: "Conflict. `code`: `EXCEPTION_DATE_TAKEN`."
+          description: "Conflict. `code`: `EXCEPTION_DATE_TAKEN`, `SCHEDULE_BUSY`, `SCHEDULE_CONFLICTS_BOOKINGS`."
           x-codes:
             - EXCEPTION_DATE_TAKEN
+            - SCHEDULE_BUSY
+            - SCHEDULE_CONFLICTS_BOOKINGS
           content:
             application/problem+json:
               schema:
@@ -1399,9 +1423,11 @@ paths:
         "204":
           description: No Content
         "400":
-          description: "Bad Request. `code`: `INVALID_DATE`, `INVALID_HOURS`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          description: "Bad Request. `code`: `INVALID_BREAK`, `INVALID_DATE`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
           x-codes:
+            - INVALID_BREAK
             - INVALID_DATE
+            - INVALID_DAY
             - INVALID_HOURS
             - INVALID_REASON
             - INVALID_TOKEN
@@ -1430,6 +1456,15 @@ paths:
           description: "Not Found. `code`: `EXCEPTION_NOT_FOUND`."
           x-codes:
             - EXCEPTION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `SCHEDULE_BUSY`, `SCHEDULE_CONFLICTS_BOOKINGS`."
+          x-codes:
+            - SCHEDULE_BUSY
+            - SCHEDULE_CONFLICTS_BOOKINGS
           content:
             application/problem+json:
               schema:
@@ -1474,8 +1509,13 @@ paths:
       tags:
         - Booking
       operationId: bookingCreate
-      description: "Javadoc: 201 con la reserva ya confirmada y su bahia. Si la hora esta ocupada: 409 SLOT_UNAVAILABLE con hasta 5 horas alternativas del mismo dia (no se guarda nada)."
-      x-access: authenticated
+      description: |-
+        BIZ-12 / A-10: only `CLIENT`; an administrator books through `POST /api/v1/admin/bookings`.
+
+        Javadoc: 201 con la reserva ya confirmada y su bahia. Si la hora esta ocupada: 409 SLOT_UNAVAILABLE con hasta 5 horas alternativas del mismo dia (no se guarda nada).
+      x-access: roles
+      x-roles:
+        - CLIENT
       x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:57
       requestBody:
         required: true
@@ -1527,6 +1567,14 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "404":
           description: "Not Found. `code`: `SERVICE_NOT_FOUND`, `VEHICLE_NOT_FOUND`."
           x-codes:
@@ -1560,7 +1608,9 @@ paths:
       tags:
         - Booking
       operationId: bookingGet
-      x-access: authenticated
+      x-access: roles
+      x-roles:
+        - CLIENT
       x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:77
       parameters:
         - name: id
@@ -1593,6 +1643,14 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "404":
           description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
           x-codes:
@@ -1613,9 +1671,11 @@ paths:
       tags:
         - Booking
       operationId: bookingReschedule
-      description: "Javadoc: Cambiar fecha, hora o servicios (RF-007: solo antes de la hora de inicio)."
-      x-access: authenticated
-      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:84
+      description: "Javadoc: Cambiar fecha y hora (RF-007: solo antes de la hora de inicio). Los servicios no: si llegan otros, 409 BOOKING_SERVICES_LOCKED (BIZ-01); el admin los cambia por /admin/bookings."
+      x-access: roles
+      x-roles:
+        - CLIENT
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:87
       parameters:
         - name: id
           in: path
@@ -1666,6 +1726,14 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "404":
           description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `SERVICE_NOT_FOUND`, `VEHICLE_NOT_FOUND`."
           x-codes:
@@ -1677,9 +1745,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "409":
-          description: "Conflict. `code`: `BOOKING_NOT_CHANGEABLE`, `SCHEDULE_BUSY`, `SERVICE_NOT_AVAILABLE_FOR_VEHICLE`, `SLOT_UNAVAILABLE`, `VEHICLE_ALREADY_BOOKED`."
+          description: "Conflict. `code`: `BOOKING_NOT_CHANGEABLE`, `BOOKING_SERVICES_LOCKED`, `SCHEDULE_BUSY`, `SERVICE_NOT_AVAILABLE_FOR_VEHICLE`, `SLOT_UNAVAILABLE`, `VEHICLE_ALREADY_BOOKED`."
           x-codes:
             - BOOKING_NOT_CHANGEABLE
+            - BOOKING_SERVICES_LOCKED
             - SCHEDULE_BUSY
             - SERVICE_NOT_AVAILABLE_FOR_VEHICLE
             - SLOT_UNAVAILABLE
@@ -1705,8 +1774,10 @@ paths:
         The client cancels its own booking. The body is optional; without `reasonCode` the reason is `CUSTOMER_REQUEST`. Only the client-side reasons are accepted (A-20).
 
         Javadoc: El cliente cancela con el motivo que elige (A-20: solo los de su lado); el cuerpo es opcional y sin motivo queda CUSTOMER_REQUEST.
-      x-access: authenticated
-      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:94
+      x-access: roles
+      x-roles:
+        - CLIENT
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:97
       parameters:
         - name: id
           in: path
@@ -1747,6 +1818,14 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "404":
           description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
           x-codes:
@@ -1756,9 +1835,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "409":
-          description: "Conflict. `code`: `BOOKING_NOT_CHANGEABLE`."
+          description: "Conflict. `code`: `BOOKING_NOT_CHANGEABLE`, `SCHEDULE_BUSY`."
           x-codes:
             - BOOKING_NOT_CHANGEABLE
+            - SCHEDULE_BUSY
           content:
             application/problem+json:
               schema:
@@ -1776,8 +1856,14 @@ paths:
       tags:
         - Booking
       operationId: availability
-      description: "Javadoc: Horas libres de un dia para esos servicios y ese tipo de vehiculo (RF-006)."
-      x-access: authenticated
+      description: |-
+        BIZ-12 / A-10: `CLIENT` or `ADMIN` (the admin booking form of the web reads it too); an `OPERATOR` token gets 403.
+
+        Javadoc: Horas libres de un dia para esos servicios y ese tipo de vehiculo (RF-006).
+      x-access: roles
+      x-roles:
+        - CLIENT
+        - ADMIN
       x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:47
       parameters:
         - name: date
@@ -1839,6 +1925,14 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
         "404":
           description: "Not Found. `code`: `SERVICE_NOT_FOUND`."
           x-codes:
@@ -1860,8 +1954,11 @@ paths:
       tags:
         - Booking
       operationId: cancellationReasons
-      description: "Cancellation reasons that can be chosen by hand: every row of `booking.cancellation_reason` except the system reason `EXPIRED`. A client may only cancel with `CUSTOMER_REQUEST`, `SCHEDULE_CONFLICT`, `VEHICLE_ISSUE` or `OTHER`; the administrator may also use `SHOP_ISSUE` and `LATE_ARRIVAL` (A-20, `CancellationReason.selectableBy`). Any other reason answers 400 `INVALID_CANCELLATION_REASON`."
-      x-access: authenticated
+      description: "`CLIENT` or `ADMIN` (BIZ-12). Cancellation reasons that can be chosen by hand: every row of `booking.cancellation_reason` except the system reason `EXPIRED`. A client may only cancel with `CUSTOMER_REQUEST`, `SCHEDULE_CONFLICT`, `VEHICLE_ISSUE` or `OTHER`; the administrator may also use `SHOP_ISSUE` and `LATE_ARRIVAL` (A-20, `CancellationReason.selectableBy`). Any other reason answers 400 `INVALID_CANCELLATION_REASON`."
+      x-access: roles
+      x-roles:
+        - CLIENT
+        - ADMIN
       x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:72
       responses:
         "200":
@@ -1880,12 +1977,22 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/bookings/me:
     get:
       tags:
         - Booking
       operationId: mine
-      x-access: authenticated
+      x-access: roles
+      x-roles:
+        - CLIENT
       x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:65
       responses:
         "200":
@@ -1908,6 +2015,14 @@ paths:
           description: "Unauthorized. `code`: `UNAUTHORIZED`."
           x-codes:
             - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
           content:
             application/problem+json:
               schema:
@@ -2219,9 +2334,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "409":
-          description: "Conflict. `code`: `INVALID_STATUS_TRANSITION`, `SERVICE_TOO_EARLY`."
+          description: "Conflict. `code`: `INVALID_STATUS_TRANSITION`, `SCHEDULE_BUSY`, `SERVICE_TOO_EARLY`."
           x-codes:
             - INVALID_STATUS_TRANSITION
+            - SCHEDULE_BUSY
             - SERVICE_TOO_EARLY
           content:
             application/problem+json:
@@ -2306,7 +2422,7 @@ paths:
         - internalKey: []
       x-internal: true
       x-access: internal
-      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/InternalBookingController.java:32
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/InternalBookingController.java:33
       parameters:
         - name: from
           in: query
@@ -2356,7 +2472,7 @@ paths:
         - internalKey: []
       x-internal: true
       x-access: internal
-      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/InternalBookingController.java:37
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/InternalBookingController.java:47
       parameters:
         - name: id
           in: path
@@ -2405,7 +2521,7 @@ paths:
         - internalKey: []
       x-internal: true
       x-access: internal
-      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/InternalBookingController.java:43
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/InternalBookingController.java:53
       parameters:
         - name: id
           in: path
@@ -2450,6 +2566,52 @@ paths:
             - BOOKING_NOT_EXPIRED
             - INVALID_STATUS_TRANSITION
             - SCHEDULE_BUSY
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /internal/v1/bookings/active-count:
+    get:
+      tags:
+        - Internal Booking
+      operationId: activeCount
+      description: |-
+        BIZ-08: customer-service asks it before retiring a vehicle. `count` = bookings of that vehicle that are `IN_PROGRESS`, or `SCHEDULED`/`CONFIRMED` and not yet ended, not deleted. `customerVehicleId` must be greater than 0 (400 `INVALID_VEHICLE`).
+
+        Javadoc: BIZ-08: customer-service pregunta antes de retirar un vehiculo; si tiene reservas activas (en curso, o programadas/confirmadas que no han terminado) no lo deja retirar.
+      security:
+        - internalKey: []
+      x-internal: true
+      x-access: internal
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/InternalBookingController.java:42
+      parameters:
+        - name: customerVehicleId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveCountResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_VEHICLE`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_VEHICLE
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
           content:
             application/problem+json:
               schema:
@@ -2512,7 +2674,27 @@ components:
             - TIME_PASSED
             - NO_FREE_BAY
           description: "Only with `SLOT_UNAVAILABLE`: why the time is not free"
+        conflictingBookings:
+          type: integer
+          description: "Only with `SCHEDULE_CONFLICTS_BOOKINGS`: how many active bookings would fall outside the new hours, exception or bay state"
+        bookingCodes:
+          type: array
+          items:
+            type: string
+            example: RES-000123
+          description: "Only with `SCHEDULE_CONFLICTS_BOOKINGS`: codes of the first 20 of those bookings"
       additionalProperties: true
+    ActiveCountResponse:
+      type: object
+      properties:
+        customerVehicleId:
+          type: integer
+          format: int64
+        activeBookings:
+          type: integer
+          format: int64
+      description: "BIZ-08: GET /internal/v1/bookings/active-count (lo usa customer-service)."
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:68
     ActiveRequest:
       type: object
       properties:
@@ -2536,7 +2718,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SlotResponse"
-      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:64
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:71
     BayRequest:
       type: object
       properties:
@@ -2627,7 +2809,7 @@ components:
           type: string
           format: date-time
       description: La reserva lista para pintar. changeable dice si quien la ve todavia la puede cambiar o cancelar (lo decide el backend con RF-007). ownerUserId solo llega en las rutas del admin.
-      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:108
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:115
     BusinessDataDto:
       type: object
       properties:
@@ -2741,7 +2923,7 @@ components:
       properties:
         reasonCode:
           type: string
-      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:58
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:61
     CategoryResponse:
       type: object
       properties:
@@ -2924,7 +3106,7 @@ components:
           type: integer
           format: int32
       description: lineId = booking_service_id (operations-service ejecuta y califica por linea).
-      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:95
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:102
     PriceRequest:
       type: object
       properties:
@@ -2964,7 +3146,7 @@ components:
           type: string
         name:
           type: string
-      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:77
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:84
     RescheduleRequest:
       type: object
       properties:
@@ -2986,8 +3168,8 @@ components:
       required:
         - date
         - time
-      description: serviceIds vacio conserva los servicios que ya tenia.
-      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:47
+      description: serviceIds vacio conserva los servicios que ya tenia. Solo el admin puede mandar otros; el cliente recibe 409 BOOKING_SERVICES_LOCKED (BIZ-01).
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:50
     ServiceRequest:
       type: object
       properties:
@@ -3049,7 +3231,7 @@ components:
           example: "08:30"
         available:
           type: boolean
-      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:74
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:81
     StatusRequest:
       type: object
       properties:
@@ -3061,7 +3243,7 @@ components:
           type: string
       required:
         - status
-      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:61
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:64
     VehicleResponse:
       type: object
       properties:
@@ -3080,7 +3262,7 @@ components:
           type: string
         model:
           type: string
-      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:84
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:91
 x-error-codes:
   BAD_REQUEST: 400
   BAY_HAS_BOOKINGS: 409
@@ -3090,6 +3272,8 @@ x-error-codes:
   BOOKING_NOT_CHANGEABLE: 409
   BOOKING_NOT_EXPIRED: 409
   BOOKING_NOT_FOUND: 404
+  BOOKING_SERVICES_LOCKED: 409
+  BOOKING_SERVICE_UNAVAILABLE: 503
   CONFLICT: 409
   CUSTOMER_SERVICE_UNAVAILABLE: 503
   DATE_REQUIRED: 400
@@ -3131,6 +3315,7 @@ x-error-codes:
   NOT_FOUND: 404
   PRICES_REQUIRED: 400
   SCHEDULE_BUSY: 409
+  SCHEDULE_CONFLICTS_BOOKINGS: 409
   SERVICES_REQUIRED: 400
   SERVICE_CODE_TAKEN: 409
   SERVICE_NOT_AVAILABLE_FOR_VEHICLE: 409

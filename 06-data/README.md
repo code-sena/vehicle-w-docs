@@ -23,7 +23,7 @@ indexes, and the reasoning behind the non-obvious decisions (why a column is imm
 FK is missing on purpose, why a value is denormalized). The services' Liquibase changelogs are the
 source of truth: if they and this file ever disagree, the changelogs win and this file is out of
 date. There is no global SQL script (see `migration-strategy.md`). Checked against the changelogs on
-2026-10-23: 0 differences.
+2026-10-24: 0 differences.
 
 ### [`data-dictionary.md`](./data-dictionary.md) ⭐
 The fields that are easy to get wrong across services: status codes with hard-coded IDs,
