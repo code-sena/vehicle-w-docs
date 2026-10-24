@@ -39,7 +39,10 @@
   whether the session is still open. It does not add `X-User-*` headers and services never trust
   such headers.
 - **No data** — the only state is the short in-memory cache of session answers.
-- Rate limiting is not implemented yet (see `decisions.md`).
+- Rate limiting only on `/api/v1/auth/**`: 60 requests per minute per client IP, then 429 `RATE_LIMITED`
+  (SEC-04, 2026-10-24; in memory, per replica). The session check covers any `Authorization` scheme
+  (SEC-01), the client IP is resolved from `X-Forwarded-For` only behind `TRUSTED_PROXIES` and forwarded
+  to the services, and routes time out after 5 s (connect) and 60 s (read) (SEC-16).
 
 ---
 
@@ -81,6 +84,8 @@ route reaches the right one, that token and query string travel, that `/internal
 paths are 404, and that CORS works without duplicated headers. `SessionCheckFilterTest` uses a fake
 security-service: an open session goes through, a closed one gets security-service's 401, the
 answer is cached per token, a logout clears it, and a failing security-service lets the call go on.
+Since 2026-10-24 also `AuthRateLimitFilterTest`, `ClientIpResolverTest`, `GatewayAuthRateLimitTest` and
+`GatewayRouteTimeoutTest`; 62 tests in the CI run of 2026-10-24.
 
 ---
 

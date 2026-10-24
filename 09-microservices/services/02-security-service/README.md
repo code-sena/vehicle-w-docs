@@ -47,13 +47,19 @@
 
   E-02: there is no endpoint to remove a role (roles are fixed); retiring an administrator is a manual
   change in `security.user_role`, after which their tokens stop working (the gateway sees it within its
-  30-second cache). **Open (SEC-01):** with `bearer` in lower case the gateway skips the check, so in the
-  other five services the token still works until it expires.
+  30-second cache), whatever the scheme of the `Authorization` header (SEC-01, closed on 2026-10-24).
 - Lock an account for 15 minutes after 5 wrong passwords within 15 minutes (RF-004b, `login_lockout`):
   the login answers `423 ACCOUNT_LOCKED`, even with the right password, until it expires; a password
   reset lifts it. Since 2026-10-22 concurrent failed logins of the same account are counted one at a
   time with `sp_getapplock` (exclusive, transaction owner, 10 s), so parallel attempts cannot get more
   than five tries. Only existing accounts are locked; an unknown email always answers 401.
+- Since 2026-10-24: wrong current passwords (change password, change email, deactivate account) count in
+  the same lockout and answer 423 `TOO_MANY_ATTEMPTS` while it lasts (SEC-12); the 5th wrong recovery
+  code burns it (`sp_getapplock` per user, 423 `TOO_MANY_ATTEMPTS` until a new code, SEC-05); sign-up
+  without both consent boxes answers 400 `CONSENT_REQUIRED` (SEC-07); passwords are capped at 72 UTF-8
+  bytes too (SEC-11); `/password/forgot` pays the BCrypt cost for unknown emails (SEC-04); the session
+  stores the real client IP (`FORWARD_HEADERS_STRATEGY=native`, SEC-11); keeping the current email on an
+  email change is accepted even if it is not gmail (A-01).
 - Password recovery with a 6-digit code by email (BCrypt-hashed, 15 min, single use, 5 failed attempts burn it).
   The new password cannot be the current one (`400 SAME_PASSWORD`, checked before the code is spent, so the
   user can try again with another one).
@@ -119,7 +125,7 @@ Errors are RFC 9457 `ProblemDetail` with a stable `code` the frontend translates
 cd lavarapido-security-service
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev   # http://localhost:3001 — Swagger: /swagger-ui.html
 curl http://localhost:3001/actuator/health
-./mvnw verify                    # 171 tests (CI run of 2026-10-23), no database needed
+./mvnw verify                    # 200 tests (CI run of 2026-10-24), no database needed
 ```
 
 There is **no default profile** since 2026-10-23 (E-05): without `dev` there is no Swagger and no demo
@@ -147,4 +153,4 @@ Main variables (from `lavarapido-infra/.env`):
 
 - [data-model.md](./data-model.md) · [events.md](./events.md) · [decisions.md](./decisions.md) · [runbook.md](./runbook.md)
 - ADR-006 (authentication, sessions, E-02), ADR-005 (session check in the gateway), ADR-010 (data model vs frontend), ADR-011 §8 (internal contact route), ADR-020 (JWT in `localStorage`, accepted risk)
-- Open findings of 2026-10-23 (SEC-01, SEC-04 rate limit, SEC-05 recovery code counter, SEC-07 consent): `15-project-control/risks.md`
+- SEC-01, SEC-04, SEC-05, SEC-07, SEC-11 and SEC-12 closed on 2026-10-24 (`15-project-control/risks.md`). Still open (low): an `sp_getapplock` timeout answers 500; the recovery-code counter lives in memory

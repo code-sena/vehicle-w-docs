@@ -78,13 +78,17 @@ not answer in 3 seconds, the call goes on and nothing is cached.
 
 ---
 
-## Pending decision: rate limiting
+## Decision: rate limiting on `/api/v1/auth/**` (2026-10-24, SEC-04)
 
-**Context:** Limit requests per IP on login/registration and per user on the rest.
+**Context:** Limit requests per IP on login, registration and password recovery; the Azure server is
+public.
 
-**Status:** Not implemented. It needs a shared store (Redis) the project does not have; to be
-revisited if the system is published on the internet. Today security-service only limits the
-attempts on a password-recovery code (5 failures burn it); login has no attempt limit (RF-004b).
+**Decision:** an in-memory bucket per client IP in the gateway (`AuthRateLimitFilter`): 60 requests that
+refill in one minute (`AUTH_RATE_LIMIT_*`), then 429 `RATE_LIMITED` with `Retry-After`. The IP comes
+from `X-Forwarded-For` only when the connection is from `TRUSTED_PROXIES` (Caddy), read right to left
+(`ClientIpResolver`). No shared store: with one replica it is enough; with several, each one counts on
+its own, and IPv6 is not grouped by /64. The rest of the API is not limited. security-service keeps its
+own per-account caps (login lockout, recovery code and current password, SEC-05/SEC-12).
 
 ---
 

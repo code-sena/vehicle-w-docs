@@ -35,8 +35,13 @@
 - Email: the welcome email (address from `UserRegistered`) and the booking emails and reminders
   (address read from security-service at send time, ADR-011 §8).
 - **Booking reminders** (ADR-011 §7): `BookingConfirmed` schedules reminders 24 h and 1 h before
-  the booking; `BookingCancelled` cancels them; a reschedule moves them. A scheduled task sends
-  the due ones to the inbox, push and email.
+  the booking; `BookingCancelled` cancels them, and since 2026-10-24 so does `BookingStatusChanged`
+  with `IN_PROGRESS`, `COMPLETED` or `NO_SHOW` (A-11, `BOOKING_NO_SHOW` has its own type, seed 116); a
+  reschedule moves them. A scheduled task sends the due ones to the inbox, push and email.
+- **Delivery with retries (OPS-05, migration 047):** push and email are queued in `pending_delivery` in
+  the same transaction and leave after the commit; failures are retried after 1, 2, 4… minutes up to 5
+  times. `OperatorUnassigned` warns the operator and the admins (E-12); without the admins list from
+  security the event is retried (OPS-06).
 - Let the administrator send a manual notification.
 - **New app version** (`APP_UPDATE_AVAILABLE`, migration 038): `POST /internal/v1/notifications/app-update`
   with `{ "versionCode": n }` and the internal key sends the notice (inbox and push) to every user with
@@ -79,6 +84,7 @@ Full contract: [`07-api/contracts/openapi/notification-service.yaml`](../../../0
 ```bash
 cd lavarapido-notification-service
 ./mvnw spring-boot:run           # http://localhost:3006 — Swagger: /swagger-ui.html (dev profile)
+./mvnw verify                    # 133 tests (CI run of 2026-10-24), no database needed
 ```
 
 | Variable | Default | Purpose |
@@ -88,6 +94,7 @@ cd lavarapido-notification-service
 | `MAIL_ENABLED`, `MAIL_*` | `false` | Send emails (same SMTP as security-service) |
 | `INTERNAL_API_KEY`, `SECURITY_SERVICE_URL` | empty / `http://localhost:3001` | Read the recipient's email for booking emails and reminders |
 | `REMINDERS_ENABLED`, `REMINDER_LEADS`, `REMINDER_CHECK_INTERVAL` | `true`, `24h,1h`, `5m` | Booking reminders |
+| `DELIVERY_MAX_ATTEMPTS`, `DELIVERY_RETRY_INTERVAL`, `DELIVERY_CHECK_INTERVAL` | `5`, `1m`, `1m` | Retries of push and email (`pending_delivery`) |
 
 With every switch off the service still works: notifications are saved and shown in the inbox.
 

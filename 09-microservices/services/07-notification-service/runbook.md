@@ -20,12 +20,13 @@ Mailpit (if `MAIL_HOST` points to it): http://localhost:8025.
 | Booking email / reminder only in the inbox | `INTERNAL_API_KEY` empty or different from security-service, or security-service down | Same key in both services; log warns `INTERNAL_API_KEY is not set` |
 | Reminder never sent | Booking created with less time than the lead, task disabled, or service was down past the booking time | Check `notification.booking_reminder` (`sent_at`, `deleted_at`) and `REMINDERS_ENABLED` |
 | Push does not arrive | `PUSH_ENABLED=false` or the phone has no registered token (needs an EAS build) | See ADR-011 §2 |
-| A client still gets a reminder after the admin set the booking in progress, completed or no-show | Known gap: `BookingStatusChanged` does not cancel reminders yet (A-11) | Cancel the booking or wait for the fix (`15-project-control/risks.md`) |
+| Push or email arrive late, or twice | Delivery goes through `notification.pending_delivery` (OPS-05): after a failure it retries after 1, 2, 4… minutes up to 5 times; at least once, so a database error right after sending can repeat it (known, low) | Check `pending_delivery` (`attempts`, last error); fix Expo or SMTP |
+| Events fail and go back to the queue while security is down | Expected (OPS-06): without the admins list the event is retried, then dead-lettered | Start security-service |
 | Operator and admins get "service not registered" | Expected: operations published `ServiceNotStarted` / `ServiceNotFinished` for a booking nobody closed | The admin closes it from "Por cerrar" |
 
 ## Tests
 
-`./mvnw verify`: 115 tests in the CI run of 2026-10-23 (no database needed).
+`./mvnw verify`: 133 tests in the CI run of 2026-10-24 (no database needed).
 
 ## Useful queries
 
