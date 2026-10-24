@@ -6,7 +6,7 @@ On `carwash.events` (ADR-004) with the common envelope, after the unit of work c
 with `MESSAGING_ENABLED=true`. notification-service consumes all of them (ADR-011). If RabbitMQ
 fails the error is logged and the event is lost (no Outbox, ADR-020). `occurredAt` (envelope) is
 formatted with .NET's round-trip `"O"` format (`+00:00`). Checked against `origin/develop` on
-2026-10-23.
+2026-10-24 (no event changed in the fleet round).
 
 | Event | Routing key | When | Payload |
 |---|---|---|---|
@@ -21,7 +21,8 @@ points events. Removing a coupon (`DELETE /api/v1/loyalty/redemptions/{bookingId
 2026-10-23) publishes no event.
 
 `unlockedPromotions` holds the promotions available today whose `requiredPoints` this credit has
-just reached (`Promotion.IsUnlockedBy`); it is empty when no coupon unlocks. A booking whose
+just reached (`Promotion.IsUnlockedBy`); it is empty when no coupon unlocks. Only `discountPercent` travels, so a FIXED coupon is announced
+without its amount (low, open). A booking whose
 services carry no points publishes no `LoyaltyPointsEarned` (ADR-015 section 5).
 
 ## Consumed

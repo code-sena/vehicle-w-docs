@@ -156,7 +156,8 @@ Examples include a permitted change of:
 **Important information:**
 
 - booking identifier;
-- cancellation reason;
+- cancellation reason (its display name and, since 2026-10-24, its stable code, so a consumer can decide
+  without depending on the text);
 - previous lifecycle state;
 - cancelled time.
 
@@ -186,7 +187,8 @@ completed or no-show (added 2026-10-23, A-11). A move back to confirmed is annou
 **Typical reactions:**
 
 - tell the customer that the service started, finished or was marked as no-show;
-- stop the reminders that no longer make sense (not done yet by the consumer, see section 5).
+- stop the reminders that no longer make sense (done by the consumer since 2026-10-24);
+- for no-show, tell the customer with its own notice (`BOOKING_NO_SHOW`).
 
 ---
 
@@ -227,6 +229,28 @@ The event should preserve enough information to distinguish the previous and new
 **Important rule:**
 
 Automatic reassignment does not change the booking itself; it changes who is responsible for the operational work.
+
+---
+
+## OperatorUnassigned
+
+**Origin:** Operations & Assignment
+
+**Meaning:** A booking was rescheduled, its operator can no longer take it at the new time and no other
+operator is free, so the booking was left without an operator (added 2026-10-24, E-12). Leaving it to
+somebody who cannot attend it would hide the problem.
+
+**Important information:**
+
+- booking identifier and code;
+- customer;
+- the operator who lost the booking;
+- scheduled start.
+
+**Typical reactions:**
+
+- tell that operator the service is no longer theirs;
+- warn the administrators so they assign somebody by hand.
 
 ---
 
@@ -509,8 +533,10 @@ Booking
 
 If the end time plus the margin passes and nobody registered the service, Operations raises
 `ServiceNotStarted` or `ServiceNotFinished` and the administrator closes the booking (attended or
-no-show). A booking that never had an operator is closed as no-show by the system. When the
-administrator moves the state by hand, Booking raises `BookingStatusChanged`.
+no-show). A booking that never had an operator is closed as no-show by the system (no event is raised
+for that today). When the administrator moves the state by hand, Booking raises
+`BookingStatusChanged`. When a reschedule leaves a booking without anybody who can take it, Operations
+raises `OperatorUnassigned`.
 
 A booking can contain multiple service lines, so the execution/rating part of the flow is evaluated per service line.
 
@@ -608,7 +634,7 @@ This mapping is included for consistency with the current architecture. The doma
 
 ---
 
-## Implementation status (checked against `origin/develop` on 2026-10-23)
+## Implementation status (checked against `origin/develop` on 2026-10-24)
 
 Which domain events are emitted by the built services. Transport details (routing keys, queues,
 payload fields) are in `09-microservices/services/<NN-service>/events.md`.
@@ -621,9 +647,10 @@ payload fields) are in `09-microservices/services/<NN-service>/events.md`.
 | `BookingCreated` | Covered by `BookingConfirmed` | A booking is confirmed in the same transaction it is created (RF-006), so only `BookingConfirmed` is published |
 | `BookingConfirmed` | Published | Also published when a booking is rescheduled |
 | `BookingModified` | Covered by `BookingConfirmed` | A reschedule republishes `BookingConfirmed` with the new start time; consumers treat it as "the booking is now at this time" |
-| `BookingCancelled` | Published | Includes the cancellation reason (its display name). Raised by the client, the admin or the system when a scheduled booking expires (then without `customerUserId`) |
-| `BookingStatusChanged` | Published (since 2026-10-23) | `booking.status_changed`, with `status` = `IN_PROGRESS`, `COMPLETED` or `NO_SHOW`, when the admin moves the booking by hand; consumed by notification. The consumer does not stop the reminders for it yet |
+| `BookingCancelled` | Published | Includes the cancellation reason (display name `reason` and stable code `reasonCode`). Raised by the client or the admin; the system no longer cancels expired bookings (job removed, B-07) |
+| `BookingStatusChanged` | Published (since 2026-10-23) | `booking.status_changed`, with `status` = `IN_PROGRESS`, `COMPLETED` or `NO_SHOW`, when the admin moves the booking by hand; consumed by notification, which sends `SERVICE_STARTED`, `SERVICE_COMPLETED` or `BOOKING_NO_SHOW` and cancels the pending reminders. The automatic no-show (a booking that never had an operator) raises nothing |
 | `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` | Published | By `operations-service` (`execution.*`); consumed by notification. A reassignment republishes `OperatorAssigned`; `OperatorReassigned` and `RatingSubmitted` are not emitted |
+| `OperatorUnassigned` | Published (since 2026-10-24) | `execution.operator_unassigned` by `operations-service` when a rescheduled booking nobody can take is left without operator (E-12); notification warns that operator and the administrators |
 | `ServiceNotStarted`, `ServiceNotFinished` | Published | `execution.service_not_started` and `execution.service_not_finished` by the follow-up job of `operations-service`, once per booking; consumed by notification (operator and administrators) |
 | `PaymentInitiated` | Not emitted | A reported payment is saved in `IN_REVIEW` and waits for the admin; nobody else needs to know about it |
 | `PaymentApproved`, `PaymentRejected`, `PaymentRefunded` | Published | By `payment-service` as `payment.confirmed`, `payment.rejected`, `payment.refunded` (payload with `paymentId`, `bookingId`, `customerUserId`, `amount`); consumed by notification |
@@ -727,7 +754,7 @@ When a breaking change is required, the architecture/API documentation must defi
 | `BookingCreated` | RF-005 to RF-006 |
 | `BookingModified` / `BookingCancelled` | RF-007 |
 | `BookingConfirmed` | RF-005 to RF-007 |
-| `OperatorAssigned` / `OperatorReassigned` | RF-008 to RF-010 |
+| `OperatorAssigned` / `OperatorReassigned` / `OperatorUnassigned` | RF-008 to RF-010 |
 | `ServiceStarted` / `ServiceCompleted` | RF-011 to RF-012b |
 | `ServiceNotStarted` / `ServiceNotFinished` / `BookingStatusChanged` | RF-012b, RF-018 |
 | `InspectionShared` | RF-036, RF-018 |
