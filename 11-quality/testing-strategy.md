@@ -20,24 +20,27 @@
                  └───────────────────────────┘
 ```
 
-### Current numbers (all green, run on 2026-10-21)
+### Current numbers (all green in CI on `develop`, 2026-10-23)
 
-Counted from the Maven summary (`Tests run:` at the end of `./mvnw test`), `dotnet test` and Vitest. The
-`tests` attribute of the surefire XML of customer-service reports one less (68) because of a nested
-test class; the 69 test cases do run.
+Counted from the log of the last `ci.yml` run of each repository on 2026-10-23 (`Tests run:` of Maven,
+`Passed!` of `dotnet test`, the Vitest and jest summaries; run ids in `10-devops/ci-cd.md`). The test
+classes listed are the ones counted on 2026-10-21; the fixes of 2026-10-22 and 2026-10-23 added cases to
+them (E-01, E-02, E-05, A-01, A-09, A-11, A-13, A-20, B-01, E-07, E-08, E-09) and the web suite grew
+with F-02.
 
 | Service | Tests | Test classes |
 |---|---|---|
-| security-service | 155 | `UserAccountTest`, `ValueObjectsTest`, `PasswordPolicyTest`, `PasswordResetTokenTest`, `UserPreferenceTest`, `AccountRegistrationServiceTest`, `AuthenticationServiceTest`, `PasswordRecoveryServiceTest`, `UserProfileAndAdministrationTest`, `PersonAddressServiceTest`, `UserPreferenceServiceTest`, `RolePermissionAdministrationServiceTest`, `AdministratorBootstrapServiceTest`, `AdministratorBootstrapRunnerTest`, `JwtTokenIssuerTest`, `EmailResetCodeNotifierTest`, `ApiSecurityWebTest` (including a token of a closed session answering 401) |
-| customer-service | 69 | `CustomerAccountTest`, `LicensePlateTest`, `LicensePlatePolicyTest`, `CustomerVehicleServiceTest`, `UserRegisteredListenerTest`, `CustomerApiWebTest` |
-| booking-service | 50 | `BookingTest` (including when a booking expires), `EstablishmentTest`, `ServiceBayTest` (a bay cannot be created in maintenance), `AvailabilityPolicyTest` (including the reason of an unavailable time), `BookingServiceTest`, `CatalogServiceTest`, `BookingApiWebTest`; `BookingServiceTest` also covers the expired-bookings close and the internal no-show for bookings without operator |
-| operations-service | 67 | `AssignmentPolicyTest`, `AutoAssignmentPolicyTest`, `StartPolicyTest`, `ServiceExecutionTest`, `InspectionReportTest`, `OperatorMetricsCalculatorTest`, `TeamSummaryCalculatorTest`, `OperationsServiceTest`, `OperatorProfileServiceTest`, `OperatorPersistenceAdapterTest` (operator row race), `OperationsApiWebTest`; `OperationsServiceTest` checks the unassigned rule and that the lock is taken before saving an assignment; `FollowUpPolicyTest` and `FollowUpServiceTest` cover the bookings that ended and nobody registered (no false no-shows, one notice, closing as attended without inventing times) |
-| notification-service | 114 | `NotificationTest`, `DeviceTokenTest`, `BookingReminderTest`, `NotificationFactoryTest`, `LocalizedNotificationsTest`, `NotificationUseCasesTest`, `BookingReminderServiceTest`, `StaffNotificationsTest`, `UnassignedBookingAlertTest`, `AppUpdateNoticeTest`, `DeliveryCommandsTest`, `AdminNotificationControllerTest`, `DomainEventEnvelopeTest` (a null payload field no longer sends the event to the DLQ) |
-| api-gateway | 40 | `GatewayRoutesTest`, `SessionCheckFilterTest` (closed sessions cut, answer cached per token, security-service down) |
-| payment-service (.NET, xUnit, `dotnet test`) | 150 | Domain 115 (`PaymentTests`, `PaymentPolicyTests`, `PromotionTests`, `LoyaltyTransactionTests`, `AggregateRootTests`), Application 28 (`PaymentCommandServiceTests`, `PaymentQueryServiceTests`, `CustomerPromotionServiceTests`); the 7 `PersistenceTests` need a real SQL Server: they skip themselves without `PAYMENT_INTEGRATION_DB` and on 2026-10-21 ran against the isolated `LavaRapidoPaymentIT` database |
-| **Total backend** | **645** | Java 495 + .NET 150 |
-| Web (Angular, Vitest, `ng test`) | 62 | 41 spec files, including `api-error.spec.ts` (error codes and the slot reason), `payment.spec.ts` (two accounts of the same method), `auth.spec.ts` (tabs follow a sign-in or sign-out made in another tab), `reservations-store.spec.ts` and `reservations.spec.ts` (one unassigned rule, the to-close list, filters, paging, day labels), `management.spec.ts` (accounts and the fixed roles), `reports.spec.ts` (only completed bookings count as services done) and the client `dashboard.spec.ts` (loyalty bar) |
-| **Total** | **707** | |
+| security-service | 171 | `UserAccountTest`, `ValueObjectsTest`, `PasswordPolicyTest`, `PasswordResetTokenTest`, `UserPreferenceTest`, `AccountRegistrationServiceTest`, `AuthenticationServiceTest`, `PasswordRecoveryServiceTest`, `UserProfileAndAdministrationTest`, `PersonAddressServiceTest`, `UserPreferenceServiceTest`, `RolePermissionAdministrationServiceTest`, `AdministratorBootstrapServiceTest`, `AdministratorBootstrapRunnerTest`, `JwtTokenIssuerTest`, `EmailResetCodeNotifierTest`, `ApiSecurityWebTest` (including a token of a closed session answering 401) |
+| customer-service | 71 | `CustomerAccountTest`, `LicensePlateTest`, `LicensePlatePolicyTest`, `CustomerVehicleServiceTest`, `UserRegisteredListenerTest`, `CustomerApiWebTest` |
+| booking-service | 60 | `BookingTest` (including when a booking expires), `EstablishmentTest`, `ServiceBayTest` (a bay cannot be created in maintenance), `AvailabilityPolicyTest` (including the reason of an unavailable time), `BookingServiceTest`, `CatalogServiceTest`, `BookingApiWebTest`; `BookingServiceTest` also covers the expired-bookings close and the internal no-show for bookings without operator |
+| operations-service | 72 | `AssignmentPolicyTest`, `AutoAssignmentPolicyTest`, `StartPolicyTest`, `ServiceExecutionTest`, `InspectionReportTest`, `OperatorMetricsCalculatorTest`, `TeamSummaryCalculatorTest`, `OperationsServiceTest`, `OperatorProfileServiceTest`, `OperatorPersistenceAdapterTest` (operator row race), `OperationsApiWebTest`; `OperationsServiceTest` checks the unassigned rule and that the lock is taken before saving an assignment; `FollowUpPolicyTest` and `FollowUpServiceTest` cover the bookings that ended and nobody registered (no false no-shows, one notice, closing as attended without inventing times) |
+| notification-service | 115 | `NotificationTest`, `DeviceTokenTest`, `BookingReminderTest`, `NotificationFactoryTest`, `LocalizedNotificationsTest`, `NotificationUseCasesTest`, `BookingReminderServiceTest`, `StaffNotificationsTest`, `UnassignedBookingAlertTest`, `AppUpdateNoticeTest`, `DeliveryCommandsTest`, `AdminNotificationControllerTest`, `DomainEventEnvelopeTest` (a null payload field no longer sends the event to the DLQ) |
+| api-gateway | 39 | `GatewayRoutesTest`, `SessionCheckFilterTest` (closed sessions cut, answer cached per token, security-service down) |
+| payment-service (.NET, xUnit, `dotnet test`) | 151 + 7 skipped | Domain 119 (`PaymentTests`, `PaymentPolicyTests`, `PromotionTests`, `LoyaltyTransactionTests`, `AggregateRootTests`), Application 32 (`PaymentCommandServiceTests`, `PaymentQueryServiceTests`, `CustomerPromotionServiceTests`); the 7 `PersistenceTests` need a real SQL Server: they skip themselves without `PAYMENT_INTEGRATION_DB` (in CI they are skipped; on 2026-10-21 they ran against the isolated `LavaRapidoPaymentIT` database) |
+| **Total backend** | **679** | Java 528 + .NET 151 |
+| Web (Angular, Vitest, `ng test`) | 146 | 59 spec files (41 on 2026-10-21, more ViewModel tests added by F-02 on 2026-10-23), including `api-error.spec.ts` (error codes and the slot reason), `payment.spec.ts` (two accounts of the same method), `auth.spec.ts` (tabs follow a sign-in or sign-out made in another tab), `reservations-store.spec.ts` and `reservations.spec.ts` (one unassigned rule, the to-close list, filters, paging, day labels), `management.spec.ts` (accounts and the fixed roles), `reports.spec.ts` (only completed bookings count as services done) and the client `dashboard.spec.ts` (loyalty bar) |
+| Mobile (React Native, jest-expo, `npm test`) | 13 | 3 suites added on 2026-10-23 (F-01): validators and the booking, payment and login services; no screen tests |
+| **Total** | **838** | 845 counting the 7 skipped integration tests |
 
 The same day the 19 end-to-end tests of `lavarapido-infra/e2e` passed against the complete system
 (with the gateway's session check on). The 42 functional cases CP-01 to CP-42 (Test Documentation of
@@ -141,15 +144,17 @@ Do not run `./mvnw clean` while that same service is running (it deletes the cla
 
 GitHub Actions since 2026-10-19 (`10-devops/ci-cd.md`): every push and pull request to `develop` and
 `main` runs `./mvnw verify` (Java services and gateway), `dotnet test` (payment), `ng build` and
-`ng test --watch=false` (web) and `tsc --noEmit` (mobile). The end-to-end suite is not in CI because
-it needs the whole system; it is run by hand before a release.
+`ng test --watch=false` (web), and `tsc --noEmit` plus `npm test` with jest-expo (mobile, since
+2026-10-23). The end-to-end suite is not in CI because it needs the whole system; it is run by hand
+before a release (last full run 2026-10-21).
 
 ---
 
 ## Coverage
 
-No coverage tool configured. Policy: every business rule and every endpoint's security has a test
-(this is what the pyramid above covers); JaCoCo can be added to report numbers.
+No coverage tool configured and CI does not measure it (F-02). Policy: every business rule and every
+endpoint's security has a test (this is what the pyramid above covers); JaCoCo and
+`ng test --coverage` can be added to report numbers.
 
 ---
 
@@ -160,7 +165,7 @@ No coverage tool configured. Policy: every business rule and every endpoint's se
 | Users with a role | JWT signed in the test (`NimbusJwtEncoder` with the test secret) |
 | Repositories | In-memory fakes or Mockito |
 | Time | `Clock.fixed(...)` |
-| Real database (manual runs) | Liquibase seeds + dev demo accounts (`admin@gmail.com`, `cliente@gmail.com`, `operador@gmail.com`) |
+| Real database (manual runs) | Liquibase seeds + dev demo accounts (`admin@gmail.com`, `cliente@gmail.com`, `operador@gmail.com`), created only with the `dev` profile and the `DEMO_*_PASSWORD` values of the local `.env` (E-05) |
 
 ---
 
@@ -168,9 +173,9 @@ No coverage tool configured. Policy: every business rule and every endpoint's se
 
 | Gap | Action |
 |---|---|
-| The web suite is mostly "should create" specs | Add tests for the booking form, the payment page and the stores |
+| The web suite still misses screens (F-02, H-03) | 146 tests on 2026-10-23; still without ViewModel tests: inspection, schedules, operators, calendar, business data, client vehicles and the sidebar; `authGuard` by role and the 401 interceptor need more cases |
 | The cross-service tests do not cover sign-up | Add it with a disposable account when a test mail domain is agreed |
-| The mobile app has no automated tests | `tsc --noEmit`, `expo-doctor` and `expo export` are the current checks; add Jest for the view models |
+| The mobile app has few automated tests (H-04) | 13 jest-expo tests since 2026-10-23 (validators, booking, payment and login services); no test of the screens, of removing a coupon or of the payment screen |
 | End-to-end tests are not in CI | Start SQL Server, RabbitMQ and the services as job containers and run `e2e/*.test.js` |
 | No test against a real SQL Server | Testcontainers for the persistence adapters of booking (locking, triggers) |
 | payment-service has no API tests | Use-case tests exist (`PaymentCommandServiceTests`, `PaymentQueryServiceTests`, `CustomerPromotionServiceTests` with in-memory fakes); add API tests (roles, 409 codes) |

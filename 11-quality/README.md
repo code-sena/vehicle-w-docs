@@ -5,14 +5,15 @@
 
 ---
 
-## State today (2026-10-20)
+## State today (2026-10-23)
 
 | Item | State |
 |---|---|
-| Backend automated tests | 645, all green on 2026-10-21: Java 495 (security 155, customer 69, booking 50, operations 67, notification 114, api-gateway 40) + payment .NET 150 (7 of them persistence tests against an isolated database) |
-| Web automated tests | 62 Vitest tests in 41 spec files, all green on 2026-10-21 |
+| Backend automated tests | 679, all green in CI on `develop` on 2026-10-23: Java 528 (security 171, customer 71, booking 60, operations 72, notification 115, api-gateway 39) + payment .NET 151 (plus 7 persistence tests that skip themselves without SQL Server) |
+| Web automated tests | 146 Vitest tests in 59 spec files, green in CI on 2026-10-23 |
+| Mobile automated tests | 13 jest-expo tests in 3 suites (added 2026-10-23), plus `tsc --noEmit` |
 | End-to-end | 19 automated tests in `lavarapido-infra/e2e`, all green on 2026-10-21; the 42 functional cases passed on 2026-10-19 |
-| CI | GitHub Actions in the 10 repositories (`10-devops/ci-cd.md`) |
+| CI | GitHub Actions in the 10 repositories, 838 tests per run (`10-devops/ci-cd.md`) |
 | Coverage tool | None yet |
 
 Details, tiers, tools and gaps → [`testing-strategy.md`](./testing-strategy.md).
