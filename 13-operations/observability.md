@@ -79,7 +79,8 @@ for p in 3001 3002 3003 3004 3005 3006 8080; do echo "$p $(curl -s localhost:$p/
 | Signal | How to see it |
 |---|---|
 | Events piling up | RabbitMQ panel → Queues: `notification-service.events`, `customer-service.events` ("Ready" should stay near 0) |
-| Failed events | RabbitMQ panel → `*.dlq` queues (any message there needs a look) |
+| Failed events | RabbitMQ panel → `*.dlq` queues (any message there needs a look; since 2026-10-24 also `operations-service.booking-confirmed.dlq`). operations logs every event the broker does not confirm (publisher confirms, OPS-04) |
+| Push and email not delivered | `notification.pending_delivery`: rows still pending after 5 attempts and their last error (OPS-05) |
 | Reminders not sent | `SELECT * FROM notification.booking_reminder WHERE sent_at IS NULL AND deleted_at IS NULL AND remind_at < SYSUTCDATETIME()` |
 | Emails failing | Log lines `Could not send the email for notification` |
 | Bookings created today | `SELECT COUNT(*) FROM booking.booking WHERE created_at >= CAST(SYSUTCDATETIME() AS DATE)` |

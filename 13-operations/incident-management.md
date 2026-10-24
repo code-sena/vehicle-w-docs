@@ -69,6 +69,11 @@ Frequent causes already seen in this project:
 | Payment routes fail only with `--profile app` | The `api-gateway` container needs `ROUTE_PAYMENT_URL=http://payment-service:3005` (set in `docker-compose.yml`); without it the gateway falls back to `localhost:3005` inside its own container |
 | Operator list empty / cannot assign | No account with role `OPERATOR`, or the operator has no shift for that time (`OPERATOR_NOT_ON_SHIFT`) |
 | 503 `BOOKING_SERVICE_UNAVAILABLE` from operations or payment | booking-service down or `BOOKING_SERVICE_URL` wrong |
+| 503 `BOOKING_SERVICE_UNAVAILABLE` when a client removes a vehicle | customer-service without `INTERNAL_API_KEY`, or its `BOOKING_SERVICE_URL` is not the root of booking (`http://booking-service:3003`) |
+| 429 `RATE_LIMITED` on login for everybody | The gateway sees every client with the same IP (a `172.x` in its log "Demasiadas peticiones… desde X"): the real IP is not reaching it; check `TRUSTED_PROXIES` and how Docker publishes Caddy, or raise `AUTH_RATE_LIMIT_REQUESTS` |
+| The web answers 502 right after an update, the API works | Caddy still reads the old Caddyfile (`web:80`) while the web listens on 8080: `… --profile app restart caddy` (only after the first update with the new scripts) |
+| An update made a service fail | `deploy/rollback.sh <service>` goes back to its `:prev` image; restore the `pre-update` backup only if the data broke (`13-operations/README.md`) |
+| 503 `SECURITY_SERVICE_UNAVAILABLE` when assigning an operator | security-service down: the assignment fails closed (A-13); the automatic one is retried by RabbitMQ and then goes to `operations-service.booking-confirmed.dlq` |
 
 ### 4. Mitigate
 
