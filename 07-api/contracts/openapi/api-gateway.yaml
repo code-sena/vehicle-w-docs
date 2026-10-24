@@ -1,32 +1,37 @@
+# Contract of api-gateway, rebuilt on 2026-10-23 from the code on origin/develop (see 07-api/README.md).
+# Regenerate it from the code instead of editing by hand, so it never drifts.
 openapi: 3.0.3
 info:
   title: LavaRápido API gateway
   version: v1
-  description: |
-    Single entry point of the system (ADR-005). The gateway has no business endpoints of its own:
-    it forwards every `/api/v1/**` request unchanged to the service that owns the path, so the
-    business contracts are the ones of each service:
+  description: |-
+    Single entry point (ADR-005), Spring Cloud Gateway Server MVC. Rebuilt from `src/main/resources/application.yml` of `lavarapido-api-gateway` on `origin/develop` (`3f5eae3`, 2026-10-23). The gateway has no business endpoints: it forwards each request unchanged (path, `Authorization`, `X-Correlation-Id`) to the service whose `Path` predicate matches, so the business contracts are those of each service. Every route removes the CORS headers of the service (`RemoveResponseHeader`) because the gateway answers CORS itself (`CorsConfig`, `CORS_ALLOWED_ORIGINS`).
 
-    | Path | Contract |
-    |---|---|
-    | `/api/v1/auth/**`, `/api/v1/users/**`, `/api/v1/admin/users/**`, `/api/v1/admin/roles-permissions/**` | `security-service.yaml` |
-    | `/api/v1/vehicles/**`, `/api/v1/vehicle-types/**`, `/api/v1/admin/vehicles/**` | `customer-service.yaml` |
-    | `/api/v1/catalog/**`, `/api/v1/schedule/**`, `/api/v1/establishment`, `/api/v1/bookings/**`, `/api/v1/admin/bookings/**`, `/api/v1/admin/catalog/**`, `/api/v1/admin/schedule/**`, `/api/v1/admin/bays/**`, `/api/v1/admin/establishment`, `/api/v1/operator/bookings/**` | `booking-service.yaml` |
-    | `/api/v1/operators/**`, `/api/v1/admin/operators/**`, `/api/v1/admin/assignments/**`, `/api/v1/admin/inspections/**`, `/api/v1/public/inspections/**`, `/api/v1/operator/services/**`, `/api/v1/operator/ratings`, `/api/v1/ratings/**` | `operations-service.yaml` |
-    | `/api/v1/payments/**`, `/api/v1/payment-accounts`, `/api/v1/admin/payments/**`, `/api/v1/admin/payment-accounts/**`, `/api/v1/admin/payment-methods`, `/api/v1/admin/promotions/**`, `/api/v1/loyalty/**` | `payment-service.yaml` |
-    | `/api/v1/notifications/**`, `/api/v1/admin/notifications/**` | `notification-service.yaml` |
+    **Routes** (in this order; the first matching predicate wins):
 
-    The JWT is validated by each service (ADR-006); the gateway forwards `Authorization`
-    as is. CORS is answered by the gateway. `/internal/**` and any other path answer 404.
+    | Route `id` | Target (`uri`) | `Path` predicates | Contract |
+    |---|---|---|---|
+    | `security-service` | `${ROUTE_SECURITY_URL:http://localhost:3001}` | `/api/v1/auth/**`, `/api/v1/users/**`, `/api/v1/admin/users/**`, `/api/v1/admin/users`, `/api/v1/admin/roles-permissions/**`, `/api/v1/admin/roles-permissions` | `security-service.yaml` |
+    | `customer-service` | `${ROUTE_CUSTOMER_URL:http://localhost:3002}` | `/api/v1/vehicles/**`, `/api/v1/vehicles`, `/api/v1/vehicle-types/**`, `/api/v1/vehicle-types`, `/api/v1/admin/vehicles/**`, `/api/v1/admin/vehicles` | `customer-service.yaml` |
+    | `booking-service` | `${ROUTE_BOOKING_URL:http://localhost:3003}` | `/api/v1/catalog/**`, `/api/v1/schedule/**`, `/api/v1/establishment`, `/api/v1/bookings/**`, `/api/v1/bookings`, `/api/v1/admin/bookings/**`, `/api/v1/admin/bookings`, `/api/v1/admin/catalog/**`, `/api/v1/admin/schedule/**`, `/api/v1/admin/bays/**`, `/api/v1/admin/bays`, `/api/v1/admin/establishment` | `booking-service.yaml` |
+    | `operations-service` | `${ROUTE_OPERATIONS_URL:http://localhost:3004}` | `/api/v1/admin/operators/**`, `/api/v1/admin/operators`, `/api/v1/operators/**`, `/api/v1/admin/inspections/**`, `/api/v1/public/inspections/**`, `/api/v1/admin/assignments/**`, `/api/v1/admin/assignments`, `/api/v1/operator/services/**`, `/api/v1/operator/services`, `/api/v1/operator/ratings`, `/api/v1/ratings/**` | `operations-service.yaml` |
+    | `payment-service` | `${ROUTE_PAYMENT_URL:http://localhost:3005}` | `/api/v1/payments/**`, `/api/v1/payments`, `/api/v1/payment-accounts`, `/api/v1/admin/payments/**`, `/api/v1/admin/payments`, `/api/v1/admin/payment-accounts/**`, `/api/v1/admin/payment-accounts`, `/api/v1/admin/payment-methods`, `/api/v1/admin/promotions/**`, `/api/v1/admin/promotions`, `/api/v1/loyalty/**`, `/api/v1/loyalty` | `payment-service.yaml` |
+    | `notification-service` | `${ROUTE_NOTIFICATION_URL:http://localhost:3006}` | `/api/v1/notifications/**`, `/api/v1/notifications`, `/api/v1/admin/notifications/**`, `/api/v1/admin/notifications` | `notification-service.yaml` |
+
+    **Not published.** Any path without a route answers 404 here. That includes every `/internal/**` route (service-to-service, `X-Internal-Key`) and, since E-01, `/api/v1/operator/bookings/**` of booking-service, which only operations-service calls with the internal key. The operator's own API is `/api/v1/operator/services/**` and `/api/v1/operator/ratings` (operations-service).
+
+    **Session check** (`SessionCheckFilter`, `app.session-check.*`): for every `/api/**` request with `Authorization: Bearer …` (except `/api/v1/auth/**`, but including `/api/v1/auth/logout`) the gateway asks security-service `GET /api/v1/auth/session`. A 401 is returned to the client as is (its ProblemDetail, `code` `UNAUTHORIZED`); the answer is cached by SHA-256 of the token for `SESSION_CHECK_CACHE_TTL` (30 s); if security-service does not answer within `SESSION_CHECK_TIMEOUT` (3 s) the request goes on. There is no rate limiting in the gateway today.
 servers:
   - url: http://localhost:8080
-    description: Local
+    description: Local (`GATEWAY_PORT`)
 paths:
   /actuator/health:
     get:
-      summary: Gateway health
+      tags:
+        - gateway
       operationId: health
-      tags: [gateway]
+      security: []
+      description: Spring Boot Actuator health of the gateway itself (with liveness/readiness probes).
       responses:
         "200":
           description: The gateway is up
@@ -38,3 +43,115 @@ paths:
                   status:
                     type: string
                     example: UP
+  /actuator/info:
+    get:
+      tags:
+        - gateway
+      operationId: info
+      security: []
+      description: "Static info (`info.service: api-gateway`)."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+x-routes:
+  - id: security-service
+    uri: ${ROUTE_SECURITY_URL:http://localhost:3001}
+    predicates:
+      - /api/v1/auth/**
+      - /api/v1/users/**
+      - /api/v1/admin/users/**
+      - /api/v1/admin/users
+      - /api/v1/admin/roles-permissions/**
+      - /api/v1/admin/roles-permissions
+    filters:
+      - RemoveResponseHeader=Access-Control-Allow-Origin
+      - RemoveResponseHeader=Access-Control-Allow-Credentials
+      - RemoveResponseHeader=Access-Control-Expose-Headers
+  - id: customer-service
+    uri: ${ROUTE_CUSTOMER_URL:http://localhost:3002}
+    predicates:
+      - /api/v1/vehicles/**
+      - /api/v1/vehicles
+      - /api/v1/vehicle-types/**
+      - /api/v1/vehicle-types
+      - /api/v1/admin/vehicles/**
+      - /api/v1/admin/vehicles
+    filters:
+      - RemoveResponseHeader=Access-Control-Allow-Origin
+      - RemoveResponseHeader=Access-Control-Allow-Credentials
+      - RemoveResponseHeader=Access-Control-Expose-Headers
+  - id: booking-service
+    uri: ${ROUTE_BOOKING_URL:http://localhost:3003}
+    predicates:
+      - /api/v1/catalog/**
+      - /api/v1/schedule/**
+      - /api/v1/establishment
+      - /api/v1/bookings/**
+      - /api/v1/bookings
+      - /api/v1/admin/bookings/**
+      - /api/v1/admin/bookings
+      - /api/v1/admin/catalog/**
+      - /api/v1/admin/schedule/**
+      - /api/v1/admin/bays/**
+      - /api/v1/admin/bays
+      - /api/v1/admin/establishment
+    filters:
+      - RemoveResponseHeader=Access-Control-Allow-Origin
+      - RemoveResponseHeader=Access-Control-Allow-Credentials
+      - RemoveResponseHeader=Access-Control-Expose-Headers
+  - id: operations-service
+    uri: ${ROUTE_OPERATIONS_URL:http://localhost:3004}
+    predicates:
+      - /api/v1/admin/operators/**
+      - /api/v1/admin/operators
+      - /api/v1/operators/**
+      - /api/v1/admin/inspections/**
+      - /api/v1/public/inspections/**
+      - /api/v1/admin/assignments/**
+      - /api/v1/admin/assignments
+      - /api/v1/operator/services/**
+      - /api/v1/operator/services
+      - /api/v1/operator/ratings
+      - /api/v1/ratings/**
+    filters:
+      - RemoveResponseHeader=Access-Control-Allow-Origin
+      - RemoveResponseHeader=Access-Control-Allow-Credentials
+      - RemoveResponseHeader=Access-Control-Expose-Headers
+  - id: payment-service
+    uri: ${ROUTE_PAYMENT_URL:http://localhost:3005}
+    predicates:
+      - /api/v1/payments/**
+      - /api/v1/payments
+      - /api/v1/payment-accounts
+      - /api/v1/admin/payments/**
+      - /api/v1/admin/payments
+      - /api/v1/admin/payment-accounts/**
+      - /api/v1/admin/payment-accounts
+      - /api/v1/admin/payment-methods
+      - /api/v1/admin/promotions/**
+      - /api/v1/admin/promotions
+      - /api/v1/loyalty/**
+      - /api/v1/loyalty
+    filters:
+      - RemoveResponseHeader=Access-Control-Allow-Origin
+      - RemoveResponseHeader=Access-Control-Allow-Credentials
+      - RemoveResponseHeader=Access-Control-Expose-Headers
+  - id: notification-service
+    uri: ${ROUTE_NOTIFICATION_URL:http://localhost:3006}
+    predicates:
+      - /api/v1/notifications/**
+      - /api/v1/notifications
+      - /api/v1/admin/notifications/**
+      - /api/v1/admin/notifications
+    filters:
+      - RemoveResponseHeader=Access-Control-Allow-Origin
+      - RemoveResponseHeader=Access-Control-Allow-Credentials
+      - RemoveResponseHeader=Access-Control-Expose-Headers
+x-not-published:
+  - /internal/**
+  - /api/v1/operator/bookings/**
