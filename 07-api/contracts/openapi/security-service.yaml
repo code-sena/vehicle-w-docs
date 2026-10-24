@@ -1,775 +1,1523 @@
-# Generated from the running security-service (springdoc, GET /v3/api-docs) on 2026-10-21.
-# Do not edit by hand: regenerate from the code so the contract never drifts.
-openapi: "3.1.0"
+# Contract of security-service, rebuilt on 2026-10-23 from the code on origin/develop (see 07-api/README.md).
+# Regenerate it from the code instead of editing by hand, so it never drifts.
+openapi: 3.0.3
 info:
-  title: "LavaRápido security-service API"
-  version: "v1"
-  description: "Contract of security-service. Public paths are reached through the API gateway."
+  title: LavaRápido security-service API
+  version: v1
+  description: |-
+    Contract of security-service, rebuilt from the controllers of `security-service` on `origin/develop` (`113fc4d`, 2026-10-23) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
+
+    **Security.** Operations without `security` use the bearer JWT (`bearerAuth`). `security: []` = public. `x-roles` = roles the service accepts on that path (from its `SecurityConfig`); `x-access` = `public`, `authenticated` (any role), `roles`, `internal` (only `X-Internal-Key`, not published by the gateway) or `roles + internal key`. Ownership checks (a client only sees its own data) answer 404, not 403.
+
+    **Errors.** Every error is a `ProblemDetail` with `code`. Each error response lists its codes in `x-codes`. Catalogue of this service:
+
+    | `code` | HTTP | Raised by / when |
+    |---|---|---|
+    | `BAD_REQUEST` | 400 | Spring MVC rejected the request before the controller: malformed JSON, missing required query parameter or wrong parameter type |
+    | `EMAIL_DOMAIN_NOT_ALLOWED` | 400 | `InvalidValueException` — `POST /api/v1/auth/register`, `POST /api/v1/admin/users`, `PUT /api/v1/users/me/email` |
+    | `INCORRECT_CURRENT_PASSWORD` | 400 | `IncorrectCurrentPasswordException` — `PUT /api/v1/users/me/password`, `PUT /api/v1/users/me/email`, `POST /api/v1/users/me/deactivate` |
+    | `INVALID_ADDRESS` | 400 | `InvalidValueException` — `PUT /api/v1/users/me/address` |
+    | `INVALID_DOCUMENT` | 400 | `InvalidValueException` — 17 operations (see `x-codes` of each response) |
+    | `INVALID_EMAIL` | 400 | `InvalidValueException` — 17 operations (see `x-codes` of each response) |
+    | `INVALID_LANGUAGE` | 400 | `InvalidValueException` — `GET /internal/v1/users/{userId}/contact`, `GET /api/v1/users/me/preferences`, `PUT /api/v1/users/me/preferences` |
+    | `INVALID_NAME` | 400 | `InvalidValueException` — 17 operations (see `x-codes` of each response) |
+    | `INVALID_PHONE` | 400 | `InvalidValueException` — 17 operations (see `x-codes` of each response) |
+    | `INVALID_RESET_CODE` | 400 | `InvalidResetCodeException` — `POST /api/v1/auth/password/verify`, `POST /api/v1/auth/password/reset` |
+    | `INVALID_ROLES` | 400 | `InvalidValueException` — `POST /api/v1/admin/users` |
+    | `INVALID_THEME` | 400 | `InvalidValueException` — `GET /internal/v1/users/{userId}/contact`, `GET /api/v1/users/me/preferences`, `PUT /api/v1/users/me/preferences` |
+    | `SAME_PASSWORD` | 400 | `SamePasswordException` — `POST /api/v1/auth/password/reset`, `PUT /api/v1/users/me/password` |
+    | `UNKNOWN_PERMISSION` | 400 | `UnknownPermissionException` — `PUT /api/v1/admin/roles-permissions/{role}` |
+    | `VALIDATION_ERROR` | 400 | Bean Validation failed on the body (`errors`: field → message) or, where the service maps it, a path/query parameter has the wrong type |
+    | `WEAK_PASSWORD` | 400 | `WeakPasswordException` — 4 operations (see `x-codes` of each response) |
+    | `INVALID_CREDENTIALS` | 401 | `InvalidCredentialsException` — `POST /api/v1/auth/login` |
+    | `UNAUTHORIZED` | 401 | No `Authorization: Bearer` token, invalid or expired token, closed session (the gateway checks it), or missing/wrong `X-Internal-Key` on `/internal/**` |
+    | `ACCOUNT_DISABLED` | 403 | `AccountDisabledException` — `POST /api/v1/auth/login` |
+    | `ADMIN_CANNOT_BE_DISABLED` | 403 | `AdminAccountCannotBeDisabledException` — `PATCH /api/v1/admin/users/{userId}/status` |
+    | `CANNOT_DISABLE_OWN_ACCOUNT` | 403 | `CannotDisableOwnAccountException` — `PATCH /api/v1/admin/users/{userId}/status`, `POST /api/v1/users/me/deactivate` |
+    | `FORBIDDEN` | 403 | The token is valid but its role is not allowed on this path |
+    | `NOT_FOUND` | 404 | No route matches (Spring MVC) |
+    | `USER_NOT_FOUND` | 404 | `UserNotFoundException` — not reached from HTTP (events or scheduled jobs) |
+    | `METHOD_NOT_ALLOWED` | 405 | The path exists but not with this HTTP method |
+    | `CONFLICT` | 409 | The database rejected the change (unique index, trigger or check) after the code's own checks |
+    | `DOCUMENT_ALREADY_REGISTERED` | 409 | `DocumentAlreadyRegisteredException` — `POST /api/v1/auth/register`, `POST /api/v1/admin/users` |
+    | `EMAIL_ALREADY_REGISTERED` | 409 | `EmailAlreadyRegisteredException` — `POST /api/v1/auth/register`, `POST /api/v1/admin/users`, `PUT /api/v1/users/me/email` |
+    | `ACCOUNT_LOCKED` | 423 | `AccountLockedException` — `POST /api/v1/auth/login` |
+    | `INTERNAL_ERROR` | 500 | Unexpected error (logged with its correlation id) |
 servers:
-  - url: "http://localhost:8080"
-    description: "Through the API gateway (ADR-005)"
-  - url: "http://localhost:3001"
-    description: "security-service directly (local development)"
+  - url: http://localhost:8080
+    description: Through the API gateway (ADR-005); `/internal/**` is not reachable here
+  - url: http://localhost:3001
+    description: security-service directly (local development and service-to-service calls)
 security:
   - bearerAuth: []
 tags:
-  - name: "Admin - users"
-    description: "Gestión de cuentas (solo ADMIN)"
-  - name: "My account"
-    description: "Perfil, contraseña y preferencias del usuario con sesión"
-  - name: "Auth"
-    description: "Registro, login, logout y recuperación de contraseña"
-  - name: "Admin - roles y permisos"
-    description: "Permisos de los 3 roles fijos (solo ADMIN)"
+  - name: Auth
+    description: Registro, login, logout y recuperación de contraseña
+  - name: Internal User
+  - name: Admin - roles y permisos
+    description: Permisos de los 3 roles fijos (solo ADMIN)
+  - name: User Address
+  - name: Admin - users
+    description: Gestión de cuentas (solo ADMIN)
+  - name: My account
+    description: Perfil, contraseña y preferencias del usuario con sesión
 paths:
-  "/api/v1/users/me/preferences":
+  /api/v1/admin/roles-permissions:
     get:
       tags:
-        - "My account"
-      operationId: "preferences"
+        - Admin - roles y permisos
+      operationId: matrix
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/RolePermissionController.java:39
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/PreferencesResponse"
+                $ref: "#/components/schemas/RolePermissionsMatrixResponse"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/roles-permissions/{role}:
     put:
       tags:
-        - "My account"
-      operationId: "updatePreferences"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/PreferencesRequest"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/PreferencesResponse"
-  "/api/v1/users/me/password":
-    put:
-      tags:
-        - "My account"
-      operationId: "changePassword"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ChangePasswordRequest"
-        required: true
-      responses:
-        "204":
-          description: "No Content"
-  "/api/v1/users/me/email":
-    put:
-      tags:
-        - "My account"
-      operationId: "changeEmail"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ChangeEmailRequest"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/UserResponse"
-  "/api/v1/users/me/address":
-    get:
-      tags:
-        - "user-address-controller"
-      operationId: "address"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/AddressDto"
-    put:
-      tags:
-        - "user-address-controller"
-      operationId: "updateAddress"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/AddressDto"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/AddressDto"
-  "/api/v1/admin/roles-permissions/{role}":
-    put:
-      tags:
-        - "Admin - roles y permisos"
-      operationId: "update"
+        - Admin - roles y permisos
+      operationId: update
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/RolePermissionController.java:46
       parameters:
-        - name: "role"
-          in: "path"
+        - name: role
+          in: path
           required: true
           schema:
-            type: "string"
-            enum:
-              - "ADMIN"
-              - "OPERATOR"
-              - "CLIENT"
+            $ref: "#/components/schemas/RoleCode"
       requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/UpdateRolePermissionsRequest"
         required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRolePermissionsRequest"
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/RolePermissionsResponse"
-  "/api/v1/users/me/deactivate":
-    post:
-      tags:
-        - "My account"
-      operationId: "deactivateMe"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/DeactivateAccountRequest"
-        required: true
-      responses:
-        "204":
-          description: "No Content"
-  "/api/v1/auth/register":
-    post:
-      tags:
-        - "Auth"
-      operationId: "register"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/RegisterRequest"
-        required: true
-      responses:
-        "201":
-          description: "Created"
+                $ref: "#/components/schemas/RolePermissionsResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `UNKNOWN_PERMISSION`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - UNKNOWN_PERMISSION
+            - VALIDATION_ERROR
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/UserResponse"
-  "/api/v1/auth/password/verify":
-    post:
-      tags:
-        - "Auth"
-      operationId: "verifyResetCode"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/VerifyResetCodeRequest"
-        required: true
-      responses:
-        "204":
-          description: "No Content"
-  "/api/v1/auth/password/reset":
-    post:
-      tags:
-        - "Auth"
-      operationId: "resetPassword"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ResetPasswordRequest"
-        required: true
-      responses:
-        "204":
-          description: "No Content"
-  "/api/v1/auth/password/forgot":
-    post:
-      tags:
-        - "Auth"
-      operationId: "forgotPassword"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ForgotPasswordRequest"
-        required: true
-      responses:
-        "202":
-          description: "Accepted"
-  "/api/v1/auth/logout":
-    post:
-      tags:
-        - "Auth"
-      operationId: "logout"
-      responses:
-        "204":
-          description: "No Content"
-  "/api/v1/auth/login":
-    post:
-      tags:
-        - "Auth"
-      operationId: "login"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/LoginRequest"
-        required: true
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/LoginResponse"
-  "/api/v1/admin/users":
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/users:
     get:
       tags:
-        - "Admin - users"
-      operationId: "list"
+        - Admin - users
+      operationId: list
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/UserAdministrationController.java:48
       parameters:
-        - name: "role"
-          in: "query"
+        - name: role
+          in: query
           required: false
           schema:
-            type: "string"
-            enum:
-              - "ADMIN"
-              - "OPERATOR"
-              - "CLIENT"
-        - name: "page"
-          in: "query"
+            $ref: "#/components/schemas/RoleCode"
+        - name: page
+          in: query
           required: false
           schema:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int32
             default: 0
-        - name: "size"
-          in: "query"
+        - name: size
+          in: query
           required: false
           schema:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int32
             default: 20
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/PageResponseUserResponse"
+                $ref: "#/components/schemas/PageResponseOfUserResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
     post:
       tags:
-        - "Admin - users"
-      operationId: "create"
+        - Admin - users
+      operationId: create
+      description: "A-01: the e-mail domain must be in `ALLOWED_EMAIL_DOMAINS` (default `gmail.com`); otherwise 400 `EMAIL_DOMAIN_NOT_ALLOWED`."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/UserAdministrationController.java:55
       requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/CreateUserRequest"
         required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
       responses:
         "201":
-          description: "Created"
+          description: Created
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/UserResponse"
-  "/api/v1/users/me":
-    get:
-      tags:
-        - "My account"
-      operationId: "me"
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `EMAIL_DOMAIN_NOT_ALLOWED`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`, `INVALID_ROLES`, `VALIDATION_ERROR`, `WEAK_PASSWORD`."
+          x-codes:
+            - BAD_REQUEST
+            - EMAIL_DOMAIN_NOT_ALLOWED
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+            - INVALID_ROLES
+            - VALIDATION_ERROR
+            - WEAK_PASSWORD
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/UserResponse"
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `DOCUMENT_ALREADY_REGISTERED`, `EMAIL_ALREADY_REGISTERED`."
+          x-codes:
+            - DOCUMENT_ALREADY_REGISTERED
+            - EMAIL_ALREADY_REGISTERED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/users/{userId}/status:
     patch:
       tags:
-        - "My account"
-      operationId: "updateMe"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/UpdateProfileRequest"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/UserResponse"
-  "/api/v1/admin/users/{userId}/status":
-    patch:
-      tags:
-        - "Admin - users"
-      operationId: "changeStatus"
+        - Admin - users
+      operationId: changeStatus
+      description: Disabling an account revokes all its sessions and publishes `AccountDeactivated`; an administrator account cannot be disabled (403 `ADMIN_CANNOT_BE_DISABLED`) and nobody can disable their own (403 `CANNOT_DISABLE_OWN_ACCOUNT`).
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/UserAdministrationController.java:63
       parameters:
-        - name: "userId"
-          in: "path"
+        - name: userId
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int64"
+            type: integer
+            format: int64
       requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/UpdateStatusRequest"
         required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStatusRequest"
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/UserResponse"
-  "/internal/v1/users/{userId}/contact":
-    get:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `ADMIN_CANNOT_BE_DISABLED`, `CANNOT_DISABLE_OWN_ACCOUNT`, `FORBIDDEN`."
+          x-codes:
+            - ADMIN_CANNOT_BE_DISABLED
+            - CANNOT_DISABLE_OWN_ACCOUNT
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/auth/login:
+    post:
       tags:
-        - "internal-user-controller"
-      operationId: "contact"
-      parameters:
-        - name: "userId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
+        - Auth
+      operationId: login
+      description: "Only the e-mail format is checked, not its domain (A-01): accounts created before with other domains can still log in. 5 failed attempts in 15 minutes lock the account 15 minutes (423 `ACCOUNT_LOCKED`, RF-004b)."
+      security: []
+      x-access: public
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/AuthController.java:73
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/ContactResponse"
-  "/internal/v1/users/admins":
-    get:
-      tags:
-        - "internal-user-controller"
-      operationId: "activeAdmins"
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+            - VALIDATION_ERROR
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                type: "array"
-                items:
-                  type: "integer"
-                  format: "int64"
-  "/api/v1/auth/session":
-    get:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `INVALID_CREDENTIALS`."
+          x-codes:
+            - INVALID_CREDENTIALS
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `ACCOUNT_DISABLED`."
+          x-codes:
+            - ACCOUNT_DISABLED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "423":
+          description: "Locked. `code`: `ACCOUNT_LOCKED`."
+          x-codes:
+            - ACCOUNT_LOCKED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/auth/logout:
+    post:
       tags:
-        - "Auth"
-      operationId: "session"
+        - Auth
+      operationId: logout
+      x-access: authenticated
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/AuthController.java:89
       responses:
         "204":
-          description: "No Content"
-  "/api/v1/admin/roles-permissions":
+          description: No Content
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/auth/password/forgot:
+    post:
+      tags:
+        - Auth
+      operationId: forgotPassword
+      description: "Javadoc: Siempre 202, exista o no el correo: la respuesta no debe revelar cuentas."
+      security: []
+      x-access: public
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/AuthController.java:107
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordRequest"
+      responses:
+        "202":
+          description: Accepted
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/auth/password/reset:
+    post:
+      tags:
+        - Auth
+      operationId: resetPassword
+      security: []
+      x-access: public
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/AuthController.java:119
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`, `INVALID_RESET_CODE`, `SAME_PASSWORD`, `VALIDATION_ERROR`, `WEAK_PASSWORD`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+            - INVALID_RESET_CODE
+            - SAME_PASSWORD
+            - VALIDATION_ERROR
+            - WEAK_PASSWORD
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/auth/password/verify:
+    post:
+      tags:
+        - Auth
+      operationId: verifyResetCode
+      security: []
+      x-access: public
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/AuthController.java:113
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyResetCodeRequest"
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`, `INVALID_RESET_CODE`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+            - INVALID_RESET_CODE
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/auth/register:
+    post:
+      tags:
+        - Auth
+      operationId: register
+      description: "A-01: the e-mail domain must be in `ALLOWED_EMAIL_DOMAINS` (default `gmail.com`, compared without case after trimming); otherwise 400 `EMAIL_DOMAIN_NOT_ALLOWED`. Both consents are stored with their acceptance time (Law 1581)."
+      security: []
+      x-access: public
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/AuthController.java:66
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `EMAIL_DOMAIN_NOT_ALLOWED`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`, `VALIDATION_ERROR`, `WEAK_PASSWORD`."
+          x-codes:
+            - BAD_REQUEST
+            - EMAIL_DOMAIN_NOT_ALLOWED
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+            - VALIDATION_ERROR
+            - WEAK_PASSWORD
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `DOCUMENT_ALREADY_REGISTERED`, `EMAIL_ALREADY_REGISTERED`."
+          x-codes:
+            - DOCUMENT_ALREADY_REGISTERED
+            - EMAIL_ALREADY_REGISTERED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/auth/session:
     get:
       tags:
-        - "Admin - roles y permisos"
-      operationId: "matrix"
+        - Auth
+      operationId: session
+      description: |-
+        204 while the token's session is open and the account still has the roles of the token. E-02: if the account was disabled or lost one of those roles, every session of the account is revoked and this answers 401. The API gateway calls it for every `/api/**` request with `Authorization: Bearer` (answers cached 30 s).
+
+        Javadoc: 204 si el token es válido y su sesión sigue abierta; si no, 401 (lo resuelve el decoder). El gateway lo usa para cortar en todos los servicios los tokens de sesiones ya cerradas.
+      x-access: authenticated
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/AuthController.java:100
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/users/me:
+    get:
+      tags:
+        - My account
+      operationId: me
+      x-access: authenticated
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/UserProfileController.java:67
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/RolePermissionsMatrixResponse"
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`."
+          x-codes:
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    patch:
+      tags:
+        - My account
+      operationId: updateMe
+      x-access: authenticated
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/UserProfileController.java:72
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/users/me/address:
+    get:
+      tags:
+        - User Address
+      operationId: address
+      x-access: authenticated
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/UserAddressController.java:26
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddressDto"
+        "400":
+          description: "Bad Request. `code`: `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`."
+          x-codes:
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    put:
+      tags:
+        - User Address
+      operationId: updateAddress
+      x-access: authenticated
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/UserAddressController.java:31
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddressDto"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddressDto"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_ADDRESS`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_ADDRESS
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/users/me/deactivate:
+    post:
+      tags:
+        - My account
+      operationId: deactivateMe
+      description: "Javadoc: \"Eliminar mi cuenta\": la desactiva (no la borra) y cierra todas sus sesiones. Pide la contraseña actual para confirmar. POST y no DELETE porque lleva cuerpo."
+      x-access: authenticated
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/UserProfileController.java:111
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeactivateAccountRequest"
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INCORRECT_CURRENT_PASSWORD`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INCORRECT_CURRENT_PASSWORD
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `CANNOT_DISABLE_OWN_ACCOUNT`."
+          x-codes:
+            - CANNOT_DISABLE_OWN_ACCOUNT
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/users/me/email:
+    put:
+      tags:
+        - My account
+      operationId: changeEmail
+      description: |-
+        A-01: the new e-mail must use an allowed domain (`EMAIL_DOMAIN_NOT_ALLOWED`); checked again on every change.
+
+        Javadoc: Cambia el correo de login. Desde ahí se inicia sesión con el correo nuevo.
+      x-access: authenticated
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/UserProfileController.java:87
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeEmailRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `EMAIL_DOMAIN_NOT_ALLOWED`, `INCORRECT_CURRENT_PASSWORD`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - EMAIL_DOMAIN_NOT_ALLOWED
+            - INCORRECT_CURRENT_PASSWORD
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `EMAIL_ALREADY_REGISTERED`."
+          x-codes:
+            - EMAIL_ALREADY_REGISTERED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/users/me/password:
+    put:
+      tags:
+        - My account
+      operationId: changePassword
+      x-access: authenticated
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/UserProfileController.java:79
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INCORRECT_CURRENT_PASSWORD`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`, `SAME_PASSWORD`, `VALIDATION_ERROR`, `WEAK_PASSWORD`."
+          x-codes:
+            - BAD_REQUEST
+            - INCORRECT_CURRENT_PASSWORD
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+            - SAME_PASSWORD
+            - VALIDATION_ERROR
+            - WEAK_PASSWORD
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/users/me/preferences:
+    get:
+      tags:
+        - My account
+      operationId: preferences
+      x-access: authenticated
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/UserProfileController.java:93
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_LANGUAGE`, `INVALID_THEME`."
+          x-codes:
+            - INVALID_LANGUAGE
+            - INVALID_THEME
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    put:
+      tags:
+        - My account
+      operationId: updatePreferences
+      x-access: authenticated
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/UserProfileController.java:99
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreferencesRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_LANGUAGE`, `INVALID_THEME`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_LANGUAGE
+            - INVALID_THEME
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /internal/v1/users/{userId}/contact:
+    get:
+      tags:
+        - Internal User
+      operationId: contact
+      description: "Javadoc: Solo lo necesario para escribirle al usuario; nada de documento, teléfono ni roles. Incluye por qué canales quiere sus avisos (Configuración > Notificaciones) para que notification-service los respete: push, correo de recordatorios y promociones. language es el idioma de la cuenta (es, en, fr, pt): notification-service escribe los avisos en ese idioma (RF-020)."
+      security:
+        - internalKey: []
+      x-internal: true
+      x-access: internal
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/InternalUserController.java:50
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_LANGUAGE`, `INVALID_NAME`, `INVALID_PHONE`, `INVALID_THEME`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_LANGUAGE
+            - INVALID_NAME
+            - INVALID_PHONE
+            - INVALID_THEME
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /internal/v1/users/admins:
+    get:
+      tags:
+        - Internal User
+      operationId: activeAdmins
+      description: "Javadoc: Ids de las cuentas ADMIN activas; una cuenta desactivada no recibe avisos."
+      security:
+        - internalKey: []
+      x-internal: true
+      x-access: internal
+      x-source: com/lavarapido/security/infrastructure/adapter/in/web/InternalUserController.java:60
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+                  format: int64
+        "400":
+          description: "Bad Request. `code`: `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`."
+          x-codes:
+            - INVALID_DOCUMENT
+            - INVALID_EMAIL
+            - INVALID_NAME
+            - INVALID_PHONE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
 components:
-  schemas:
-    PreferencesRequest:
-      type: "object"
-      properties:
-        theme:
-          type: "string"
-        language:
-          type: "string"
-        notificationsEnabled:
-          type: "boolean"
-        emailRemindersEnabled:
-          type: "boolean"
-        promotionsEnabled:
-          type: "boolean"
-    PreferencesResponse:
-      type: "object"
-      properties:
-        theme:
-          type: "string"
-        language:
-          type: "string"
-        notificationsEnabled:
-          type: "boolean"
-        emailRemindersEnabled:
-          type: "boolean"
-        promotionsEnabled:
-          type: "boolean"
-    ChangePasswordRequest:
-      type: "object"
-      properties:
-        currentPassword:
-          type: "string"
-          maxLength: 72
-          minLength: 0
-        newPassword:
-          type: "string"
-          maxLength: 72
-          minLength: 0
-      required:
-        - "currentPassword"
-        - "newPassword"
-    ChangeEmailRequest:
-      type: "object"
-      properties:
-        newEmail:
-          type: "string"
-          format: "email"
-          maxLength: 60
-          minLength: 0
-        currentPassword:
-          type: "string"
-          maxLength: 72
-          minLength: 0
-      required:
-        - "currentPassword"
-        - "newEmail"
-    UserResponse:
-      type: "object"
-      properties:
-        id:
-          type: "integer"
-          format: "int64"
-        email:
-          type: "string"
-        documentNumber:
-          type: "string"
-        firstName:
-          type: "string"
-        lastName:
-          type: "string"
-        phone:
-          type: "string"
-        roles:
-          type: "array"
-          items:
-            type: "string"
-        active:
-          type: "boolean"
-        lastLogin:
-          type: "string"
-          format: "date-time"
-        personId:
-          type: "integer"
-          format: "int64"
-        createdAt:
-          type: "string"
-          format: "date-time"
-    AddressDto:
-      type: "object"
-      properties:
-        address:
-          type: "string"
-          maxLength: 200
-          minLength: 0
-    UpdateRolePermissionsRequest:
-      type: "object"
-      properties:
-        permissionIds:
-          type: "array"
-          items:
-            type: "integer"
-            format: "int32"
-      required:
-        - "permissionIds"
-    RolePermissionsResponse:
-      type: "object"
-      properties:
-        role:
-          type: "string"
-        permissionIds:
-          type: "array"
-          items:
-            type: "integer"
-            format: "int32"
-    DeactivateAccountRequest:
-      type: "object"
-      properties:
-        currentPassword:
-          type: "string"
-          maxLength: 72
-          minLength: 0
-      required:
-        - "currentPassword"
-    RegisterRequest:
-      type: "object"
-      properties:
-        documentNumber:
-          type: "string"
-          maxLength: 20
-          minLength: 0
-        firstName:
-          type: "string"
-          maxLength: 60
-          minLength: 0
-        lastName:
-          type: "string"
-          maxLength: 60
-          minLength: 0
-        email:
-          type: "string"
-          format: "email"
-          maxLength: 60
-          minLength: 0
-        phone:
-          type: "string"
-          maxLength: 20
-          minLength: 0
-        password:
-          type: "string"
-          maxLength: 72
-          minLength: 0
-        acceptsTerms:
-          type: "boolean"
-        acceptsDataPolicy:
-          type: "boolean"
-      required:
-        - "documentNumber"
-        - "email"
-        - "firstName"
-        - "lastName"
-        - "password"
-    VerifyResetCodeRequest:
-      type: "object"
-      properties:
-        email:
-          type: "string"
-          maxLength: 120
-          minLength: 0
-        code:
-          type: "string"
-          minLength: 1
-          pattern: "[0-9]{6}"
-      required:
-        - "code"
-        - "email"
-    ResetPasswordRequest:
-      type: "object"
-      properties:
-        email:
-          type: "string"
-          maxLength: 120
-          minLength: 0
-        code:
-          type: "string"
-          minLength: 1
-          pattern: "[0-9]{6}"
-        newPassword:
-          type: "string"
-          maxLength: 72
-          minLength: 0
-      required:
-        - "code"
-        - "email"
-        - "newPassword"
-    ForgotPasswordRequest:
-      type: "object"
-      properties:
-        email:
-          type: "string"
-          maxLength: 120
-          minLength: 0
-      required:
-        - "email"
-    LoginRequest:
-      type: "object"
-      properties:
-        email:
-          type: "string"
-          maxLength: 120
-          minLength: 0
-        password:
-          type: "string"
-          maxLength: 72
-          minLength: 0
-      required:
-        - "email"
-        - "password"
-    LoginResponse:
-      type: "object"
-      properties:
-        accessToken:
-          type: "string"
-        tokenType:
-          type: "string"
-        expiresIn:
-          type: "integer"
-          format: "int64"
-        expiresAt:
-          type: "string"
-          format: "date-time"
-        user:
-          "$ref": "#/components/schemas/UserResponse"
-    CreateUserRequest:
-      type: "object"
-      properties:
-        documentNumber:
-          type: "string"
-          maxLength: 20
-          minLength: 0
-        firstName:
-          type: "string"
-          maxLength: 60
-          minLength: 0
-        lastName:
-          type: "string"
-          maxLength: 60
-          minLength: 0
-        email:
-          type: "string"
-          format: "email"
-          maxLength: 60
-          minLength: 0
-        phone:
-          type: "string"
-          maxLength: 20
-          minLength: 0
-        password:
-          type: "string"
-          maxLength: 72
-          minLength: 0
-        roles:
-          type: "array"
-          items:
-            type: "string"
-            enum:
-              - "ADMIN"
-              - "OPERATOR"
-              - "CLIENT"
-          minItems: 1
-          uniqueItems: true
-      required:
-        - "documentNumber"
-        - "email"
-        - "firstName"
-        - "lastName"
-        - "password"
-        - "roles"
-    UpdateProfileRequest:
-      type: "object"
-      properties:
-        firstName:
-          type: "string"
-          maxLength: 60
-          minLength: 0
-        lastName:
-          type: "string"
-          maxLength: 60
-          minLength: 0
-        phone:
-          type: "string"
-          maxLength: 20
-          minLength: 0
-      required:
-        - "firstName"
-        - "lastName"
-    UpdateStatusRequest:
-      type: "object"
-      properties:
-        active:
-          type: "boolean"
-      required:
-        - "active"
-    ContactResponse:
-      type: "object"
-      properties:
-        userId:
-          type: "integer"
-          format: "int64"
-        email:
-          type: "string"
-        firstName:
-          type: "string"
-        active:
-          type: "boolean"
-        pushEnabled:
-          type: "boolean"
-        emailRemindersEnabled:
-          type: "boolean"
-        promotionsEnabled:
-          type: "boolean"
-        language:
-          type: "string"
-    PageResponseUserResponse:
-      type: "object"
-      properties:
-        items:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/UserResponse"
-        page:
-          type: "integer"
-          format: "int32"
-        size:
-          type: "integer"
-          format: "int32"
-        totalElements:
-          type: "integer"
-          format: "int64"
-        totalPages:
-          type: "integer"
-          format: "int32"
-    PermissionResponse:
-      type: "object"
-      properties:
-        id:
-          type: "integer"
-          format: "int32"
-        code:
-          type: "string"
-        name:
-          type: "string"
-        resource:
-          type: "string"
-        action:
-          type: "string"
-    RolePermissionsMatrixResponse:
-      type: "object"
-      properties:
-        permissions:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/PermissionResponse"
-        roles:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/RolePermissionsResponse"
   securitySchemes:
     bearerAuth:
-      type: "http"
-      scheme: "bearer"
-      bearerFormat: "JWT"
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token from `POST /api/v1/auth/login` (security-service, HS256, claims `sub`, `roles`, `sid`). Every service validates it itself (ADR-006); the gateway forwards it unchanged.
+    internalKey:
+      type: apiKey
+      in: header
+      name: X-Internal-Key
+      description: Shared key between services (`app.internal.api-key` / `INTERNAL_API_KEY`). Only for `/internal/**` (and, in booking-service, `/api/v1/operator/**`). These routes are not published by the API gateway.
+  schemas:
+    ProblemDetail:
+      type: object
+      description: "RFC 7807 problem detail returned by every error (`Content-Type: application/problem+json`). `code` is the stable value the web and the app translate; `detail` is an English message for logs."
+      required:
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          example: about:blank
+        title:
+          type: string
+          example: Conflict
+        status:
+          type: integer
+          example: 409
+        detail:
+          type: string
+          example: The data conflicts with an existing record
+        instance:
+          type: string
+          example: /api/v1/bookings
+        code:
+          type: string
+          description: Error code (catalogue in `info.description` and `x-error-codes`)
+          example: CONFLICT
+        errors:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Only with `VALIDATION_ERROR`: invalid field → message"
+        violations:
+          type: array
+          items:
+            type: string
+          description: "Only with `WEAK_PASSWORD`: the password rules that failed"
+      additionalProperties: true
+    AddressDto:
+      type: object
+      properties:
+        address:
+          type: string
+          maxLength: .nan
+      description: Dirección del perfil, en la petición y en la respuesta. Vacía o null la borra.
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/AddressDto.java:7
+    ChangeEmailRequest:
+      type: object
+      properties:
+        newEmail:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          format: email
+          maxLength: 60
+        currentPassword:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 72
+      required:
+        - newEmail
+        - currentPassword
+      description: Correo nuevo para iniciar sesión + la contraseña actual para confirmar.
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/ChangeEmailRequest.java:8
+    ChangePasswordRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 72
+        newPassword:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 72
+      required:
+        - currentPassword
+        - newPassword
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/ChangePasswordRequest.java:6
+    ContactResponse:
+      type: object
+      properties:
+        userId:
+          type: integer
+          format: int64
+        email:
+          type: string
+        firstName:
+          type: string
+        active:
+          type: boolean
+        pushEnabled:
+          type: boolean
+        emailRemindersEnabled:
+          type: boolean
+        promotionsEnabled:
+          type: boolean
+        language:
+          type: string
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/InternalUserController.java:67
+    CreateUserRequest:
+      type: object
+      properties:
+        documentNumber:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 20
+        firstName:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 60
+        lastName:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 60
+        email:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          format: email
+          maxLength: 60
+        phone:
+          type: string
+          maxLength: 20
+        password:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 72
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleCode"
+          uniqueItems: true
+          minItems: 1
+      required:
+        - documentNumber
+        - firstName
+        - lastName
+        - email
+        - password
+        - roles
+      description: Un administrador crea una cuenta (ej. un operario) con una contraseña inicial.
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/CreateUserRequest.java:12
+    DeactivateAccountRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 72
+      required:
+        - currentPassword
+      description: "Confirmación para cerrar la cuenta propia: la contraseña actual."
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/DeactivateAccountRequest.java:7
+    ForgotPasswordRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 120
+      required:
+        - email
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/ForgotPasswordRequest.java:6
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 120
+        password:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 72
+      required:
+        - email
+        - password
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/LoginRequest.java:6
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+        expiresIn:
+          type: integer
+          format: int64
+        expiresAt:
+          type: string
+          format: date-time
+        user:
+          $ref: "#/components/schemas/UserResponse"
+      description: Respuesta de token estilo OAuth2, más el usuario para que el frontend redirija por rol sin otra llamada.
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/LoginResponse.java:6
+    PageResponseOfUserResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/PageResponse.java:8
+    PermissionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        code:
+          type: string
+        name:
+          type: string
+        resource:
+          type: string
+        action:
+          type: string
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/RolePermissionDtos.java:15
+    PreferencesRequest:
+      type: object
+      properties:
+        theme:
+          type: string
+        language:
+          type: string
+        notificationsEnabled:
+          type: boolean
+        emailRemindersEnabled:
+          type: boolean
+        promotionsEnabled:
+          type: boolean
+      description: "Cambio parcial de las preferencias: el campo que no llegue se queda como estaba. Así la pantalla de apariencia manda solo tema e idioma, y la de notificaciones solo los interruptores, sin pisarse. notificationsEnabled son las notificaciones push. Un tema o idioma que llegue vacío o desconocido responde 400."
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/PreferencesRequest.java:9
+    PreferencesResponse:
+      type: object
+      properties:
+        theme:
+          type: string
+        language:
+          type: string
+        notificationsEnabled:
+          type: boolean
+        emailRemindersEnabled:
+          type: boolean
+        promotionsEnabled:
+          type: boolean
+      description: notificationsEnabled son las notificaciones push; los otros dos, el correo de recordatorios y las promociones.
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/PreferencesResponse.java:6
+    RegisterRequest:
+      type: object
+      properties:
+        documentNumber:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 20
+        firstName:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 60
+        lastName:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 60
+        email:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          format: email
+          maxLength: 60
+        phone:
+          type: string
+          maxLength: 20
+        password:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 72
+        acceptsTerms:
+          type: boolean
+        acceptsDataPolicy:
+          type: boolean
+      required:
+        - documentNumber
+        - firstName
+        - lastName
+        - email
+        - password
+      description: Autorregistro. Los value objects del dominio vuelven a validar el formato.
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/RegisterRequest.java:8
+    ResetPasswordRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 120
+        code:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          pattern: "[0-9]{6}"
+        newPassword:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 72
+      required:
+        - email
+        - code
+        - newPassword
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/ResetPasswordRequest.java:7
+    RoleCode:
+      type: string
+      enum:
+        - ADMIN
+        - OPERATOR
+        - CLIENT
+    RolePermissionsMatrixResponse:
+      type: object
+      properties:
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PermissionResponse"
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/RolePermissionsResponse"
+      description: "permissions: el catálogo completo; roles: lo que tiene asignado cada uno de los 3 roles fijos."
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/RolePermissionDtos.java:30
+    RolePermissionsResponse:
+      type: object
+      properties:
+        role:
+          type: string
+        permissionIds:
+          type: array
+          items:
+            type: integer
+            format: int32
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/RolePermissionDtos.java:22
+    UpdateProfileRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 60
+        lastName:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 60
+        phone:
+          type: string
+          maxLength: 20
+      required:
+        - firstName
+        - lastName
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/UpdateProfileRequest.java:6
+    UpdateRolePermissionsRequest:
+      type: object
+      properties:
+        permissionIds:
+          type: array
+          items:
+            type: integer
+            format: int32
+      required:
+        - permissionIds
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/RolePermissionDtos.java:34
+    UpdateStatusRequest:
+      type: object
+      properties:
+        active:
+          type: boolean
+      required:
+        - active
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/UpdateStatusRequest.java:5
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+        documentNumber:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        lastLogin:
+          type: string
+          format: date-time
+        personId:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/UserResponse.java:9
+    VerifyResetCodeRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 120
+        code:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          pattern: "[0-9]{6}"
+      required:
+        - email
+        - code
+      x-java: com/lavarapido/security/infrastructure/adapter/in/web/dto/VerifyResetCodeRequest.java:7
+x-error-codes:
+  ACCOUNT_DISABLED: 403
+  ACCOUNT_LOCKED: 423
+  ADMIN_CANNOT_BE_DISABLED: 403
+  BAD_REQUEST: 400
+  CANNOT_DISABLE_OWN_ACCOUNT: 403
+  CONFLICT: 409
+  DOCUMENT_ALREADY_REGISTERED: 409
+  EMAIL_ALREADY_REGISTERED: 409
+  EMAIL_DOMAIN_NOT_ALLOWED: 400
+  FORBIDDEN: 403
+  INCORRECT_CURRENT_PASSWORD: 400
+  INTERNAL_ERROR: 500
+  INVALID_ADDRESS: 400
+  INVALID_CREDENTIALS: 401
+  INVALID_DOCUMENT: 400
+  INVALID_EMAIL: 400
+  INVALID_LANGUAGE: 400
+  INVALID_NAME: 400
+  INVALID_PHONE: 400
+  INVALID_RESET_CODE: 400
+  INVALID_ROLES: 400
+  INVALID_THEME: 400
+  METHOD_NOT_ALLOWED: 405
+  NOT_FOUND: 404
+  SAME_PASSWORD: 400
+  UNAUTHORIZED: 401
+  UNKNOWN_PERMISSION: 400
+  USER_NOT_FOUND: 404
+  VALIDATION_ERROR: 400
+  WEAK_PASSWORD: 400
