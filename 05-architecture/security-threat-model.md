@@ -43,18 +43,20 @@ The browser/mobile client is untrusted. Service code validates authorization eve
 
 | Threat | Example | Current mitigation | Status |
 |---|---|---|---|
-| Spoofing | Stolen credentials used to log in | BCrypt passwords, JWT authentication, inactive accounts rejected, account locked 15 minutes after 5 failed attempts in 15 minutes (RF-004b; concurrent attempts serialised with `sp_getapplock` since 2026-10-22); changing or recovering the password closes the other sessions | Implemented |
-| Spoofing | A closed-session token reused | security-service rejects it; the gateway cuts it before other services (30 s cache). **Gap SEC-01:** `bearer` in lower case skips the gateway check in five services | Partial |
+| Spoofing | Stolen credentials used to log in | BCrypt passwords, JWT authentication, inactive accounts rejected, account locked 15 minutes after 5 failed attempts in 15 minutes (RF-004b; concurrent attempts serialised with `sp_getapplock` since 2026-10-22; wrong current passwords count too since SEC-12); changing or recovering the password closes the other sessions; 60 requests per minute per IP on `/api/v1/auth/**` (SEC-04); recovery code burnt after 5 failures (SEC-05) | Implemented |
+| Spoofing | A closed-session token reused | security-service rejects it; the gateway cuts it before other services (30 s cache), with any `Authorization` scheme and on any path since 2026-10-24 (SEC-01 closed) | Implemented |
+| Spoofing | A client fakes its IP to dodge the rate limit | The gateway trusts `X-Forwarded-For` only from `TRUSTED_PROXIES` and reads it right to left; Caddy rewrites it; security trusts it only from private or local addresses (SEC-11) | Implemented |
 | Spoofing | Forged service-to-service identity | Forwarded user token (booking → customer, customer → security, operations → booking/security, payment → booking); `X-Internal-Key` on `/internal/**` (notification → security, operations → booking/security, APK script → notification), not routed by the gateway; since 2026-10-23 also on booking's `/api/v1/operator/bookings/**`, which only operations calls (E-01) | Implemented |
 | Tampering | Customer changes another customer's booking id | Ownership checks inside owning service (booking-service answers 404 for a booking that is not the caller's) | Implemented |
-| Tampering | Receipt reference reused | Use-case check: a reference already used on another booking is rejected (409 `TRANSACTION_REFERENCE_REUSED`); the column has an index, not a unique constraint | Implemented |
+| Tampering | Receipt reference reused | Use-case check: a reference already used on another booking is rejected (409 `TRANSACTION_REFERENCE_REUSED`); since migration 023 (2026-10-24, A-16) an indexed view keeps references unique among live payments and a filtered index allows one open payment per booking | Implemented |
 | Repudiation | User denies changing a booking | `created_by` / `updated_by` / `deleted_by` with timestamps on each row; `audit.audit_log` exists but nothing writes to it yet | Partial |
 | Information disclosure | Password/token appears in logs | Logging rules prohibit secrets | Design |
 | Information disclosure | User reads another user's payment | Role plus ownership checks (payment-service asks booking-service for the booking with the client's token) | Implemented |
-| Denial of Service | Excessive requests | No rate limiter; the Azure server only opens 80/443 (Caddy) and each container has a memory limit | Accepted for scope |
+| Denial of Service | Excessive requests | Rate limit only on `/api/v1/auth/**` (60/min per IP, in memory, SEC-04); route timeouts 5 s / 60 s (SEC-16); the Azure server only opens 80/443 (Caddy) and each container has a memory limit. The rest of the API is not limited | Partial |
 | Elevation of privilege | Customer calls administrator operation | Role checks in each service (Spring Security rules by path, `[Authorize(Roles = ...)]` in payment-service) | Implemented |
 | Elevation of privilege | Operator changes another operator's execution | The operator starts or finishes only the service lines assigned to them (`OperationsService.myLines`); since 2026-10-23 (E-01) the operator cannot call booking's status route directly: it needs the internal key that only operations has | Implemented |
-| Elevation of privilege | A retired administrator keeps using an old token | E-02: a token whose roles are no longer in `security.user_role` revokes all the account's sessions at its next check (subject to the SEC-01 gap) | Partial |
+| Elevation of privilege | A retired administrator keeps using an old token | E-02: a token whose roles are no longer in `security.user_role` revokes all the account's sessions at its next check; the gateway applies it to every scheme since SEC-01 was closed | Implemented |
+| Elevation of privilege | Staff use client routes and get a client profile | `/api/v1/bookings/**` and `/api/v1/vehicles/**` accept only `CLIENT` since 2026-10-24 (BIZ-12), except `availability` and `cancellation-reasons` for ADMIN | Implemented |
 
 ## 4. Authentication
 
@@ -114,11 +116,11 @@ The current design does not define message-level encryption or a separate servic
 | JWT secret shared by services is leaked | High | Environment variables; reconsider asymmetric signing before real deployment |
 | Event published after DB commit but service crashes before publish | Medium/High | Accepted for version 1 (H-11, ADR-020); scheduled jobs rebuild reminders, alerts and the "Por cerrar" list |
 | JWT kept in the browser's `localStorage` | Medium | Accepted for version 1 (H-18, ADR-020); one-hour expiry, session check, strict `script-src` in Caddy's CSP |
-| Closed-session token sent as `bearer` (SEC-01) | High | Open: fix the case-insensitive check in the gateway |
+| Closed-session token sent as `bearer` (SEC-01) | High | Closed on 2026-10-24 (gateway `c8b607a`) |
 | Receipts and inspection photos stored inside the database | Medium | Images only (no SVG, no external links), inspection photos up to 2 MB; a file storage is a future option |
 | SMTP credentials (Gmail app password) in `.env` | Medium | `.env` is git-ignored; never logged; rotate if shared |
 | Internal API key leaked | Medium | Grants read of a user's contact data and of the admins list, read of bookings and the app-update notice; separate from `JWT_SECRET`; rotate in `.env` |
-| Rate limiting is not implemented (SEC-04) | Medium | The Azure server is public; only the login has a limit (lockout) |
+| Rate limiting only on `/api/v1/auth/**`, in memory (SEC-04) | Low | Closed for `/auth` on 2026-10-24; per replica, IPv6 not grouped by /64; the rest of the API is not limited |
 
 ## References
 
