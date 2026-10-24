@@ -20,7 +20,7 @@ flowchart TB
         dl[/"/app/<br/>APK + version.json"/]
         gw["api-gateway :8080"]
         apps["6 microservices<br/>security :3001 · customer :3002<br/>booking :3003 · operations :3004<br/>payment :3005 (.NET 8) · notification :3006"]
-        db[("SQL Server 2022 Express<br/>LavaRapido · 57 tables")]
+        db[("SQL Server 2022 Express<br/>LavaRapido · 58 tables + 1 view")]
         mq[["RabbitMQ :5672"]]
         init["db-init + payment-migrate<br/>(run once, exit 0)"]
         scripts["deploy/update-server.sh<br/>ci-deploy.sh · publish-apk.sh"]

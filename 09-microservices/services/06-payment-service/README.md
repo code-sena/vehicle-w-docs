@@ -82,7 +82,7 @@ token, like the Java services (`cross-cutting.md` §4).
 | GET | `/api/v1/payments/me` (`?from=&to=` booking dates, `?service=`; newest booking first — RF-015) | CLIENT |
 | GET | `/api/v1/payments/{id}` (own payment) | CLIENT |
 | GET | `/api/v1/payments/me/bookings` (each booking: latest payment status and `payable`, so the screens do not repeat the rule) | CLIENT |
-| GET | `/api/v1/admin/payments` (`?status=PENDING\|IN_REVIEW\|APPROVED\|REJECTED\|REFUNDED`; with `page`/`size` a page without images) | ADMIN |
+| GET | `/api/v1/admin/payments` (`?status=PENDING\|IN_REVIEW\|APPROVED\|REJECTED\|REFUNDED`). With `?page=0&size=20` (E-10, 2026-10-24) it answers `{items, page, size, totalElements, totalPages}` without receipt images, with `hasReceiptImage` and `bookingCancelled`; without them, the old array (up to 200, with images). The image is read with `GET /admin/payments/{id}` | ADMIN |
 | GET | `/api/v1/admin/payments/{id}` · `/admin/payments/amount-due?bookingId=` | ADMIN |
 | POST | `/api/v1/admin/payments` (manual payment) | ADMIN |
 | POST | `/api/v1/admin/payments/{id}/approve` · `/reject` · `/refund` | ADMIN |
@@ -93,7 +93,8 @@ token, like the Java services (`cross-cutting.md` §4).
 | PUT · DELETE | `/api/v1/admin/promotions/{id}` · PATCH `/admin/promotions/{id}/active` | ADMIN |
 | GET | `/api/v1/loyalty/balance` · `/loyalty/promotions` | CLIENT |
 | POST | `/api/v1/loyalty/redeem` (`{bookingId, code}`) | CLIENT |
-| GET · DELETE | `/api/v1/loyalty/redemptions/{bookingId}` (amount due and coupon) · `/loyalty/redemptions/{bookingId}/{promotionId}` (remove it) | CLIENT |
+| GET | `/api/v1/loyalty/redemptions/{bookingId}` (amount due `amountDue` and the applied coupon, BIZ-02; another client's booking → 404 `BOOKING_NOT_FOUND`) | CLIENT |
+| DELETE | `/api/v1/loyalty/redemptions/{bookingId}/{promotionId}` (remove the coupon, E-08) | CLIENT |
 | GET | `/health`, `/actuator/health` | public — check SQL Server and answer 503 `DOWN` within 3 s when it does not respond |
 
 Through the gateway these paths are routed to `:3005` (`ROUTE_PAYMENT_URL`).

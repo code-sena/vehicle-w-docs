@@ -83,7 +83,7 @@ bookingJpaRepository.findWithLinesById(id);
 - JWT with maximum expiration of **1 hour** for access tokens (RNF-004.2)
 - **No refresh tokens in this version.** The user logs in again once the token expires — deferred by ADR-006, not implemented as a stopgap
 - Account lockout after **5 failed attempts within 15 minutes, for 15 minutes** — the definition of RF-004b (`05-architecture/overview.md`, closes AT-004), now stated in `04-requirements/functional.md`. The counters are stored in `security.login_lockout` (migration 034), so a restart of `security-service` does not clear them; only the password recovery code attempts are counted in memory
-- No rate limiting yet at the gateway or in Caddy, even though the academic server is public (TD-022, ADR-005 Pending decisions) — the account lockout above is the current defense against brute-forcing a single account
+- Rate limiting since 2026-10-24 (SEC-04, ADR-005): the gateway allows 60 requests per minute per client IP on `/api/v1/auth/**` and then answers 429 `RATE_LIMITED` with `Retry-After`; the rest of the API and Caddy have no limit. The account lockout above still protects each account against brute force
 
 ### A08 — Software and Data Integrity Failures
 

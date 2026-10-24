@@ -49,8 +49,8 @@
 | Method | Path | Access |
 |---|---|---|
 | GET | `/api/v1/vehicle-types` | public |
-| GET · POST | `/api/v1/vehicles` | client token (own vehicles only) |
-| GET · PUT · DELETE | `/api/v1/vehicles/{id}` | client token — another client's vehicle is 404 |
+| GET · POST | `/api/v1/vehicles` | CLIENT only (own vehicles; 403 for ADMIN and OPERATOR since BIZ-12) |
+| GET · PUT · DELETE | `/api/v1/vehicles/{id}` | CLIENT only — another client's vehicle is 404; DELETE with active bookings → 409 `VEHICLE_HAS_ACTIVE_BOOKINGS` (BIZ-08) |
 | GET | `/api/v1/admin/vehicles?ids=1,2` or `?plate=ABC123` | ADMIN or OPERATOR — vehicle + `ownerUserId` |
 
 Full contract: [`07-api/contracts/openapi/customer-service.yaml`](../../../07-api/contracts/openapi/customer-service.yaml).

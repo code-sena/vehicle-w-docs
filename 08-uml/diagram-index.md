@@ -77,7 +77,7 @@
 ### Data (entity-relationship)
 
 Generated from the `LavaRapido` database (`sys.tables`, `sys.columns`, `sys.foreign_keys`) with every
-migration applied (up to 039): 57 tables in 9 schemas. Each file also lists the references to other
+migration applied (up to 039 when they were generated): 57 tables in 9 schemas. On 2026-10-24 the model has 58 tables and 1 view (migrations up to 047, seeds up to 116, payment up to 023; the new table is `notification.pending_delivery`); see `06-data/models.md`. Each file also lists the references to other
 services, which have no foreign key (ADR-003). The full dictionary stays in `06-data/models.md`.
 
 | ID | Schemas | Source | Tables |

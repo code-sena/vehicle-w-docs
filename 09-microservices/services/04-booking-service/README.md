@@ -78,12 +78,14 @@
 |---|---|---|
 | GET | `/api/v1/catalog/categories` · `/catalog/services?vehicleTypeId=` | public |
 | GET | `/api/v1/schedule/business-hours` · `/schedule/exceptions` · `/establishment` | public |
-| GET | `/api/v1/bookings/availability?date=&vehicleTypeId=&serviceIds=` | token |
-| POST | `/api/v1/bookings` | client |
-| GET | `/api/v1/bookings/me` · `/bookings/{id}` · `/bookings/cancellation-reasons` | client |
+| GET | `/api/v1/bookings/availability?date=&vehicleTypeId=&serviceIds=` | CLIENT, ADMIN (BIZ-12: OPERATOR gets 403) |
+| POST | `/api/v1/bookings` | CLIENT only (403 for ADMIN and OPERATOR since BIZ-12) |
+| GET | `/api/v1/bookings/me` · `/bookings/{id}` | CLIENT only |
+| GET | `/api/v1/bookings/cancellation-reasons` | CLIENT, ADMIN (the admin booking form uses it) |
 | PUT · POST | `/api/v1/bookings/{id}` (reschedule, not used by the web or the app) · `/bookings/{id}/cancel` (no body needed, reason `CUSTOMER_REQUEST`) | client |
 | GET · POST | `/api/v1/admin/bookings` (`?from=&to=&status=`) | ADMIN |
 | POST | `/internal/v1/bookings/{id}/no-show` (a confirmed booking past its end and margin that never had an operator) | internal key (operations-service) |
+| GET | `/internal/v1/bookings/active-count?customerVehicleId=` (active bookings of a vehicle, BIZ-08) | internal key (customer-service) |
 | GET | `/api/v1/admin/schedule/history` (changes of hours, exceptions and bays) | ADMIN |
 | GET | `/api/v1/admin/bookings/day-summary` (`?date=`, default today in the shop zone): bookings of the day vs the day before, for the admin home | ADMIN |
 | GET · PUT | `/api/v1/admin/bookings/{id}` | ADMIN |
@@ -93,8 +95,8 @@
 | POST · PUT · DELETE | `/api/v1/admin/schedule/exceptions[/{id}]` | ADMIN |
 | GET · POST · PUT · DELETE | `/api/v1/admin/bays[/{id}]` | ADMIN |
 | GET · PUT | `/api/v1/admin/establishment` (business data of Settings; the domain validates it) | ADMIN |
-| GET | `/api/v1/operator/bookings` · `/operator/bookings/{id}` | OPERATOR, ADMIN (used by operations-service) |
-| PATCH | `/api/v1/operator/bookings/{id}/status` | OPERATOR, ADMIN (used by operations-service) |
+| GET | `/api/v1/operator/bookings` · `/operator/bookings/{id}` | OPERATOR, ADMIN **and** `X-Internal-Key`: only operations-service calls them, the gateway does not route them (E-01) |
+| PATCH | `/api/v1/operator/bookings/{id}/status` | OPERATOR, ADMIN **and** `X-Internal-Key` (only operations-service, E-01) |
 
 Full contract: [`07-api/contracts/openapi/booking-service.yaml`](../../../07-api/contracts/openapi/booking-service.yaml).
 Dates are local shop dates (`yyyy-MM-dd`) and times `HH:mm` in `America/Bogota`; responses also
