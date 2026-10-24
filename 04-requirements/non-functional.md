@@ -65,7 +65,7 @@
  
 | # | Requirement | How it is verified |
 |---|-------------|--------------------|
-| 4.1 | Private endpoints require a valid JWT in the `Authorization: Bearer` header | A request without a token returns 401 |
+| 4.1 | Private endpoints require a valid JWT in the `Authorization: Bearer` header; a token of a closed session is rejected whatever the scheme case (SEC-01) | A request without a token, or with a closed-session token sent as `bearer`, returns 401 |
 | 4.2 | JWT tokens expire after 1 hour | An expired token returns 401 |
 | 4.3 | Passwords are stored hashed with BCrypt, never in plain text | Database inspection |
 | 4.4 | An account locks for 15 minutes after 5 failed login attempts within 15 minutes (RF-004b) | `AuthenticationServiceTest` (lock and window) + `ApiSecurityWebTest` (423) |
@@ -73,7 +73,7 @@
 | 4.6 | No card data is ever collected or stored by this system — digital payments are manual QR transfers verified against an uploaded receipt, and cash is confirmed directly by the Administrator (RF-013 to RF-016) | Code and schema review |
 | 4.7 | Credentials and API keys live in environment variables, never in the repository | Code review before each PR |
 | 4.8 | HTTPS is required in any environment reachable outside the team's machines; HTTP is acceptable for local development only | Deployment review |
-| 4.9 | Personal data is handled under Colombian Law 1581 of 2012: the user accepts the data-processing policy at sign-up | Sign-up flow review |
+| 4.9 | Personal data is handled under Colombian Law 1581 of 2012: the user accepts the terms and the data-processing policy at sign-up, and the server rejects a sign-up without both (400 `CONSENT_REQUIRED`, SEC-07, 2026-10-24) | Sign-up flow review |
  
 ---
  
