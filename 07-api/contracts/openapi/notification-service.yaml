@@ -1,11 +1,11 @@
-# Contract of notification-service, rebuilt on 2026-10-23 from the code on origin/develop (see 07-api/README.md).
+# Contract of notification-service, rebuilt on 2026-10-24 from the code on origin/develop (see 07-api/README.md).
 # Regenerate it from the code instead of editing by hand, so it never drifts.
 openapi: 3.0.3
 info:
   title: LavaRápido notification-service API
   version: v1
   description: |-
-    Contract of notification-service, rebuilt from the controllers of `lavarapido-notification-service` on `origin/develop` (`0831ce7`, 2026-10-23) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
+    Contract of notification-service, rebuilt from the controllers of `lavarapido-notification-service` on `origin/develop` (`c5429ad`, 2026-10-24) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
 
     **Security.** Operations without `security` use the bearer JWT (`bearerAuth`). `security: []` = public. `x-roles` = roles the service accepts on that path (from its `SecurityConfig`); `x-access` = `public`, `authenticated` (any role), `roles`, `internal` (only `X-Internal-Key`, not published by the gateway) or `roles + internal key`. Ownership checks (a client only sees its own data) answer 404, not 403.
 
@@ -35,6 +35,7 @@ info:
     | `METHOD_NOT_ALLOWED` | 405 | The path exists but not with this HTTP method |
     | `CONFLICT` | 409 | The database rejected the change (unique index, trigger or check) after the code's own checks |
     | `INTERNAL_ERROR` | 500 | Unexpected error (logged with its correlation id) |
+    | `SECURITY_SERVICE_UNAVAILABLE` | 503 | `DependencyUnavailableException` — not reached from HTTP (events or scheduled jobs) |
 servers:
   - url: http://localhost:8080
     description: Through the API gateway (ADR-005); `/internal/**` is not reachable here
@@ -723,6 +724,7 @@ x-error-codes:
   NOTIFICATION_NOT_FOUND: 404
   NOTIFICATION_TYPE_NOT_ALLOWED: 400
   NOT_FOUND: 404
+  SECURITY_SERVICE_UNAVAILABLE: 503
   UNAUTHORIZED: 401
   UNKNOWN_NOTIFICATION_TYPE: 400
   VALIDATION_ERROR: 400
