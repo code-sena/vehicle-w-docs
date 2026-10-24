@@ -64,7 +64,7 @@ curl http://localhost:[port]/health
 
 ## Documents for this service
 
-- [data-model.md](./data-model.md) — Tables and DB schema
-- [events.md](./events.md) — Events it publishes and consumes
-- [decisions.md](./decisions.md) — Specific design decisions
-- [runbook.md](./runbook.md) — How to operate in production
+- [data-model.md](./service/data-model.md) — Tables and DB schema
+- [events.md](./service/events.md) — Events it publishes and consumes
+- [decisions.md](./service/decisions.md) — Specific design decisions
+- [runbook.md](./service/runbook.md) — How to operate in production
