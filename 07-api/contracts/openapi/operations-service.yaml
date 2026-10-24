@@ -1,1360 +1,3161 @@
-# Generated from the running operations-service (springdoc, GET /v3/api-docs) on 2026-10-21.
-# Do not edit by hand: regenerate from the code so the contract never drifts.
-openapi: "3.1.0"
+# Contract of operations-service, rebuilt on 2026-10-23 from the code on origin/develop (see 07-api/README.md).
+# Regenerate it from the code instead of editing by hand, so it never drifts.
+openapi: 3.0.3
 info:
-  title: "LavaRápido operations-service API"
-  version: "v1"
-  description: "Contract of operations-service. Public paths are reached through the API gateway."
+  title: LavaRápido operations-service API
+  version: v1
+  description: |-
+    Contract of operations-service, rebuilt from the controllers of `lavarapido-operations-service` on `origin/develop` (`71df4b2`, 2026-10-23) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
+
+    **Security.** Operations without `security` use the bearer JWT (`bearerAuth`). `security: []` = public. `x-roles` = roles the service accepts on that path (from its `SecurityConfig`); `x-access` = `public`, `authenticated` (any role), `roles`, `internal` (only `X-Internal-Key`, not published by the gateway) or `roles + internal key`. Ownership checks (a client only sees its own data) answer 404, not 403.
+
+    **Errors.** Every error is a `ProblemDetail` with `code`. Each error response lists its codes in `x-codes`. Catalogue of this service:
+
+    | `code` | HTTP | Raised by / when |
+    |---|---|---|
+    | `ABSENCE_IN_PAST` | 400 | `InvalidValueException` — `POST /api/v1/admin/operators/{id}/absences` |
+    | `BAD_REQUEST` | 400 | Spring MVC rejected the request before the controller: malformed JSON, missing required query parameter or wrong parameter type |
+    | `BOOKING_WITHOUT_CLIENT` | 400 | `InvalidValueException` — `POST /api/v1/admin/inspections/{bookingId}/share` |
+    | `COMMENT_TOO_LONG` | 400 | `InvalidValueException` — not reached from HTTP (events or scheduled jobs) |
+    | `DUPLICATED_DAY` | 400 | `InvalidValueException` — `PUT /api/v1/admin/operators/{id}/availability` |
+    | `INVALID_ASSIGNMENT_NOTES` | 400 | `InvalidValueException` — `PUT /api/v1/admin/assignments/{bookingId}` |
+    | `INVALID_DAY` | 400 | `InvalidValueException` — 8 operations (see `x-codes` of each response) |
+    | `INVALID_FINDING` | 400 | `InvalidValueException` — `POST /api/v1/admin/inspections/{bookingId}/findings` |
+    | `INVALID_OPERATOR_PROFILE` | 400 | `InvalidValueException` — `PUT /api/v1/admin/operators/{id}/profile` |
+    | `INVALID_PHOTO` | 400 | `InvalidValueException` — `POST /api/v1/admin/inspections/{bookingId}/findings` |
+    | `INVALID_RANGE` | 400 | `InvalidValueException` — 20 operations (see `x-codes` of each response) |
+    | `INVALID_RATING` | 400 | `InvalidValueException` — not reached from HTTP (events or scheduled jobs) |
+    | `INVALID_REASON` | 400 | `InvalidValueException` — 20 operations (see `x-codes` of each response) |
+    | `INVALID_SLOT` | 400 | `InvalidValueException` — `GET /api/v1/operators/available` |
+    | `INVALID_TOKEN` | 400 | `InvalidValueException` — 22 operations (see `x-codes` of each response) |
+    | `TOO_MANY_PHOTOS` | 400 | `InvalidValueException` — `POST /api/v1/admin/inspections/{bookingId}/findings` |
+    | `VALIDATION_ERROR` | 400 | Bean Validation failed on the body (`errors`: field → message) or, where the service maps it, a path/query parameter has the wrong type |
+    | `UNAUTHORIZED` | 401 | No `Authorization: Bearer` token, invalid or expired token, closed session (the gateway checks it), or missing/wrong `X-Internal-Key` on `/internal/**` |
+    | `FORBIDDEN` | 403 | The token is valid but its role is not allowed on this path |
+    | `ABSENCE_NOT_FOUND` | 404 | `NotFoundException` — `DELETE /api/v1/admin/operators/{id}/absences/{absenceId}` |
+    | `BOOKING_NOT_FOUND` | 404 | `NotFoundException` — 15 operations (see `x-codes` of each response) |
+    | `FINDING_NOT_FOUND` | 404 | `NotFoundException` — `DELETE /api/v1/admin/inspections/{bookingId}/findings/{findingId}` |
+    | `INSPECTION_NOT_FOUND` | 404 | `NotFoundException` — 10 operations (see `x-codes` of each response) |
+    | `NOT_FOUND` | 404 | No route matches (Spring MVC) |
+    | `OPERATOR_NOT_FOUND` | 404 | `NotFoundException` — 12 operations (see `x-codes` of each response) |
+    | `PHOTO_NOT_FOUND` | 404 | `NotFoundException` — `GET /api/v1/admin/inspections/{bookingId}/photos/{photoId}`, `GET /api/v1/public/inspections/{token}/photos/{photoId}` |
+    | `METHOD_NOT_ALLOWED` | 405 | The path exists but not with this HTTP method |
+    | `ABSENCE_OVERLAP` | 409 | `ConflictException` — `POST /api/v1/admin/operators/{id}/absences` |
+    | `ALREADY_RATED` | 409 | `ConflictException` — not reached from HTTP (events or scheduled jobs) |
+    | `ASSIGNMENT_BUSY` | 409 | `ConflictException` — `PUT /api/v1/admin/assignments/{bookingId}` |
+    | `BOOKING_IN_PAST` | 409 | `ConflictException` — `PUT /api/v1/admin/assignments/{bookingId}` |
+    | `BOOKING_NOT_ASSIGNABLE` | 409 | `ConflictException` — `PUT /api/v1/admin/assignments/{bookingId}`, `GET /api/v1/admin/assignments/{bookingId}/candidates` |
+    | `BOOKING_NOT_TO_CLOSE` | 409 | `ConflictException` — `POST /api/v1/admin/assignments/{bookingId}/attended` |
+    | `BOOKING_STATE_CONFLICT` | 409 | `ConflictException` — `POST /api/v1/admin/assignments/{bookingId}/attended`, `POST /api/v1/operator/services/{bookingId}/start`, `POST /api/v1/operator/services/{bookingId}/finish` |
+    | `CONFLICT` | 409 | The database rejected the change (unique index, trigger or check) after the code's own checks |
+    | `EXECUTION_ALREADY_COMPLETED` | 409 | `ConflictException` — `POST /api/v1/admin/assignments/{bookingId}/attended` |
+    | `EXECUTION_ALREADY_STARTED` | 409 | `ConflictException` — `PUT /api/v1/admin/assignments/{bookingId}` |
+    | `EXECUTION_NOT_STARTED` | 409 | `ConflictException` — not reached from HTTP (events or scheduled jobs) |
+    | `INSPECTION_NOT_EDITABLE` | 409 | `ConflictException` — 7 operations (see `x-codes` of each response) |
+    | `INSPECTION_NOT_PUBLISHED` | 409 | `ConflictException` — `POST /api/v1/admin/inspections/{bookingId}/share` |
+    | `OPERATOR_ABSENT` | 409 | `ConflictException` — `PUT /api/v1/admin/assignments/{bookingId}` |
+    | `OPERATOR_ACCOUNT_DISABLED` | 409 | `ConflictException` — `PUT /api/v1/admin/assignments/{bookingId}` |
+    | `OPERATOR_BUSY` | 409 | `ConflictException` — `PUT /api/v1/admin/assignments/{bookingId}`, `POST /api/v1/operator/services/{bookingId}/start` |
+    | `OPERATOR_INACTIVE` | 409 | `ConflictException` — 5 operations (see `x-codes` of each response) |
+    | `OPERATOR_NOT_ON_SHIFT` | 409 | `ConflictException` — `PUT /api/v1/admin/assignments/{bookingId}` |
+    | `SERVICE_NOT_COMPLETED` | 409 | `ConflictException` — `POST /api/v1/ratings/{bookingId}` |
+    | `SERVICE_TOO_EARLY` | 409 | `ConflictException` — `POST /api/v1/operator/services/{bookingId}/start` |
+    | `INTERNAL_ERROR` | 500 | Unexpected error (logged with its correlation id) |
+    | `BOOKING_SERVICE_UNAVAILABLE` | 503 | `DependencyUnavailableException` — 25 operations (see `x-codes` of each response) |
 servers:
-  - url: "http://localhost:8080"
-    description: "Through the API gateway (ADR-005)"
-  - url: "http://localhost:3004"
-    description: "operations-service directly (local development)"
+  - url: http://localhost:8080
+    description: Through the API gateway (ADR-005); `/internal/**` is not reachable here
+  - url: http://localhost:3004
+    description: operations-service directly (local development and service-to-service calls)
+security:
+  - bearerAuth: []
+tags:
+  - name: Available Operators
+  - name: Follow Up
+  - name: Admin Inspection
+  - name: Public Inspection
+  - name: Admin Operations
+  - name: Operator
+  - name: Client Booking Operator
+  - name: Rating
+  - name: Operator Profile
 paths:
-  "/api/v1/admin/operators/{id}/profile":
-    put:
-      tags:
-        - "operator-profile-controller"
-      operationId: "update"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int32"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ProfileRequest"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/ProfileResponse"
-  "/api/v1/admin/operators/{id}/availability":
-    put:
-      tags:
-        - "admin-operations-controller"
-      operationId: "setAvailability"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int32"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/AvailabilityRequest"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/OperatorResponse"
-  "/api/v1/admin/assignments/{bookingId}":
-    put:
-      tags:
-        - "admin-operations-controller"
-      operationId: "assign"
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/AssignRequest"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/AssignmentResponse"
-  "/api/v1/ratings/{bookingId}":
-    post:
-      tags:
-        - "rating-controller"
-      operationId: "rate"
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/RatingRequest"
-        required: true
-      responses:
-        "201":
-          description: "Created"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/RatingResponse"
-  "/api/v1/operator/services/{bookingId}/start":
-    post:
-      tags:
-        - "operator-controller"
-      operationId: "start"
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/OperatorServiceResponse"
-  "/api/v1/operator/services/{bookingId}/finish":
-    post:
-      tags:
-        - "operator-controller"
-      operationId: "finish"
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/OperatorServiceResponse"
-  "/api/v1/admin/operators/{id}/absences":
+  /api/v1/admin/assignments:
     get:
       tags:
-        - "admin-operations-controller"
-      operationId: "absences"
+        - Admin Operations
+      operationId: assignments
+      description: "Javadoc: Quien tiene cada reserva que empieza entre from y to (sin fechas: hoy)."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:125
       parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int32"
-        - name: "from"
-          in: "query"
+        - name: from
+          in: query
           required: false
           schema:
-            type: "string"
-            format: "date"
-        - name: "to"
-          in: "query"
+            type: string
+            format: date
+        - name: to
+          in: query
           required: false
           schema:
-            type: "string"
-            format: "date"
+            type: string
+            format: date
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                type: "array"
+                type: array
                 items:
-                  "$ref": "#/components/schemas/AbsenceResponse"
-    post:
+                  $ref: "#/components/schemas/AssignmentResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_RANGE`, `INVALID_REASON`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_RANGE
+            - INVALID_REASON
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/assignments/{bookingId}:
+    put:
       tags:
-        - "admin-operations-controller"
-      operationId: "addAbsence"
+        - Admin Operations
+      operationId: assign
+      description: |-
+        Assigns (or reassigns) the operator of every line of the booking. `notes` (B-01, optional, up to 300 characters) are the administrator's indications for the operator, stored in `service_execution.assignment_notes`; reassigning without notes clears them. They are not returned to the operator yet (`OperatorServiceResponse` has no notes field). An operator whose security account is disabled answers 409 `OPERATOR_ACCOUNT_DISABLED` (A-13).
+
+        Javadoc: Asigna (o cambia) el operario de una reserva (RF-008/009).
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:111
       parameters:
-        - name: "id"
-          in: "path"
+        - name: bookingId
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int64
       requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/AbsenceRequest"
         required: true
-      responses:
-        "201":
-          description: "Created"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/AbsenceResponse"
-  "/api/v1/admin/inspections/{bookingId}":
-    get:
-      tags:
-        - "admin-inspection-controller"
-      operationId: "get"
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignRequest"
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/InspectionResponse"
+                $ref: "#/components/schemas/AssignmentResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_ASSIGNMENT_NOTES`, `INVALID_DAY`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_ASSIGNMENT_NOTES
+            - INVALID_DAY
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `OPERATOR_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - OPERATOR_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `ASSIGNMENT_BUSY`, `BOOKING_IN_PAST`, `BOOKING_NOT_ASSIGNABLE`, `EXECUTION_ALREADY_STARTED`, `OPERATOR_ABSENT`, `OPERATOR_ACCOUNT_DISABLED`, `OPERATOR_BUSY`, `OPERATOR_INACTIVE`, `OPERATOR_NOT_ON_SHIFT`."
+          x-codes:
+            - ASSIGNMENT_BUSY
+            - BOOKING_IN_PAST
+            - BOOKING_NOT_ASSIGNABLE
+            - EXECUTION_ALREADY_STARTED
+            - OPERATOR_ABSENT
+            - OPERATOR_ACCOUNT_DISABLED
+            - OPERATOR_BUSY
+            - OPERATOR_INACTIVE
+            - OPERATOR_NOT_ON_SHIFT
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/assignments/{bookingId}/attended:
     post:
       tags:
-        - "admin-inspection-controller"
-      operationId: "start_1"
+        - Follow Up
+      operationId: attended
+      description: "Javadoc: Se atendió aunque no se registró: la reserva queda completada con su operario."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/FollowUpController.java:44
       parameters:
-        - name: "bookingId"
-          in: "path"
+        - name: bookingId
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/InspectionResponse"
-  "/api/v1/admin/inspections/{bookingId}/share":
-    post:
-      tags:
-        - "admin-inspection-controller"
-      operationId: "share"
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
+            type: integer
+            format: int64
       responses:
         "204":
-          description: "No Content"
-  "/api/v1/admin/inspections/{bookingId}/publish":
-    post:
+          description: No Content
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `BOOKING_NOT_TO_CLOSE`, `BOOKING_STATE_CONFLICT`, `EXECUTION_ALREADY_COMPLETED`."
+          x-codes:
+            - BOOKING_NOT_TO_CLOSE
+            - BOOKING_STATE_CONFLICT
+            - EXECUTION_ALREADY_COMPLETED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/assignments/{bookingId}/candidates:
+    get:
       tags:
-        - "admin-inspection-controller"
-      operationId: "publish"
+        - Admin Operations
+      operationId: candidates
+      description: |-
+        Every operator with `unavailableReason` null (can be assigned) or one of `OPERATOR_INACTIVE`, `OPERATOR_NOT_ON_SHIFT`, `OPERATOR_ABSENT`, `OPERATOR_BUSY`, `OPERATOR_ACCOUNT_DISABLED`; assignable ones first.
+
+        Javadoc: Operarios con su disponibilidad real para esa reserva (turno, ausencias, cruces y estado).
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:118
       parameters:
-        - name: "bookingId"
-          in: "path"
+        - name: bookingId
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int64"
+            type: integer
+            format: int64
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/InspectionResponse"
-  "/api/v1/admin/inspections/{bookingId}/findings":
-    post:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CandidateResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_DAY`, `INVALID_RANGE`, `INVALID_REASON`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_DAY
+            - INVALID_RANGE
+            - INVALID_REASON
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `OPERATOR_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - OPERATOR_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `BOOKING_NOT_ASSIGNABLE`."
+          x-codes:
+            - BOOKING_NOT_ASSIGNABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/assignments/to-close:
+    get:
       tags:
-        - "admin-inspection-controller"
-      operationId: "addFinding"
+        - Follow Up
+      operationId: toClose
+      description: "Javadoc: Por cerrar entre from y to (sin fechas: los últimos app.follow-up.look-back-days días hasta hoy)."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/FollowUpController.java:37
       parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-        - name: "phase"
-          in: "query"
-          required: true
-          schema:
-            type: "string"
-            enum:
-              - "RECEPTION"
-              - "EXTERIOR"
-              - "INTERIOR"
-              - "ENGINE"
-              - "DELIVERY"
-        - name: "area"
-          in: "query"
-          required: true
-          schema:
-            type: "string"
-        - name: "severity"
-          in: "query"
-          required: true
-          schema:
-            type: "string"
-            enum:
-              - "INFO"
-              - "MINOR"
-              - "MAJOR"
-        - name: "note"
-          in: "query"
+        - name: from
+          in: query
           required: false
           schema:
-            type: "string"
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ToCloseResponse"
+        "400":
+          description: "Bad Request. `code`: `VALIDATION_ERROR`."
+          x-codes:
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/assignments/unassigned:
+    get:
+      tags:
+        - Admin Operations
+      operationId: unassigned
+      description: "Javadoc: Reservas sin operario que empiezan entre from y to (sin fechas: hoy). Una sola regla para todas las pantallas."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:132
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnassignedResponse"
+        "400":
+          description: "Bad Request. `code`: `VALIDATION_ERROR`."
+          x-codes:
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/inspections/{bookingId}:
+    get:
+      tags:
+        - Admin Inspection
+      operationId: get
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:62
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InspectionResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `INSPECTION_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - INSPECTION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `INSPECTION_NOT_EDITABLE`."
+          x-codes:
+            - INSPECTION_NOT_EDITABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    post:
+      tags:
+        - Admin Inspection
+      operationId: start
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:67
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InspectionResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `INSPECTION_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - INSPECTION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `INSPECTION_NOT_EDITABLE`."
+          x-codes:
+            - INSPECTION_NOT_EDITABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/inspections/{bookingId}/findings:
+    post:
+      tags:
+        - Admin Inspection
+      operationId: addFinding
+      description: "Javadoc: multipart: phase, area, severity, note y hasta 5 fotos (photos)."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:85
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
       requestBody:
+        required: true
         content:
-          "multipart/form-data":
+          multipart/form-data:
             schema:
-              type: "object"
+              type: object
               properties:
+                phase:
+                  $ref: "#/components/schemas/InspectionPhase"
+                area:
+                  type: string
+                severity:
+                  $ref: "#/components/schemas/FindingSeverity"
+                note:
+                  type: string
                 photos:
-                  type: "array"
+                  type: array
                   items:
-                    type: "string"
-                    format: "binary"
+                    type: string
+                    format: binary
+              required:
+                - phase
+                - area
+                - severity
       responses:
         "201":
-          description: "Created"
+          description: Created
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/InspectionResponse"
-  "/api/v1/admin/assignments/{bookingId}/attended":
+                $ref: "#/components/schemas/InspectionResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_FINDING`, `INVALID_PHOTO`, `INVALID_TOKEN`, `TOO_MANY_PHOTOS`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_FINDING
+            - INVALID_PHOTO
+            - INVALID_TOKEN
+            - TOO_MANY_PHOTOS
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `INSPECTION_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - INSPECTION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `INSPECTION_NOT_EDITABLE`."
+          x-codes:
+            - INSPECTION_NOT_EDITABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/inspections/{bookingId}/findings/{findingId}:
+    delete:
+      tags:
+        - Admin Inspection
+      operationId: removeFinding
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:100
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: findingId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InspectionResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `FINDING_NOT_FOUND`, `INSPECTION_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - FINDING_NOT_FOUND
+            - INSPECTION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `INSPECTION_NOT_EDITABLE`."
+          x-codes:
+            - INSPECTION_NOT_EDITABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/inspections/{bookingId}/phases/{phase}:
+    patch:
+      tags:
+        - Admin Inspection
+      operationId: phase
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:73
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: phase
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/InspectionPhase"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhaseStatusRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InspectionResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `INSPECTION_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - INSPECTION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `INSPECTION_NOT_EDITABLE`."
+          x-codes:
+            - INSPECTION_NOT_EDITABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/inspections/{bookingId}/photos/{photoId}:
+    get:
+      tags:
+        - Admin Inspection
+      operationId: photo
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:117
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: photoId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: "Bad Request. `code`: `VALIDATION_ERROR`."
+          x-codes:
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `INSPECTION_NOT_FOUND`, `PHOTO_NOT_FOUND`."
+          x-codes:
+            - INSPECTION_NOT_FOUND
+            - PHOTO_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/inspections/{bookingId}/publish:
     post:
       tags:
-        - "follow-up-controller"
-      operationId: "attended"
+        - Admin Inspection
+      operationId: publish
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:105
       parameters:
-        - name: "bookingId"
-          in: "path"
+        - name: bookingId
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int64"
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InspectionResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `INSPECTION_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - INSPECTION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/inspections/{bookingId}/share:
+    post:
+      tags:
+        - Admin Inspection
+      operationId: share
+      description: "Javadoc: Avisa al cliente (bandeja, push y correo) con el resumen y el enlace publico."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:112
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
       responses:
         "204":
-          description: "No Content"
-  "/api/v1/admin/operators/{id}/status":
-    patch:
+          description: No Content
+        "400":
+          description: "Bad Request. `code`: `BOOKING_WITHOUT_CLIENT`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BOOKING_WITHOUT_CLIENT
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `INSPECTION_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - INSPECTION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `INSPECTION_NOT_PUBLISHED`."
+          x-codes:
+            - INSPECTION_NOT_PUBLISHED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/operators:
+    get:
       tags:
-        - "admin-operations-controller"
-      operationId: "setActive"
+        - Admin Operations
+      operationId: operators
+      description: "Javadoc: Cuentas con rol OPERATOR (security) con su turno y calificacion promedio."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:58
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OperatorResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_DAY`, `INVALID_RANGE`, `INVALID_REASON`."
+          x-codes:
+            - INVALID_DAY
+            - INVALID_RANGE
+            - INVALID_REASON
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/operators/{id}/absences:
+    get:
+      tags:
+        - Admin Operations
+      operationId: absences
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:90
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int32
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AbsenceResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_RANGE`, `INVALID_REASON`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_RANGE
+            - INVALID_REASON
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `OPERATOR_NOT_FOUND`."
+          x-codes:
+            - OPERATOR_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    post:
+      tags:
+        - Admin Operations
+      operationId: addAbsence
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:97
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
       requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ActiveRequest"
         required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/OperatorResponse"
-  "/api/v1/admin/inspections/{bookingId}/phases/{phase}":
-    patch:
-      tags:
-        - "admin-inspection-controller"
-      operationId: "phase"
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-        - name: "phase"
-          in: "path"
-          required: true
-          schema:
-            type: "string"
-            enum:
-              - "RECEPTION"
-              - "EXTERIOR"
-              - "INTERIOR"
-              - "ENGINE"
-              - "DELIVERY"
-      requestBody:
         content:
-          "application/json":
+          application/json:
             schema:
-              "$ref": "#/components/schemas/PhaseStatusRequest"
-        required: true
+              $ref: "#/components/schemas/AbsenceRequest"
       responses:
-        "200":
-          description: "OK"
+        "201":
+          description: Created
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/InspectionResponse"
-  "/api/v1/ratings/me":
-    get:
-      tags:
-        - "rating-controller"
-      operationId: "mine"
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/AbsenceResponse"
+        "400":
+          description: "Bad Request. `code`: `ABSENCE_IN_PAST`, `BAD_REQUEST`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - ABSENCE_IN_PAST
+            - BAD_REQUEST
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/RatingResponse"
-  "/api/v1/public/inspections/{token}":
-    get:
-      tags:
-        - "public-inspection-controller"
-      operationId: "get_1"
-      parameters:
-        - name: "token"
-          in: "path"
-          required: true
-          schema:
-            type: "string"
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PublicReportResponse"
-  "/api/v1/public/inspections/{token}/photos/{photoId}":
-    get:
-      tags:
-        - "public-inspection-controller"
-      operationId: "photo"
-      parameters:
-        - name: "token"
-          in: "path"
-          required: true
-          schema:
-            type: "string"
-        - name: "photoId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                type: "string"
-                format: "byte"
-  "/api/v1/operators/my-bookings":
-    get:
-      tags:
-        - "client-booking-operator-controller"
-      operationId: "myBookings"
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `OPERATOR_NOT_FOUND`."
+          x-codes:
+            - OPERATOR_NOT_FOUND
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/BookingOperatorResponse"
-  "/api/v1/operators/available":
-    get:
-      tags:
-        - "available-operators-controller"
-      operationId: "available"
-      parameters:
-        - name: "date"
-          in: "query"
-          required: true
-          schema:
-            type: "string"
-            format: "date"
-        - name: "time"
-          in: "query"
-          required: true
-          schema:
-            type: "string"
-        - name: "minutes"
-          in: "query"
-          required: true
-          schema:
-            type: "integer"
-            format: "int32"
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `ABSENCE_OVERLAP`."
+          x-codes:
+            - ABSENCE_OVERLAP
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/AvailableOperatorView"
-  "/api/v1/operator/services":
-    get:
-      tags:
-        - "operator-controller"
-      operationId: "services"
-      parameters:
-        - name: "from"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-        - name: "to"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/OperatorServiceResponse"
-  "/api/v1/operator/ratings":
-    get:
-      tags:
-        - "operator-controller"
-      operationId: "ratings"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/RatingResponse"
-  "/api/v1/admin/operators":
-    get:
-      tags:
-        - "admin-operations-controller"
-      operationId: "operators"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/OperatorResponse"
-  "/api/v1/admin/operators/{id}/metrics":
-    get:
-      tags:
-        - "admin-operations-controller"
-      operationId: "metrics"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int32"
-        - name: "week"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/OperatorMetricsResponse"
-  "/api/v1/admin/operators/summary":
-    get:
-      tags:
-        - "admin-operations-controller"
-      operationId: "teamSummary"
-      parameters:
-        - name: "week"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/TeamSummaryResponse"
-  "/api/v1/admin/operators/profiles":
-    get:
-      tags:
-        - "operator-profile-controller"
-      operationId: "profiles"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/ProfileResponse"
-  "/api/v1/admin/inspections/{bookingId}/photos/{photoId}":
-    get:
-      tags:
-        - "admin-inspection-controller"
-      operationId: "photo_1"
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-        - name: "photoId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "string"
-                format: "byte"
-  "/api/v1/admin/assignments":
-    get:
-      tags:
-        - "admin-operations-controller"
-      operationId: "assignments"
-      parameters:
-        - name: "from"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-        - name: "to"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/AssignmentResponse"
-  "/api/v1/admin/assignments/{bookingId}/candidates":
-    get:
-      tags:
-        - "admin-operations-controller"
-      operationId: "candidates"
-      parameters:
-        - name: "bookingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/CandidateResponse"
-  "/api/v1/admin/assignments/unassigned":
-    get:
-      tags:
-        - "admin-operations-controller"
-      operationId: "unassigned"
-      parameters:
-        - name: "from"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-        - name: "to"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/UnassignedResponse"
-  "/api/v1/admin/assignments/to-close":
-    get:
-      tags:
-        - "follow-up-controller"
-      operationId: "toClose"
-      parameters:
-        - name: "from"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-        - name: "to"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/ToCloseResponse"
-  "/api/v1/admin/operators/{id}/absences/{absenceId}":
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/operators/{id}/absences/{absenceId}:
     delete:
       tags:
-        - "admin-operations-controller"
-      operationId: "removeAbsence"
+        - Admin Operations
+      operationId: removeAbsence
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:104
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int32"
-        - name: "absenceId"
-          in: "path"
+            type: integer
+            format: int32
+        - name: absenceId
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int32
       responses:
         "204":
-          description: "No Content"
-  "/api/v1/admin/inspections/{bookingId}/findings/{findingId}":
-    delete:
+          description: No Content
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `ABSENCE_NOT_FOUND`."
+          x-codes:
+            - ABSENCE_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/operators/{id}/availability:
+    put:
       tags:
-        - "admin-inspection-controller"
-      operationId: "removeFinding"
+        - Admin Operations
+      operationId: setAvailability
+      description: "Javadoc: Reemplaza el turno semanal completo (los dias que no vienen quedan libres)."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:83
       parameters:
-        - name: "bookingId"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int64"
-        - name: "findingId"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
+            type: integer
+            format: int32
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvailabilityRequest"
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/InspectionResponse"
+                $ref: "#/components/schemas/OperatorResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `DUPLICATED_DAY`, `INVALID_DAY`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - DUPLICATED_DAY
+            - INVALID_DAY
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `OPERATOR_NOT_FOUND`."
+          x-codes:
+            - OPERATOR_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/operators/{id}/metrics:
+    get:
+      tags:
+        - Admin Operations
+      operationId: metrics
+      description: "Javadoc: Servicios, puntualidad, ingresos y horas de la semana (week = cualquier día de esa semana)."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:70
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+        - name: week
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorMetricsResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_DAY`, `INVALID_RANGE`, `INVALID_REASON`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_DAY
+            - INVALID_RANGE
+            - INVALID_REASON
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `OPERATOR_NOT_FOUND`."
+          x-codes:
+            - OPERATOR_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/operators/{id}/profile:
+    put:
+      tags:
+        - Operator Profile
+      operationId: update
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperatorProfileController.java:38
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_OPERATOR_PROFILE`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_OPERATOR_PROFILE
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `OPERATOR_NOT_FOUND`."
+          x-codes:
+            - OPERATOR_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/operators/{id}/status:
+    patch:
+      tags:
+        - Admin Operations
+      operationId: setActive
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:76
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActiveRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DAY`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_DAY
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `OPERATOR_NOT_FOUND`."
+          x-codes:
+            - OPERATOR_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/operators/profiles:
+    get:
+      tags:
+        - Operator Profile
+      operationId: profiles
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperatorProfileController.java:32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProfileResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_RANGE`, `INVALID_REASON`."
+          x-codes:
+            - INVALID_RANGE
+            - INVALID_REASON
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/operators/summary:
+    get:
+      tags:
+        - Admin Operations
+      operationId: teamSummary
+      description: "Javadoc: Resumen del equipo para la lista de operarios (week = cualquier día de esa semana)."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:64
+      parameters:
+        - name: week
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamSummaryResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_DAY`, `INVALID_RANGE`, `INVALID_REASON`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_DAY
+            - INVALID_RANGE
+            - INVALID_REASON
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/operator/ratings:
+    get:
+      tags:
+        - Operator
+      operationId: ratings
+      x-access: roles
+      x-roles:
+        - OPERATOR
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:168
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RatingResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`."
+          x-codes:
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `OPERATOR_NOT_FOUND`."
+          x-codes:
+            - OPERATOR_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `OPERATOR_INACTIVE`."
+          x-codes:
+            - OPERATOR_INACTIVE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/operator/services:
+    get:
+      tags:
+        - Operator
+      operationId: services
+      description: "Javadoc: Sus servicios entre from y to (sin fechas: hoy)."
+      x-access: roles
+      x-roles:
+        - OPERATOR
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:152
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OperatorServiceResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `OPERATOR_NOT_FOUND`."
+          x-codes:
+            - OPERATOR_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `OPERATOR_INACTIVE`."
+          x-codes:
+            - OPERATOR_INACTIVE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/operator/services/{bookingId}/finish:
+    post:
+      tags:
+        - Operator
+      operationId: finish
+      x-access: roles
+      x-roles:
+        - OPERATOR
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:163
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorServiceResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `OPERATOR_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - OPERATOR_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `BOOKING_STATE_CONFLICT`, `OPERATOR_INACTIVE`."
+          x-codes:
+            - BOOKING_STATE_CONFLICT
+            - OPERATOR_INACTIVE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/operator/services/{bookingId}/start:
+    post:
+      tags:
+        - Operator
+      operationId: operatorStart
+      x-access: roles
+      x-roles:
+        - OPERATOR
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:158
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorServiceResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `OPERATOR_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - OPERATOR_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `BOOKING_STATE_CONFLICT`, `OPERATOR_BUSY`, `OPERATOR_INACTIVE`, `SERVICE_TOO_EARLY`."
+          x-codes:
+            - BOOKING_STATE_CONFLICT
+            - OPERATOR_BUSY
+            - OPERATOR_INACTIVE
+            - SERVICE_TOO_EARLY
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/operators/available:
+    get:
+      tags:
+        - Available Operators
+      operationId: available
+      description: "Javadoc: date=2026-10-20&time=09:00&minutes=90"
+      x-access: authenticated
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/AvailableOperatorsController.java:32
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: time
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: ^\d{2}:\d{2}(:\d{2})?$
+            example: "08:30:00"
+        - name: minutes
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailableOperatorView"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DAY`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_SLOT`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_DAY
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_SLOT
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/operators/my-bookings:
+    get:
+      tags:
+        - Client Booking Operator
+      operationId: myBookings
+      x-access: roles
+      x-roles:
+        - CLIENT
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:185
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BookingOperatorResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_RANGE`, `INVALID_REASON`."
+          x-codes:
+            - INVALID_RANGE
+            - INVALID_REASON
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/public/inspections/{token}:
+    get:
+      tags:
+        - Public Inspection
+      operationId: publicInspectionGet
+      security: []
+      x-access: public
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:134
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicReportResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`."
+          x-codes:
+            - INVALID_TOKEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `INSPECTION_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - INSPECTION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `INSPECTION_NOT_EDITABLE`."
+          x-codes:
+            - INSPECTION_NOT_EDITABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/public/inspections/{token}/photos/{photoId}:
+    get:
+      tags:
+        - Public Inspection
+      operationId: publicInspectionPhoto
+      security: []
+      x-access: public
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/InspectionControllers.java:139
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: photoId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `INSPECTION_NOT_FOUND`, `PHOTO_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - INSPECTION_NOT_FOUND
+            - PHOTO_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `INSPECTION_NOT_EDITABLE`."
+          x-codes:
+            - INSPECTION_NOT_EDITABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/ratings/{bookingId}:
+    post:
+      tags:
+        - Rating
+      operationId: rate
+      x-access: roles
+      x-roles:
+        - CLIENT
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:209
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RatingRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RatingResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `SERVICE_NOT_COMPLETED`."
+          x-codes:
+            - SERVICE_NOT_COMPLETED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/ratings/me:
+    get:
+      tags:
+        - Rating
+      operationId: mine
+      x-access: roles
+      x-roles:
+        - CLIENT
+      x-source: com/lavarapido/operations/infrastructure/adapter/in/web/OperationsControllers.java:202
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RatingResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`."
+          x-codes:
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token from `POST /api/v1/auth/login` (security-service, HS256, claims `sub`, `roles`, `sid`). Every service validates it itself (ADR-006); the gateway forwards it unchanged.
   schemas:
-    ProfileRequest:
-      type: "object"
-      properties:
-        specialty:
-          type: "string"
-          maxLength: 80
-          minLength: 0
-        skills:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/SkillDto"
-          maxItems: 10
-          minItems: 0
-    SkillDto:
-      type: "object"
-      properties:
-        name:
-          type: "string"
-          maxLength: 60
-          minLength: 0
-        level:
-          type: "string"
-          enum:
-            - "CERTIFIED"
-            - "EXPERT"
-            - "ADVANCED"
+    ProblemDetail:
+      type: object
+      description: "RFC 7807 problem detail returned by every error (`Content-Type: application/problem+json`). `code` is the stable value the web and the app translate; `detail` is an English message for logs."
       required:
-        - "level"
-        - "name"
-    ProfileResponse:
-      type: "object"
+        - status
+        - code
       properties:
-        operatorId:
-          type: "integer"
-          format: "int32"
-        specialty:
-          type: "string"
-        skills:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/SkillDto"
-    AvailabilityRequest:
-      type: "object"
-      properties:
-        week:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/ShiftRequest"
-      required:
-        - "week"
-    ShiftRequest:
-      type: "object"
-      properties:
-        dayOfWeek:
-          type: "integer"
-          format: "int32"
-          maximum: 7
-          minimum: 1
-        startsAt:
-          type: "string"
-        endsAt:
-          type: "string"
-      required:
-        - "dayOfWeek"
-        - "endsAt"
-        - "startsAt"
-    OperatorResponse:
-      type: "object"
-      properties:
-        id:
-          type: "integer"
-          format: "int32"
-        userId:
-          type: "integer"
-          format: "int64"
-        fullName:
-          type: "string"
-        email:
-          type: "string"
-        phone:
-          type: "string"
-        active:
-          type: "boolean"
-        hiredOn:
-          type: "string"
-          format: "date"
-        week:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/ShiftResponse"
-        completedServices:
-          type: "integer"
-          format: "int32"
-        averageRating:
-          type: "number"
-          format: "double"
-        ratingsCount:
-          type: "integer"
-          format: "int32"
-    ShiftResponse:
-      type: "object"
-      properties:
-        dayOfWeek:
-          type: "integer"
-          format: "int32"
-        startsAt:
-          type: "string"
-        endsAt:
-          type: "string"
-    AssignRequest:
-      type: "object"
-      properties:
-        operatorId:
-          type: "integer"
-          format: "int32"
-      required:
-        - "operatorId"
-    AssignmentResponse:
-      type: "object"
-      properties:
-        bookingId:
-          type: "integer"
-          format: "int64"
-        operatorId:
-          type: "integer"
-          format: "int32"
-        operatorName:
-          type: "string"
+        type:
+          type: string
+          example: about:blank
+        title:
+          type: string
+          example: Conflict
         status:
-          type: "string"
-        bay:
-          "$ref": "#/components/schemas/BayResponse"
-    BayResponse:
-      type: "object"
-      properties:
-        id:
-          type: "integer"
-          format: "int32"
+          type: integer
+          example: 409
+        detail:
+          type: string
+          example: The data conflicts with an existing record
+        instance:
+          type: string
+          example: /api/v1/bookings
         code:
-          type: "string"
-        name:
-          type: "string"
-    RatingRequest:
-      type: "object"
-      properties:
-        rating:
-          type: "integer"
-          format: "int32"
-          maximum: 5
-          minimum: 1
-        comment:
-          type: "string"
-          maxLength: 500
-          minLength: 0
-      required:
-        - "rating"
-    RatingResponse:
-      type: "object"
-      properties:
-        bookingId:
-          type: "integer"
-          format: "int64"
-        bookingCode:
-          type: "string"
-        date:
-          type: "string"
-          format: "date"
-        services:
-          type: "string"
-        vehicle:
-          type: "string"
-        plate:
-          type: "string"
-        rating:
-          type: "integer"
-          format: "int32"
-        comment:
-          type: "string"
-        ratedAt:
-          type: "string"
-          format: "date-time"
-        operatorName:
-          type: "string"
-        clientName:
-          type: "string"
-    OperatorServiceResponse:
-      type: "object"
-      properties:
-        bookingId:
-          type: "integer"
-          format: "int64"
-        code:
-          type: "string"
-        bookingStatus:
-          type: "string"
-        date:
-          type: "string"
-          format: "date"
-        startTime:
-          type: "string"
-        endTime:
-          type: "string"
-        services:
-          type: "string"
-        vehicle:
-          type: "string"
-        plate:
-          type: "string"
-        total:
-          type: "number"
-        status:
-          type: "string"
-        startedAt:
-          type: "string"
-          format: "date-time"
-        finishedAt:
-          type: "string"
-          format: "date-time"
-        rating:
-          type: "integer"
-          format: "int32"
-        comment:
-          type: "string"
-        startableAt:
-          type: "string"
-          format: "date-time"
-        clientName:
-          type: "string"
+          type: string
+          description: Error code (catalogue in `info.description` and `x-error-codes`)
+          example: CONFLICT
+        errors:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Only with `VALIDATION_ERROR`: invalid field → message"
+      additionalProperties: true
     AbsenceRequest:
-      type: "object"
+      type: object
       properties:
         startsAt:
-          type: "string"
-          format: "date-time"
+          type: string
+          format: date-time
+          description: Local date and time, without offset
         endsAt:
-          type: "string"
-          format: "date-time"
+          type: string
+          format: date-time
+          description: Local date and time, without offset
         reason:
-          type: "string"
+          type: string
+          minLength: 1
+          x-not-blank: true
           maxLength: 120
-          minLength: 0
       required:
-        - "endsAt"
-        - "reason"
-        - "startsAt"
+        - startsAt
+        - endsAt
+        - reason
+      description: Fechas y horas en la hora del lavadero.
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:52
     AbsenceResponse:
-      type: "object"
+      type: object
       properties:
         id:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         startsAt:
-          type: "string"
-          format: "date-time"
+          type: string
+          format: date-time
         endsAt:
-          type: "string"
-          format: "date-time"
+          type: string
+          format: date-time
         reason:
-          type: "string"
+          type: string
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:109
+    ActiveRequest:
+      type: object
+      properties:
+        active:
+          type: boolean
+      required:
+        - active
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:48
+    AssignmentResponse:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+          format: int64
+        operatorId:
+          type: integer
+          format: int32
+        operatorName:
+          type: string
+        status:
+          type: string
+        bay:
+          $ref: "#/components/schemas/BayResponse"
+        notes:
+          type: string
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:124
+    AssignRequest:
+      type: object
+      properties:
+        operatorId:
+          type: integer
+          format: int32
+        notes:
+          type: string
+          maxLength: 300
+      required:
+        - operatorId
+      description: "B-01: notes son las indicaciones para el operario (opcional)."
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:57
+    AvailabilityRequest:
+      type: object
+      properties:
+        week:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShiftRequest"
+      required:
+        - week
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:45
+    AvailableOperatorView:
+      type: object
+      properties:
+        operatorId:
+          type: integer
+          format: int32
+        firstName:
+          type: string
+        averageRating:
+          type: number
+          format: double
+        ratingsCount:
+          type: integer
+          format: int32
+      x-java: com/lavarapido/operations/domain/port/in/OperationsUseCase.java:75
+    BayResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        code:
+          type: string
+        name:
+          type: string
+      description: La bahia de esa reserva; null si todavia no se asigno ninguna.
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:117
     BookingDto:
-      type: "object"
+      type: object
       properties:
         code:
-          type: "string"
+          type: string
         vehicle:
-          type: "string"
+          type: string
         plate:
-          type: "string"
+          type: string
         services:
-          type: "string"
+          type: string
         date:
-          type: "string"
-          format: "date"
+          type: string
+          format: date
         time:
-          type: "string"
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
         durationMinutes:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/InspectionDtos.java:53
+    BookingOperatorResponse:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+          format: int64
+        operatorName:
+          type: string
+      description: Operario de una reserva del cliente (solo su primer nombre).
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:175
+    CandidateResponse:
+      type: object
+      properties:
+        operatorId:
+          type: integer
+          format: int32
+        fullName:
+          type: string
+        averageRating:
+          type: number
+          format: double
+        ratingsCount:
+          type: integer
+          format: int32
+        assigned:
+          type: boolean
+        available:
+          type: boolean
+        unavailableReason:
+          type: string
+      description: "Operario candidato para una reserva: available false trae el codigo del motivo."
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:150
     FindingDto:
-      type: "object"
+      type: object
       properties:
         id:
-          type: "integer"
-          format: "int64"
+          type: integer
+          format: int64
         phase:
-          type: "string"
+          type: string
         area:
-          type: "string"
+          type: string
         severity:
-          type: "string"
+          type: string
         note:
-          type: "string"
+          type: string
         createdAt:
-          type: "string"
-          format: "date-time"
+          type: string
+          format: date-time
         photos:
-          type: "array"
+          type: array
           items:
-            "$ref": "#/components/schemas/PhotoDto"
+            $ref: "#/components/schemas/PhotoDto"
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/InspectionDtos.java:31
+    FindingSeverity:
+      type: string
+      enum:
+        - INFO
+        - MINOR
+        - MAJOR
+    InspectionPhase:
+      type: string
+      enum:
+        - RECEPTION
+        - EXTERIOR
+        - INTERIOR
+        - ENGINE
+        - DELIVERY
+    InspectionPhaseStatus:
+      type: string
+      enum:
+        - PENDING
+        - IN_PROGRESS
+        - DONE
     InspectionResponse:
-      type: "object"
+      type: object
       properties:
         available:
-          type: "boolean"
+          type: boolean
         editable:
-          type: "boolean"
+          type: boolean
         report:
-          "$ref": "#/components/schemas/ReportDto"
-    PhaseDto:
-      type: "object"
+          $ref: "#/components/schemas/ReportDto"
+      description: "Lo que ve el admin: si la reserva admite informe, si se puede editar y el informe (o null)."
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/InspectionDtos.java:62
+    Level:
+      type: string
+      enum:
+        - CERTIFIED
+        - EXPERT
+        - ADVANCED
+    OperatorMetricsResponse:
+      type: object
       properties:
-        phase:
-          type: "string"
-        status:
-          type: "string"
-        startedAt:
-          type: "string"
-          format: "date-time"
-        finishedAt:
-          type: "string"
-          format: "date-time"
-        findings:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/FindingDto"
-    PhotoDto:
-      type: "object"
+        weekStart:
+          type: string
+          format: date
+        weekEnd:
+          type: string
+          format: date
+        completedServices:
+          type: integer
+          format: int32
+        previousWeekServices:
+          type: integer
+          format: int32
+        servicesTrendPercent:
+          type: integer
+          format: int32
+        punctualityPercent:
+          type: integer
+          format: int32
+        punctualityLevel:
+          type: string
+        revenue:
+          type: number
+        workedHours:
+          type: number
+          format: double
+        availableHours:
+          type: number
+          format: double
+        occupancyPercent:
+          type: integer
+          format: int32
+      description: Métricas semanales de un operario (OperatorMetricsCalculator); los null son "sin datos".
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:73
+    OperatorResponse:
+      type: object
       properties:
         id:
-          type: "integer"
-          format: "int64"
-        url:
-          type: "string"
-    ReportDto:
-      type: "object"
+          type: integer
+          format: int32
+        userId:
+          type: integer
+          format: int64
+        fullName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        active:
+          type: boolean
+        hiredOn:
+          type: string
+          format: date
+        week:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShiftResponse"
+        completedServices:
+          type: integer
+          format: int32
+        averageRating:
+          type: number
+          format: double
+        ratingsCount:
+          type: integer
+          format: int32
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:98
+    OperatorServiceResponse:
+      type: object
       properties:
         bookingId:
-          type: "integer"
-          format: "int64"
-        booking:
-          "$ref": "#/components/schemas/BookingDto"
-        publicToken:
-          type: "string"
-        phases:
-          type: "array"
+          type: integer
+          format: int64
+        code:
+          type: string
+        bookingStatus:
+          type: string
+        date:
+          type: string
+          format: date
+        startTime:
+          type: string
+          pattern: ^\d{2}:\d{2}(:\d{2})?$
+          example: "08:30:00"
+        endTime:
+          type: string
+          pattern: ^\d{2}:\d{2}(:\d{2})?$
+          example: "08:30:00"
+        services:
+          type: string
+        vehicle:
+          type: string
+        plate:
+          type: string
+        total:
+          type: number
+        status:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        rating:
+          type: integer
+          format: int32
+        comment:
+          type: string
+        startableAt:
+          type: string
+          format: date-time
+        clientName:
+          type: string
+      description: Reserva vista por el operario, con el estado de su ejecucion.
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:160
+    PhaseDto:
+      type: object
+      properties:
+        phase:
+          type: string
+        status:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        findings:
+          type: array
           items:
-            "$ref": "#/components/schemas/PhaseDto"
+            $ref: "#/components/schemas/FindingDto"
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/InspectionDtos.java:41
+    PhaseStatusRequest:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/InspectionPhaseStatus"
+      required:
+        - status
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/InspectionDtos.java:25
+    PhotoDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        url:
+          type: string
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/InspectionDtos.java:28
+    ProfileRequest:
+      type: object
+      properties:
+        specialty:
+          type: string
+          maxLength: .nan
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillDto"
+          maxItems: .nan
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/OperatorProfileController.java:49
+    ProfileResponse:
+      type: object
+      properties:
+        operatorId:
+          type: integer
+          format: int32
+        specialty:
+          type: string
+        skills:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillDto"
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/OperatorProfileController.java:53
+    PublicReportResponse:
+      type: object
+      properties:
+        bookingCode:
+          type: string
+        vehicle:
+          type: string
+        maskedPlate:
+          type: string
+        services:
+          type: string
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
+        phases:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhaseDto"
         summary:
-          "$ref": "#/components/schemas/SummaryDto"
-        published:
-          type: "boolean"
+          $ref: "#/components/schemas/SummaryDto"
         publishedAt:
-          type: "string"
-          format: "date-time"
+          type: string
+          format: date-time
         updatedAt:
-          type: "string"
-          format: "date-time"
+          type: string
+          format: date-time
+      description: "Lo que ve el cliente por el enlace: sin ids de la reserva ni token, y la placa enmascarada por si el enlace termina en manos de otra persona."
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/InspectionDtos.java:83
+    RatingRequest:
+      type: object
+      properties:
+        rating:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+          maxLength: 500
+      required:
+        - rating
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:60
+    RatingResponse:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+          format: int64
+        bookingCode:
+          type: string
+        date:
+          type: string
+          format: date
+        services:
+          type: string
+        vehicle:
+          type: string
+        plate:
+          type: string
+        rating:
+          type: integer
+          format: int32
+        comment:
+          type: string
+        ratedAt:
+          type: string
+          format: date-time
+        operatorName:
+          type: string
+        clientName:
+          type: string
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:182
+    ReportDto:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+          format: int64
+        booking:
+          $ref: "#/components/schemas/BookingDto"
+        publicToken:
+          type: string
+        phases:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhaseDto"
+        summary:
+          $ref: "#/components/schemas/SummaryDto"
+        published:
+          type: boolean
+        publishedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/InspectionDtos.java:57
+    ShiftRequest:
+      type: object
+      properties:
+        dayOfWeek:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 7
+        startsAt:
+          type: string
+          pattern: ^\d{2}:\d{2}(:\d{2})?$
+          example: "08:30:00"
+        endsAt:
+          type: string
+          pattern: ^\d{2}:\d{2}(:\d{2})?$
+          example: "08:30:00"
+      required:
+        - dayOfWeek
+        - startsAt
+        - endsAt
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:37
+    ShiftResponse:
+      type: object
+      properties:
+        dayOfWeek:
+          type: integer
+          format: int32
+        startsAt:
+          type: string
+          pattern: ^\d{2}:\d{2}(:\d{2})?$
+          example: "08:30:00"
+        endsAt:
+          type: string
+          pattern: ^\d{2}:\d{2}(:\d{2})?$
+          example: "08:30:00"
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:65
+    SkillDto:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: .nan
+        level:
+          $ref: "#/components/schemas/Level"
+      required:
+        - name
+        - level
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/OperatorProfileController.java:45
     SummaryDto:
-      type: "object"
+      type: object
       properties:
         phasesDone:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         phasesTotal:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         findings:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         majorFindings:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         progressPercent:
-          type: "integer"
-          format: "int32"
-    ActiveRequest:
-      type: "object"
+          type: integer
+          format: int32
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/InspectionDtos.java:45
+    TeamSummaryResponse:
+      type: object
       properties:
-        active:
-          type: "boolean"
-      required:
-        - "active"
-    PhaseStatusRequest:
-      type: "object"
-      properties:
-        status:
-          type: "string"
-          enum:
-            - "PENDING"
-            - "IN_PROGRESS"
-            - "DONE"
-      required:
-        - "status"
-    PublicReportResponse:
-      type: "object"
-      properties:
-        bookingCode:
-          type: "string"
-        vehicle:
-          type: "string"
-        maskedPlate:
-          type: "string"
-        services:
-          type: "string"
-        date:
-          type: "string"
-          format: "date"
-        time:
-          type: "string"
-        phases:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/PhaseDto"
-        summary:
-          "$ref": "#/components/schemas/SummaryDto"
-        publishedAt:
-          type: "string"
-          format: "date-time"
-        updatedAt:
-          type: "string"
-          format: "date-time"
-    BookingOperatorResponse:
-      type: "object"
+        weekStart:
+          type: string
+          format: date
+        weekEnd:
+          type: string
+          format: date
+        totalOperators:
+          type: integer
+          format: int32
+        activeOperators:
+          type: integer
+          format: int32
+        availableToday:
+          type: integer
+          format: int32
+        absentToday:
+          type: integer
+          format: int32
+        completedServices:
+          type: integer
+          format: int32
+        previousWeekServices:
+          type: integer
+          format: int32
+        servicesTrendPercent:
+          type: integer
+          format: int32
+        averageRating:
+          type: number
+          format: double
+        ratingsCount:
+          type: integer
+          format: int32
+      description: Resumen del equipo (TeamSummaryCalculator); los null son "sin datos".
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:86
+    ToCloseResponse:
+      type: object
       properties:
         bookingId:
-          type: "integer"
-          format: "int64"
-        operatorName:
-          type: "string"
-    AvailableOperatorView:
-      type: "object"
-      properties:
+          type: integer
+          format: int64
+        reason:
+          type: string
         operatorId:
-          type: "integer"
-          format: "int32"
-        firstName:
-          type: "string"
-        averageRating:
-          type: "number"
-          format: "double"
-        ratingsCount:
-          type: "integer"
-          format: "int32"
-    OperatorMetricsResponse:
-      type: "object"
-      properties:
-        weekStart:
-          type: "string"
-          format: "date"
-        weekEnd:
-          type: "string"
-          format: "date"
-        completedServices:
-          type: "integer"
-          format: "int32"
-        previousWeekServices:
-          type: "integer"
-          format: "int32"
-        servicesTrendPercent:
-          type: "integer"
-          format: "int32"
-        punctualityPercent:
-          type: "integer"
-          format: "int32"
-        punctualityLevel:
-          type: "string"
-        revenue:
-          type: "number"
-        workedHours:
-          type: "number"
-          format: "double"
-        availableHours:
-          type: "number"
-          format: "double"
-        occupancyPercent:
-          type: "integer"
-          format: "int32"
-    TeamSummaryResponse:
-      type: "object"
-      properties:
-        weekStart:
-          type: "string"
-          format: "date"
-        weekEnd:
-          type: "string"
-          format: "date"
-        totalOperators:
-          type: "integer"
-          format: "int32"
-        activeOperators:
-          type: "integer"
-          format: "int32"
-        availableToday:
-          type: "integer"
-          format: "int32"
-        absentToday:
-          type: "integer"
-          format: "int32"
-        completedServices:
-          type: "integer"
-          format: "int32"
-        previousWeekServices:
-          type: "integer"
-          format: "int32"
-        servicesTrendPercent:
-          type: "integer"
-          format: "int32"
-        averageRating:
-          type: "number"
-          format: "double"
-        ratingsCount:
-          type: "integer"
-          format: "int32"
-    CandidateResponse:
-      type: "object"
-      properties:
-        operatorId:
-          type: "integer"
-          format: "int32"
-        fullName:
-          type: "string"
-        averageRating:
-          type: "number"
-          format: "double"
-        ratingsCount:
-          type: "integer"
-          format: "int32"
-        assigned:
-          type: "boolean"
-        available:
-          type: "boolean"
-        unavailableReason:
-          type: "string"
+          type: integer
+          format: int32
+      description: "Reserva que terminó sin registrarse: NOT_STARTED (nadie le dio Iniciar) o NOT_FINISHED."
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:135
     UnassignedResponse:
-      type: "object"
+      type: object
       properties:
         count:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         bookingIds:
-          type: "array"
+          type: array
           items:
-            type: "integer"
-            format: "int64"
-    ToCloseResponse:
-      type: "object"
-      properties:
-        bookingId:
-          type: "integer"
-          format: "int64"
-        reason:
-          type: "string"
-        operatorId:
-          type: "integer"
-          format: "int32"
+            type: integer
+            format: int64
+      x-java: com/lavarapido/operations/infrastructure/adapter/in/web/dto/OperationsDtos.java:142
+x-error-codes:
+  ABSENCE_IN_PAST: 400
+  ABSENCE_NOT_FOUND: 404
+  ABSENCE_OVERLAP: 409
+  ALREADY_RATED: 409
+  ASSIGNMENT_BUSY: 409
+  BAD_REQUEST: 400
+  BOOKING_IN_PAST: 409
+  BOOKING_NOT_ASSIGNABLE: 409
+  BOOKING_NOT_FOUND: 404
+  BOOKING_NOT_TO_CLOSE: 409
+  BOOKING_SERVICE_UNAVAILABLE: 503
+  BOOKING_STATE_CONFLICT: 409
+  BOOKING_WITHOUT_CLIENT: 400
+  COMMENT_TOO_LONG: 400
+  CONFLICT: 409
+  DUPLICATED_DAY: 400
+  EXECUTION_ALREADY_COMPLETED: 409
+  EXECUTION_ALREADY_STARTED: 409
+  EXECUTION_NOT_STARTED: 409
+  FINDING_NOT_FOUND: 404
+  FORBIDDEN: 403
+  INSPECTION_NOT_EDITABLE: 409
+  INSPECTION_NOT_FOUND: 404
+  INSPECTION_NOT_PUBLISHED: 409
+  INTERNAL_ERROR: 500
+  INVALID_ASSIGNMENT_NOTES: 400
+  INVALID_DAY: 400
+  INVALID_FINDING: 400
+  INVALID_OPERATOR_PROFILE: 400
+  INVALID_PHOTO: 400
+  INVALID_RANGE: 400
+  INVALID_RATING: 400
+  INVALID_REASON: 400
+  INVALID_SLOT: 400
+  INVALID_TOKEN: 400
+  METHOD_NOT_ALLOWED: 405
+  NOT_FOUND: 404
+  OPERATOR_ABSENT: 409
+  OPERATOR_ACCOUNT_DISABLED: 409
+  OPERATOR_BUSY: 409
+  OPERATOR_INACTIVE: 409
+  OPERATOR_NOT_FOUND: 404
+  OPERATOR_NOT_ON_SHIFT: 409
+  PHOTO_NOT_FOUND: 404
+  SERVICE_NOT_COMPLETED: 409
+  SERVICE_TOO_EARLY: 409
+  TOO_MANY_PHOTOS: 400
+  UNAUTHORIZED: 401
+  VALIDATION_ERROR: 400
