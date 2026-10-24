@@ -1,7 +1,7 @@
 # Runbook — API Gateway
 
 **Service:** api-gateway · **Port:** 8080 · **Repository:** `lavarapido-api-gateway`
-**Last updated:** 2026-10-06
+**Last updated:** 2026-10-23
 
 ---
 
@@ -34,7 +34,10 @@ for p in 3001 3002 3003 3004 3005 3006; do echo "$p $(curl -s localhost:$p/actua
 | 404 on a path that works on the service directly | Path not in the route predicates (or it is `/internal/**`, never routed on purpose) | Add the path to the route in `application.yml`, restart |
 | Browser: CORS error | Web origin not in `CORS_ALLOWED_ORIGINS` | Add it (comma separated), restart |
 | Browser: duplicated `Access-Control-Allow-Origin` | A new route without the `RemoveResponseHeader` filters | Copy the three filters to the route |
-| 401 on every protected call | Token invalid for the services (`JWT_SECRET` differs between services) — the gateway does not validate tokens | Same `JWT_SECRET` in every service |
+| 401 on every protected call | Token invalid for the services (`JWT_SECRET` differs between services) — the gateway does not validate signatures | Same `JWT_SECRET` in every service |
+| 401 right after a logout, a password change or recovery, or a disabled account | Expected: `SessionCheckFilter` asked security-service and the session is closed (answer cached 30 s) | Log in again |
+| Calls slow by ~3 s, or closed sessions still pass | security-service does not answer: the session check waits `SESSION_CHECK_TIMEOUT` and lets the call go (fail-open) | Start security-service; check the gateway's security URL |
+| 404 on `/api/v1/operator/bookings/**` | Expected since 2026-10-23 (E-01): only operations-service calls those booking routes, inside the network | Use `/api/v1/operator/services/**` (operations) |
 | "Port 8080 already in use" | Another instance or program on 8080 | Stop it or set `GATEWAY_PORT` |
 
 ---
@@ -45,7 +48,7 @@ for p in 3001 3002 3003 3004 3005 3006; do echo "$p $(curl -s localhost:$p/actua
 |---|---|
 | Web through the gateway | Already done: the web `proxy.conf.json` has one `/api` entry targeting `http://localhost:8080`. If every API call fails from `ng serve`, check that the gateway is running |
 | Add a service | New route block in `application.yml` + test in `GatewayRoutesTest` |
-| Run the tests | `./mvnw test` (22 tests; starts fake HTTP servers, no other service needed) |
+| Run the tests | `./mvnw verify` (39 tests in the CI run of 2026-10-23; starts fake HTTP servers, no other service needed) |
 
 ---
 

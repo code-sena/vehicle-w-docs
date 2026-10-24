@@ -11,8 +11,8 @@ event is lost (no Outbox, ADR-020). Checked against `origin/develop` on 2026-10-
 | `OperatorAssigned` | `execution.operator_assigned` | The automatic assignment picks an operator, or the admin assigns or changes it | `bookingId`, `bookingCode`, `customerUserId`, `operatorUserId`, `scheduledStart` (UTC) |
 | `ServiceStarted` | `execution.service_started` | The operator starts the service | same |
 | `ServiceCompleted` | `execution.service_completed` | The operator finishes the service | same |
-| `ServiceNotStarted` | `execution.service_not_started` | Follow-up job: a booking with an operator ended (+ margin) and was never started; once per booking (`follow_up_notice_at`) | same |
-| `ServiceNotFinished` | `execution.service_not_finished` | Follow-up job: started and never finished; once per booking | same |
+| `ServiceNotStarted` | `execution.service_not_started` | Follow-up job: a booking with an operator reached its end time and was never started; once per booking (`follow_up_notice_at`) | same |
+| `ServiceNotFinished` | `execution.service_not_finished` | Follow-up job: started and never finished, end + margin (60 min) passed; once per booking | same |
 | `InspectionShared` | `execution.inspection_shared` | The admin shares a published inspection report | `bookingId`, `bookingCode`, `customerUserId`, `plate`, `publicToken`, `phasesDone`, `phasesTotal`, `findings`, `majorFindings`, `areas` |
 
 `occurredAt` travels in the envelope (`{eventId, eventType, aggregateId, occurredAt, version,

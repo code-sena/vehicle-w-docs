@@ -275,8 +275,7 @@ Automatic reassignment does not change the booking itself; it changes who is res
 
 **Origin:** Operations & Assignment
 
-**Meaning:** A booking with an assigned operator reached its end time plus the margin and nobody
-started it. The system does not decide whether it was attended: the operator may have washed the
+**Meaning:** A booking with an assigned operator reached its end time and nobody started it. The system does not decide whether it was attended: the operator may have washed the
 car and forgotten to register it, so the booking waits for the administrator ("Por cerrar").
 
 **Important information:**
@@ -299,8 +298,8 @@ It is raised once per booking.
 
 **Origin:** Operations & Assignment
 
-**Meaning:** A service that was started was never finished, and its end time plus the margin has
-passed. Same handling as `ServiceNotStarted`.
+**Meaning:** A service that was started was never finished, and its end time plus the margin (one
+hour by default) has passed. Same handling as `ServiceNotStarted`.
 
 **Important information:** same as `ServiceNotStarted`.
 

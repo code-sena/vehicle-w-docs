@@ -6,7 +6,7 @@
 curl http://localhost:3006/actuator/health      # {"status":"UP"}
 ```
 
-RabbitMQ panel: http://localhost:15672 (guest/guest) → Queues → `notification-service.events`.
+RabbitMQ panel: http://localhost:15672 (user and password from `RABBITMQ_USERNAME` / `RABBITMQ_PASSWORD` in `.env`) → Queues → `notification-service.events` and its DLQ `notification-service.events.dlq`.
 Mailpit (if `MAIL_HOST` points to it): http://localhost:8025.
 
 ## Common problems
@@ -20,6 +20,12 @@ Mailpit (if `MAIL_HOST` points to it): http://localhost:8025.
 | Booking email / reminder only in the inbox | `INTERNAL_API_KEY` empty or different from security-service, or security-service down | Same key in both services; log warns `INTERNAL_API_KEY is not set` |
 | Reminder never sent | Booking created with less time than the lead, task disabled, or service was down past the booking time | Check `notification.booking_reminder` (`sent_at`, `deleted_at`) and `REMINDERS_ENABLED` |
 | Push does not arrive | `PUSH_ENABLED=false` or the phone has no registered token (needs an EAS build) | See ADR-011 §2 |
+| A client still gets a reminder after the admin set the booking in progress, completed or no-show | Known gap: `BookingStatusChanged` does not cancel reminders yet (A-11) | Cancel the booking or wait for the fix (`15-project-control/risks.md`) |
+| Operator and admins get "service not registered" | Expected: operations published `ServiceNotStarted` / `ServiceNotFinished` for a booking nobody closed | The admin closes it from "Por cerrar" |
+
+## Tests
+
+`./mvnw verify`: 115 tests in the CI run of 2026-10-23 (no database needed).
 
 ## Useful queries
 

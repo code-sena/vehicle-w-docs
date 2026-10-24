@@ -202,10 +202,10 @@ reminders and dashboards were wrong.
 
 **Decision (follow-up job, `FollowUpService`, every `FOLLOW_UP_INTERVAL` = 5 min):**
 
-- It reviews the bookings of the last `FOLLOW_UP_LOOK_BACK_DAYS` (28) days whose end plus the margin
-  `BOOKING_EXPIRY_GRACE_MINUTES` (60) has passed. `FollowUpPolicy` gives one of three reasons:
-  `NO_OPERATOR`, `NOT_STARTED` (with operator, never started) or `NOT_FINISHED` (started, never
-  finished).
+- It reviews the bookings of the last `FOLLOW_UP_LOOK_BACK_DAYS` (28) days. `FollowUpPolicy` gives one
+  of three reasons: `NO_OPERATOR` (confirmed, no operator, end + `BOOKING_EXPIRY_GRACE_MINUTES` (60)
+  passed), `NOT_STARTED` (with operator, never started, its end time passed) or `NOT_FINISHED` (started,
+  never finished, end + margin passed).
 - `NO_OPERATOR`: nobody could attend it, so operations closes it as no-show through booking's
   `POST /internal/v1/bookings/{id}/no-show` (`X-Internal-Key`).
 - With an operator it is **never** closed alone: the operator may have washed the car. Operations
