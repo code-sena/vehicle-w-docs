@@ -13,22 +13,22 @@
 | Run everything locally | [`10-devops/local-setup.md`](./10-devops/local-setup.md) |
 | Work on a service | [`09-microservices/service-catalog.md`](./09-microservices/service-catalog.md) |
 | Call the API | [`07-api/`](./07-api/README.md) (guidelines, authentication, OpenAPI per service) |
-| Know the data | [`06-data/models.md`](./06-data/models.md) (57 tables) |
+| Know the data | [`06-data/models.md`](./06-data/models.md) (58 tables and 1 view) |
 | Know what is done and what is missing | [`04-requirements/traceability-matrix.md`](./04-requirements/traceability-matrix.md), [`15-project-control/`](./15-project-control/README.md) |
 | Join the team | [`14-training/technical-onboarding.md`](./14-training/technical-onboarding.md) |
 
-## Status (2026-10-23)
+## Status (2026-10-24)
 
 | Component | State |
 |---|---|
-| Releases | `v1.0.0` in 8 repositories (api-gateway, security, customer, booking, operations, notification, infra, web); payment-service and the mobile app pending. `develop` is ahead with the fixes of 2026-10-22/23, waiting for `v1.1.0` |
-| api-gateway (8080) and the six services: security (3001), customer (3002), booking (3003), operations (3004), payment (3005, .NET 8), notification (3006) | Built and tested (679 backend tests green in CI on 2026-10-23); running with Docker Compose locally and on the Azure server behind Caddy (HTTPS), which still follows `develop` and is updated by hand |
-| Web (Angular 21, zoneless, feature-based MVVM — ADR-019) | The three roles, connected to the six services through the gateway; 146 tests |
-| Android app (Expo SDK 57, version 1.1.0) | The three roles; the APK is served at `/app/` on the public server and updates arrive by EAS Update (ADR-018); 13 tests |
-| Database | SQL Server 2022: 57 tables in 9 schemas; last structure migration 043, last seed 112 (payment keeps its own numbering, 021) |
-| Requirements | 30 of 41 functional requirements done and 11 partial; 3 of 12 non-functional met (`04-requirements/traceability-matrix.md`) |
-| CI/CD | GitHub Actions in the 10 code repositories (838 tests green on `develop`); manual deploy workflow in `lavarapido-infra`, never run yet; continuous deployment from `main` prepared, not pushed nor tested (ADR-017) |
-| Open findings | Severity and owner in `15-project-control/risks.md` (highest: CD-01, SEC-01, BIZ-01, BIZ-02, OPS-01) |
+| Releases | `v1.0.0` in 8 repositories (api-gateway, security, customer, booking, operations, notification, infra, web); payment-service and the mobile app pending. `develop` is ahead with the fixes of 2026-10-22 to 2026-10-24 (128 branches merged on 2026-10-24), waiting for `v1.1.0` |
+| api-gateway (8080) and the six services: security (3001), customer (3002), booking (3003), operations (3004), payment (3005, .NET 8), notification (3006) | Built and tested (907 backend tests green in CI on 2026-10-24); running with Docker Compose locally and on the Azure server behind Caddy (HTTPS), which still follows `develop`, is updated by hand and does not have the fleet round of 2026-10-24 yet |
+| Web (Angular 21, zoneless, feature-based MVVM — ADR-019) | The three roles, connected to the six services through the gateway; data refreshed without reloading (WEB-16); 212 tests |
+| Android app (Expo SDK 57, version 1.1.0) | The three roles; the APK is served at `/app/` on the public server and updates arrive by EAS Update (ADR-018; automatic OTA with `cd.yml` merged, not run yet); 73 tests |
+| Database | SQL Server 2022: 58 tables and 1 view in 9 schemas, 162 changesets; last structure migration 047, last seed 116 (payment keeps its own numbering, 023) |
+| Requirements | 38 of 41 functional requirements done and 3 partial; 3 of 12 non-functional met (`04-requirements/traceability-matrix.md`) |
+| CI/CD | GitHub Actions in the 10 code repositories (1,192 tests green on `develop`); continuous deployment from `main` merged in the 10 repositories on 2026-10-24 but never run: the secrets do not exist yet (ADR-017) |
+| Open findings | Severity and owner in `15-project-control/risks.md` (highest: E-10 in the web and the first run of the continuous deployment; SEC-01, BIZ-01, BIZ-02 and OPS-01 closed on 2026-10-24) |
 
 Stack: Java 21 · Spring Boot 4 · Spring Cloud Gateway · .NET 8 (payment) · SQL Server 2022 ·
 Liquibase · RabbitMQ · Angular 21 · React Native (Expo) · Docker.

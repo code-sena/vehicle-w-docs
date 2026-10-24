@@ -38,21 +38,29 @@
   The admin reschedules bookings (`PUT /admin/bookings/{id}`, CU29), books for a client, and moves
   bookings through `IN_PROGRESS`, `COMPLETED`, `NO_SHOW` or `CANCELLED` (choosing a reason from
   `cancellation_reason`; `CUSTOMER_REQUEST` when none is sent). The API also has a client reschedule
-  (`PUT /bookings/{id}`), but the web and the app do not use it.
-- **Expired bookings:** every 5 minutes (`ExpiredBookingsJob`) a `SCHEDULED` booking still open one
-  hour after its end is cancelled with the system reason `EXPIRED` (publishes `BookingCancelled`; the
-  reason is not listed in `/bookings/cancellation-reasons`). A `CONFIRMED` one is never closed by
-  booking itself: operations-service knows whether it had an operator and, only when it never had
+  (`PUT /bookings/{id}`): since 2026-10-24 the client can only change the date and time; other services
+  answer 409 `BOOKING_SERVICES_LOCKED` (BIZ-01). The admin can still change the services.
+- **Since 2026-10-24:** a service price must be greater than 0 (400 `INVALID_PRICE`, CHECK of migration
+  044, BIZ-04); `@Version` on `row_version` plus the trigger fix of migration 045 give optimistic locking
+  (stale version → 409 `CONFLICT`, BIZ-09); a frozen price is kept only for the same vehicle type
+  (BIZ-06); weekly hours, exceptions and bay states that leave active bookings outside answer 409
+  `SCHEDULE_CONFLICTS_BOOKINGS` with `conflictingBookings` and `bookingCodes` (BIZ-10); a 4xx from
+  customer keeps its code and a database outage answers 503 `BOOKING_SERVICE_UNAVAILABLE` (BIZ-13);
+  `/api/v1/bookings/**` is for `CLIENT` only, except `availability` and `cancellation-reasons`, also open
+  to ADMIN (BIZ-12); seed 113 clears the sample "Express Car Wash" data (E-19).
+- **Expired bookings:** booking's own expiry job (`ExpiredBookingsJob`, `closeExpired`) was removed on
+  2026-10-24 (B-07). A booking is never closed by booking itself: operations-service knows whether it had an operator and, only when it never had
   one, asks `POST /internal/v1/bookings/{id}/no-show`; booking checks the margin again (409
   `BOOKING_NOT_EXPIRED` otherwise). A booking with an operator is resolved by the admin.
 - The operator's lists (`/operator/bookings`) leave out cancelled and no-show bookings.
 - **Schedule history:** every change of the weekly hours, exceptions and bays is recorded in
   `booking.schedule_history` (`GET /api/v1/admin/schedule/history`).
 - **Establishment:** the shop's public data (name, address, contact).
-- Publish `BookingConfirmed` / `BookingCancelled` after commit. A new booking may carry the client's
+- Publish `BookingConfirmed` / `BookingCancelled` (with `reasonCode`) / `BookingStatusChanged` after commit. A new booking may carry the client's
   `preferredOperatorId` (RF-010): it is not stored, it travels in the event for operations-service.
 - **Internal routes (ADR-014 §10):** `GET /internal/v1/bookings?from=&to=` and `/internal/v1/bookings/{id}`
-  for operations-service, only with `X-Internal-Key` (`INTERNAL_API_KEY`), not routed by the gateway.
+  for operations-service, and `GET /internal/v1/bookings/active-count?customerVehicleId=` for
+  customer-service (BIZ-08), only with `X-Internal-Key` (`INTERNAL_API_KEY`), not routed by the gateway.
 
 ## Out of scope (what it does NOT do)
 
@@ -70,12 +78,14 @@
 |---|---|---|
 | GET | `/api/v1/catalog/categories` · `/catalog/services?vehicleTypeId=` | public |
 | GET | `/api/v1/schedule/business-hours` · `/schedule/exceptions` · `/establishment` | public |
-| GET | `/api/v1/bookings/availability?date=&vehicleTypeId=&serviceIds=` | token |
-| POST | `/api/v1/bookings` | client |
-| GET | `/api/v1/bookings/me` · `/bookings/{id}` · `/bookings/cancellation-reasons` | client |
+| GET | `/api/v1/bookings/availability?date=&vehicleTypeId=&serviceIds=` | CLIENT, ADMIN (BIZ-12: OPERATOR gets 403) |
+| POST | `/api/v1/bookings` | CLIENT only (403 for ADMIN and OPERATOR since BIZ-12) |
+| GET | `/api/v1/bookings/me` · `/bookings/{id}` | CLIENT only |
+| GET | `/api/v1/bookings/cancellation-reasons` | CLIENT, ADMIN (the admin booking form uses it) |
 | PUT · POST | `/api/v1/bookings/{id}` (reschedule, not used by the web or the app) · `/bookings/{id}/cancel` (no body needed, reason `CUSTOMER_REQUEST`) | client |
 | GET · POST | `/api/v1/admin/bookings` (`?from=&to=&status=`) | ADMIN |
 | POST | `/internal/v1/bookings/{id}/no-show` (a confirmed booking past its end and margin that never had an operator) | internal key (operations-service) |
+| GET | `/internal/v1/bookings/active-count?customerVehicleId=` (active bookings of a vehicle, BIZ-08) | internal key (customer-service) |
 | GET | `/api/v1/admin/schedule/history` (changes of hours, exceptions and bays) | ADMIN |
 | GET | `/api/v1/admin/bookings/day-summary` (`?date=`, default today in the shop zone): bookings of the day vs the day before, for the admin home | ADMIN |
 | GET · PUT | `/api/v1/admin/bookings/{id}` | ADMIN |
@@ -85,8 +95,8 @@
 | POST · PUT · DELETE | `/api/v1/admin/schedule/exceptions[/{id}]` | ADMIN |
 | GET · POST · PUT · DELETE | `/api/v1/admin/bays[/{id}]` | ADMIN |
 | GET · PUT | `/api/v1/admin/establishment` (business data of Settings; the domain validates it) | ADMIN |
-| GET | `/api/v1/operator/bookings` · `/operator/bookings/{id}` | OPERATOR, ADMIN (used by operations-service) |
-| PATCH | `/api/v1/operator/bookings/{id}/status` | OPERATOR, ADMIN (used by operations-service) |
+| GET | `/api/v1/operator/bookings` · `/operator/bookings/{id}` | OPERATOR, ADMIN **and** `X-Internal-Key`: only operations-service calls them, the gateway does not route them (E-01) |
+| PATCH | `/api/v1/operator/bookings/{id}/status` | OPERATOR, ADMIN **and** `X-Internal-Key` (only operations-service, E-01) |
 
 Full contract: [`07-api/contracts/openapi/booking-service.yaml`](../../../07-api/contracts/openapi/booking-service.yaml).
 Dates are local shop dates (`yyyy-MM-dd`) and times `HH:mm` in `America/Bogota`; responses also
@@ -99,6 +109,7 @@ carry the UTC instants.
 ```bash
 cd lavarapido-booking-service
 ./mvnw spring-boot:run           # http://localhost:3003 — Swagger: /swagger-ui.html (dev profile)
+./mvnw verify                    # 95 tests (CI run of 2026-10-24), no database needed
 ```
 
 | Variable | Default | Purpose |
@@ -109,8 +120,7 @@ cd lavarapido-booking-service
 | `BOOKING_ZONE` | `America/Bogota` | Shop time zone |
 | `BOOKING_SLOT_MINUTES` | `30` | Availability grid |
 | `BOOKING_MAX_DAYS_AHEAD` | `60` | How far ahead clients can book |
-| `BOOKING_EXPIRY_GRACE_MINUTES` | `60` | How long after its end a scheduled booking is cancelled, or one without operator becomes no-show (operations-service reads the same variable) |
-| `BOOKING_EXPIRY_CHECK_ENABLED`, `BOOKING_EXPIRY_CHECK_INTERVAL` | `true`, `PT5M` | Turn the expired-bookings job on or off and how often it runs |
+| `BOOKING_EXPIRY_GRACE_MINUTES` | `60` | How long after its end a booking without operator can become no-show (operations-service reads the same variable). `BOOKING_EXPIRY_CHECK_ENABLED` and `BOOKING_EXPIRY_CHECK_INTERVAL` no longer exist (B-07) |
 | `MESSAGING_ENABLED`, `RABBITMQ_*` | `false` | Publish booking events |
 
 ---

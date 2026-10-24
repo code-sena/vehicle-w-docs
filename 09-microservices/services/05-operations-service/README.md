@@ -38,15 +38,17 @@
   booking, not absent, and not busy with another booking at the same time (409 `OPERATOR_INACTIVE`,
   `OPERATOR_NOT_ON_SHIFT`, `OPERATOR_ABSENT`, `OPERATOR_BUSY`). Since 2026-10-23 (A-13) an operator whose
   security account is disabled is rejected with 409 `OPERATOR_ACCOUNT_DISABLED`, also shown as the
-  reason in the candidates list (if security does not answer, the account is taken as active). The
+  reason in the candidates list. Since 2026-10-24 it fails closed: if security does not answer, 503
+  `SECURITY_SERVICE_UNAVAILABLE` (A-13), and both assignments call booking and security before taking
+  the lock (OPS-11). The
   candidates endpoint returns every operator with the reason that blocks them, if any. Manual and
   automatic assignment take the same lock (`sp_getapplock` on `operations-assignment`) before checking
   who is free, so two assignments at the same moment cannot give one operator two services at the same
   time; if the lock is busy the call answers 409 `ASSIGNMENT_BUSY` ("try again").
 - **Assignment notes (B-01, 2026-10-23):** `PUT /admin/assignments/{bookingId}` accepts an optional
   `notes` (up to 300 characters, else 400 `INVALID_ASSIGNMENT_NOTES`), stored in
-  `service_execution.assignment_notes` (migration 042) and returned to the admin. Reassigning without
-  notes clears the previous ones. The operator's list does not include them yet (open).
+  `service_execution.assignment_notes` (migration 042) and returned to the admin and, since 2026-10-24,
+  to the operator (`notes`). Reassigning without notes keeps the previous ones.
 - **Unassigned bookings:** `GET /api/v1/admin/assignments/unassigned?from=&to=` answers
   `{count, bookingIds}` with the bookings that still need an operator: `SCHEDULED` or `CONFIRMED`,
   not finished yet and without any execution line. The admin home and the bookings screen use this one
@@ -159,7 +161,7 @@ Full contract: [`07-api/contracts/openapi/operations-service.yaml`](../../../07-
 ```bash
 cd lavarapido-operation-service
 ./mvnw spring-boot:run           # http://localhost:3004 — Swagger: /swagger-ui.html (dev profile)
-./mvnw verify                    # 72 tests (CI run of 2026-10-23), no database needed
+./mvnw verify                    # 110 tests (CI run of 2026-10-24), no database needed
 ```
 
 | Variable | Default | Purpose |
@@ -176,7 +178,8 @@ cd lavarapido-operation-service
 | `MESSAGING_ENABLED`, `RABBITMQ_*` | `false` | Publish execution events |
 | `FOLLOW_UP_ENABLED`, `FOLLOW_UP_INTERVAL` | `true`, `PT5M` | The job that closes bookings without operator and notifies the ones to close (needs `INTERNAL_API_KEY`) |
 | `FOLLOW_UP_LOOK_BACK_DAYS` | `28` | How many days back the job and the "To close" list look (the VM can stay off for weeks; the web loads 30 days and the mobile 29) |
-| `AUTO_ASSIGN_ENABLED` | `true` | Automatic assignment on `booking.confirmed` |
+| `AUTO_ASSIGN_ENABLED` | `true` | Automatic assignment on `booking.confirmed` (queue `operations-service.booking-confirmed`, 3 attempts, then its DLQ) |
+| `START_LATE_LIMIT` | `PT4H` | How long after the end time a service can still be started; later 409 `SERVICE_TOO_LATE` (A-12) |
 | `BOOKING_EXPIRY_GRACE_MINUTES` | `60` | Margin after the end before a booking without operator becomes no-show, or a started one counts as not finished (same variable as booking-service) |
 
 ---
@@ -185,4 +188,4 @@ cd lavarapido-operation-service
 
 - [data-model.md](./data-model.md) · [events.md](./events.md) · [decisions.md](./decisions.md) · [runbook.md](./runbook.md)
 - ADR-014 (booking integration, operator provisioning, assignment, follow-up job §11), ADR-004 (communication), ADR-009 (decomposition)
-- Open findings of 2026-10-23 (OPS-01 `finish` not atomic with booking, OPS-03 no optimistic lock): `15-project-control/risks.md`
+- OPS-01, OPS-03, OPS-04, OPS-08, OPS-11, OPS-12, A-12, A-13, B-01 and E-12 closed on 2026-10-24 (ADR-014 §12). Still open: false notices for a `COMPLETED` booking with open lines, one security call per operator on each `BookingConfirmed` (`15-project-control/risks.md`)

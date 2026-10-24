@@ -37,7 +37,8 @@ Events may include booking confirmation/cancellation, operator assignment, servi
 - Events are published after the local database transaction commits.
 - Consumers must tolerate duplicate delivery.
 - Acknowledgement occurs after successful processing.
-- Retry/dead-letter handling is required for the running broker configuration.
+- Retry/dead-letter handling is required for the running broker configuration. Since 2026-10-24 the three consumers (customer, operations, notification) retry 3 times and then dead-letter through `carwash.events.dlx`; operations moved to the queue `operations-service.booking-confirmed` for that (OPS-04, ADR-011 §17).
+- operations-service publishes with publisher confirms (OPS-04): a nack or an unroutable event is logged, not retried. notification-service keeps its own delivery outbox (`pending_delivery`, OPS-05) for push and email, which is not an event outbox.
 - An Outbox table/process is **not adopted**: accepted risk for version 1 (H-11, ADR-020). If the broker is down at publish time the event is logged and lost; scheduled jobs (reminders, unassigned alerts, the follow-up of bookings nobody closed) rebuild what matters from the database.
 
 ## Consequences

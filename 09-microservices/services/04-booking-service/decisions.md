@@ -55,6 +55,9 @@ assignments: without an operator it asks booking to make it `NO_SHOW` (`POST
 /internal/v1/bookings/{id}/no-show`, `Booking.markUnattended` checks the margin again); with an
 operator it goes to the admin's **To close** list, where the admin picks Attended or No-show. Paid
 or not, nothing is refunded automatically.
+**Update 2026-10-24 (B-07):** the `SCHEDULED` part was removed together with `ExpiredBookingsJob`,
+`closeExpired` and `Booking.expire`: the flow never creates `SCHEDULED` bookings, so booking no longer
+closes anything by itself and `BOOKING_EXPIRY_CHECK_*` are gone.
 **Consequences:** A forgotten Start no longer turns into a false no-show. Bookings with an operator
 need one click from the admin, and the operator and the admins are notified so it happens the same
 day. The hour of margin (`BOOKING_EXPIRY_GRACE_MINUTES`) is shared by both services.

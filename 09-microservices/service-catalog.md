@@ -85,16 +85,17 @@ container instead of on startup.
 | security | RabbitMQ | Event `security.user_registered` | Asynchronous | New account |
 | customer | security | HTTP/REST `GET /users/me` (caller's token) | Synchronous | Read `personId` to create a missing client profile |
 | booking | customer | HTTP/REST `GET /vehicles/{id}`, `/admin/vehicles` (caller's token) | Synchronous | Vehicle ownership and type (INV-BOOK-002) |
-| booking | RabbitMQ | Events `booking.confirmed`, `booking.cancelled`, `booking.status_changed` | Asynchronous | Booking lifecycle (status changed by the admin since 2026-10-23) |
+| booking | RabbitMQ | Events `booking.confirmed`, `booking.cancelled`, `booking.status_changed` | Asynchronous | Booking lifecycle (status changed by the admin since 2026-10-23; `reasonCode` on cancellations since 2026-10-24) |
+| customer | booking | HTTP/REST `GET /internal/v1/bookings/active-count?customerVehicleId=` (`X-Internal-Key`) | Synchronous | A vehicle with active bookings cannot be removed (BIZ-08) |
 | customer | RabbitMQ | consumes `security.user_registered` | Asynchronous | Create the client profile |
 | operations | booking | HTTP/REST `/admin/bookings`, `/bookings/{id}` (caller's token); `/operator/bookings`, `PATCH /operator/bookings/{id}/status` (operator's token + `X-Internal-Key`, E-01) | Synchronous | Bookings to assign; move them to `IN_PROGRESS` / `COMPLETED`; the client's booking before rating |
 | operations | security | HTTP/REST `GET /admin/users?role=OPERATOR` (admin's token); `GET /internal/v1/users/{id}/contact` (`X-Internal-Key`) | Synchronous | Operator accounts and names; whether an operator's account is active during the automatic assignment |
 | operations | booking | HTTP/REST `GET /internal/v1/bookings/{id}`, `/internal/v1/bookings?from=&to=`, `POST /internal/v1/bookings/{id}/no-show` (`X-Internal-Key`) | Synchronous | Booking data for the automatic assignment and the follow-up job; close a booking that never had an operator (no user) |
-| operations | RabbitMQ | consumes `booking.confirmed` | Asynchronous | Automatic operator assignment |
-| operations | RabbitMQ | Events `execution.operator_assigned`, `execution.service_started`, `execution.service_completed`, `execution.service_not_started`, `execution.service_not_finished`, `execution.inspection_shared` | Asynchronous | Execution lifecycle, bookings nobody closed and inspection report |
+| operations | RabbitMQ | consumes `booking.confirmed` (queue `operations-service.booking-confirmed`, DLQ) | Asynchronous | Automatic operator assignment |
+| operations | RabbitMQ | Events `execution.operator_assigned`, `execution.service_started`, `execution.service_completed`, `execution.service_not_started`, `execution.service_not_finished`, `execution.operator_unassigned`, `execution.inspection_shared` | Asynchronous | Execution lifecycle, bookings nobody closed, bookings left without operator (E-12) and inspection report |
 | payment | RabbitMQ | Events `payment.confirmed`, `payment.rejected`, `payment.refunded`, `payment.promotion_redeemed`, `payment.loyalty_points_earned` | Asynchronous | Payment, coupon and loyalty facts |
 | payment | booking | HTTP/REST `GET /bookings/{id}`, `/bookings/me`, `/admin/bookings/{id}` (caller's token) | Synchronous | Booking total, status and owner (the browser never sends the amount) |
-| notification | RabbitMQ | consumes 16 routing keys: user, booking, execution and payment events (`booking.created` has no producer) | Asynchronous | Inbox, push, email, reminders |
+| notification | RabbitMQ | consumes the 16 published routing keys: user, booking, execution and payment events | Asynchronous | Inbox, push, email, reminders |
 | notification | security | HTTP/REST `GET /internal/v1/users/{id}/contact`, `/internal/v1/users/admins` (`X-Internal-Key`) | Synchronous | Current email, language and switches for emails and reminders; the active admins for staff alerts (ADR-011 §8) |
 | `deploy/publish-apk.sh` | notification | HTTP/REST `POST /internal/v1/notifications/app-update` (`X-Internal-Key`) | Synchronous | Tell the app users a new APK is published |
 

@@ -54,8 +54,10 @@ always the `.md` file; the images in `diagrams/exports/` are a copy for Word, PD
   their PNGs still show the previous version: `c2-containers` (events, session check, E-01),
   `c3-booking-components`, `class-booking`, `class-operations`, `class-notification`,
   `deployment-production` (backups), `seq-assignment-execution` (internal key, new codes) and
-  `state-booking`. Run the exporter above before copying them to Word, PDF or slides; the Markdown
-  sources are the up-to-date version.
+  `state-booking`. On 2026-10-24 `c2-containers` (new queue, `execution.operator_unassigned`),
+  `seq-auto-assignment` (DLQ, E-12), `deployment-production` (web on 8080, rollback) and
+  `state-booking` (expiry job removed) changed again. Run the exporter above before copying them to
+  Word, PDF or slides; the Markdown sources are the up-to-date version.
 
 ---
 

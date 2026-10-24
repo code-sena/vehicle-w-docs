@@ -16,11 +16,11 @@ flowchart TB
 
     subgraph azure["Azure VM vehiclecarwash-vm"]
         caddy["caddy · :80 / :443<br/>only public ports · TLS 1.3"]
-        web["web<br/>nginx + Angular"]
+        web["web :8080<br/>nginx (no root) + Angular"]
         dl[/"/app/<br/>APK + version.json"/]
         gw["api-gateway :8080"]
         apps["6 microservices<br/>security :3001 · customer :3002<br/>booking :3003 · operations :3004<br/>payment :3005 (.NET 8) · notification :3006"]
-        db[("SQL Server 2022 Express<br/>LavaRapido · 57 tables")]
+        db[("SQL Server 2022 Express<br/>LavaRapido · 58 tables + 1 view")]
         mq[["RabbitMQ :5672"]]
         init["db-init + payment-migrate<br/>(run once, exit 0)"]
         scripts["deploy/update-server.sh<br/>ci-deploy.sh · publish-apk.sh"]
@@ -55,8 +55,8 @@ flowchart TB
 | Server | Azure VM `vehiclecarwash-vm` (Ubuntu 24.04, 2 vCPU, 7.7 GB), domain `lavarapidovehicular.northcentralus.cloudapp.azure.com`, public IP 64.236.160.129, Docker 29 and Compose v5; every container is in the network `lavarapido_default` |
 | Caddy | Only container with published ports; obtains and renews the certificate (valid until 2027-01-14 at the last check) |
 | Services | Which service calls which and the events they exchange: [c2-containers](./c2-containers.md). No ports on the host; Swagger off; memory limit per container, `restart: unless-stopped` |
-| SQL Server | Express edition; data in the `sqlserver-data` volume. `db-init` creates the database (recovery model `SIMPLE`); each Java service applies its Liquibase changelog on start-up (global numbering up to 043 and seeds up to 112 in `origin/develop`) and `payment-migrate` applies the .NET service's (own numbering up to 021) |
-| Backups | `backup-db.sh` and `verify-backup.sh` run by cron (daily 23:00 UTC and 5 min after boot) and before each update; 14 kept on the VM disk; `restore-db.sh` by hand (`13-operations/README.md`) |
+| SQL Server | Express edition; data in the `sqlserver-data` volume. `db-init` creates the database (recovery model `SIMPLE`); each Java service applies its Liquibase changelog on start-up (global numbering up to 047 and seeds up to 116 in `origin/develop` on 2026-10-24) and `payment-migrate` applies the .NET service's (own numbering up to 023) |
+| Backups | `backup-db.sh` and `verify-backup.sh` run by cron (daily 23:00 UTC and 5 min after boot) and before each update; 14 regular and 10 `pre-update` kept on the VM disk; `restore-db.sh` and `rollback.sh` (`:prev` images) by hand (`13-operations/README.md`) |
 | Mailpit | Not started in production (`dev-only` profile) |
 | Portainer | Bound to `127.0.0.1`; reached through an SSH tunnel |
-| Access | Members with their own key; GitHub Actions with a restricted key that can only run `ci-deploy.sh` (key and secret still to be created). Continuous deployment from `main` with `boot-update.sh` is prepared in a local branch (ADR-017) |
+| Access | Members with their own key; GitHub Actions with a restricted key that can only run `ci-deploy.sh` (key and secret still to be created). Continuous deployment from `main` with `boot-update.sh` is merged into `develop` since 2026-10-24, not run yet (ADR-017) |

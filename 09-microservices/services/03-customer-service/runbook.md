@@ -15,10 +15,13 @@ curl http://localhost:3002/actuator/health      # {"status":"UP"}
 | 409 `PLATE_ALREADY_REGISTERED` | The plate belongs to another active vehicle | Expected; remove the old vehicle first |
 | Profile not created at registration | `MESSAGING_ENABLED=false` or RabbitMQ down | Optional: it is created on first use anyway |
 | Startup fails on `localhost:1433` | SQL Server not healthy yet | Wait for `lavarapido-sqlserver` (healthy) and retry |
+| 409 `VEHICLE_HAS_ACTIVE_BOOKINGS` when removing a vehicle | The vehicle has active bookings (BIZ-08) | Expected; cancel them first |
+| 503 `BOOKING_SERVICE_UNAVAILABLE` when removing a vehicle | booking-service down, `INTERNAL_API_KEY` empty or different, or `BOOKING_SERVICE_URL` not the root of booking (`http://localhost:3003`) | Start booking; same key in both; fix the URL |
+| 403 on `/api/v1/vehicles/**` with an admin or operator token | Expected since BIZ-12: those routes are for `CLIENT` only | Staff use `/api/v1/admin/vehicles` |
 
 ## Tests
 
-`./mvnw verify`: 71 tests in the CI run of 2026-10-23 (no database needed).
+`./mvnw verify`: 82 tests in the CI run of 2026-10-24 (no database needed).
 
 ## Useful queries
 

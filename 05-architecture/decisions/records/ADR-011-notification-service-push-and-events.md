@@ -1,7 +1,7 @@
 # ADR-011 — Notification Service: Push Delivery and Event Contract
 
 - **ID:** ADR-011
-- **Date:** 2026-09-30 (updated 2026-10-09: sections 9 to 14; 2026-10-23: section 17, the contract as built)
+- **Date:** 2026-09-30 (updated 2026-10-09: sections 9 to 14; 2026-10-23: section 17, the contract as built; 2026-10-24: section 17 rechecked after the fleet merge — new operations queue with DLQ, `OperatorUnassigned`, `reasonCode`, `BOOKING_NO_SHOW`, publisher confirms, `pending_delivery`)
 - **Status:** Accepted
 - **Authors:** Development team
 
@@ -339,46 +339,62 @@ mobile commands with test doubles; live run against a local fake Expo endpoint (
 priority and data; a `DeviceNotRegistered` token deactivated; unregister on sign-out); the app in web mode
 signs in, opens the inbox and signs out with the new code.
 
-### 17. The event contract as built (checked against `origin/develop` on 2026-10-23)
+### 17. The event contract as built (checked against `origin/develop` on 2026-10-24)
 
 Exchange `carwash.events` (topic, durable). Envelope
 `{eventId, eventType, aggregateId, occurredAt, version: 1, payload}`; `occurredAt` belongs to the
 envelope, not to the payload. Every publisher sends after its transaction commits and, if RabbitMQ
-fails, only logs the error (no Outbox, accepted risk H-11). Four services publish; customer and
-notification publish nothing.
+fails, only logs the error (no Outbox, accepted risk H-11). Since OPS-04 (2026-10-24) operations
+publishes with publisher confirms (`publisher-confirm-type: correlated`, `publisher-returns`, mandatory):
+a nack or an unroutable event is written to the log, still without retry; sharing an inspection waits
+for the confirm and answers 503 `NOTIFICATION_NOT_SENT` when it does not arrive (OPS-08). Four services
+publish; customer and notification publish nothing.
 
 | Producer | Routing key | `eventType` | Payload | Consumers (queue) |
 |---|---|---|---|---|
 | security | `security.user_registered` | `UserRegistered` | `userId`, `personId`, `email`, `firstName`, `roles`, `createdByAdmin` | customer (`customer-service.events`), notification (`notification-service.events`) |
-| booking | `booking.confirmed` | `BookingConfirmed` | `bookingId`, `bookingCode`, `customerUserId`, `customerVehicleId`, `scheduledStart`, `serviceBayId`, `preferredOperatorId` (only on creation, if chosen) | operations (`operations-service.events`), notification |
-| booking | `booking.cancelled` | `BookingCancelled` | same base fields + `reason` (display name of the reason, in Spanish); `customerUserId` is `null` when the system expires a booking | notification |
-| booking | `booking.status_changed` | `BookingStatusChanged` | same base fields + `status` (`IN_PROGRESS`, `COMPLETED` or `NO_SHOW`) — A-11, 2026-10-23 | notification |
+| booking | `booking.confirmed` | `BookingConfirmed` | `bookingId`, `bookingCode`, `customerUserId`, `customerVehicleId`, `scheduledStart`, `serviceBayId`, `preferredOperatorId` (only on creation, if chosen) | operations (`operations-service.booking-confirmed`), notification |
+| booking | `booking.cancelled` | `BookingCancelled` | same base fields + `reason` (display name of the reason, in Spanish) + `reasonCode` (stable code such as `CUSTOMER_REQUEST`; A-20/OPS-10, 2026-10-24) | notification |
+| booking | `booking.status_changed` | `BookingStatusChanged` | same base fields + `status` (`IN_PROGRESS`, `COMPLETED` or `NO_SHOW`) — A-11, 2026-10-23; no `reasonCode` | notification |
 | operations | `execution.operator_assigned` | `OperatorAssigned` | `bookingId`, `bookingCode`, `customerUserId`, `operatorUserId`, `scheduledStart` | notification |
 | operations | `execution.service_started` | `ServiceStarted` | same | notification |
 | operations | `execution.service_completed` | `ServiceCompleted` | same | notification |
 | operations | `execution.service_not_started` | `ServiceNotStarted` | same | notification |
 | operations | `execution.service_not_finished` | `ServiceNotFinished` | same | notification |
+| operations | `execution.operator_unassigned` | `OperatorUnassigned` | same (`operatorUserId` is the operator who lost the booking) — E-12, 2026-10-24 | notification |
 | operations | `execution.inspection_shared` | `InspectionShared` | `bookingId`, `bookingCode`, `customerUserId`, `plate`, `publicToken`, `phasesDone`, `phasesTotal`, `findings`, `majorFindings`, `areas` | notification |
 | payment | `payment.confirmed` | `PaymentConfirmed` | `paymentId`, `bookingId`, `customerUserId`, `amount` | notification |
 | payment | `payment.rejected` | `PaymentRejected` | same + `reason` | notification |
 | payment | `payment.refunded` | `PaymentRefunded` | same as confirmed | notification |
 | payment | `payment.promotion_redeemed` | `PromotionRedeemed` | `customerUserId`, `bookingId`, `bookingCode`, `promotionCode`, `promotionName`, `discountAmount` | notification |
 | payment | `payment.loyalty_points_earned` | `LoyaltyPointsEarned` | `customerUserId`, `bookingId`, `bookingCode`, `points`, `balance`, `unlockedPromotions[]` (`code`, `name`, `discountPercent`, `requiredPoints`) | notification |
-| — | `booking.created` | `BookingCreated` | no producer: notification still binds and handles it | notification |
 
-Queues: `customer-service.events` and `notification-service.events` dead-letter to
-`customer-service.events.dlq` / `notification-service.events.dlq` through the direct exchange
-`carwash.events.dlx` after three attempts. `operations-service.events` has no DLQ: its listener is
-idempotent and logs a failure instead of requeueing (ADR-014 §10).
+Queues: `customer-service.events`, `notification-service.events` and
+`operations-service.booking-confirmed` dead-letter to `customer-service.events.dlq`,
+`notification-service.events.dlq` and `operations-service.booking-confirmed.dlq` through the direct
+exchange `carwash.events.dlx` after three attempts (operations waits 2 s and then 4 s; OPS-04). The old
+`operations-service.events` had no DLX and RabbitMQ cannot add one to an existing queue, so on start
+operations declares the new queue, moves whatever was left in the old one (`LegacyQueueMigration`) and
+deletes it. The `booking.created` binding was removed from notification (OPS-10): nobody publishes it.
 
 Notes:
 
 - `BookingStatusChanged` (A-11): when the administrator moves a booking to in progress, completed or
-  no-show from the panel, the client gets `SERVICE_STARTED`, `SERVICE_COMPLETED` or a
-  `BOOKING_CANCELLED` worded as no-show. **Open gap:** the consumer cancels pending reminders only
-  for `BookingCancelled`, `ServiceStarted` and `ServiceCompleted`, so a status set by the admin does
-  not stop the reminders yet (`15-project-control/risks.md`). Moving a booking back to `CONFIRMED`
-  republishes `BookingConfirmed`.
+  no-show from the panel, the client gets `SERVICE_STARTED`, `SERVICE_COMPLETED` or
+  `BOOKING_NO_SHOW` (its own type since seed 116, cancellation category, with email). Any of the three
+  statuses also cancels the pending reminders (A-11, closed on 2026-10-24). Moving a booking back to
+  `CONFIRMED` republishes `BookingConfirmed`. The automatic no-show that operations closes for a
+  booking that never had an operator publishes nothing (low, open: `15-project-control/risks.md`).
+- `OperatorUnassigned` (E-12): when a rescheduled booking no longer fits its operator and nobody else is
+  free, operations deletes the pending executions and publishes it; notification sends
+  `OPERATOR_SERVICE_UNASSIGNED` (`operator.released`) to that operator and `ADMIN_BOOKING_UNASSIGNED`
+  (`admin.released`) to the administrators.
+- `reasonCode` is published, but notification still words the notice with `reason` (Spanish text), so a
+  user in en, fr or pt reads the reason in Spanish (low, open).
+- Delivery (OPS-05, migration 047): the notification row and one `pending_delivery` row per channel are
+  written in the same transaction; push and email leave after the commit and are retried after 1, 2,
+  4… minutes (at most 1 h) up to `DELIVERY_MAX_ATTEMPTS` (5), with an atomic claim. Delivery is at
+  least once.
 - `ServiceNotStarted` / `ServiceNotFinished`: operations' follow-up job publishes one per booking that
   ended with an operator and nobody registered (ADR-014 §8); notification sends
   `OPERATOR_SERVICE_NOT_REGISTERED` to the operator and `ADMIN_SERVICE_NOT_REGISTERED` to every active
@@ -386,7 +402,7 @@ Notes:
 - Raised but only logged (no consumer): security `EmailChanged`, `PasswordChanged`,
   `AccountDeactivated`; customer `CustomerProvisioned`, `VehicleRegistered`, `VehicleUpdated`,
   `VehicleRemoved`, `LoyaltyPointsChanged`.
-- notification-service knows 26 notification types (`NotificationTypeCode`), all seeded.
+- notification-service knows 27 notification types (`NotificationTypeCode`), all seeded (the last one, `BOOKING_NO_SHOW`, in seed 116).
 
 ---
 

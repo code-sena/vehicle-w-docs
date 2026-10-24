@@ -4,7 +4,7 @@
 |---|---|
 | **ID** | ADR-006 |
 | **Date** | 2026-09-24 |
-| **Status** | Accepted (updated 2026-10-21 and 2026-10-23) |
+| **Status** | Accepted (updated 2026-10-21, 2026-10-23 and 2026-10-24) |
 | **Authors** | Development team |
 | **Reviewers** | Development team |
 
@@ -83,13 +83,29 @@ E-05 (2026-10-23): security-service has no default Spring profile, and the demo 
 come from `DEMO_*_PASSWORD` instead of the code, so a deployment that forgets the profile does not
 start with Swagger or demo accounts.
 
-**Open gaps (2026-10-23, `15-project-control/risks.md`):**
+**Open gaps (2026-10-23):** SEC-01 and SEC-04 were closed on 2026-10-24 (next section). The session
+check is still fail-open and cached 30 s (accepted trade-off above).
 
-- SEC-01: the gateway check only recognises `Bearer ` with a capital B; with `bearer` a closed-session
-  token (including an ex-admin's after E-02) still works for up to one hour in the five services that
-  do not check `sid` themselves (customer, booking, operations, notification, payment).
-- The session check is fail-open and cached 30 s (accepted trade-off above).
-- No rate limit on `/api/v1/auth/**` (SEC-04).
+## Update 2026-10-24 — attempt caps, consent and role-only routes
+
+Merged to `develop` on 2026-10-24 (security `b5fe56e`, 200 tests; gateway `c8b607a`, 62 tests;
+booking `5dd6794`; customer `3181cae`).
+
+| Finding | Rule now |
+|---|---|
+| SEC-01 | The gateway checks the session with any scheme and on any path; logout clears every variant (ADR-005) |
+| SEC-04 | 60 requests per minute per client IP on `/api/v1/auth/**`, then 429 `RATE_LIMITED` with `Retry-After`; the real IP comes from `X-Forwarded-For` only behind `TRUSTED_PROXIES`. `/password/forgot` also pays the BCrypt cost for an unknown email, so its timing does not reveal accounts |
+| SEC-05 | Recovery code: `sp_getapplock` per user in `checkCode`; the 5th wrong code burns it and answers 423 `TOO_MANY_ATTEMPTS` until a new code is requested or it expires (the counter is in memory: a restart forgets it) |
+| SEC-12 | A wrong current password (change password, change email, deactivate account) counts in the login lockout (5 in 15 min); while locked, 423 `TOO_MANY_ATTEMPTS`, and the login answers `ACCOUNT_LOCKED` |
+| SEC-07 | Registration without both boxes (`acceptsTerms`, `acceptsDataPolicy`) — or with only one — answers 400 `CONSENT_REQUIRED` |
+| SEC-11 | Passwords are capped at 72 characters **and** 72 UTF-8 bytes (BCrypt); before, 40 «ñ» gave a 500, now 400 `WEAK_PASSWORD`. The session stores the real client IP |
+| A-01 | Changing the email to the current one (even if not gmail) is accepted unchanged |
+| SEC-09 | 403 tests with CLIENT and OPERATOR on the admin endpoints and on `/users/me/password` and `/users/me/email` |
+| BIZ-12 / A-10 | `/api/v1/bookings/**` and `/api/v1/vehicles/**` accept only `CLIENT` (403 for ADMIN and OPERATOR), so no client profile is created for staff; `availability` and `cancellation-reasons` stay open to ADMIN for the admin's booking form |
+
+**Still open:** a `sp_getapplock` timeout (10 s) answers 500 instead of 409 (low); the rate-limit bucket
+and the recovery-code counter live in memory, per replica. SEC-14 (Sonar), SEC-15, D-02 and E-21 are
+documented as accepted in the services' READMEs.
 
 **Accepted risk (H-18):** the web keeps the session, token included, in `localStorage`
 (`auth_session`), readable by any script that runs on the page. The mobile app uses SecureStore on

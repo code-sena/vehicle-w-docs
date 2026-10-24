@@ -96,20 +96,21 @@ schema prefix matches `06-data`/`ADR-003` ownership directly, so the same name
 tells you both the queue to bind and which service's database the fact came
 from.
 
-Routing keys built today (checked against `origin/develop` on 2026-10-23 with a script that extracts
+Routing keys built today (checked against `origin/develop` on 2026-10-24 with a script that extracts
 the publishers and the bindings from the code; payloads in ADR-011 §17):
 
 | Event (`02-domain/domain-events.md`) | Routing key | Publishing service | Consumers (queue) |
 |---|---|---|---|
 | `UserRegistered` | `security.user_registered` | `security-service` | customer (`customer-service.events`), notification (`notification-service.events`) |
-| `BookingConfirmed` (also on reschedule and when the admin moves a booking back to confirmed) | `booking.confirmed` | `booking-service` | operations (`operations-service.events`), notification |
-| `BookingCancelled` | `booking.cancelled` | `booking-service` | notification |
+| `BookingConfirmed` (also on reschedule and when the admin moves a booking back to confirmed) | `booking.confirmed` | `booking-service` | operations (`operations-service.booking-confirmed`), notification |
+| `BookingCancelled` (carries `reason` and `reasonCode`) | `booking.cancelled` | `booking-service` | notification |
 | `BookingStatusChanged` (admin sets in progress, completed or no-show) | `booking.status_changed` | `booking-service` | notification |
 | `OperatorAssigned` (also on reassignment) | `execution.operator_assigned` | `operations-service` | notification |
 | `ServiceStarted` | `execution.service_started` | `operations-service` | notification |
 | `ServiceCompleted` | `execution.service_completed` | `operations-service` | notification |
 | `ServiceNotStarted` | `execution.service_not_started` | `operations-service` | notification |
 | `ServiceNotFinished` | `execution.service_not_finished` | `operations-service` | notification |
+| `OperatorUnassigned` (rescheduled booking nobody can take, E-12) | `execution.operator_unassigned` | `operations-service` | notification |
 | `InspectionShared` | `execution.inspection_shared` | `operations-service` | notification |
 | `PaymentConfirmed` | `payment.confirmed` | `payment-service` | notification |
 | `PaymentRejected` | `payment.rejected` | `payment-service` | notification |
@@ -117,10 +118,10 @@ the publishers and the bindings from the code; payloads in ADR-011 §17):
 | `PromotionRedeemed` | `payment.promotion_redeemed` | `payment-service` | notification |
 | `LoyaltyPointsEarned` | `payment.loyalty_points_earned` | `payment-service` | notification |
 
-15 routing keys are published by four services (security, booking, operations, payment);
-customer-service and notification-service publish nothing. notification-service also binds
-`booking.created`, which no service publishes (a booking is confirmed when it is created), so it has
-16 bindings; operations and customer have one each. Events of the domain catalog that are not emitted
+16 routing keys are published by four services (security, booking, operations, payment);
+customer-service and notification-service publish nothing. notification-service binds all 16
+(the `booking.created` binding, which
+nobody published, was removed on 2026-10-24, OPS-10); operations and customer have one each. Events of the domain catalog that are not emitted
 (`UserAuthenticated`, `BookingModified`, `OperatorReassigned`, `RatingSubmitted`, `PaymentInitiated`,
 `LoyaltyPointsRedeemed`, `NotificationCreated`) have no routing key. The security events
 `security.user.email-changed`, `security.user.password-changed` and `security.user.deactivated` and the
@@ -150,10 +151,11 @@ information" list already given for that event in `domain-events.md`.
 |---|---|
 | Delivery | At least once should be assumed by consumers |
 | Acknowledgement | After successful processing |
-| Retry | customer-service and notification-service retry a failed message 3 times (first wait 1 s) |
-| Dead letter | Then the message goes, through the direct exchange `carwash.events.dlx`, to `customer-service.events.dlq` or `notification-service.events.dlq`; the operations-service queue has no dead-letter queue (its listener logs the failure and does not requeue) |
+| Retry | customer-service and notification-service retry a failed message 3 times (first wait 1 s); operations-service 3 times too (2 s, then 4 s) and rethrows the transient failures (booking, security or the database not answering) so they are retried (OPS-04) |
+| Dead letter | Then the message goes, through the direct exchange `carwash.events.dlx`, to `customer-service.events.dlq`, `notification-service.events.dlq` or `operations-service.booking-confirmed.dlq`. The old operations queue `operations-service.events` (no DLX) is drained into the new one and deleted when operations starts |
 | Idempotency | A consumer checks `eventId` against its own processed-events record before acting, in the same transaction as the work it does (implemented in notification-service, `processed_event`; customer-service checks whether the profile exists) |
-| Outbox | Not adopted in this version (H-11, ADR-020): a publish that fails is only logged |
+| Publisher confirms | operations-service only (OPS-04): `correlated` confirms and mandatory publishing; a nack or an unroutable event goes to the log. Sharing an inspection waits for the confirm (503 `NOTIFICATION_NOT_SENT` otherwise) |
+| Outbox | Not adopted in this version (H-11, ADR-020): a publish that fails is only logged. notification-service has its own outbox for delivery only: `pending_delivery` (migration 047) retries push and email up to 5 times (OPS-05) |
 
 A new event should have a documented consumer and a reason to exist.
 

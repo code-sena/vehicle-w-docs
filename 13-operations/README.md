@@ -20,7 +20,7 @@ There is no SLA with an external customer: the project is academic.
 1. `docker compose up -d` and wait for `lavarapido-sqlserver` to be healthy (`payment-migrate` must end with exit code 0).
 2. Start the services (`docker compose --profile app up -d`, or each one from its folder); all health checks `UP` on 3001–3006 and 8080 (see `observability.md`). For a review on the Azure server, ask the project lead to turn the VM on and check `PUBLIC_URL`.
 3. Run the core flow once with the demo accounts (client, admin and operator). The operator needs a weekly shift that covers the booking time, or the assignment fails with `OPERATOR_NOT_ON_SHIFT`.
-4. RabbitMQ dead-letter queues (`notification-service.events.dlq`, `customer-service.events.dlq`) empty.
+4. RabbitMQ dead-letter queues (`notification-service.events.dlq`, `customer-service.events.dlq`, `operations-service.booking-confirmed.dlq`) empty, and no old `operations-service.events` queue left (operations deletes it on start). In `notification.pending_delivery`, no rows with 5 failed attempts.
 5. On the server: the last line of `~/lavarapido/backups/backup.log` is a `VERIFICACIÓN | OK` of today (see below).
 6. `INTERNAL_API_KEY` is set: without it the operator cannot start or finish a service (503, E-01).
 
@@ -50,13 +50,13 @@ the password never appears in the command line or in the history.
 |---|---|---|
 | Every day at 23:00 UTC (6 p.m. in Colombia), if the VM is on | `backup-db.sh` then `verify-backup.sh` | `crontab` of `azureuser`, written by `setup-server.sh` (`# lavarapido-backup`) |
 | 5 minutes after every boot | `backup-db.sh` then `verify-backup.sh` | same, `@reboot sleep 300` |
-| Before every update | `backup-db.sh` (if it fails, the update stops) | `update-server.sh` |
+| Before every update | `backup-db.sh pre-update` (if it fails, the update stops); the last 10 `pre-update` are kept apart from the 14 regular ones | `update-server.sh` |
 | By hand | any of the three | commands below |
 
 ```bash
 bash ~/lavarapido/lavarapido-infra/deploy/backup-db.sh        # full backup now
 bash ~/lavarapido/lavarapido-infra/deploy/verify-backup.sh    # restore the newest one as LavaRapido_verificacion, check it, drop it
-ls -lt ~/lavarapido/backups/*.bak.gz | head                     # the 14 kept (BACKUP_KEEP)
+ls -lt ~/lavarapido/backups/*.bak.gz | head                     # 14 regular (BACKUP_KEEP) + 10 pre-update (BACKUP_KEEP_LABELED)
 tail -20 ~/lavarapido/backups/backup.log                        # what ran and how it ended
 grep FALLÓ ~/lavarapido/backups/backup.log                      # only the failures
 ```
@@ -75,16 +75,45 @@ grep FALLÓ ~/lavarapido/backups/backup.log                      # only the fail
 ```bash
 # 1. look inside a backup without touching the real database
 bash ~/lavarapido/lavarapido-infra/deploy/restore-db.sh ~/lavarapido/backups/<file>.bak.gz --as LavaRapido_prueba
-# 2. replace LavaRapido with that backup: asks to type RESTAURAR, backs up the current state first,
-#    stops the services, restores (SINGLE_USER … RESTORE WITH REPLACE, CHECKSUM) and starts them again
+# 2. replace LavaRapido with that backup (in a terminal: ssh -t). It takes the deploy lock (waits up to
+#    20 min for an update), shows the backup date and the steps, asks to type RESTAURAR, backs up the
+#    current state, stops the services, restores (SINGLE_USER … RESTORE WITH REPLACE, CHECKSUM), runs
+#    payment-migrate (docker start -a) and starts the services again — also if a step fails
 bash ~/lavarapido/lavarapido-infra/deploy/restore-db.sh ~/lavarapido/backups/<file>.bak.gz
 ```
 
-The Java services re-apply their newer Liquibase changesets when they start. `restore-db.sh` does not
-run `payment-migrate`: if the backup is older than the last payment migration, run it again
-(`sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production up payment-migrate`
-in `~/lavarapido/lavarapido-infra`) before using payments. A test database made with `--as` is dropped
-with `DROP DATABASE [LavaRapido_prueba]`.
+The Java services re-apply their newer Liquibase changesets when they start, and since 2026-10-24
+(E-20) `restore-db.sh` reruns `payment-migrate` itself; if that step fails the database stays
+restored, the services are up and the log says to retry with
+`sudo docker start -a lavarapido-payment-migrate`. A test database made with `--as` is dropped with
+`DROP DATABASE [LavaRapido_prueba]`.
+
+**Known gap (M1, open):** the backup of the current state is a regular one, so the retention of 14 can
+delete the very file being restored when it is the 14th regular backup; then `gunzip` fails and that
+backup is lost. Until it is fixed, copy the file to restore aside first
+(`cp <file> ~/restore-me.bak.gz`) or restore a `pre-update` backup.
+
+### Rolling back an update (`rollback.sh`, since 2026-10-24)
+
+`update-server.sh` tags the running images as `lavarapido/<service>:prev` before building (not while
+`backups/update-pending` says the last update failed, so `:prev` stays the last version that worked).
+When an update leaves a service broken:
+
+```bash
+ssh -t … bash ~/lavarapido/lavarapido-infra/deploy/rollback.sh            # every service with a :prev
+ssh -t … bash ~/lavarapido/lavarapido-infra/deploy/rollback.sh web        # only some
+```
+
+It takes the same lock as the updates, lists each service with the date of its `:prev`, asks to type
+`VOLVER` (needs a terminal), retags `:prev` as `:local`, recreates only those containers
+(`--no-build --no-deps`), waits up to 8 minutes for them to be healthy and writes a line in
+`~/lavarapido/backups/deploy.log`. It does **not** touch the database nor the repositories: if the bad
+version applied a migration the old one does not support, also restore the `pre-update` backup.
+
+**Known gaps (open):** it uses the current Compose file and Caddyfile with the old images, so a
+contract change between versions (the web moving from port 80 to 8080, a new variable) leaves the
+service down (M3); `update-server.sh` run by hand does not take the lock, so it can collide with
+`boot-update.sh` or the workflow (M4). Both are in `15-project-control/risks.md`.
 
 The backups stay on the VM disk: they cover a bad migration or a human error, not the loss of the VM.
 To keep a copy outside, from a member's PC:

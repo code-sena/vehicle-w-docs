@@ -4,7 +4,7 @@
 |---|---|
 | **ID** | ADR-005 |
 | **Date** | 2026-09-24 |
-| **Status** | Accepted (implementation notes 2026-10-04 and 2026-10-23) |
+| **Status** | Accepted (implementation notes 2026-10-04, 2026-10-23 and 2026-10-24) |
 | **Authors** | Development team |
 | **Reviewers** | Development team |
 
@@ -62,16 +62,31 @@ that carries `Authorization: Bearer …`, except the public `/api/v1/auth/**` ro
 Also since 2026-10-23 (E-01) the gateway no longer routes `/api/v1/operator/bookings/**`: only
 operations-service calls those booking routes, inside the Docker network and with `X-Internal-Key`.
 
-**Known gap (SEC-01, open):** the filter only recognises the exact prefix `Bearer ` (capital B),
-while Spring Security and .NET JwtBearer accept `bearer`/`BEARER`. A token of a closed session sent
-with `bearer` skips the check and keeps working until it expires (at most 1 hour) in customer,
-booking, operations, notification and payment; security-service itself rejects it
-(`ActiveSessionValidator`). The fix is a case-insensitive prefix check plus a test in
-`SessionCheckFilterTest` (`15-project-control/risks.md`).
+**Known gap (SEC-01):** the filter only recognised the exact prefix `Bearer ` (capital B). Closed on
+2026-10-24, see below.
+
+## Implementation note (2026-10-24): any scheme, rate limit, client IP and timeouts
+
+Merged to `develop` on 2026-10-24 (gateway `c8b607a`, 62 tests in CI).
+
+- **SEC-01 — any scheme, any path.** `SessionCheckFilter` checks the session of **every** request
+  that carries `Authorization`, whatever the scheme (`Bearer`, `bearer`, `BEARER`, `Basic`) and
+  whatever the path (`//api` included). The cache key is the token alone (without the scheme), so
+  logout clears it in all its variants, before and after calling security.
+- **SEC-04 — rate limit on `/api/v1/auth/**`.** A bucket per client IP: 60 requests that refill in one
+  minute (`AUTH_RATE_LIMIT_REQUESTS`, `AUTH_RATE_LIMIT_WINDOW`, `AUTH_RATE_LIMIT_ENABLED`). Over it,
+  429 `RATE_LIMITED` (ProblemDetail) with `Retry-After` and CORS. The path is matched decoded. The
+  bucket lives in memory, per replica, and IPv6 is not grouped by /64.
+- **Client IP.** `ClientIpResolver` trusts `X-Forwarded-For` only when the connection comes from
+  `TRUSTED_PROXIES` (private and local ranges by default, where Caddy lives) and reads it right to
+  left; Caddy rewrites that header, so a client cannot fake it. The gateway forwards the resolved IP to
+  the services (SEC-11), and security-service only trusts `X-Forwarded-For` from private or local
+  addresses (`forward-headers-strategy: native`), so `user_session.ip_address` is the real client.
+- **SEC-16 — route timeouts.** `ROUTE_CONNECT_TIMEOUT` 5 s and `ROUTE_READ_TIMEOUT` 60 s; a route
+  that takes longer answers a generic 500 (no new error code).
 
 Still not done: correlation id generation (the gateway forwards `X-Correlation-Id`; each service
-generates one when it is missing) and request rate limits (SEC-04: Caddy and the gateway have no
-limit on `/api/v1/auth/**`).
+generates one when it is missing). Accepted: D-02 (gateway README).
 
 ## References
 

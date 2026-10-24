@@ -1,7 +1,7 @@
 # ADR-014 — Operations: Booking Integration by REST, Operator Provisioning and Manual Assignment
 
 - **ID:** ADR-014
-- **Date:** 2026-10-06 (updated 2026-10-09: sections 6 to 8; 2026-10-14: sections 9 and 10; 2026-10-23: section 11)
+- **Date:** 2026-10-06 (updated 2026-10-09: sections 6 to 8; 2026-10-14: sections 9 and 10; 2026-10-23: section 11; 2026-10-24: section 12)
 - **Status:** Accepted (2026-10-23) — operations-service is built this way and released in `v1.0.0`
 - **Authors:** Development team
 
@@ -177,12 +177,13 @@ token of the user calling it — a `booking.confirmed` event has no user behind 
   `GET /internal/v1/bookings/{id}`, outside `/api/v1` (the gateway does not route them) and protected
   by the shared key `X-Internal-Key` (`INTERNAL_API_KEY`), the same mechanism as security-service
   (ADR-011 §8). They return the booking without vehicle data, so customer-service is not called.
-- **RF-008:** operations consumes `booking.confirmed` (queue `operations-service.events`). If the
+- **RF-008:** operations consumes `booking.confirmed` (queue `operations-service.booking-confirmed`
+  since 2026-10-24, with DLQ; before, `operations-service.events`, §12). If the
   booking has no operator yet, it keeps the operators that `AssignmentPolicy` allows (active, on shift,
   not absent, not busy) whose security account is still active, and `AutoAssignmentPolicy` picks the
   client's choice if it is among them, otherwise the one with the fewest bookings that day, then the
   lowest id. It then publishes `OperatorAssigned` as the admin assignment does. A rescheduled booking
-  keeps its operator. If nobody is free nothing is assigned and the "booking without operator" alert
+  keeps its operator only if they still fit (§11, §12). If nobody is free nothing is assigned and the "booking without operator" alert
   (ADR-011 §14) still warns the admins. `AUTO_ASSIGN_ENABLED=false` turns it off.
 - **RF-010:** `GET /api/v1/operators/available?date=&time=&minutes=` lists, for any signed-in user, the
   operators free for that slot with only their first name and rating. The client sends
@@ -191,7 +192,7 @@ token of the user calling it — a `booking.confirmed` event has no user behind 
 - The administrator can still change the operator as before (§1).
 
 **Consequences:** most bookings get an operator without the admin; the listener never retries
-forever (it logs and leaves the booking unassigned); without `INTERNAL_API_KEY` there is no automatic
+forever (since §12: 3 attempts and then the DLQ; before, it logged and left the booking unassigned); without `INTERNAL_API_KEY` there is no automatic
 assignment nor list of free operators.
 
 ### 11. Bookings nobody closed, assignment notes and account checks (added 2026-10-23)
@@ -223,14 +224,39 @@ reminders and dashboards were wrong.
 
 | Change | Rule |
 |---|---|
-| Assignment notes (B-01) | `PUT /admin/assignments/{bookingId}` accepts optional `notes` (≤ 300 characters, else 400 `INVALID_ASSIGNMENT_NOTES`), stored in `service_execution.assignment_notes` (migration 042). Reassigning without notes clears them. The operator's list (`OperatorServiceResponse`) does not return them yet |
-| Disabled account (A-13) | A manual assignment to an operator whose security account is disabled answers 409 `OPERATOR_ACCOUNT_DISABLED`, and the candidates list shows that reason. If security does not answer, the account is taken as active |
-| Reschedule (E-12) | The automatic assignment keeps the previous operator only if they still fit the new time (shift, absences, overlaps, active account); otherwise it picks a free one. With nobody free the booking keeps the previous operator |
+| Assignment notes (B-01) | `PUT /admin/assignments/{bookingId}` accepts optional `notes` (≤ 300 characters, else 400 `INVALID_ASSIGNMENT_NOTES`), stored in `service_execution.assignment_notes` (migration 042). Since 2026-10-24 reassigning without notes keeps the previous ones and the operator's responses return `notes` (B-01, §12) |
+| Disabled account (A-13) | A manual assignment to an operator whose security account is disabled answers 409 `OPERATOR_ACCOUNT_DISABLED`, and the candidates list shows that reason. Since 2026-10-24 it fails closed: if security does not answer, 503 `SECURITY_SERVICE_UNAVAILABLE` (§12) |
+| Reschedule (E-12) | The automatic assignment keeps the previous operator only if they still fit the new time (shift, absences, overlaps, active account); otherwise it picks a free one. With nobody free the booking is left without operator and `OperatorUnassigned` is published (since 2026-10-24, §12) |
 | Concurrency | Manual and automatic assignment take `sp_getapplock`; if another assignment holds it, 409 `ASSIGNMENT_BUSY` ("try again") |
 
-**Known gaps (2026-10-23):** `finish` and `start` call booking before saving their own row, so a
-failure between both leaves booking `COMPLETED` and the line `IN_PROGRESS` (OPS-01); start, finish and
-rating do not take the assignment lock (OPS-03). Both are in `15-project-control/risks.md`.
+**Known gaps (2026-10-23):** OPS-01 and OPS-03 — both closed on 2026-10-24 (§12).
+
+### 12. Atomic steps, locks, retries and the start window (added 2026-10-24)
+
+Merged to `develop` on 2026-10-24 (operations `37e32ff`, 110 tests in CI).
+
+| Finding | Rule now |
+|---|---|
+| OPS-01 (E-13) | Start, finish and close-as-attended save and flush the execution **before** calling booking. If booking answers 409, operations rereads the booking and, if it is already in that state, takes the step as done. A `COMPLETED` booking with lines not finished shows in "Por cerrar" and is closed without calling booking |
+| OPS-03 | `UPDLOCK` (`PESSIMISTIC_WRITE`) on start, finish, close-as-attended, rate, assign, auto-assign and the follow-up notice; start also locks the operator row. No `@Version`: the trigger `tr_touch_service_execution` already increments `row_version` |
+| OPS-11 | Manual and automatic assignment call booking and security **before** `sp_getapplock` |
+| A-13 | Fails closed: 503 `SECURITY_SERVICE_UNAVAILABLE` when security does not answer; a disabled account never gets services. The manual assignment is retried with one click and the automatic one by RabbitMQ |
+| E-12 | When nobody can take the rescheduled booking, its `PENDING` executions are deleted and `OperatorUnassigned` (`execution.operator_unassigned`) is published; notification warns that operator and the admins |
+| A-12 | A service can be started until `START_LATE_LIMIT` (`PT4H`) after its end time; later 409 `SERVICE_TOO_LATE`. The operator's responses carry `startableAt` and `startableUntil` |
+| B-01 | `notes` in the operator's responses; reassigning without notes keeps them |
+| OPS-04 | New queue `operations-service.booking-confirmed` with DLX `carwash.events.dlx` and DLQ `operations-service.booking-confirmed.dlq`; transient failures are rethrown, 3 attempts (2 s, 4 s), then the DLQ. `LegacyQueueMigration` drains and deletes the old `operations-service.events`. Publisher confirms (`correlated`) and mandatory publishing, written to the log |
+| OPS-08 (A-14) | Sharing an inspection waits for the broker's confirm; without it (or with messaging off) 503 `NOTIFICATION_NOT_SENT` |
+| OPS-12 (E-18) | 503 `DATABASE_UNAVAILABLE` when the database does not answer; 409 only for integrity and lock errors; anything else 500. The operator list reads every page of security |
+
+**Still open (cross review of 2026-10-24, `15-project-control/risks.md`):**
+
+- An admin who sets `COMPLETED` on a booking with open lines gets false "not started" notices
+  (`FollowUpPolicy`), and the first start after the deploy may send a burst for the last 28 days.
+- Every `BookingConfirmed` asks security for every operator's account, even those without a shift;
+  with A-13 failing closed, one transient failure stops the whole assignment.
+- The automatic no-show publishes no event; a trigger `THROW` (50002) now answers 500 instead of 409;
+  `LegacyQueueMigration` uses auto-ack (a message can be lost if the process dies between receive and
+  send, only on the first start).
 ---
 
 ## Evaluated alternatives

@@ -5,20 +5,21 @@
 Queue `notification-service.events` bound to `carwash.events` with the 16 routing keys below (DLQ
 `notification-service.events.dlq` through `carwash.events.dlx`; 3 attempts, then dead-lettered).
 Each publisher sends the recipient's `user_id` (ADR-011 §3). Checked against `origin/develop` on
-2026-10-23; full payloads in ADR-011 §17.
+2026-10-24; full payloads in ADR-011 §17. The `booking.created` binding, which nobody published, was
+removed (OPS-10).
 
 | Routing key | Event | Notification | Email |
 |---|---|---|---|
 | `security.user_registered` | `UserRegistered` | `USER_WELCOME` | yes (address in the event) |
-| `booking.created` | `BookingCreated` | `BOOKING_CREATED` (bound and handled, but no service publishes it today: a booking is confirmed when it is created) | yes |
 | `booking.confirmed` | `BookingConfirmed` | `BOOKING_CONFIRMED` + schedules reminders | yes |
-| `booking.cancelled` | `BookingCancelled` | `BOOKING_CANCELLED` + cancels reminders | yes |
-| `booking.status_changed` | `BookingStatusChanged` | By `status`: `IN_PROGRESS` → `SERVICE_STARTED`, `COMPLETED` → `SERVICE_COMPLETED`, `NO_SHOW` → `BOOKING_CANCELLED` worded as no-show (A-11, 2026-10-23). It does **not** cancel the pending reminders yet | yes for `BOOKING_CANCELLED`, no for the other two |
+| `booking.cancelled` | `BookingCancelled` | `BOOKING_CANCELLED` + cancels reminders. The text uses `reason` (Spanish); `reasonCode` is not read yet (low, open) | yes |
+| `booking.status_changed` | `BookingStatusChanged` | By `status`: `IN_PROGRESS` → `SERVICE_STARTED`, `COMPLETED` → `SERVICE_COMPLETED`, `NO_SHOW` → `BOOKING_NO_SHOW` (own type, seed 116, cancellation category). The three statuses cancel the pending reminders (A-11, 2026-10-24) | yes for `BOOKING_NO_SHOW`, no for the other two |
 | `execution.operator_assigned` | `OperatorAssigned` | `OPERATOR_ASSIGNED` | no |
 | `execution.service_started` | `ServiceStarted` | `SERVICE_STARTED` (and cancels the pending reminders, ADR-011 §13) | no |
 | `execution.service_completed` | `ServiceCompleted` | `SERVICE_COMPLETED` (and cancels the pending reminders) | no |
 | `execution.service_not_started` | `ServiceNotStarted` | `OPERATOR_SERVICE_NOT_REGISTERED` to the operator ("Did you attend this service?") and `ADMIN_SERVICE_NOT_REGISTERED` to every active administrator; operations-service sends it once per booking | no |
 | `execution.service_not_finished` | `ServiceNotFinished` | The same two types, worded for a service that was started and not finished | no |
+| `execution.operator_unassigned` | `OperatorUnassigned` | `OPERATOR_SERVICE_UNASSIGNED` (`operator.released`) to the operator who lost the booking and `ADMIN_BOOKING_UNASSIGNED` (`admin.released`) to every active administrator (E-12) | no |
 | `execution.inspection_shared` | `InspectionShared` | `INSPECTION_REPORT` to the client: summary and public link (`WEB_URL` + `/report/{token}`, ADR-014 §9) | yes |
 | `payment.confirmed` | `PaymentConfirmed` | `PAYMENT_CONFIRMED` | yes |
 | `payment.rejected` | `PaymentRejected` | `PAYMENT_REJECTED` | yes |
@@ -30,7 +31,15 @@ Each publisher sends the recipient's `user_id` (ADR-011 §3). Checked against `o
 security-service, booking-service, operations-service and payment-service publish. Booking events
 also produce the staff notifications of ADR-011 §10 (inbox and push only, never email). A payload
 field that comes as `null` is ignored (before 2026-10-21 it made the whole message fail and go to the
-DLQ).
+DLQ). If security does not answer when the administrators are looked up, the event fails, is not
+marked processed and is retried (OPS-06); an empty list is not an error. `unassigned_alert_at` is
+cleared only when the time changes or the operator is lost (OPS-12).
+
+**Delivery (OPS-05, migration 047).** The inbox row and one `pending_delivery` row per channel (push,
+email) are written in the same transaction as the event. Push and email leave after the commit; when
+Expo or SMTP fail they are retried after 1, 2, 4… minutes (at most 1 h) up to `DELIVERY_MAX_ATTEMPTS`
+(5), checked every `DELIVERY_CHECK_INTERVAL` (1 min), with an atomic claim and a 5-minute lease.
+Delivery is at least once.
 
 Customer emails and reminders read the current address from security-service
 (`GET /internal/v1/users/{id}/contact`, ADR-011 §8); without it they still reach the inbox and push.
