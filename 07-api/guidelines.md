@@ -1,7 +1,7 @@
 # REST Guidelines
 
 > The conventions the built services follow. A new endpoint must look like the existing ones.
-> Checked against the controllers of the six services on `origin/develop`, 2026-10-23.
+> Checked against the controllers of the six services on `origin/develop`, 2026-10-24.
 
 ---
 
@@ -34,13 +34,15 @@ Each path prefix belongs to exactly one service; the gateway routes by prefix
 | 401 | Missing, invalid or expired token, closed session, wrong password at login (`INVALID_CREDENTIALS`), missing `X-Internal-Key` on `/internal/**` |
 | 403 | Authenticated but wrong role; also an account action that is never allowed (`ACCOUNT_DISABLED`, `CANNOT_DISABLE_OWN_ACCOUNT`, `ADMIN_CANNOT_BE_DISABLED`) |
 | 404 | Does not exist **or belongs to another user** (ownership is not revealed) |
-| 409 | Conflict with the current state (`SLOT_UNAVAILABLE`, `PLATE_ALREADY_REGISTERED`, `OPERATOR_BUSY`, `OPERATOR_ACCOUNT_DISABLED`, `PAYMENT_ALREADY_APPROVED`, a booking already started) or a database constraint (`CONFLICT`, `DATA_CONFLICT`) |
-| 423 | `ACCOUNT_LOCKED` (login lockout, RF-004b) |
-| 503 | A service it depends on did not answer (`CUSTOMER_SERVICE_UNAVAILABLE`, `BOOKING_SERVICE_UNAVAILABLE`), or a health check whose database is down |
+| 409 | Conflict with the current state (`SLOT_UNAVAILABLE`, `PLATE_ALREADY_REGISTERED`, `OPERATOR_BUSY`, `OPERATOR_ACCOUNT_DISABLED`, `PAYMENT_ALREADY_APPROVED`, `AMOUNT_CHANGED`, `BOOKING_SERVICES_LOCKED`, `VEHICLE_HAS_ACTIVE_BOOKINGS`, `SCHEDULE_CONFLICTS_BOOKINGS`, `SERVICE_TOO_LATE`, a booking already started), a database constraint (`CONFLICT`, `DATA_CONFLICT`) or, in booking-service, a booking changed by another request first (`CONFLICT`, `row_version`) |
+| 423 | `ACCOUNT_LOCKED` (login lockout, RF-004b) and `TOO_MANY_ATTEMPTS` (recovery code burnt, or the current password wrong too many times; SEC-05, SEC-12) |
+| 429 | `RATE_LIMITED`: only the gateway, on `/api/v1/auth/**`, with `Retry-After` (SEC-04) |
+| 503 | A service it depends on did not answer (`CUSTOMER_SERVICE_UNAVAILABLE`, `BOOKING_SERVICE_UNAVAILABLE`, `SECURITY_SERVICE_UNAVAILABLE`), a message could not be published (`NOTIFICATION_NOT_SENT`), the database does not answer (`BOOKING_SERVICE_UNAVAILABLE` in booking, `DATABASE_UNAVAILABLE` in operations), or a health check whose database is down |
 | 500 | `INTERNAL_ERROR`; details only in the log |
 
-No endpoint answers 429 today: there is no rate limiting in the gateway or the services. The exact
-codes of every operation are in its contract (`responses` and their `x-codes`).
+Only the gateway answers 429, on `/api/v1/auth/**` (`api-gateway.yaml`); the services have no rate
+limit of their own. The exact codes of every operation are in its contract (`responses` and their
+`x-codes`).
 
 ## Errors — RFC 9457 `ProblemDetail` + `code`
 
@@ -62,15 +64,16 @@ codes of every operation are in its contract (`responses` and their `x-codes`).
   payment-service).
 - Validation errors add `errors: { "<field>": "<message>" }`.
 - Extra fields only when the client can act on them: `alternatives` and `reason` (`CLOSED_DAY`,
-  `OUTSIDE_HOURS`, `TIME_PASSED`, `NO_FREE_BAY`) with `SLOT_UNAVAILABLE`, `violations` with
+  `OUTSIDE_HOURS`, `TIME_PASSED`, `NO_FREE_BAY`) with `SLOT_UNAVAILABLE`, `conflictingBookings` and
+  `bookingCodes` (the first 20) with `SCHEDULE_CONFLICTS_BOOKINGS` (BIZ-10), `violations` with
   `WEAK_PASSWORD`.
 - The Java services add `code` even to the errors Spring MVC raises itself (`BAD_REQUEST`,
   `NOT_FOUND`, `METHOD_NOT_ALLOWED`…), and the security filters answer the same format (`UNAUTHORIZED`,
   `FORBIDDEN`).
 - payment-service: the exceptions of the code become `ProblemDetail` with `code`
-  (`GlobalExceptionHandler`), but two answers come from ASP.NET itself and have **no** `code`: the
-  automatic `[ApiController]` validation (400 `ValidationProblemDetails` with `errors`) and the JWT
-  middleware (401/403 with an empty body).
+  (`GlobalExceptionHandler`). The automatic `[ApiController]` validation (400 `ValidationProblemDetails`
+  with `errors`) carries `code` `VALIDATION_ERROR` since BIZ-13; only the JWT middleware still answers
+  without `code` (401/403 with an empty body).
 - Each contract lists its whole catalogue (code → HTTP status → exception and operations) in
   `info.description` and `x-error-codes`.
 - Never include stack traces (`server.error.include-stacktrace: never`, gateway
@@ -90,7 +93,7 @@ codes of every operation are in its contract (`responses` and their `x-codes`).
 
 ## Pagination
 
-Two lists are paged, with `?page=0&size=20` (0-based, those are the defaults) and this body:
+Three lists are paged, with `?page=0&size=20` (0-based, those are the defaults) and this body:
 
 ```json
 { "items": [...], "page": 0, "size": 20, "totalElements": 57, "totalPages": 3 }
@@ -100,9 +103,11 @@ Two lists are paged, with `?page=0&size=20` (0-based, those are the defaults) an
 |---|---|
 | `GET /api/v1/admin/users` | `size` is clamped to 1–100 |
 | `GET /api/v1/notifications` | `page < 0`, `size < 1` or `size > 100` answers 400 `INVALID_PAGE` |
+| `GET /api/v1/admin/payments` (E-10) | Paged only when `page` or `size` is sent (`page < 0` is read as 0, `size` clamped to 1–100); without both it answers the plain array of the latest 200, with the receipt images |
 
 Every other list returns a plain array (catalogs, bookings, payments, operators…). In the contracts
-the paged bodies are `PageResponseOfUserResponse` and `PageResponseOfNotificationResponse`.
+the paged bodies are `PageResponseOfUserResponse`, `PageResponseOfNotificationResponse` and
+`PaymentDtoPage`.
 
 ## Security
 
