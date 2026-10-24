@@ -11,15 +11,21 @@
 | [`risks.md`](./risks.md) | Active risks with level, strategy, mitigation and contingency; closed risks and lessons |
 | [`technical-backlog.md`](./technical-backlog.md) | Technical debt found while building the system, with effort and priority |
 
-## State at 2026-10-20
+## State at 2026-10-23
 
 - Built and running in Docker: api-gateway (8080), security (3001), customer (3002), booking (3003),
   operations (3004), payment (3005, .NET 8) and notification (3006); web app and Android app (APK
-  published from the public server).
-- Tests: 707 unit and integration tests and 19 end-to-end tests passed on 2026-10-21; the 42 functional cases passed on 2026-10-19 (`11-quality/testing-strategy.md`).
-- Highest risks: R-011 (public server turned on on demand), R-010 (documentation drift), R-003 (end-to-end suite still run by hand; CI covers the unit tests since 2026-10-19).
-- Open technical items: TD-022 (request rate limit), TD-007 (correlation id in the
-  last clients), TD-023 (audit log); see `technical-backlog.md`.
+  published from the public server). `v1.0.0` in 8 of the 10 repositories; payment and mobile pending.
+  `develop` already carries the fixes of 2026-10-22 and 2026-10-23 and waits for `v1.1.0`.
+- Tests: 838 automated tests green in CI on `develop` on 2026-10-23 (backend 679, web 146, mobile 13);
+  the 19 end-to-end tests passed on 2026-10-21 and the 42 functional cases on 2026-10-19
+  (`11-quality/testing-strategy.md`).
+- Requirements: 30 of 41 RF done, 11 partial; 3 of 12 RNF met (`04-requirements/traceability-matrix.md`).
+- Highest risks: R-012 (continuous deployment never run, CD-01), R-011 (public server on demand, at
+  the exposition), R-013 (booking and payment amounts, BIZ-01/BIZ-02), R-014 (SEC-01).
+- Open technical items with the highest priority: TD-033 (continuous deployment), TD-029 (SEC-01),
+  TD-030 (OPS-01), TD-031 (BIZ-01), TD-032 (BIZ-02); see `technical-backlog.md`. Findings closed on
+  2026-10-23, with their commits, and the accepted risks of ADR-020: `risks.md`.
 
 ## Rules
 
