@@ -1,8 +1,9 @@
 # Risk Register
 
 > Risks that can stop LavaRápido from being delivered or demonstrated. Reviewed at each
-> retrospective and whenever a service is merged. Last review: **2026-10-23** (against `origin/develop`
-> and the internal review of that day; the fixes still in unmerged branches are not counted as done).
+> retrospective and whenever a service is merged. Last review: **2026-10-24** (against `origin/develop`
+> after the 128 branches merged that day and the cross review of section 4 of
+> `auditoria-lavarapido-2026-10-24.md`; merged but not deployed yet).
 
 Level = probability × impact (Low / Medium / High → Low, Medium, High, Critical).
 Owner is a role; the team assigns the person in the sprint board.
@@ -21,9 +22,9 @@ Owner is a role; the team assigns the person in the sprint board.
 | R-009 | Gmail SMTP stops (app password revoked, daily sending limit) | External | Medium | Low | Low | Accept | notification-service owner |
 | R-010 | Documentation drifts from the code again | Team | Medium | Medium | Medium | Mitigate | Author of each PR |
 | R-011 | The public server on Azure is off when it is needed (it is turned on on demand by one person), in particular at the final exposition (~2026-10-27); there is no uptime monitor (H-15) | Operations | Medium | High | High | Mitigate | DevOps (project lead) |
-| R-012 | The continuous deployment fails the first time it is used: it was never run, the `AZURE_SSH_KEY` and `DEPLOY_DISPATCH_TOKEN` secrets do not exist and the order of the first merges matters (CD-01, CD-02) | Operations | High | Medium | High | Mitigate | DevOps (project lead) |
-| R-013 | Money shown and money approved disagree: a paid booking can be rescheduled with other services and the client cannot read the amount the server expects after a reload (BIZ-01, BIZ-02) | Technical | Medium | High | High | Mitigate | booking and payment owners |
-| R-014 | A closed session keeps working through the `bearer` lower-case gap (SEC-01) | Security | Low | High | Medium | Mitigate | gateway owner |
+| R-012 | The continuous deployment fails the first time it is used: it is merged in the 10 repositories since 2026-10-24 but never ran, the secrets (`AZURE_SSH_KEY`, `DEPLOY_DISPATCH_TOKEN`, `EXPO_TOKEN`) do not exist, the first run with the old scripts leaves the web at 502 until Caddy restarts, and infra must reach `main` last (CD-01) | Operations | High | Medium | High | Mitigate | DevOps (project lead) |
+| R-016 | The first deployment of the 128 merged branches breaks something only visible live: migrations 044, 045, 047, 022, 023 and seeds 113, 116, the new queue of operations, `sp_getapplock` of SEC-05, the real client IP behind Caddy | Technical | Medium | High | High | Mitigate | DevOps and each service owner |
+| R-017 | The web admin payments queue (unpaged, with images, every 45 s) exhausts payment's memory with real data (E-10 web) | Technical | Medium | High | High | Mitigate | web owner |
 | R-015 | A merge to `main` during the exposition recreates containers for 1–2 minutes (CD-15) | Operations | Medium | Medium | Medium | Avoid | Team lead |
 
 ---
@@ -83,30 +84,34 @@ Owner is a role; the team assigns the person in the sprint board.
 ### R-011 — Public server off
 
 - **Mitigation:** the server is described in `10-devops/production.md`; whoever needs it for a review
-  asks the DevOps owner to turn it on in advance and runs `deploy/update-server.sh` after the last push.
+  asks the DevOps owner to turn it on in advance and runs `BRANCH=develop deploy/update-server.sh` after the last push.
   Before the exposition: VM on the day before, an external uptime check of `PUBLIC_URL` and a recorded
   video of the main flows.
 - **Contingency:** run the demo locally with Docker (`lavarapido-infra`, profile `app`) or show the video.
 
 ### R-012 — First continuous deployment
 
-- **Trigger:** the `ci/continuous-deployment` and `ci/request-deploy` branches are merged to `main`.
-- **Mitigation:** create the two secrets and the restricted key on the VM first; merge `lavarapido-infra`
-  before the other repositories; run `deploy.yml` twice by hand with the VM on and check
+- **Trigger:** the release `v1.1.0` reaches `main` (the CD is already in `develop` of the 10 repositories).
+- **Mitigation:** create the secrets and the restricted key on the VM first; release `lavarapido-infra`
+  **last** with `DEVELOP_ONLY=""` (the other repos' dispatch answers 422 meanwhile, harmless);
+  `setup-server.sh` refuses to downgrade a repository; restart Caddy after the first run; check
   `crontab -l | grep boot-update` and the branch of every repository on the server (`10-devops/ci-cd.md`).
-- **Contingency:** keep updating by hand with `update-server.sh` (`BRANCH=develop`), as today.
+- **Contingency:** keep updating by hand with `BRANCH=develop update-server.sh`, as today; go back with
+  `rollback.sh` (`13-operations/README.md`).
 
-### R-013 — Booking and payment amounts
+### R-016 — First deployment of the fleet round
 
-- **Mitigation (planned in the contract of 2026-10-23, not merged):** `AMOUNT_CHANGED` when the approved
-  amount no longer matches, the client can only change date and time of a booking, and
-  `GET /api/v1/loyalty/redemptions/{bookingId}` gives the client the amount due.
-- **Contingency:** the administrator checks the booking total before approving a payment.
+- **Mitigation:** deploy outside a review, with the `pre-update` backup; follow the live checks of the
+  fleet reports (Liquibase logs, `operations-service.events` gone, 429 with the public IP, 409 of two
+  concurrent writes, `pending_delivery` rows); before the release count the duplicated open payments and
+  the `COMPLETED` bookings with open lines (operational items 3 and 4 below).
+- **Contingency:** `rollback.sh` for the images and `restore-db.sh` with the `pre-update` backup.
 
-### R-014 — Closed-session tokens
+### R-017 — Unpaged payments queue in the web
 
-- **Mitigation:** case-insensitive `Bearer` check in `SessionCheckFilter` with its test.
-- **Contingency:** rotate `JWT_SECRET` (logs everyone out) if an old token is known to be in the wrong hands.
+- **Mitigation:** switch the web to `?page&size` and load the image in the detail before real data
+  arrives (the mobile app already does it).
+- **Contingency:** close the admin tabs that are not in use; payment restarts by itself (`restart: unless-stopped`).
 
 ### R-015 — Changes during the exposition
 
@@ -114,43 +119,38 @@ Owner is a role; the team assigns the person in the sprint board.
 
 ---
 
-## Open findings of the review of 2026-10-23
+## Open findings (cross review of 2026-10-24)
 
-Severity as given by the review. Items whose fix exists only in an unmerged branch stay open.
+Only what is still open in `origin/develop` after the 128 branches merged on 2026-10-24: section 4 of
+`auditoria-lavarapido-2026-10-24.md` and the `REVIEW-*.md` reports of the fleet. Everything else of the
+review of 2026-10-23 is closed below, with its merge commit.
 
 | ID | Severity | Finding | Where | Owner |
 |----|----------|---------|-------|-------|
-| CD-01 | Critical | Continuous deployment never run; 0 secrets; `deploy.yml` 0 runs | `lavarapido-infra` | DevOps (project lead) |
-| SEC-01 | High | `bearer` in lower case skips `SessionCheckFilter`: a closed-session token works up to 1 h in customer, booking, operations, notification and payment (weakens RF-027, RF-028 and E-02) | `SessionCheckFilter.java` | gateway owner |
-| BIZ-01 | High | A paid or in-review booking can be rescheduled with other services; approving does not recompute the amount | booking `BookingService`, payment `PaymentCommandService` | booking and payment owners |
-| BIZ-02 | High | The client cannot read the amount the server expects; after a reload the applied coupon is not shown (rest of E-08) | payment, web, mobile | payment owner |
-| OPS-01 (= E-13) | High | `finish`/`start` call booking before saving their own row: a failure in between leaves booking `COMPLETED` and the line `IN_PROGRESS`, and the operator is blocked | `OperationsService` | operations owner |
-| CD-02 | High | `lavarapido-infra` must reach `main` before the other repositories or the dispatch is rejected | CD rollout | DevOps |
-| CD-04 | High | customer, booking and payment have no *Pedir despliegue* job | `ci.yml` of those repos | their owners |
-| CD-03, CD-06, CD-07, CD-08 | High / Medium | Deploy waits, retries on boot, health wait, Caddy restart: fixed only in the local branch `ci/continuous-deployment` (not pushed, not tested) | `deploy/*.sh` | DevOps |
-| H-15 | High | Public URL down while the VM is off; no monitor | Azure VM | DevOps |
-| SEC-04 (= E-04) | Medium | No rate limit on `/api/v1/auth/**`; account enumeration by timing and 423 | gateway, Caddy, security | gateway/security owner |
-| SEC-05 | Medium | The 5-attempt limit of the recovery code is not atomic and lives in memory | `PasswordRecoveryService` | security owner |
-| SEC-07 (= E-03) | Medium | Law 1581 consent not required by the server | `RegisterRequest` | security owner |
-| A-01 (rest) | Medium | The web and the mobile still block the **login** of existing accounts on other domains; the web list is fixed in code | `login.viewmodel.ts`, mobile validators | web and mobile owners |
-| A-11 (rest) | Medium | `BookingStatusChanged` does not cancel the reminders | notification `DomainEventConsumerService` | notification owner |
-| B-01 (rest) | Medium | Assignment notes are not shown to the operator; reassigning without notes erases them | operations `OperatorServiceResponse` | operations owner |
-| E-05 (rest) | Medium | A demo password is still written in `GUIA-EQUIPO.md` of infra; `payment-migrate` gets the password as an argument; old passwords remain in the history (rotate) | infra, payment | DevOps, payment owner |
-| BIZ-04 (rest) | Medium | A catalog price of 0 is still accepted by booking | booking `PriceDefinition` | booking owner |
-| BIZ-05 | Medium | The coupon discount is frozen in pesos when the booking changes | payment | payment owner |
-| BIZ-06 | Medium | Changing a vehicle's type keeps the old price | booking, customer | booking owner |
-| BIZ-07 | Medium | Cancelling a paid booking does not tell payment | booking, payment | booking and payment owners |
-| BIZ-08 (= E-17) | Medium | Removing a vehicle with active bookings leaves them orphaned | customer | customer owner |
-| BIZ-09 (= E-11, A-16) | Medium | No optimistic locking in booking; two open payments per booking possible | booking, payment | booking and payment owners |
-| BIZ-10 | Medium | Schedule, exceptions or a bay in maintenance do not check existing bookings | booking `ScheduleService` | booking owner |
-| OPS-03 | Medium | start/finish/rating without the assignment lock or `@Version` | operations | operations owner |
-| OPS-05 (= E-14), OPS-06 (= E-15) | Medium | Push and email without retry; admin notices lost if security is down | notification | notification owner |
-| OPS-08 (= A-14) | Medium | Sharing an inspection answers 204 even when the event was not published | operations | operations owner |
-| E-16 (risk) | Medium | The plate rule also runs when reading: a stored plate longer than 6 characters breaks that vehicle | customer `CustomerVehiclePersistenceAdapter` | customer owner |
-| CD-05, CD-09, CD-10, CD-11 | Medium | Two runs needed for the switch to `main`; payment deploys `develop` without protection; disk and backup retention; rollback is manual and global | infra, payment | DevOps, payment owner |
-| F-02 / H-03, H-04 | Medium | Web tests still miss several screens and coverage; mobile has 13 tests | web, mobile | web and mobile owners |
-| MOV-04, MOV-05, MOV-06, WEB-05, WEB-06 | Medium | Mobile screens that skip the ViewModel; admin booking form offers invalid states; untranslated error codes; errors silenced | web, mobile | web and mobile owners |
-| SEC-11 to SEC-16, BIZ-12 to BIZ-14, OPS-10 to OPS-12, CD-12 to CD-16, MOV-07 to MOV-18, WEB-07 to WEB-15 | Low | Smaller gaps (password limit in bytes, Sonar false positives, `booking.created` without producer, deploy key scope, accessibility, dead code…) | several | each owner |
+| E-10 (web) | High | The web still asks the admin payments queue without `page`/`size`: up to 200 payments with their receipt image, plus one call to booking per booking, every 45 s in two screens (WEB-16). With real data it puts payment's 384 MB at risk. Fix: `?status=&page=0&size=20`, `hasReceiptImage`, image only in the detail (`GET /admin/payments/{id}`) | web `payments-api.ts`, `payments-store.ts` | web owner |
+| E-11 (lock) | Medium | booking keeps the schedule lock (`sp_getapplock`) while it calls customer (up to 3 s) in cancel, status change and the operator's advance: with customer slow every booking write queues and may answer 409 `SCHEDULE_BUSY`. Fix: read the vehicle before taking the lock | booking `BookingService` | booking owner |
+| OPS-01 (follow-up) | Medium | A booking the admin set `COMPLETED` with lines still open gets false "not started" notices (`FollowUpPolicy`); the first start after the deploy may send a burst for the last 28 days. Count those bookings in production before the release | operations `FollowUpPolicy`, `FollowUpService` | operations owner |
+| OPS-11 + A-13 | Medium | Every `BookingConfirmed` asks security for every operator's account, also those without a shift; failing closed, one transient failure stops the whole assignment (3 retries, then the DLQ). Fix: check only the candidates that pass `AssignmentPolicy` | operations `OperationsService` | operations owner |
+| M1 | Medium | `restore-db.sh` takes a regular backup first; the retention of 14 can delete the very file being restored | infra `deploy/restore-db.sh` | DevOps |
+| M3 | Medium | `rollback.sh` reuses the current Compose and Caddyfile with the `:prev` images: a contract change between versions (port 80↔8080, variables) leaves the service down | infra `deploy/rollback.sh` | DevOps |
+| M4 | Medium | `update-server.sh` run by hand does not take the deploy lock and can collide with `boot-update.sh` or the workflow | infra `deploy/update-server.sh` | DevOps |
+| M2 | Medium | The inspection opened by link or after a reload shows client, state, service and date empty (the store no longer loads in its constructor since WEB-16) | web `inspection.viewmodel.ts` | web owner |
+| M5 (MOV-10) | Medium | The push is not unregistered when the session expires with the app in the background or opened cold (the DELETE answers 401) | mobile `AuthServiceContext.tsx` | mobile owner |
+| Low (contracts) | Low | `reasonCode` published but not used by notification (reason in Spanish for every language); the automatic no-show publishes nothing; old PACKAGE promotions cannot be edited; the unlocked-coupon notice omits a FIXED amount; `BOOKING_EXPIRY_CHECK_*` still in the infra files; the web operator history expects cancelled bookings that never arrive | notification, booking, payment, infra, web, mobile | each owner |
+| Low (backend) | Low | notification `markDelivered` inside the send `try` (a database error after sending repeats it); payment 022 fills old redemptions with today's promotion (check the IN_REVIEW payments first) and 023's view also blocks the same reference on an in-person payment of the same booking; operations answers 500 to a trigger `THROW` (was 409) and `LegacyQueueMigration` uses auto-ack; security answers 500 when `sp_getapplock` times out; BIZ-10 checks every future booking when the week changes | `REVIEW-BACKEND.md` items 4–11 | each owner |
+| Low (front) | Low | Web `amountDueFailed` not reset after a coupon change; a silent refresh can overwrite a coupon just applied (web and mobile); `deploy.yml` may lose the SSH session in a long `compose up` | `REVIEW-FRONT-INFRA.md` B1–B3 | web, mobile, DevOps |
+
+**Operational pending (before and during the release):**
+
+| # | Item | Who |
+|---|------|-----|
+| 1 | Create the secrets: `AZURE_SSH_KEY` and `DEPLOY_DISPATCH_TOKEN` in the project lead's 6 repositories; `DEPLOY_DISPATCH_TOKEN` and `EXPO_TOKEN` in Camilo's and Merari's (needs their action or the Admin role). Until then the continuous deployment, merged on 2026-10-24, cannot run (CD-01) | project lead, Camilo, Merari |
+| 2 | Merge the documentation: `lavarapido-docs` to `main` and `vehicle-w-docs` to `docs` (needs approval) | project lead |
+| 3 | Deploy `develop` on Azure with `BRANCH=develop`. The first run uses the old scripts: restart Caddy afterwards (port 8080) or run the second update at once | DevOps |
+| 4 | Before the release, in the production database: look for duplicated open payments (migration 023) and count the `COMPLETED` bookings with open lines | DevOps, payment and operations owners |
+| 5 | Release `v1.1.0` (`develop` → `main`) with Camilo's approval, **infra last**; payment `v1.0.0` and mobile `v1.1.0` by Merari; then remove payment from `DEVELOP_ONLY` | whole team |
+| 6 | End-to-end tests against Azure with `e2e.yml` and the test accounts the team creates | project lead |
+| 7 | Regenerate the PDF and Word deliverables with the team's APA 7 generator | documentation owner |
 
 ## Accepted risks for version 1 (ADR-020)
 
@@ -160,6 +160,68 @@ Severity as given by the review. Items whose fix exists only in an unmerged bran
 | H-10 | Every service uses the `sa` login | Nine schemas of grants and six services to change days before the exposition; SQL Server is not reachable from outside |
 | H-18 | The web keeps the JWT in `localStorage` | An HttpOnly cookie needs CSRF and refresh support; 1-hour tokens, session check and a strict CSP limit it |
 | H-16 | Admin reports are computed in the browser | Backend reporting is new work in three services; academic data volume |
+| D-02, E-21, SEC-15 | Session answer cached 30 s in the gateway; `refresh_token_hash` never written; sign-up with a walk-in person's document links that person | Documented in the gateway and security READMEs on 2026-10-24; small impact for an academic deployment |
+
+## Closed on 2026-10-24 (merged into `develop`, CI green, not deployed yet)
+
+The fleet round merged 128 branches with `--no-ff` in the 10 repositories (`auditoria-lavarapido-2026-10-24.md`).
+Each commit below is the **merge commit in `develop`** of that repository. "Live check" items still have
+to be confirmed on Azure after the next deployment (migrations, locks, Caddy).
+
+| ID | What was fixed | Commits in `develop` |
+|----|----------------|----------------------|
+| SEC-01 | The gateway checks the session of every request with `Authorization`, any scheme and any path; logout clears every variant | gateway `2e20204` |
+| SEC-04 (= E-04) | 60 requests/min per client IP on `/api/v1/auth/**` (429 `RATE_LIMITED`, `Retry-After`); `/password/forgot` with even timing | gateway `3cfa9e9`, security `8987e9b` |
+| SEC-05 | Recovery code with `sp_getapplock`; the 5th failure burns it (423 `TOO_MANY_ATTEMPTS`) | security `6450d2e`, mobile `261fc11` |
+| SEC-07 (= E-03) | Law 1581 consent required (400 `CONSENT_REQUIRED`) | security `c5ecf17` |
+| SEC-09 | 403 tests with CLIENT and OPERATOR on admin and `/users/me/*` endpoints | security `f78a995` |
+| SEC-11 | Password limit in UTF-8 bytes; real client IP forwarded by the gateway and trusted by security only from private proxies | security `abf328e`, `845e543`; gateway `5744839` |
+| SEC-12 | Wrong current passwords count in the login lockout | security `c2fd4ec` |
+| SEC-16 | Route timeouts 5 s / 60 s | gateway `e5d7c12` |
+| A-01 (rest) | Login and recovery check only the email format; the current email is accepted unchanged | web `31594ac`, mobile `eb7621c`, security `0b5ed17` |
+| BIZ-01 | The client only changes date and time (409 `BOOKING_SERVICES_LOCKED`); approving checks the amount (409 `AMOUNT_CHANGED`); the admin is warned | booking `2983d76`, payment `a898a98`, web `19138db` |
+| BIZ-02 (rest of E-08) | Amount due and coupon from the server (`GET /loyalty/redemptions/{bookingId}`), also after a reload | payment `fb90b0c`, web `0bdc8c1`, mobile `2ce105f` |
+| BIZ-04 (rest) | Service price greater than 0 (migration 044) | booking `66a6998` |
+| BIZ-05 | Percentage coupon recalculated with today's total (migration 022) | payment `6a924b4` |
+| BIZ-06 | Frozen price only for the same vehicle type | booking `c903e65` |
+| BIZ-07 | `bookingCancelled` on payments: refund or reject | payment `9d2e299`, web `04b4ee3`, mobile `f4e6fb2` |
+| BIZ-08 (= E-17) | A vehicle with active bookings cannot be removed | booking `a7e8e1d`, customer `7f5c3a6`, infra `9637cb9` |
+| BIZ-09 (= E-11, A-16) | `@Version` + trigger 045 on bookings; one open payment per booking and unique live reference (migration 023) | booking `348683e`, payment `3e79a00` |
+| BIZ-10 | Schedule, exceptions and bay states check active bookings (409 `SCHEDULE_CONFLICTS_BOOKINGS`) | booking `78dc05a` |
+| BIZ-12 (A-10) | Client routes of booking and customer only for `CLIENT` | booking `ada0888`, customer `55cc4d8` |
+| BIZ-13 (E-18) | Error mapping: customer's 4xx kept, 503 when the database is down; required ids in payment | booking `9497e70`, payment `c33e1d9` |
+| B-07 | booking's expiry job removed (operations closes the no-shows) | booking `c9860e4` |
+| A-20 / OPS-10 | `reasonCode` in `booking.cancelled`; `booking.created` binding removed | booking `62eea3a`, notification `8fde2ee` |
+| E-16 (risk) | Long plates stored before the rule are readable | customer `eaad74e` |
+| E-19 | Sample "Express Car Wash" data cleared (seed 113); neutral texts in the clients | booking `5e19ad3`, web `8faf9f4`, mobile `282a9b7` |
+| OPS-01 (= E-13) | Start and finish save before calling booking and accept a step already done | operations `6d18916` |
+| OPS-03 | `UPDLOCK` on the execution writes | operations `16175fc` |
+| OPS-11 | Assignment calls booking and security before the lock | operations `5e9d15b` |
+| A-13 (rest) | The account check fails closed (503 `SECURITY_SERVICE_UNAVAILABLE`) | operations `e87688c` |
+| E-12 (rest) | A rescheduled booking nobody can take is left without operator; `execution.operator_unassigned` and its notices | operations `d17b5fd`, notification `54976eb` |
+| A-12 | Start until `START_LATE_LIMIT` (4 h) after the end, 409 `SERVICE_TOO_LATE`, `startableUntil` | operations `4138ead`, web `0d05429`, mobile `180a6e0` |
+| B-01 (rest) | The operator sees the notes; reassigning without notes keeps them | operations `b943858`, web `7ac143d`, mobile `558d848` |
+| OPS-04 | Queue `operations-service.booking-confirmed` with DLX/DLQ, retries and publisher confirms | operations `1fda373` |
+| OPS-08 (= A-14) | Sharing an inspection answers 503 `NOTIFICATION_NOT_SENT` without the broker's confirm | operations `984bd19` |
+| OPS-12 | 503 `DATABASE_UNAVAILABLE`; every page of operators; the unassigned alert mark kept | operations `a651fe1`, `0568f47`; notification `be8fe40` |
+| A-11 (rest) | `BookingStatusChanged` cancels reminders; `BOOKING_NO_SHOW` type (seed 116) | notification `952cd7e`, web `7910219`, mobile `180a6e0` |
+| OPS-05 (= E-14) | Push and email with retries (`pending_delivery`, migration 047) | notification `511c022` |
+| OPS-06 (= E-15) | Admin notices retried when security does not answer | notification `a345ac9` |
+| E-10 (payment, mobile) | Paged admin queue without images; the mobile app uses it (the web is still open above) | payment `91fb0a4`, mobile `b430ead` |
+| C-04, D-01 | Cash on an inactive account for the admin; `discountType`/`discountValue` for FIXED coupons | payment `1362263`, `ac1ec6f`; web `c0e75dc`, `2a572e6`; mobile `9a32ab4`, `5278370` |
+| Sonar | Payment quality gate green | payment `7239409` |
+| WEB-16 / contract 6 | Fresh data without reload (web `LiveRefresh`, mobile `useRefreshOnFocus`) | web `b0d58b5`, mobile `dfdcaad` |
+| WEB-04, WEB-05, WEB-12, A-02, A-18, H-05 | Reports update on data; 216 error codes in 4 languages and field errors; recovery icons; fr/pt texts; operator history from real status; read-only permission matrix | web `2070857`, `5e5e234`, `9c57384`, `e6657e6`, `f966c6b`, `08d36ab`, `86fea9b`, `a4d3715` |
+| H-19 (WEB-15) | Web image on `nginx-unprivileged` port 8080, `npm ci --ignore-scripts`; Caddy and the health check on 8080 | web `835395d`, infra `9e56536` |
+| F-02 / H-03 (rest) | Real guard and interceptor tests; web coverage in CI | web `7edd87f`, `2245758` |
+| MOV-04 to MOV-16 (most), MOV-06 | View models, valid status transitions, silenced errors, HTTPS production URL, push unregistration on expiry (foreground), APK check on foreground, accessibility, dead code, paging and limits; 207 error codes | mobile `def7fd7`, `d7ce3a4`, `6cfd798`, `7b5f095`, `2ad33a2`, `749257c`, `10f7a25`, `59d478e`, `89d1fa7`, `627fa7c`, `da049dd`; infra `f230ad8` |
+| CD-03, CD-06 to CD-08, CD-10, CD-11, CD-13, CD-14 | Continuous deployment with health wait, Caddy restart, boot catch-up, `:prev` images and `rollback.sh`, image prune and backup retention, deploy checks, CI syntax loop and actionlint | infra `006b5b0`, `166c121`, `bae88a8`, `009f7a7`, `4653c53`, `ec4ae3d` |
+| CD-04 | "Pedir despliegue" in customer, booking and payment too (8 repositories); mobile OTA `cd.yml` | booking `5dd6794`, customer `3181cae`, payment `3b8730e`, mobile `e5d7d67`, infra `e89e5a0` |
+| C1 (cross review) | `setup-server.sh` never downgrades a repository | infra `cf28ed0` |
+| E-20 | `restore-db.sh` with the deploy lock, confirmation and `payment-migrate`; backup cron without `USER` | infra `1150821`, `9eaa457` |
+| E-05 (rest) | `payment-migrate` gets the password by `LIQUIBASE_COMMAND_PASSWORD`; placeholders in `GUIA-EQUIPO.md` (rotate the old `sa` password still in the history) | infra `b63f85a` |
+| H-13 | Remote end-to-end battery and manual `e2e.yml` | infra `573d10b` |
+| CD-12, H-10 | Documented: the `produccion` Environment (not created) and the shared `sa` as accepted risk | infra `03c7083`, `4a865aa` |
 
 ## Closed on 2026-10-23 (merged into `develop`, CI green)
 
@@ -195,6 +257,8 @@ Severity as given by the review. Items whose fix exists only in an unmerged bran
 | C-004 | operations-service drifting from the booking/notification contracts (old R-001) | Closed 2026-10-16: it publishes and consumes the agreed events and assigns automatically on `booking.confirmed` | Fix event contracts in `02-domain` before building the consumer |
 | C-005 | payment-service staying partial (old R-002) | Closed 2026-10-16: events, promotions, points, refunds and its Docker container are done | Put a service in Docker Compose from its first commit |
 | C-006 | Review finding known requirement gaps (old R-007) | Closed 2026-10-16: per-account preferences, account lockout and the 404 page are built | Keep the gap list visible and close it before the review, not during it |
+| C-007 | Money shown and money approved disagree (old R-013, BIZ-01/BIZ-02) | Closed 2026-10-24: `AMOUNT_CHANGED`, client reschedule only of date and time, amount due from the server (payment `a898a98`, `fb90b0c`; booking `2983d76`) | Agree the contract of an amount once, in the server, and make every client read it |
+| C-008 | A closed session kept working through `bearer` (old R-014, SEC-01) | Closed 2026-10-24: gateway `2e20204` | Test the header in every case and variant, not only the one the clients send |
 
 ---
 
