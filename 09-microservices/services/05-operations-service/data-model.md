@@ -2,7 +2,7 @@
 
 Schema `execution` in the shared SQL Server database `LavaRapido` (one owning service per schema, ADR-003/ADR-009): 11 tables, 117 columns. No foreign key leaves these schemas; references to other services are plain columns (last section).
 
-> **Source:** the Liquibase changelogs of `lavarapido-operations-service` on `origin/develop` (`71df4b2`, 2026-10-23), applied in the order of `src/main/resources/db/changelog/db.changelog-master.xml`. The tables below were generated from those changelogs and are checked against them, against the JPA entities and against the ERD (`08-uml/diagrams/source/erd-operations.md`) by the script described in `06-data/migration-strategy.md` ("How the docs are checked"). The rationale of each table is in `06-data/models.md`.
+> **Source:** the Liquibase changelogs of `lavarapido-operations-service` on `origin/develop` (`37e32ff`, 2026-10-24), applied in the order of `src/main/resources/db/changelog/db.changelog-master.xml`. The tables below were generated from those changelogs and are checked against them, against the JPA entities and against the ERD (`08-uml/diagrams/source/erd-operations.md`) by the script described in `06-data/migration-strategy.md` ("How the docs are checked"). The rationale of each table is in `06-data/models.md`.
 
 ## Tables
 

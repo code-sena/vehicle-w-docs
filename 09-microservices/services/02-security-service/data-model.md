@@ -2,7 +2,7 @@
 
 Schemas `security` and `audit` in the shared SQL Server database `LavaRapido` (one owning service per schema, ADR-003/ADR-009): 12 tables, 74 columns. No foreign key leaves these schemas; references to other services are plain columns (last section).
 
-> **Source:** the Liquibase changelogs of `security-service` on `origin/develop` (`113fc4d`, 2026-10-23), applied in the order of `src/main/resources/db/changelog/db.changelog-master.xml`. The tables below were generated from those changelogs and are checked against them, against the JPA entities and against the ERD (`08-uml/diagrams/source/erd-security.md`) by the script described in `06-data/migration-strategy.md` ("How the docs are checked"). The rationale of each table is in `06-data/models.md`.
+> **Source:** the Liquibase changelogs of `security-service` on `origin/develop` (`b5fe56e`, 2026-10-24), applied in the order of `src/main/resources/db/changelog/db.changelog-master.xml`. The tables below were generated from those changelogs and are checked against them, against the JPA entities and against the ERD (`08-uml/diagrams/source/erd-security.md`) by the script described in `06-data/migration-strategy.md` ("How the docs are checked"). The rationale of each table is in `06-data/models.md`.
 
 ## Tables
 
