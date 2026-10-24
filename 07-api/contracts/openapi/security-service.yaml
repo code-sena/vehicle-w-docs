@@ -1,11 +1,11 @@
-# Contract of security-service, rebuilt on 2026-10-23 from the code on origin/develop (see 07-api/README.md).
+# Contract of security-service, rebuilt on 2026-10-24 from the code on origin/develop (see 07-api/README.md).
 # Regenerate it from the code instead of editing by hand, so it never drifts.
 openapi: 3.0.3
 info:
   title: LavaRápido security-service API
   version: v1
   description: |-
-    Contract of security-service, rebuilt from the controllers of `security-service` on `origin/develop` (`113fc4d`, 2026-10-23) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
+    Contract of security-service, rebuilt from the controllers of `security-service` on `origin/develop` (`b5fe56e`, 2026-10-24) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
 
     **Security.** Operations without `security` use the bearer JWT (`bearerAuth`). `security: []` = public. `x-roles` = roles the service accepts on that path (from its `SecurityConfig`); `x-access` = `public`, `authenticated` (any role), `roles`, `internal` (only `X-Internal-Key`, not published by the gateway) or `roles + internal key`. Ownership checks (a client only sees its own data) answer 404, not 403.
 
@@ -14,6 +14,7 @@ info:
     | `code` | HTTP | Raised by / when |
     |---|---|---|
     | `BAD_REQUEST` | 400 | Spring MVC rejected the request before the controller: malformed JSON, missing required query parameter or wrong parameter type |
+    | `CONSENT_REQUIRED` | 400 | `ConsentRequiredException` — `POST /api/v1/auth/register` |
     | `EMAIL_DOMAIN_NOT_ALLOWED` | 400 | `InvalidValueException` — `POST /api/v1/auth/register`, `POST /api/v1/admin/users`, `PUT /api/v1/users/me/email` |
     | `INCORRECT_CURRENT_PASSWORD` | 400 | `IncorrectCurrentPasswordException` — `PUT /api/v1/users/me/password`, `PUT /api/v1/users/me/email`, `POST /api/v1/users/me/deactivate` |
     | `INVALID_ADDRESS` | 400 | `InvalidValueException` — `PUT /api/v1/users/me/address` |
@@ -42,6 +43,7 @@ info:
     | `DOCUMENT_ALREADY_REGISTERED` | 409 | `DocumentAlreadyRegisteredException` — `POST /api/v1/auth/register`, `POST /api/v1/admin/users` |
     | `EMAIL_ALREADY_REGISTERED` | 409 | `EmailAlreadyRegisteredException` — `POST /api/v1/auth/register`, `POST /api/v1/admin/users`, `PUT /api/v1/users/me/email` |
     | `ACCOUNT_LOCKED` | 423 | `AccountLockedException` — `POST /api/v1/auth/login` |
+    | `TOO_MANY_ATTEMPTS` | 423 | `TooManyAttemptsException` — 5 operations (see `x-codes` of each response) |
     | `INTERNAL_ERROR` | 500 | Unexpected error (logged with its correlation id) |
 servers:
   - url: http://localhost:8080
@@ -449,6 +451,7 @@ paths:
       tags:
         - Auth
       operationId: resetPassword
+      description: "SEC-05: same code check as `/password/verify` (423 `TOO_MANY_ATTEMPTS` once the code is burnt). On success every session of the account is closed."
       security: []
       x-access: public
       x-source: com/lavarapido/security/infrastructure/adapter/in/web/AuthController.java:119
@@ -477,11 +480,20 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "423":
+          description: "Locked. `code`: `TOO_MANY_ATTEMPTS`."
+          x-codes:
+            - TOO_MANY_ATTEMPTS
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/auth/password/verify:
     post:
       tags:
         - Auth
       operationId: verifyResetCode
+      description: "SEC-05: 5 wrong codes (`app.password-recovery.max-failed-attempts`) burn the code: that attempt and the next ones answer 423 `TOO_MANY_ATTEMPTS` until a new code is requested or the burnt one expires; before that a wrong code is 400 `INVALID_RESET_CODE`. Attempts on the same account are checked one after another (user lock)."
       security: []
       x-access: public
       x-source: com/lavarapido/security/infrastructure/adapter/in/web/AuthController.java:113
@@ -508,12 +520,20 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "423":
+          description: "Locked. `code`: `TOO_MANY_ATTEMPTS`."
+          x-codes:
+            - TOO_MANY_ATTEMPTS
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/auth/register:
     post:
       tags:
         - Auth
       operationId: register
-      description: "A-01: the e-mail domain must be in `ALLOWED_EMAIL_DOMAINS` (default `gmail.com`, compared without case after trimming); otherwise 400 `EMAIL_DOMAIN_NOT_ALLOWED`. Both consents are stored with their acceptance time (Law 1581)."
+      description: "A-01: the e-mail domain must be in `ALLOWED_EMAIL_DOMAINS` (default `gmail.com`, compared without case after trimming); otherwise 400 `EMAIL_DOMAIN_NOT_ALLOWED`. SEC-07: both consents (`acceptsTerms`, `acceptsDataPolicy`) are required (400 `CONSENT_REQUIRED`) and stored with their acceptance time (Law 1581). Through the gateway the whole `/api/v1/auth/**` is rate limited per IP (429 `RATE_LIMITED`, `api-gateway.yaml`)."
       security: []
       x-access: public
       x-source: com/lavarapido/security/infrastructure/adapter/in/web/AuthController.java:66
@@ -531,9 +551,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/UserResponse"
         "400":
-          description: "Bad Request. `code`: `BAD_REQUEST`, `EMAIL_DOMAIN_NOT_ALLOWED`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`, `VALIDATION_ERROR`, `WEAK_PASSWORD`."
+          description: "Bad Request. `code`: `BAD_REQUEST`, `CONSENT_REQUIRED`, `EMAIL_DOMAIN_NOT_ALLOWED`, `INVALID_DOCUMENT`, `INVALID_EMAIL`, `INVALID_NAME`, `INVALID_PHONE`, `VALIDATION_ERROR`, `WEAK_PASSWORD`."
           x-codes:
             - BAD_REQUEST
+            - CONSENT_REQUIRED
             - EMAIL_DOMAIN_NOT_ALLOWED
             - INVALID_DOCUMENT
             - INVALID_EMAIL
@@ -728,7 +749,10 @@ paths:
       tags:
         - My account
       operationId: deactivateMe
-      description: "Javadoc: \"Eliminar mi cuenta\": la desactiva (no la borra) y cierra todas sus sesiones. Pide la contraseña actual para confirmar. POST y no DELETE porque lleva cuerpo."
+      description: |-
+        SEC-12: a wrong current password counts as a failed login (`login_lockout`): the one that locks the account, and every attempt while it is locked, answer 423 `TOO_MANY_ATTEMPTS`.
+
+        Javadoc: "Eliminar mi cuenta": la desactiva (no la borra) y cierra todas sus sesiones. Pide la contraseña actual para confirmar. POST y no DELETE porque lleva cuerpo.
       x-access: authenticated
       x-source: com/lavarapido/security/infrastructure/adapter/in/web/UserProfileController.java:111
       requestBody:
@@ -770,13 +794,21 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "423":
+          description: "Locked. `code`: `TOO_MANY_ATTEMPTS`."
+          x-codes:
+            - TOO_MANY_ATTEMPTS
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/users/me/email:
     put:
       tags:
         - My account
       operationId: changeEmail
       description: |-
-        A-01: the new e-mail must use an allowed domain (`EMAIL_DOMAIN_NOT_ALLOWED`); checked again on every change.
+        A-01: the new e-mail must use an allowed domain (`EMAIL_DOMAIN_NOT_ALLOWED`); checked again on every change. SEC-12: a wrong current password counts as a failed login; with the account locked it answers 423 `TOO_MANY_ATTEMPTS`.
 
         Javadoc: Cambia el correo de login. Desde ahí se inicia sesión con el correo nuevo.
       x-access: authenticated
@@ -825,11 +857,20 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "423":
+          description: "Locked. `code`: `TOO_MANY_ATTEMPTS`."
+          x-codes:
+            - TOO_MANY_ATTEMPTS
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
   /api/v1/users/me/password:
     put:
       tags:
         - My account
       operationId: changePassword
+      description: "SEC-12: a wrong current password counts as a failed login (`login_lockout`); with the account locked it answers 423 `TOO_MANY_ATTEMPTS`."
       x-access: authenticated
       x-source: com/lavarapido/security/infrastructure/adapter/in/web/UserProfileController.java:79
       requestBody:
@@ -861,6 +902,14 @@ paths:
           description: "Unauthorized. `code`: `UNAUTHORIZED`."
           x-codes:
             - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "423":
+          description: "Locked. `code`: `TOO_MANY_ATTEMPTS`."
+          x-codes:
+            - TOO_MANY_ATTEMPTS
           content:
             application/problem+json:
               schema:
@@ -1497,6 +1546,7 @@ x-error-codes:
   BAD_REQUEST: 400
   CANNOT_DISABLE_OWN_ACCOUNT: 403
   CONFLICT: 409
+  CONSENT_REQUIRED: 400
   DOCUMENT_ALREADY_REGISTERED: 409
   EMAIL_ALREADY_REGISTERED: 409
   EMAIL_DOMAIN_NOT_ALLOWED: 400
@@ -1516,6 +1566,7 @@ x-error-codes:
   METHOD_NOT_ALLOWED: 405
   NOT_FOUND: 404
   SAME_PASSWORD: 400
+  TOO_MANY_ATTEMPTS: 423
   UNAUTHORIZED: 401
   UNKNOWN_PERMISSION: 400
   USER_NOT_FOUND: 404
