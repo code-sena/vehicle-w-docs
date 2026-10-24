@@ -184,7 +184,7 @@ classes the running instance uses.
 ```bash
 ./mvnw test                                   # tests of a service
 npx ng build --configuration development      # build the web
-docker exec -it lavarapido-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d LavaRapido
+MSYS_NO_PATHCONV=1 docker exec -it lavarapido-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d LavaRapido   # asks for the sa password
 ```
 
 ---
