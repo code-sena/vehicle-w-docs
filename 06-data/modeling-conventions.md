@@ -72,10 +72,10 @@ row_version  INT           NOT NULL DEFAULT 1,
   core (none), `booking.schedule_history` (none, insert-only log), `execution.inspection_report` (no
   `deleted_*`), `inspection_phase` (none), `inspection_finding` (`created_*`, `deleted_*`),
   `inspection_photo` (`created_*`), `operator_profile` (`updated_*`), `operator_skill` (none) and
-  `notification.booking_tracking` (`updated_at`).
+  `notification.booking_tracking` (`updated_at`) and `pending_delivery` (`created_at`).
 - `updated_at` and `row_version` are bumped on every `UPDATE` by a `tr_touch_<table>` trigger, which
   each changeset writes explicitly for its table (`migration-strategy.md`, "Triggers"). As built
-  (checked 2026-10-23), there are 16 of them, on the tables that are edited after creation:
+  (checked 2026-10-24), there are 16 of them, on the tables that are edited after creation:
   `security.user_preference`, the three `customer` tables, `catalog.service` and `service_price`,
   `booking.booking`, `business_hour`, `business_hour_exception`, `establishment` and `service_bay`,
   and `execution.operator`, `operator_availability`, `operator_absence`, `service_execution` and
@@ -85,8 +85,10 @@ row_version  INT           NOT NULL DEFAULT 1,
 - `created_by` / `updated_by` / `deleted_by` reference `security.app_user.user_id`, but — like
   every other cross-service reference — with no FK.
 - `row_version` backs optimistic locking: a second editor's `UPDATE ... WHERE row_version = @x`
-  simply matches zero rows if someone else got there first. Only payment-service sends that `WHERE` today
-  (EF Core concurrency token); the Java services do not check it yet.
+  simply matches zero rows if someone else got there first. payment-service sends that `WHERE` on
+  every table (EF Core concurrency token), and booking-service on `booking.booking` (`@Version`,
+  BIZ-09, migration 045: its trigger no longer bumps the version Hibernate already bumped); both answer
+  409. The other Java tables do not check it yet.
 
 `security.person`, `app_user`, `role`, `permission`, `role_permission`, `user_role`,
 `user_session`, and `password_reset_token` intentionally **don't** carry this block. They're

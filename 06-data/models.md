@@ -1,6 +1,6 @@
 # Data Models per Service
 
-**Last updated:** 2026-10-23 — every `CREATE TABLE` block below is the final state after all the Liquibase changesets on `origin/develop` (up to 043 in the Java services and 021 in payment-service), and was checked against them by script (`migration-strategy.md`, "How the docs are checked"). Later columns carry a `-- migration NNN` comment. Earlier: 2026-10-15 ADR-010 and ADR-011 changes, login lockout, registration date, inspection report.
+**Last updated:** 2026-10-24 — every `CREATE TABLE` block below is the final state after all the Liquibase changesets on `origin/develop` (up to 047 in the Java services and 023 in payment-service), and was checked against them by script (`migration-strategy.md`, "How the docs are checked"). Later columns and constraints carry a `-- migration NNN` comment. 2026-10-24: `pending_delivery` (047), the current-price check (044), `tr_touch_booking` and the booking optimistic lock (045), the coupon percentage (payment 022), one open payment per booking and the live-reference view (payment 023). Earlier: 2026-10-15 ADR-010 and ADR-011 changes, login lockout, registration date, inspection report.
 
 The system is split into **six microservices over nine schemas**, all inside a single SQL
 Server 2016+ instance. Every schema has exactly one owning service; a service may own more
@@ -29,9 +29,9 @@ below.
 | `booking-service` | [`catalog`](#04-catalog), [`booking`](#05-booking) | 13 |
 | `operations-service` | [`execution`](#06-execution) | 11 |
 | `payment-service` | [`promotion`](#07-promotion), [`payment`](#08-payment) | 12 |
-| `notification-service` | [`notification`](#09-notification) | 6 |
+| `notification-service` | [`notification`](#09-notification) | 7 |
 
-57 tables in total. The `settings` schema no longer exists: `establishment` moved to
+58 tables in total. The `settings` schema no longer exists: `establishment` moved to
 `booking` and `user_preference` to `security`; the loyalty ledger moved from `customer` to
 `payment` (see each table's modeling decisions).
 
@@ -358,7 +358,7 @@ CREATE TABLE [security].user_preference (
     CONSTRAINT uq_user_preference_user UNIQUE (user_id),
     CONSTRAINT fk_user_preference_user FOREIGN KEY (user_id) REFERENCES [security].app_user(user_id),
     CONSTRAINT ck_pref_language CHECK ([language] IN (N'es', N'en', N'fr', N'pt')),
-    CONSTRAINT ck_pref_theme CHECK (theme IN (N'green-light', N'green-dark', N'pink', N'pink-dark'))
+    CONSTRAINT ck_pref_theme CHECK (theme IN (N'green-light', N'green-dark', N'pink', N'pink-dark'))   -- migration 020
 );
 -- trigger tr_touch_user_preference (AFTER UPDATE): sets updated_at and row_version
 ```
@@ -788,7 +788,8 @@ CREATE TABLE [catalog].service_price (
     CONSTRAINT fk_service_price_service FOREIGN KEY (service_id) REFERENCES [catalog].service(service_id),
     CONSTRAINT ck_service_price_price CHECK (price >= 0),
     CONSTRAINT ck_service_price_minutes CHECK (estimated_minutes > 0),
-    CONSTRAINT ck_service_price_range CHECK (valid_to IS NULL OR valid_to > valid_from)
+    CONSTRAINT ck_service_price_range CHECK (valid_to IS NULL OR valid_to > valid_from),
+    CONSTRAINT ck_service_price_positive CHECK (price > 0 OR valid_to IS NOT NULL OR deleted_at IS NOT NULL)   -- migration 044 (WITH NOCHECK if existing rows broke it)
 );
 CREATE UNIQUE NONCLUSTERED INDEX ux_service_price_current ON [catalog].service_price (service_id, vehicle_type_id) WHERE valid_to IS NULL AND deleted_at IS NULL;
 CREATE NONCLUSTERED INDEX ix_service_price_vehicle_type ON [catalog].service_price (vehicle_type_id);
@@ -821,6 +822,7 @@ CREATE NONCLUSTERED INDEX ix_service_price_vehicle_type ON [catalog].service_pri
 1. Exists as its own table (2NF): price depends on the *whole* key (service + vehicle type), not on service alone — storing it on `service` would be a partial dependency.
 2. **The row is immutable once created.** `price`, `service_id`, `vehicle_type_id`, and `valid_from` are never updated — enforced by the `tr_service_price_immutable` trigger. `booking.booking_service` freezes the price it charged by pointing straight at this row; an `UPDATE` here would silently rewrite what a booking from three months ago actually cost. Raising a price means closing the current row (`valid_to = today`) and inserting a new one.
 3. A filtered unique index (`ux_service_price_current`) guarantees at most one *current* tariff per (service, vehicle type) pair. There is no trigger for overlapping historical ranges: `CatalogService` always closes the current row before inserting the new one.
+4. The current tariff must cost more than 0 (`ck_service_price_positive`, migration 044, BIZ-04): a booking priced at 0 could never be paid, because payment-service does not accept a 0 amount. The domain checks it first (`PriceDefinition`, 400 `INVALID_PRICE`). Closed or deleted rows may stay at 0, since old bookings point at them and the row is immutable. If a current 0 price already existed when 044 ran, the check was created `WITH NOCHECK`: those rows survive until the admin sets a price, and every new row is checked.
 
 ---
 
@@ -932,7 +934,7 @@ CREATE TABLE [booking].business_hour (
     CONSTRAINT uq_business_hour_day UNIQUE (day_of_week),
     CONSTRAINT ck_business_hour_day CHECK (day_of_week BETWEEN 1 AND 7),
     CONSTRAINT ck_business_hour_range CHECK (closes_at > opens_at),
-    CONSTRAINT ck_business_hour_break CHECK ((break_starts_at IS NULL AND break_ends_at IS NULL) OR (break_starts_at IS NOT NULL AND break_ends_at IS NOT NULL AND break_starts_at > opens_at AND break_ends_at < closes_at AND break_ends_at > break_starts_at))
+    CONSTRAINT ck_business_hour_break CHECK ((break_starts_at IS NULL AND break_ends_at IS NULL) OR (break_starts_at IS NOT NULL AND break_ends_at IS NOT NULL AND break_starts_at > opens_at AND break_ends_at < closes_at AND break_ends_at > break_starts_at))   -- migration 018
 );
 -- trigger tr_touch_business_hour (AFTER UPDATE): sets updated_at and row_version
 ```
@@ -1061,7 +1063,7 @@ CREATE TABLE [booking].service_bay (
     bay_status_id    SMALLINT     NOT NULL CONSTRAINT df_bay_status DEFAULT 1,   -- ADR-010: estado desde bay_status (1 = ACTIVE); migration 018
     CONSTRAINT pk_service_bay PRIMARY KEY (service_bay_id),
     CONSTRAINT uq_service_bay_code UNIQUE (code),
-    CONSTRAINT fk_service_bay_status FOREIGN KEY (bay_status_id) REFERENCES [booking].bay_status(bay_status_id)
+    CONSTRAINT fk_service_bay_status FOREIGN KEY (bay_status_id) REFERENCES [booking].bay_status(bay_status_id)   -- migration 018
 );
 -- trigger tr_touch_service_bay (AFTER UPDATE): sets updated_at and row_version
 ```
@@ -1196,7 +1198,7 @@ CREATE NONCLUSTERED INDEX ix_booking_customer_vehicle ON [booking].booking (cust
 CREATE NONCLUSTERED INDEX ix_booking_bay_start ON [booking].booking (service_bay_id, scheduled_start);
 CREATE NONCLUSTERED INDEX ix_booking_booked_by ON [booking].booking (booked_by);
 -- trigger tr_booking_bay_overlap (AFTER INSERT, UPDATE): Rejects (THROW 51002) two active bookings (states 1–3, not deleted) that overlap on the same bay. Safety net of INV-BOOK-006; the code checks it first.
--- trigger tr_touch_booking (AFTER UPDATE): sets updated_at and row_version
+-- trigger tr_touch_booking (AFTER UPDATE): sets updated_at; bumps row_version only if the UPDATE did not (045)
 ```
 
 **Indexes:**
@@ -1230,6 +1232,7 @@ CREATE NONCLUSTERED INDEX ix_booking_booked_by ON [booking].booking (booked_by);
 1. No `total` column: the total is derived from `booking_service` + its prices, minus `booking_promotion` and `points_discount_amount`. Storing it would be a derived value that can silently drift from its inputs.
 2. `points_redeemed` / `points_discount_amount` exist because, without them, redeeming points lowered the customer's balance but never actually reduced what they paid — the redemption never reached the bill.
 3. `tr_booking_bay_overlap` blocks two active bookings from sharing a bay and a time window; a cancelled booking frees the bay.
+4. `row_version` is the optimistic lock of the booking (`@Version` in `BookingJpaEntity`, BIZ-09, E-11): Hibernate updates `WHERE row_version = <read value>` and bumps it, so a booking cancelled while someone else was rescheduling it does not come back to life; the loser gets 409 `CONFLICT` and reloads it. Since migration 045, `tr_touch_booking` still sets `updated_at` but only bumps `row_version` when the `UPDATE` left it unchanged (a manual script), so the row does not end up a version ahead of Hibernate.
 
 ---
 
@@ -1846,7 +1849,7 @@ CREATE TABLE [promotion].promotion (
     CONSTRAINT ck_promo_max_redemptions CHECK (max_redemptions IS NULL OR max_redemptions > 0),
     CONSTRAINT ck_promo_max_per_customer CHECK (max_redemptions_per_customer IS NULL OR max_redemptions_per_customer > 0),
     CONSTRAINT ck_promo_per_customer_le_total CHECK (max_redemptions IS NULL OR max_redemptions_per_customer IS NULL OR max_redemptions_per_customer <= max_redemptions),
-    CONSTRAINT ck_promo_required_points CHECK (required_points >= 0)
+    CONSTRAINT ck_promo_required_points CHECK (required_points >= 0)   -- migration 018
 );
 ```
 
@@ -1998,10 +2001,14 @@ CREATE TABLE [promotion].booking_promotion (
     deleted_at             DATETIME2(3)  NULL,
     deleted_by             BIGINT        NULL,
     row_version            INT           NOT NULL CONSTRAINT df_bpromo_rv DEFAULT 1,
+    discount_percent       DECIMAL(5,2)  NULL,   -- migration 022
+    max_discount_amount    DECIMAL(12,2) NULL,   -- migration 022
     CONSTRAINT pk_booking_promotion PRIMARY KEY (booking_promotion_id),
     CONSTRAINT uq_booking_promotion UNIQUE (booking_id, promotion_id),
     CONSTRAINT fk_booking_promotion_promotion FOREIGN KEY (promotion_id) REFERENCES [promotion].promotion(promotion_id),
-    CONSTRAINT ck_bpromo_amount CHECK (applied_amount > 0)
+    CONSTRAINT ck_bpromo_amount CHECK (applied_amount > 0),
+    CONSTRAINT ck_bpromo_discount_percent CHECK (discount_percent IS NULL OR (discount_percent > 0 AND discount_percent <= 100)),   -- migration 022
+    CONSTRAINT ck_bpromo_max_discount CHECK (max_discount_amount IS NULL OR max_discount_amount > 0)   -- migration 022
 );
 CREATE NONCLUSTERED INDEX ix_booking_promotion_booking ON [promotion].booking_promotion (booking_id);
 CREATE UNIQUE NONCLUSTERED INDEX ux_booking_promotion_one_per_booking ON [promotion].booking_promotion (booking_id);   -- migration 021
@@ -2022,11 +2029,13 @@ CREATE UNIQUE NONCLUSTERED INDEX ux_booking_promotion_one_per_booking ON [promot
 | `booking_id` | BIGINT | No | The booking. | No FK — owned by `booking.booking`, see the cross-service contract below. |
 | `promotion_id` | INT | No | The promotion applied. | FK → `promotion.promotion.promotion_id` |
 | `applied_amount` | DECIMAL(12,2) | No | The actual peso amount discounted, frozen at application time. | — |
+| `discount_percent` | DECIMAL(5,2) | Yes | Percentage of a `PERCENT` coupon, copied when it is redeemed (022, BIZ-05); `NULL` for a fixed-amount coupon. | NULL or > 0 and ≤ 100 (`ck_bpromo_discount_percent`) |
+| `max_discount_amount` | DECIMAL(12,2) | Yes | Cap in pesos of that percentage, if the promotion had one (022). | NULL or > 0 (`ck_bpromo_max_discount`) |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
 **Modeling decisions:**
 
-1. `applied_amount` is stored because a promotion can change or expire later — what a booking was actually discounted that day is a historical fact, not something that should be recomputed if the promotion's terms change tomorrow.
+1. `applied_amount` is stored because a promotion can change or expire later — what a booking was actually discounted that day is a historical fact, not something that should be recomputed if the promotion's terms change tomorrow. A percentage coupon also keeps its own percentage and cap (`discount_percent`, `max_discount_amount`, migration 022, BIZ-05), copied from the promotion when redeemed: the amount due is recomputed with them from the booking's current total, so 50 % of 40.000 rescheduled to 20.000 discounts 10.000, not the original 20.000. Fixed-amount coupons leave both NULL and keep discounting `applied_amount`. Existing percentage redemptions were backfilled from their promotion.
 2. One coupon per booking (E-09): the service answers 409 `PROMOTION_ONE_PER_BOOKING` and `ux_booking_promotion_one_per_booking` backs it. The unique index is not filtered by `deleted_at`: removing a coupon (`DELETE /api/v1/loyalty/redemptions/{bookingId}/{promotionId}`, only while the payment is not in review or approved) deletes the row physically, so the client can redeem another one.
 
 ---
@@ -2194,6 +2203,7 @@ CREATE NONCLUSTERED INDEX ix_payment_booking ON [payment].payment (booking_id);
 CREATE NONCLUSTERED INDEX ix_payment_status ON [payment].payment (payment_status_id);
 CREATE NONCLUSTERED INDEX ix_payment_approved_by ON [payment].payment (approved_by);
 CREATE UNIQUE NONCLUSTERED INDEX ux_payment_one_approved_per_booking ON [payment].payment (booking_id) WHERE payment_status_id = 3 AND deleted_at IS NULL;
+CREATE UNIQUE NONCLUSTERED INDEX ux_payment_one_open_per_booking ON [payment].payment (booking_id) WHERE payment_status_id IN (1, 2) AND deleted_at IS NULL;   -- migration 023
 ```
 
 **Indexes:**
@@ -2204,6 +2214,7 @@ CREATE UNIQUE NONCLUSTERED INDEX ux_payment_one_approved_per_booking ON [payment
 | `ix_payment_status` | `payment_status_id` | Non-unique | Filter/queue payments by status (e.g. the admin review queue). |
 | `ux_payment_one_approved_per_booking` | `booking_id` `WHERE payment_status_id = 3 AND deleted_at IS NULL` | Unique, filtered | At most one APPROVED payment per booking — filtered so rejected attempts don't block it. |
 | `ix_payment_approved_by` | `approved_by` | Non-unique | Cross-service lookup support for `payment.payment.approved_by` (added with ADR-009). |
+| `ux_payment_one_open_per_booking` | `booking_id` `WHERE payment_status_id IN (1, 2) AND deleted_at IS NULL` | Unique, filtered | At most one open payment (`PENDING` or `IN_REVIEW`) per booking, also under a double click or two tabs (payment migration 023, A-16). `EfUnitOfWork` turns a violation into 409 `PAYMENT_ALREADY_REPORTED`. |
 
 **Data dictionary:**
 
@@ -2221,7 +2232,7 @@ CREATE UNIQUE NONCLUSTERED INDEX ux_payment_one_approved_per_booking ON [payment
 
 **Modeling decisions:**
 
-1. A booking can have several payment rows — a rejected attempt followed by an approved one are two separate rows, not one row overwritten. A filtered unique index guarantees at most one `APPROVED` row per booking.
+1. A booking can have several payment rows — a rejected attempt followed by an approved one are two separate rows, not one row overwritten. A filtered unique index guarantees at most one `APPROVED` row per booking, and since migration 023 another one guarantees at most one open (`PENDING` or `IN_REVIEW`) row. Before creating it, 023 rejected the older open duplicates of a booking ("Pago duplicado…") and kept the most recent one.
 2. No `payment_method_type_id` here: the method is reached through `payment_account`. Storing both would be a transitive dependency that could let a payment claim "Nequi" while pointing at the Daviplata account.
 
 ---
@@ -2258,6 +2269,15 @@ CREATE NONCLUSTERED INDEX ix_payment_receipt_payment ON [payment].payment_receip
 CREATE NONCLUSTERED INDEX ix_payment_receipt_reference ON [payment].payment_receipt (transaction_reference);
 CREATE NONCLUSTERED INDEX ix_payment_receipt_reviewed_by ON [payment].payment_receipt (reviewed_by);
 CREATE NONCLUSTERED INDEX ix_payment_receipt_uploaded_by ON [payment].payment_receipt (uploaded_by);
+CREATE VIEW [payment].v_live_transaction_reference WITH SCHEMABINDING AS   -- migration 023
+SELECT r.transaction_reference
+  FROM [payment].payment_receipt r
+  JOIN [payment].payment p ON p.payment_id = r.payment_id
+  WHERE r.transaction_reference IS NOT NULL
+  AND r.deleted_at IS NULL
+  AND p.deleted_at IS NULL
+  AND p.payment_status_id <= 3;
+CREATE UNIQUE CLUSTERED INDEX ux_live_transaction_reference ON [payment].v_live_transaction_reference (transaction_reference);
 ```
 
 **Indexes:**
@@ -2268,6 +2288,7 @@ CREATE NONCLUSTERED INDEX ix_payment_receipt_uploaded_by ON [payment].payment_re
 | `ix_payment_receipt_reference` | `transaction_reference` | Non-unique | Antifraud check: detect the same receipt reference reused across payments. |
 | `ix_payment_receipt_reviewed_by` | `reviewed_by` | Non-unique | Cross-service lookup support for `payment.payment_receipt.reviewed_by` (added with ADR-009). |
 | `ix_payment_receipt_uploaded_by` | `uploaded_by` | Non-unique | Cross-service lookup support for `payment.payment_receipt.uploaded_by` (added with ADR-009). |
+| `ux_live_transaction_reference` | `transaction_reference` on the view `payment.v_live_transaction_reference` | Unique, clustered (indexed view) | A reference backs at most one live payment (`PENDING`, `IN_REVIEW` or `APPROVED`, ids 1–3; payment migration 023, A-16). `EfUnitOfWork` turns a violation into 409 `TRANSACTION_REFERENCE_REUSED`. |
 
 **Data dictionary:**
 
@@ -2289,6 +2310,7 @@ CREATE NONCLUSTERED INDEX ix_payment_receipt_uploaded_by ON [payment].payment_re
 
 1. Kept separate from `payment` because a rejected payment can get a corrected receipt uploaded next — both stay on record. If the receipt were a column on `payment`, the second upload would overwrite the first.
 2. The index on `transaction_reference` makes the reuse check fast: `BookingPaymentGuard` rejects a reference already used on another booking (409 `TRANSACTION_REFERENCE_REUSED`). It is not a unique index, because the same booking may report the same reference again after a rejection. This is the antifraud control that replaces a real payment gateway.
+3. Since migration 023 the database backs that check for two simultaneous requests: the indexed view `v_live_transaction_reference` (`WITH SCHEMABINDING`) joins the receipt with its payment and keeps only the references of live payments, and its unique clustered index `ux_live_transaction_reference` rejects a second one. The reference lives here and the state in `payment`, so a plain filtered index could not express it; a rejected or refunded payment drops out of the view and the client can upload the same receipt again. If a reference was already repeated when 023 ran, the view is not created (`onFail:CONTINUE`, retried on the next update) and only the service check applies.
 
 ---
 
@@ -2411,7 +2433,7 @@ CREATE UNIQUE NONCLUSTERED INDEX ux_loyalty_transaction_customer_sequence ON [pa
 
 ### Table: `notification_type`
 
-**Purpose:** The eleven events that generate a notification.
+**Purpose:** The catalog of notification types (27 rows: seed 108, migrations 025–041 and seed 116, which adds `BOOKING_NO_SHOW`). `code` matches the Java enum `NotificationTypeCode`.
 
 ```sql
 CREATE TABLE [notification].notification_type (
@@ -2685,6 +2707,65 @@ CREATE TABLE [notification].booking_tracking (
 1. A read model fed only by events (`BookingConfirmed`, `BookingCancelled`, `OperatorAssigned`). Comparing a new `BookingConfirmed` with the stored `scheduled_start` tells a new booking from a rescheduled one, and `operator_user_id` says which operator to notify. Migration 027.
 2. No standard audit block: the row is overwritten by each event and carries no business history — the notifications it produced are the history.
 3. `unassigned_alert_at` keeps the scheduled task from repeating the alert on every run. Migration 031.
+
+---
+
+### Table: `pending_delivery`
+
+**Purpose:** The push and e-mail deliveries of each notification, so they go out after the commit and are retried when they fail (OPS-05, E-14). Migration 047.
+
+```sql
+CREATE TABLE [notification].pending_delivery (
+    pending_delivery_id   BIGINT        IDENTITY(1,1) NOT NULL,
+    notification_id       BIGINT        NOT NULL,
+    channel               VARCHAR(10)   NOT NULL,
+    email_address         NVARCHAR(254) NULL,
+    recipient_name        NVARCHAR(100) NULL,
+    [language]            VARCHAR(5)    NULL,
+    attempts              INT           NOT NULL CONSTRAINT df_pending_delivery_attempts DEFAULT 0,
+    next_attempt_at       DATETIME2(3)  NOT NULL,
+    last_error            NVARCHAR(300) NULL,
+    delivered_at          DATETIME2(3)  NULL,
+    failed_at             DATETIME2(3)  NULL,
+    created_at            DATETIME2(3)  NOT NULL CONSTRAINT df_pending_delivery_created DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT pk_pending_delivery PRIMARY KEY (pending_delivery_id),
+    CONSTRAINT fk_pending_delivery_notification FOREIGN KEY (notification_id) REFERENCES [notification].notification(notification_id),
+    CONSTRAINT uq_pending_delivery_channel UNIQUE (notification_id, channel),
+    CONSTRAINT ck_pending_delivery_channel CHECK (channel IN ('PUSH', 'EMAIL')),
+    CONSTRAINT ck_pending_delivery_attempts CHECK (attempts >= 0)
+);
+CREATE NONCLUSTERED INDEX ix_pending_delivery_due ON [notification].pending_delivery (next_attempt_at) WHERE delivered_at IS NULL AND failed_at IS NULL;
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_pending_delivery_due` | `next_attempt_at` WHERE `delivered_at IS NULL AND failed_at IS NULL` | Non-unique, filtered | The retry task reads only the deliveries still open and due. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `pending_delivery_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `notification_id` | BIGINT | No | The notification to deliver. | FK → `notification.notification.notification_id`; unique with `channel` |
+| `channel` | VARCHAR(10) | No | `PUSH` or `EMAIL`. | `ck_pending_delivery_channel` |
+| `email_address` | NVARCHAR(254) | Yes | Address of an e-mail delivery while it is pending; cleared when it is delivered or abandoned. `NULL` for push. | — |
+| `recipient_name` | NVARCHAR(100) | Yes | Name used in the e-mail; cleared like the address. | — |
+| `language` | VARCHAR(5) | Yes | Language of the e-mail template. | — |
+| `attempts` | INT | No | Attempts taken so far (the claim adds 1). | ≥ 0 (`ck_pending_delivery_attempts`), default 0 |
+| `next_attempt_at` | DATETIME2(3) | No | When it may be tried again, UTC; while one instance is sending it, it holds a 5-minute lease. | Indexed while open |
+| `last_error` | NVARCHAR(300) | Yes | Last failure, cut to 300 characters; cleared on delivery. | — |
+| `delivered_at` | DATETIME2(3) | Yes | When it was delivered, UTC. | — |
+| `failed_at` | DATETIME2(3) | Yes | When it was abandoned after `app.delivery.max-attempts` (default 5), UTC. | — |
+| `created_at` | DATETIME2(3) | No | When it was queued, UTC. | Default `SYSUTCDATETIME()` |
+
+**Modeling decisions:**
+
+1. An outbox written in the same transaction as the notification (`PersistentDeliveryOutbox`): if the event fails and RabbitMQ redelivers it, the transaction is rolled back and nothing is sent early or twice. After the commit `PendingDeliveryDispatcher` sends them on another thread.
+2. One row per notification and channel (`uq_pending_delivery_channel`): the same delivery cannot be queued twice. Each attempt first claims the row with one `UPDATE … WHERE next_attempt_at <= now`, so two runs never send it at the same time.
+3. A failure is retried by `DeliveryRetryScheduler` (every `app.delivery.check-interval`, 1 min) with a growing wait (`retry-interval` 1 min, then 2×, 4×… up to 1 h). `delivered_at` or `failed_at` closes the row; rows are kept, not deleted.
+4. Only `created_at` of the audit block: the rows are written by the service, never edited by a person. The address and name are the only contact data notification-service keeps, and only while the delivery is open (ADR-011 §8).
 
 ---
 
