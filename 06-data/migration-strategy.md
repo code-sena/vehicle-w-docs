@@ -1,203 +1,305 @@
 # Migration Strategy
 
+**Last checked:** 2026-10-23, against `origin/develop` of the six service repositories (security
+`113fc4d`, customer `02cdb46`, booking `38681b2`, operations `71df4b2`, payment `16a6fac`,
+notification `0831ce7`).
+
+## Source of truth: the Liquibase changelogs
+
+The data model **is** the set of Liquibase changelogs of the six services. There is one SQL Server
+database, `LavaRapido`; `lavarapido-infra` creates it empty (`db-init`: `CREATE DATABASE` if it does
+not exist, recovery model `SIMPLE`) and every service then creates and migrates **only its own
+schemas** (ADR-009). `06-data/models.md`, each service's `data-model.md` and the ER diagrams in
+`08-uml/diagrams/source/erd-*.md` describe the result and are checked against the changelogs
+(last section).
+
+There is no global script. `lavarapido-6-services-sqlserver.sql`, the one-file DDL the team used
+before the services had changelogs, is **not in any repository**, is not maintained and does not
+contain the later changes; do not use it to create or compare a database. Several changelog headers
+still mention it: they explain why every structural changeset has a `MARK_RAN` precondition (a
+database created from that script converges instead of failing), and are historical.
+
 ## Tool: Liquibase, one changelog per service
 
-Liquibase with **SQL-formatted changelogs** (`--liquibase formatted sql`, one `--changeset` per
-unit of change). Each service owns the changelog of **its own schemas** in
-`src/main/resources/db/changelog/` and applies it at startup; `ddl-auto: validate` then checks that
-the JPA entities match the tables.
+Liquibase with **SQL-formatted changelogs** (`--liquibase formatted sql`, one `--changeset` per unit
+of change). Each service keeps its history in its **own changelog tables**, so the six migrate the
+same database independently:
 
-Every service records its history in its **own changelog tables**, so services migrate
-independently in the shared `LavaRapido` database:
+| Service | Master file | Changelog tables | Who runs it |
+|---|---|---|---|
+| security-service | `src/main/resources/db/changelog/db.changelog-master.xml` | `DATABASECHANGELOG_SECURITY`, `DATABASECHANGELOGLOCK_SECURITY` | Spring Boot at startup |
+| customer-service | `src/main/resources/db/changelog/db.changelog-master.xml` | `DATABASECHANGELOG_CUSTOMER`, `DATABASECHANGELOGLOCK_CUSTOMER` | Spring Boot at startup |
+| booking-service | `src/main/resources/db/changelog/db.changelog-master.xml` | `DATABASECHANGELOG_BOOKING`, `DATABASECHANGELOGLOCK_BOOKING` | Spring Boot at startup |
+| operations-service | `src/main/resources/db/changelog/db.changelog-master.xml` | `DATABASECHANGELOG_OPERATIONS`, `DATABASECHANGELOGLOCK_OPERATIONS` | Spring Boot at startup |
+| notification-service | `src/main/resources/db/changelog/db.changelog-master.xml` | `DATABASECHANGELOG_NOTIFICATION`, `DATABASECHANGELOGLOCK_NOTIFICATION` | Spring Boot at startup |
+| payment-service (.NET) | `db/changelog/db.changelog-master.yaml` | `DATABASECHANGELOG_PAYMENT`, `DATABASECHANGELOGLOCK_PAYMENT` | `payment-migrate` container (`liquibase/liquibase:4.29`, `lavarapido-infra/docker-compose.yml`), once, before the service starts |
 
-| Service | Changelog tables |
-|---|---|
-| security-service | `DATABASECHANGELOG_SECURITY`, `DATABASECHANGELOGLOCK_SECURITY` |
-| customer-service | `DATABASECHANGELOG_CUSTOMER`, `DATABASECHANGELOGLOCK_CUSTOMER` |
-| booking-service | `DATABASECHANGELOG_BOOKING`, `DATABASECHANGELOGLOCK_BOOKING` |
-| operations-service | `DATABASECHANGELOG_OPERATIONS`, `DATABASECHANGELOGLOCK_OPERATIONS` |
-| payment-service | `DATABASECHANGELOG_PAYMENT`, `DATABASECHANGELOGLOCK_PAYMENT` |
-| notification-service | `DATABASECHANGELOG_NOTIFICATION`, `DATABASECHANGELOGLOCK_NOTIFICATION` |
+- In the Java services `spring.liquibase.change-log` and `database-change-log-table` are set in
+  `application.yml`, and `spring.jpa.hibernate.ddl-auto: validate` makes Hibernate check at startup
+  that the JPA entities match the tables (a missing column stops the service).
+- payment-service does not run Liquibase itself; EF Core only maps the tables (no EF migrations).
+- Files run **in the order of the master file**, not alphabetically: schema first, then later
+  changes, then seeds (security runs seed `101` before `026`, which needs the roles; notification
+  runs seed `108` before the later type inserts).
 
-## File numbering (shared across services)
+## Numbering
 
-Numbers are unique across the whole system, so a number tells which part of the model a file
-touches and in which order the global script (`lavarapido-6-services-sqlserver.sql`) applies them:
+- The five Java services share **one global sequence**: structural files `001`–`099` and seed files
+  `101`–`199` (in `seed/`). A number belongs to one file in one service only.
+- payment-service has **its own sequence** (`changes/001`…), independent of the global one: its
+  numbers repeat global ones (both have a `021`), and the changeset ids (`pay-0NN-…`) and its
+  changelog table keep them apart.
+- Numbers that are not in the list below (structure `006`, `008`, `009`, `011`–`013`; seeds `106`,
+  `107`) were never used by a changelog. Do not fill gaps: always take the next free number.
 
-| Range | Meaning |
-|---|---|
-| `001`–`013` | Initial schema, one block per schema (from the original single script) |
-| `014`+ | Later changes, numbered in the order they were made |
-| `101`–`109` | Seed data (`seed/` folder) |
+Current values (2026-10-23, `origin/develop`):
 
-Current files (checked 2026-10-20):
+- Java structure high-water mark: **043** (`booking-service`, `043-booking-service-loyalty-points`) — next free structure number: **044**.
+- Java seed high-water mark: **112** (`booking-service`, `seed/112-seed-expired-cancellation-reason`) — next free seed number: **113**.
+- payment-service high-water mark: **021** (`021-promotion-one-per-booking`) — next free payment number: **022**.
 
-```
-security-service       001-create-security-schemas · 002-create-security-and-audit-core
-                       003-create-security-user-preference · seed/101-seed-security-role
-                       020-security-user-preference-palettes
-                       023-security-custom-role (created and dropped again in the same
-                         session by 026 — see ADR-015: replaced before any other
-                         environment pulled it, so it never shipped as real history)
-                       026-security-role-permissions (drops custom_role, seeds
-                         security.permission and default security.role_permission rows)
-                       030-security-user-preference-notification-channels
-                         (email_reminders_enabled, promotions_enabled — ADR-011 §12)
-                       034-security-login-lockout (RF-004b)
-                       035-security-person-address (profile address, ADR-010)
-                       036-security-app-user-created-at (registration date)
-                       039-security-app-user-legal-consent (terms and data policy acceptance dates)
-customer-service       004-create-customer-schema · 014-add-customer-user-id
-                       015-add-customer-vehicle-model · seed/102-seed-customer-catalogs
-booking-service        005-create-booking-schemas (catalog + booking, triggers)
-                       018-booking-adr-010 (bay_status, bay state, business-hour break)
-                       021-booking-schedule-history (audit log for schedule/bay changes)
-                       022-booking-catalog-loyalty-points (catalog.service.loyalty_points)
-                       024-booking-revert-bay-operator (drops service_bay.operator_id —
-                         ADR-015 reaffirms ADR-010's per-booking pairing, not per-shift)
-                       seed/103-seed-catalog · seed/104-seed-booking-catalogs
-                       seed/109-seed-establishment-schedule
-                       032-booking-establishment-business-data (legal, tax and channel columns)
-                       seed/110-seed-establishment-business-data (example values for them)
-                       seed/111-clear-example-business-data (empties those example values again,
-                         so the real business fills them in from Settings)
-notification-service   010-create-notification-schema · 016-create-notification-device-token
-                       017-create-notification-processed-event
-                       019-create-notification-booking-reminder · seed/108-seed-notification-type
-                       025-notification-promotion-redeemed-type (PROMOTION_REDEEMED)
-                       027-notification-staff-notifications (staff types + booking_tracking)
-                       028-notification-payment-refunded-type (PAYMENT_REFUNDED)
-                       029-notification-loyalty-and-inspection-types
-                         (LOYALTY_POINTS_EARNED, INSPECTION_REPORT)
-                       031-notification-unassigned-booking-alert
-                         (booking_tracking.unassigned_alert_at, ADMIN_BOOKING_UNASSIGNED — ADR-011 §14)
-                       038-notification-app-update-type (APP_UPDATE_AVAILABLE: notice when a new APK
-                         is published, see 10-devops/production.md)
-operations-service     007-create-execution-schema (5 tables + triggers) · seed/105-seed-execution-status
-                       033-execution-inspection-report (inspection report, phases, findings, photos — ADR-014 §9)
-                       037-execution-operator-profile (operator specialty and skills, ADR-010)
-payment-service        db/changelog/changes/001 … 020 (own numbering, see below)
-```
+A number taken by a branch that is not merged yet is also taken: before creating a file, run
+`git fetch` and check `origin/develop` (and the open branches) of the five Java repositories.
 
-Current global high-water mark: **039** (security-service); seeds go up to **111**. The next new
-changeset in any Java service's shared numbering starts at **040**, and the next seed at **112**.
+## Every file today
 
-**payment-service is different** (.NET, ADR-013):
+Generated from the master files (order, number of changesets, precondition, rollback). Totals: 68
+files and 152 changesets (security 12/25, customer 4/11, booking 13/42, operations 6/21,
+notification 12/19, payment 21/34).
 
-- Its changelogs live in `lavarapido-payment-service/db/changelog/` (YAML master, plain-SQL files
-  in `changes/`), not in `src/main/resources`.
-- The service does not apply them at startup: the `payment-migrate` container
-  (`liquibase/liquibase:4.29` in `lavarapido-infra/docker-compose.yml`) runs `update` once.
-- It uses its **own numbering** `001`–`020` (`001-create-schema-promotion` … `015-seed-reference-data`,
-  `016-payment-images-as-data`, `017-promotion-package-fields`, `018-promotion-required-points`,
-  `019-verify-catalog-ids`, `020-loyalty-reversal-and-sequence`).
-  Those numbers repeat the global ones above; the changeset ids (`pay-0NN-…`) and the changelog
-  table `DATABASECHANGELOG_PAYMENT` keep them apart, but a new payment file should not be read as
-  part of the global sequence.
+<!-- migrations:start -->
+**security-service** — `src/main/resources/db/changelog/db.changelog-master.xml`, table `DATABASECHANGELOG_SECURITY`
 
-`db.changelog-master.xml` of each service lists its files with `<include>`; Liquibase runs them in
-that order (schema first, then later changes, then seeds).
+| Order | File | Changesets | Precondition | Rollback | Purpose |
+|---|---|---|---|---|---|
+| 1 | `001-create-security-schemas.sql` | 2 | onFail:MARK_RAN | No | Schemas `security` and `audit` |
+| 2 | `002-create-security-and-audit-core.sql` | 9 | onFail:MARK_RAN | No | Tables `person`, `app_user`, `role`, `permission`, `role_permission`, `user_role`, `user_session`, `password_reset_token` and `audit.audit_log` |
+| 3 | `003-create-security-user-preference.sql` | 2 | onFail:MARK_RAN | No | Table `user_preference` (moved from `settings`, ADR-009) and its touch trigger |
+| 4 | `020-security-user-preference-palettes.sql` | 1 | onFail:MARK_RAN | No | Theme check and default changed to the 4 web palettes; existing `light`/`dark` rows converted |
+| 5 | `023-security-custom-role.sql` | 1 | onFail:MARK_RAN | Yes | Table `custom_role` (custom role catalog). Dropped again by 026 |
+| 6 | `seed/101-seed-security-role.sql` | 1 | none | No | Seed: the roles `ADMIN`, `OPERATOR`, `CLIENT` (only the missing ones) |
+| 7 | `026-security-role-permissions.sql` | 3 | onFail:MARK_RAN | No | Drops `custom_role`; seeds the 4 permissions and the default permissions of each fixed role |
+| 8 | `030-security-user-preference-notification-channels.sql` | 1 | onFail:MARK_RAN | Yes | Columns `email_reminders_enabled` and `promotions_enabled` (default 1) |
+| 9 | `034-security-login-lockout.sql` | 1 | onFail:MARK_RAN | Yes | Table `login_lockout` (RF-004b) |
+| 10 | `035-security-person-address.sql` | 1 | onFail:MARK_RAN | Yes | Table `person_address` (ADR-010) |
+| 11 | `036-security-app-user-created-at.sql` | 2 | onFail:MARK_RAN (1 without) | Yes | Column `app_user.created_at`, backfilled with the first session of existing accounts |
+| 12 | `039-security-app-user-legal-consent.sql` | 1 | onFail:MARK_RAN | Yes | Columns `terms_accepted_at` and `data_policy_accepted_at` (Law 1581) |
+
+**customer-service** — `src/main/resources/db/changelog/db.changelog-master.xml`, table `DATABASECHANGELOG_CUSTOMER`
+
+| Order | File | Changesets | Precondition | Rollback | Purpose |
+|---|---|---|---|---|---|
+| 1 | `004-create-customer-schema.sql` | 7 | onFail:MARK_RAN | No | Schema `customer`, tables `vehicle_type`, `customer`, `customer_vehicle`, filtered unique plate index and the 3 touch triggers |
+| 2 | `014-add-customer-user-id.sql` | 2 | onFail:MARK_RAN | No | Column `customer.user_id` and filtered unique index `ux_customer_user` |
+| 3 | `015-add-customer-vehicle-model.sql` | 1 | onFail:MARK_RAN | No | Column `customer_vehicle.model` |
+| 4 | `seed/102-seed-customer-catalogs.sql` | 1 | onFail:MARK_RAN | No | Seed: the 6 vehicle types with fixed ids 1–6 |
+
+**booking-service** — `src/main/resources/db/changelog/db.changelog-master.xml`, table `DATABASECHANGELOG_BOOKING`
+
+| Order | File | Changesets | Precondition | Rollback | Purpose |
+|---|---|---|---|---|---|
+| 1 | `005-create-booking-schemas.sql` | 22 | onFail:MARK_RAN | No | Schemas `catalog` and `booking`, their 11 base tables, `tr_service_price_immutable`, `tr_booking_bay_overlap` and 7 touch triggers |
+| 2 | `018-booking-adr-010.sql` | 3 | onFail:MARK_RAN | No | Table `bay_status` with its 3 rows; `service_bay.is_active` replaced by `bay_status_id`; daily break in `business_hour` (ADR-010) |
+| 3 | `021-booking-schedule-history.sql` | 1 | onFail:MARK_RAN | Yes | Table `schedule_history` (log of schedule and bay changes) |
+| 4 | `022-booking-catalog-loyalty-points.sql` | 1 | onFail:MARK_RAN | Yes | Column `catalog.service.loyalty_points` |
+| 5 | `024-booking-revert-bay-operator.sql` | 1 | onFail:MARK_RAN | Yes | Drops `service_bay.operator_id` if an earlier local attempt created it (otherwise MARK_RAN) |
+| 6 | `032-booking-establishment-business-data.sql` | 1 | onFail:MARK_RAN | Yes | 14 nullable columns with the legal, tax and channel data of `establishment` |
+| 7 | `043-booking-service-loyalty-points.sql` | 2 | onFail:MARK_RAN (1 without) | Yes | Column `booking_service.loyalty_points` (A-09: points frozen when booking) and its backfill from the current catalog |
+| 8 | `seed/103-seed-catalog.sql` | 3 | onFail:MARK_RAN | No | Seed: 5 categories, services `BASIC`, `PREMIUM`, `FULL` and their 18 prices (6 vehicle types) |
+| 9 | `seed/104-seed-booking-catalogs.sql` | 2 | onFail:MARK_RAN | No | Seed: the 6 booking states (fixed ids) and 6 cancellation reasons |
+| 10 | `seed/109-seed-establishment-schedule.sql` | 3 | onFail:MARK_RAN | No | Seed: the establishment row, the weekly hours (Sunday closed) and 4 bays (bay 4 in maintenance) |
+| 11 | `seed/110-seed-establishment-business-data.sql` | 1 | onFail:MARK_RAN | No | Seed: example values for the 032 columns |
+| 12 | `seed/111-clear-example-business-data.sql` | 1 | onFail:MARK_RAN | No | Empties the example values of 110 again (only if they are still the examples) |
+| 13 | `seed/112-seed-expired-cancellation-reason.sql` | 1 | onFail:MARK_RAN | Yes | Seed: cancellation reason `EXPIRED` |
+
+**operations-service** — `src/main/resources/db/changelog/db.changelog-master.xml`, table `DATABASECHANGELOG_OPERATIONS`
+
+| Order | File | Changesets | Precondition | Rollback | Purpose |
+|---|---|---|---|---|---|
+| 1 | `007-create-execution-schema.sql` | 11 | onFail:MARK_RAN | No | Schema `execution`, tables `execution_status`, `operator`, `operator_availability`, `operator_absence`, `service_execution`, `tr_operator_absence_overlap` and 4 touch triggers |
+| 2 | `033-execution-inspection-report.sql` | 5 | onFail:MARK_RAN | Yes | Tables `inspection_report`, `inspection_phase`, `inspection_finding`, `inspection_photo` and `tr_touch_inspection_report` (ADR-014 §9) |
+| 3 | `037-execution-operator-profile.sql` | 2 | onFail:MARK_RAN | Yes | Tables `operator_profile` and `operator_skill` (ADR-010) |
+| 4 | `040-execution-follow-up-notice.sql` | 1 | onFail:MARK_RAN | Yes | Column `service_execution.follow_up_notice_at` (service that ended without being registered) |
+| 5 | `042-execution-assignment-notes.sql` | 1 | onFail:MARK_RAN | Yes | Column `service_execution.assignment_notes` (B-01: the admin's notes for the operator) |
+| 6 | `seed/105-seed-execution-status.sql` | 1 | onFail:MARK_RAN | No | Seed: the 5 execution states with fixed ids |
+
+**payment-service** — `db/changelog/db.changelog-master.yaml`, table `DATABASECHANGELOG_PAYMENT`
+
+| Order | File | Changesets | Precondition | Rollback | Purpose |
+|---|---|---|---|---|---|
+| 1 | `changes/001-create-schema-promotion.sql` | 1 | onFail:MARK_RAN | Yes | Schema `promotion` |
+| 2 | `changes/002-create-schema-payment.sql` | 1 | onFail:MARK_RAN | Yes | Schema `payment` |
+| 3 | `changes/003-promotion-discount-type.sql` | 1 | none | Yes | Table `discount_type` |
+| 4 | `changes/004-promotion-promotion.sql` | 1 | none | Yes | Table `promotion` |
+| 5 | `changes/005-promotion-promotion-service.sql` | 1 | none | Yes | Table `promotion_service` |
+| 6 | `changes/006-promotion-promotion-customer.sql` | 1 | none | Yes | Table `promotion_customer` |
+| 7 | `changes/007-promotion-booking-promotion.sql` | 1 | none | Yes | Table `booking_promotion` |
+| 8 | `changes/008-payment-payment-method-type.sql` | 1 | none | Yes | Table `payment_method_type` |
+| 9 | `changes/009-payment-payment-account.sql` | 1 | none | Yes | Table `payment_account` |
+| 10 | `changes/010-payment-payment-status.sql` | 1 | none | Yes | Table `payment_status` |
+| 11 | `changes/011-payment-payment.sql` | 1 | none | Yes | Table `payment` and the filtered unique index of one approved payment per booking |
+| 12 | `changes/012-payment-payment-receipt.sql` | 1 | none | Yes | Table `payment_receipt` |
+| 13 | `changes/013-payment-loyalty-movement-type.sql` | 1 | none | Yes | Table `loyalty_movement_type` |
+| 14 | `changes/014-payment-loyalty-transaction.sql` | 1 | none | Yes | Table `loyalty_transaction` |
+| 15 | `changes/015-seed-reference-data.sql` | 6 | onFail:HALT (5 without) | Yes | Seed: discount types, 4 payment methods, the cash account, the 5 payment states (one INSERT each, so `APPROVED` = 3, checked with `onFail:HALT`) and 4 movement types |
+| 16 | `changes/016-payment-images-as-data.sql` | 1 | onFail:MARK_RAN | Yes | `payment_account.qr_image_url` and `payment_receipt.file_url` to `NVARCHAR(MAX)` (images as data URL) |
+| 17 | `changes/017-promotion-package-fields.sql` | 2 | none | Yes | Discount type `PACKAGE` and the package columns of `promotion` (`price`, `duration_minutes`, `icon`, `featured`, `benefits`) |
+| 18 | `changes/018-promotion-required-points.sql` | 2 | onFail:MARK_RAN (1 without) | Yes | Column `promotion.required_points` and its check |
+| 19 | `changes/019-verify-catalog-ids.sql` | 3 | onFail:HALT | Yes | Checks only (`onFail:HALT`): payment state ids 1–5 and the discount and movement codes the code needs |
+| 20 | `changes/020-loyalty-reversal-and-sequence.sql` | 5 | onFail:MARK_RAN (3 without) | Yes | Movement type `REVERSED`; column `loyalty_transaction.sequence_no` (backfilled, then NOT NULL) and unique index per client |
+| 21 | `changes/021-promotion-one-per-booking.sql` | 1 | onFail:CONTINUE | Yes | Unique index `ux_booking_promotion_one_per_booking` (E-09: one coupon per booking; `onFail:CONTINUE` if duplicates exist) |
+
+**notification-service** — `src/main/resources/db/changelog/db.changelog-master.xml`, table `DATABASECHANGELOG_NOTIFICATION`
+
+| Order | File | Changesets | Precondition | Rollback | Purpose |
+|---|---|---|---|---|---|
+| 1 | `010-create-notification-schema.sql` | 5 | onFail:MARK_RAN | No | Schema `notification`, tables `notification_type` and `notification` and their 2 indexes |
+| 2 | `016-create-notification-device-token.sql` | 2 | onFail:MARK_RAN | No | Table `device_token` (ADR-011) |
+| 3 | `017-create-notification-processed-event.sql` | 1 | onFail:MARK_RAN | No | Table `processed_event` (idempotency, ADR-011) |
+| 4 | `019-create-notification-booking-reminder.sql` | 1 | onFail:MARK_RAN | No | Table `booking_reminder` and its filtered index of due reminders |
+| 5 | `seed/108-seed-notification-type.sql` | 1 | none | No | Seed: 12 notification types (`MERGE`, only the missing ones) |
+| 6 | `025-notification-promotion-redeemed-type.sql` | 1 | onFail:MARK_RAN | No | Type `PROMOTION_REDEEMED` |
+| 7 | `027-notification-staff-notifications.sql` | 2 | onFail:MARK_RAN (1 without) | 1 of 2 | Table `booking_tracking` and 6 staff types (`OPERATOR_SERVICE_*`, `ADMIN_BOOKING_*`) |
+| 8 | `028-notification-payment-refunded-type.sql` | 1 | onFail:MARK_RAN | No | Type `PAYMENT_REFUNDED` |
+| 9 | `029-notification-loyalty-and-inspection-types.sql` | 1 | none | No | Types `LOYALTY_POINTS_EARNED` and `INSPECTION_REPORT` |
+| 10 | `031-notification-unassigned-booking-alert.sql` | 2 | onFail:MARK_RAN (1 without) | 1 of 2 | Column `booking_tracking.unassigned_alert_at` and type `ADMIN_BOOKING_UNASSIGNED` |
+| 11 | `038-notification-app-update-type.sql` | 1 | none | Yes | Type `APP_UPDATE_AVAILABLE` |
+| 12 | `041-notification-service-not-registered-types.sql` | 1 | none | Yes | Types `OPERATOR_SERVICE_NOT_REGISTERED` and `ADMIN_SERVICE_NOT_REGISTERED` |
+<!-- migrations:end -->
 
 ## How a changeset looks
 
 ```sql
 --liquibase formatted sql
+-- A-09: los puntos de fidelización de cada línea de reserva se congelan al reservar, como el precio.
 
---changeset lavarapido:security-001-schema-security
---comment: Esquema del security-service (ADR-009)
+--changeset lavarapido:booking-043-booking-service-loyalty-points
+--comment: Puntos que valía el servicio al reservar
 --preconditions onFail:MARK_RAN
---precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM sys.schemas WHERE name = 'security'
-CREATE SCHEMA [security];
+--precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('booking.booking_service') AND name = 'loyalty_points'
+ALTER TABLE [booking].booking_service ADD loyalty_points INT NULL;
+--rollback ALTER TABLE [booking].booking_service DROP COLUMN loyalty_points;
 ```
 
-- Author `lavarapido`, id `<service>-<number>-<what>`.
-- **Every changeset has a precondition with `onFail:MARK_RAN`**: if the object already exists
-  (database created earlier from the global script), Liquibase marks it as run instead of failing.
-  This is what lets a database created by hand and a database created by the services converge.
+- Java services: author `lavarapido`, id `<service>-<number>-<what>` (operations `040` and `042` use
+  the schema name: `execution-040-…`). payment-service: author `merari` (and `lavarapido` in
+  `pay-016`), id `pay-<number>-<what>`, attribute `dbms:mssql`.
+- Triggers and other multi-statement bodies use `splitStatements:false`.
+- A header comment (in Spanish, like the code) says why the change exists.
+
+## Preconditions
+
+| Behaviour | Where | What it means |
+|---|---|---|
+| `onFail:MARK_RAN` + `expectedResult:0` (the object does not exist yet) | Every structural changeset of the Java services, payment `001`, `002`, `016`, `018` and `020` | If the schema, table, column, index or trigger already exists, the changeset is marked as run without executing. A database migrated by hand converges instead of failing |
+| `onFail:MARK_RAN` + `expectedResult:1` | security `026` (drop `custom_role`), booking `024` (drop `service_bay.operator_id`), booking seeds `110` and `111` | Run only when the thing to drop or update is there |
+| `onFail:MARK_RAN` + seed check `SELECT COUNT(*) … = 0` | Seeds `102`, `103`, `104`, `105`, `109`, `112`, security `026` seeds | Insert only into an empty table, so a seeded database does not break the `UNIQUE (code)` constraints |
+| `onFail:CONTINUE` | payment `021` (`ux_booking_promotion_one_per_booking`) | If some booking already has two coupons, the index is **not** created and Liquibase tries again on the next update. Find them with `SELECT booking_id, COUNT(*) FROM [promotion].booking_promotion GROUP BY booking_id HAVING COUNT(*) > 1` |
+| `onFail:HALT` | payment `015` (`APPROVED` must be id 3) and `019` (payment status ids 1–5, discount and movement codes) | Stops the whole migration: the code and `ux_payment_one_approved_per_booking` depend on those values |
+| No precondition | security `101` (idempotent `WHERE NOT EXISTS`) and `036` backfill; booking `043` backfill (`WHERE loyalty_points IS NULL`); notification type inserts `108`, `027`, `029`, `031`, `038`, `041` (idempotent `MERGE … WHEN NOT MATCHED`); payment `003`–`014`, five of the six changesets of `015`, `017`, the check of `018` and three changesets of `020` | Idempotent by their own SQL, or (payment) guarded only by the changelog table |
+
+## Rollback
+
+Changesets carry a `--rollback` block from the `021`–`023` era on, so the old rule "forward-only, no
+rollback blocks" no longer holds:
+
+- **payment-service:** all 34 changesets have one.
+- **Java services:** every structural file numbered `021` or higher has one, except security `026`
+  and the notification type inserts of `025`, `027` (second changeset), `028`, `029` and `031`
+  (second changeset). Files before `021` (`001`–`020` and seeds `101`–`111`) have none. The
+  **Rollback** column of the table above gives the exact count per file.
+- Data backfills use `--rollback SELECT 1;` (nothing to undo).
+- Spring Boot never rolls back. To undo, run the Liquibase CLI against the service's changelog
+  table (for example `liquibase rollback-count 1 --changelog-file=db/changelog/db.changelog-master.xml --database-changelog-table-name=DATABASECHANGELOG_BOOKING`), then deploy code that no longer needs the change.
+
+New changesets must have a precondition (Java) and a `--rollback`.
 
 ## Triggers
 
-There is no generic trigger generator. Each changeset that creates a domain table with
-`row_version` also creates its `tr_touch_<table>` trigger explicitly (examples: `tr_touch_booking`,
-`tr_touch_customer_vehicle`, `tr_touch_user_preference`). Business triggers live with their
-tables: `tr_booking_bay_overlap` and `tr_service_price_immutable` in booking `005`.
+There is no generic trigger generator. Each changeset that creates an edited table also creates its
+`tr_touch_<table>` trigger (`AFTER UPDATE`: `updated_at = SYSUTCDATETIME()`, `row_version + 1`).
+There are 16: `security.user_preference`; the three `customer` tables; `catalog.service`,
+`service_price`; `booking.establishment`, `business_hour`, `business_hour_exception`, `service_bay`,
+`booking`; `execution.operator`, `operator_availability`, `operator_absence`, `service_execution`,
+`inspection_report`. Three business triggers live with their tables: `tr_service_price_immutable` and
+`tr_booking_bay_overlap` (booking `005`) and `tr_operator_absence_overlap` (operations `007`).
+notification-service and payment-service have no triggers.
 
-## Keeping the global script in sync
+## Seed data that is easy to break
 
-`lavarapido-6-services-sqlserver.sql` (repository root of the docs workspace) is the full model in
-one script for people who create the database by hand. When a service adds a changeset, the same
-change goes into the script and into `models.md` in the same PR. Last full check: 2026-10-04 (script
-run on an empty database: 47 tables).
+- `booking_status` (ids 1–6, seed `104`), `bay_status` (1–3, `018`) and `execution_status` (1–5,
+  seed `105`) are inserted with `SET IDENTITY_INSERT … ON`. `booking_status_id = 5` (`CANCELLED`) is
+  hard-coded in `ck_booking_cancel`, and 1–3 (active) in `tr_booking_bay_overlap`.
+- `payment_status` is inserted **one row per INSERT** so the ids are 1–5 in order; `APPROVED = 3` is
+  hard-coded in `ux_payment_one_approved_per_booking` and in the code (`PaymentStatusIds`), and
+  `015`/`019` stop the migration if it is not so.
+- `discount_type` and `loyalty_movement_type` are **not** relied on by id: SQL Server can skip
+  IDENTITY values after a restart, so payment-service resolves them by code at startup
+  (`CatalogIds`).
+- Vehicle types (`102`) have fixed ids 1–6 that the price seed `103` uses.
+- No seed contains users or passwords: the first administrator is created at startup by
+  security-service from `app.bootstrap-admin.*`, and demo accounts exist only with the `dev` profile.
 
 ## Rules
 
 ```
-✓ Changesets are always forward-only — no rollback blocks maintained in this project
-✓ One changeset per logical change (one CREATE SCHEMA statement per changeset is too granular;
-  one changeset per schema, as above, is the right grain for the initial rollout)
-✓ Seed data always ships in its own changeset under seed/, never mixed into a schema changeset
-✗ Never edit a changeset that has already run in any environment — including local dev, once
-  teammates have pulled it. Liquibase will refuse to proceed (checksum mismatch) if you do,
-  which is the intended safety net, not a bug to work around
-✗ Never DROP COLUMN / DROP TABLE while any service's code still reads it — deprecate in code
-  first, drop in the next release
+✓ Every new changeset: a header comment, a precondition (Java services) and a --rollback
+✓ One changeset per logical change; seeds in seed/ with a 1xx number (catalog rows that belong to
+  a structural change, like bay_status in 018 or a new notification type, may go with it)
+✓ Take the next free number of the right sequence and check origin/develop first
+✓ Add the change to models.md, the service's data-model.md and its ERD in the same docs change
+✗ Never edit a changeset that already ran anywhere (Liquibase stops on the checksum mismatch)
+✗ Never DROP a column or table while running code still reads it: stop reading it first, drop it
+  in the next release (two phases, below)
 ```
 
-## Two seed-data details that are easy to break by mistake
+## Compatible changes (one changeset)
 
-- Seeds of status catalogs use `SET IDENTITY_INSERT … ON` to seed specific IDs. Two of those IDs are
-  load-bearing: `booking_status.booking_status_id = 5` (`CANCELLED`) is hard-coded inside
-  `ck_booking_cancel` and `tr_booking_bay_overlap`; `payment_status.payment_status_id = 3`
-  (`APPROVED`) is hard-coded inside `ux_payment_one_approved_per_booking`. Re-running a seed
-  changeset with a different row order, or re-seeding from scratch without `IDENTITY_INSERT`,
-  would silently break both constraints.
-- Seed changesets check that the target table is empty
-  (`--precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM …` with `onFail:MARK_RAN`), so a
-  database that already has the seed data skips the insert instead of violating the tables'
-  `UNIQUE (code)` constraints.
-
-## Compatible changes (ship directly as a new changeset)
+Nullable columns, `NOT NULL` columns with a valid `DEFAULT`, and new indexes ship as a single
+changeset (SQL Server has no `CONCURRENTLY`; expect a short lock on large tables):
 
 ```sql
---liquibase formatted sql
-
---changeset merari:014-add-booking-customer-note
-ALTER TABLE booking.booking ADD customer_note NVARCHAR(300) NULL;
-GO
-
---changeset merari:015-add-payment-currency-code
-ALTER TABLE payment.payment ADD currency_code CHAR(3) NOT NULL CONSTRAINT df_payment_currency DEFAULT 'COP';
-GO
-
---changeset merari:016-add-booking-scheduled-end-index
-CREATE INDEX ix_booking_scheduled_end ON booking.booking (scheduled_end);
-GO
+--changeset lavarapido:booking-0NN-booking-customer-note
+--preconditions onFail:MARK_RAN
+--precondition-sql-check expectedResult:0 SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('booking.booking') AND name = 'customer_note'
+ALTER TABLE [booking].booking ADD customer_note NVARCHAR(300) NULL;
+--rollback ALTER TABLE [booking].booking DROP COLUMN customer_note;
 ```
 
-Nullable columns, `NOT NULL` columns with a valid `DEFAULT`, and new indexes are always safe as a
-single changeset (SQL Server has no `CONCURRENTLY`; expect a brief lock on large tables).
+## Incompatible changes (two phases)
 
-## Incompatible changes (need a two-phase migration)
-
-Example: renaming `payment.payment_receipt.transaction_reference` to
-`payment.payment_receipt.reference_code` without downtime.
+Example: renaming `payment.payment_receipt.transaction_reference` to `reference_code` without
+downtime.
 
 ```sql
---liquibase formatted sql
-
---changeset merari:017-add-payment-receipt-reference-code
+--changeset merari:pay-0NN-receipt-reference-code dbms:mssql
 -- Phase 1 (release N): add the new column, backfill it, deploy code that writes both
-ALTER TABLE payment.payment_receipt ADD reference_code NVARCHAR(100) NULL;
-GO
-UPDATE payment.payment_receipt SET reference_code = transaction_reference;
-GO
+ALTER TABLE [payment].payment_receipt ADD reference_code NVARCHAR(100) NULL;
+UPDATE [payment].payment_receipt SET reference_code = transaction_reference;
+--rollback ALTER TABLE [payment].payment_receipt DROP COLUMN reference_code;
 
---changeset merari:018-drop-payment-receipt-transaction-reference
+--changeset merari:pay-0NN-drop-transaction-reference dbms:mssql
 -- Phase 2 (release N+1, once no running code reads the old column): drop it
-ALTER TABLE payment.payment_receipt DROP COLUMN transaction_reference;
-GO
+ALTER TABLE [payment].payment_receipt DROP COLUMN transaction_reference;
+--rollback ALTER TABLE [payment].payment_receipt ADD transaction_reference NVARCHAR(100) NULL;
 ```
 
-The same two-phase approach applies to any column that changes type or meaning, not just
-renames — dropping the old value one release after the last consumer stops reading it, each phase
-as its own changeset so the two can ship in different releases.
+The same applies to any column that changes type or meaning: each phase is its own changeset so
+they can ship in different releases.
+
+## How the docs are checked
+
+On 2026-10-23 a script rebuilt the final model from the 68 files above (152 changesets: `CREATE`,
+`ALTER … ADD/DROP/ALTER COLUMN`, `DROP TABLE`, indexes and triggers, in master order) — 57 tables,
+664 columns, 40 indexes that are not constraints, 19 triggers — and compared it with:
+
+- `06-data/models.md` (every `CREATE TABLE` block, its constraints, indexes, triggers and data
+  dictionary), each `data-model.md` (type, NULL, default and IDENTITY of every column, every
+  constraint, index, trigger and migration file), each ERD (every attribute, key, relationship and
+  audit column) and this file: **0 differences**;
+- the JPA entities (`@Table`, `@Column`, `@JoinColumn`, `@JoinTable`) of the five Java services and
+  the EF Core configuration of payment-service (`ToTable`, `HasColumnName`, `HasAuditColumns`):
+  **0 mapped columns missing from the database**. Columns that no entity maps (for example
+  `promotion.is_public`, the whole `audit.audit_log`) are listed in the tables' notes.
+
+Repeat the check after every merged migration.
