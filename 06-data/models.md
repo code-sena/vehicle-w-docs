@@ -1,6 +1,6 @@
 # Data Models per Service
 
-**Last updated:** 2026-10-24 — every `CREATE TABLE` block below is the final state after all the Liquibase changesets on `origin/develop` (up to 047 in the Java services and 023 in payment-service), and was checked against them by script (`migration-strategy.md`, "How the docs are checked"). Later columns and constraints carry a `-- migration NNN` comment. 2026-10-24: `pending_delivery` (047), the current-price check (044), `tr_touch_booking` and the booking optimistic lock (045), the coupon percentage (payment 022), one open payment per booking and the live-reference view (payment 023). Earlier: 2026-10-15 ADR-010 and ADR-011 changes, login lockout, registration date, inspection report.
+**Last updated:** 2026-10-24 — every `CREATE TABLE` block below is the final state after all the Liquibase changesets on `origin/develop` (up to 048 in the Java services and 023 in payment-service), and was checked against them by script (`migration-strategy.md`, "How the docs are checked"). Later columns and constraints carry a `-- migration NNN` comment. 2026-10-24: `pending_delivery` (047; `channel` and `language` NVARCHAR in 048), the current-price check (044), `tr_touch_booking` and the booking optimistic lock (045), the coupon percentage (payment 022), one open payment per booking and the live-reference view (payment 023). Earlier: 2026-10-15 ADR-010 and ADR-011 changes, login lockout, registration date, inspection report.
 
 The system is split into **six microservices over nine schemas**, all inside a single SQL
 Server 2016+ instance. Every schema has exactly one owning service; a service may own more
@@ -2712,16 +2712,16 @@ CREATE TABLE [notification].booking_tracking (
 
 ### Table: `pending_delivery`
 
-**Purpose:** The push and e-mail deliveries of each notification, so they go out after the commit and are retried when they fail (OPS-05, E-14). Migration 047.
+**Purpose:** The push and e-mail deliveries of each notification, so they go out after the commit and are retried when they fail (OPS-05, E-14). Migration 047; migration 048 turned `channel` and `language` into NVARCHAR, because Hibernate reads every text column as national characters (`use_nationalized_character_data`) and the SQL Server driver cannot convert VARCHAR to NCHAR.
 
 ```sql
 CREATE TABLE [notification].pending_delivery (
     pending_delivery_id   BIGINT        IDENTITY(1,1) NOT NULL,
     notification_id       BIGINT        NOT NULL,
-    channel               VARCHAR(10)   NOT NULL,
+    channel               NVARCHAR(10)  NOT NULL,   -- migration 048 (was VARCHAR)
     email_address         NVARCHAR(254) NULL,
     recipient_name        NVARCHAR(100) NULL,
-    [language]            VARCHAR(5)    NULL,
+    [language]            NVARCHAR(5)   NULL,       -- migration 048 (was VARCHAR)
     attempts              INT           NOT NULL CONSTRAINT df_pending_delivery_attempts DEFAULT 0,
     next_attempt_at       DATETIME2(3)  NOT NULL,
     last_error            NVARCHAR(300) NULL,
@@ -2731,7 +2731,7 @@ CREATE TABLE [notification].pending_delivery (
     CONSTRAINT pk_pending_delivery PRIMARY KEY (pending_delivery_id),
     CONSTRAINT fk_pending_delivery_notification FOREIGN KEY (notification_id) REFERENCES [notification].notification(notification_id),
     CONSTRAINT uq_pending_delivery_channel UNIQUE (notification_id, channel),
-    CONSTRAINT ck_pending_delivery_channel CHECK (channel IN ('PUSH', 'EMAIL')),
+    CONSTRAINT ck_pending_delivery_channel CHECK (channel IN (N'PUSH', N'EMAIL')),   -- migration 048 (dropped and re-created with the UNIQUE)
     CONSTRAINT ck_pending_delivery_attempts CHECK (attempts >= 0)
 );
 CREATE NONCLUSTERED INDEX ix_pending_delivery_due ON [notification].pending_delivery (next_attempt_at) WHERE delivered_at IS NULL AND failed_at IS NULL;
@@ -2749,10 +2749,10 @@ CREATE NONCLUSTERED INDEX ix_pending_delivery_due ON [notification].pending_deli
 |--------|------|----------|--------------|-------------|
 | `pending_delivery_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
 | `notification_id` | BIGINT | No | The notification to deliver. | FK → `notification.notification.notification_id`; unique with `channel` |
-| `channel` | VARCHAR(10) | No | `PUSH` or `EMAIL`. | `ck_pending_delivery_channel` |
+| `channel` | NVARCHAR(10) | No | `PUSH` or `EMAIL`. NVARCHAR since migration 048. | `ck_pending_delivery_channel` |
 | `email_address` | NVARCHAR(254) | Yes | Address of an e-mail delivery while it is pending; cleared when it is delivered or abandoned. `NULL` for push. | — |
 | `recipient_name` | NVARCHAR(100) | Yes | Name used in the e-mail; cleared like the address. | — |
-| `language` | VARCHAR(5) | Yes | Language of the e-mail template. | — |
+| `language` | NVARCHAR(5) | Yes | Language of the e-mail template. NVARCHAR since migration 048. | — |
 | `attempts` | INT | No | Attempts taken so far (the claim adds 1). | ≥ 0 (`ck_pending_delivery_attempts`), default 0 |
 | `next_attempt_at` | DATETIME2(3) | No | When it may be tried again, UTC; while one instance is sending it, it holds a 5-minute lease. | Indexed while open |
 | `last_error` | NVARCHAR(300) | Yes | Last failure, cut to 300 characters; cleared on delivery. | — |

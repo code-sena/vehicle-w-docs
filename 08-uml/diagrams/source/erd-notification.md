@@ -1,6 +1,6 @@
 # ER — Schema notification (notification-service, 7 tables)
 
-Source: the Liquibase changelogs of `lavarapido-notification-service` on `origin/develop` (`c5429ad`, 2026-10-24), every changeset applied (last structural file: `047-notification-pending-delivery.sql`). Each entity lists all its columns except the standard audit block, which is in the table under the diagram. Types are the SQL Server base type; lengths, precision and defaults are in `09-microservices/services/07-notification-service/data-model.md`. `PK`, `FK` and `UK` (unique, alone or filtered) are the database keys; "nullable" marks columns that accept NULL. One relationship per foreign key, labelled with its column.
+Source: the Liquibase changelogs of `lavarapido-notification-service` on `origin/develop` (`3f99df4`, 2026-10-24), every changeset applied (last structural file: `048-notification-pending-delivery-nvarchar.sql`). Each entity lists all its columns except the standard audit block, which is in the table under the diagram. Types are the SQL Server base type; lengths, precision and defaults are in `09-microservices/services/07-notification-service/data-model.md`. `PK`, `FK` and `UK` (unique, alone or filtered) are the database keys; "nullable" marks columns that accept NULL. One relationship per foreign key, labelled with its column.
 
 ```mermaid
 erDiagram
@@ -59,10 +59,10 @@ erDiagram
     pending_delivery {
         bigint pending_delivery_id PK
         bigint notification_id FK
-        varchar channel
+        nvarchar channel
         nvarchar email_address "nullable"
         nvarchar recipient_name "nullable"
-        varchar language "nullable"
+        nvarchar language "nullable"
         int attempts
         datetime2 next_attempt_at
         nvarchar last_error "nullable"

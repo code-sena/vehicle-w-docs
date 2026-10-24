@@ -2,7 +2,7 @@
 
 **Last checked:** 2026-10-24, against `origin/develop` of the six service repositories (security
 `b5fe56e`, customer `3181cae`, booking `5dd6794`, operations `37e32ff`, payment `3b8730e`,
-notification `c5429ad`).
+notification `3f99df4`).
 
 ## Source of truth: the Liquibase changelogs
 
@@ -54,7 +54,7 @@ same database independently:
 
 Current values (2026-10-24, `origin/develop`):
 
-- Java structure high-water mark: **047** (`notification-service`, `047-notification-pending-delivery`) — next free structure number: **048**.
+- Java structure high-water mark: **048** (`notification-service`, `048-notification-pending-delivery-nvarchar`) — next free structure number: **049**.
 - Java seed high-water mark: **116** (`notification-service`, `seed/116-seed-notification-booking-no-show-type`) — next free seed number: **117**.
 - payment-service high-water mark: **023** (`023-payment-one-open-and-unique-reference`) — next free payment number: **024**.
 
@@ -63,9 +63,9 @@ A number taken by a branch that is not merged yet is also taken: before creating
 
 ## Every file today
 
-Generated from the master files (order, number of changesets, precondition, rollback). Totals: 68
-files and 152 changesets (security 12/25, customer 4/11, booking 13/42, operations 6/21,
-notification 12/19, payment 21/34).
+Generated from the master files (order, number of changesets, precondition, rollback). Totals: 76
+files and 163 changesets (security 12/25, customer 4/11, booking 16/45, operations 6/21,
+notification 15/22, payment 23/39).
 
 <!-- migrations:start -->
 **security-service** — `src/main/resources/db/changelog/db.changelog-master.xml`, table `DATABASECHANGELOG_SECURITY`
@@ -172,6 +172,7 @@ notification 12/19, payment 21/34).
 | 12 | `038-notification-app-update-type.sql` | 1 | none | Yes | Type `APP_UPDATE_AVAILABLE` |
 | 13 | `041-notification-service-not-registered-types.sql` | 1 | none | Yes | Types `OPERATOR_SERVICE_NOT_REGISTERED` and `ADMIN_SERVICE_NOT_REGISTERED` |
 | 14 | `047-notification-pending-delivery.sql` | 1 | onFail:MARK_RAN | Yes | Table `pending_delivery` (OPS-05, E-14: push and e-mail deliveries with retries) and its filtered index |
+| 15 | `048-notification-pending-delivery-nvarchar.sql` | 1 | onFail:MARK_RAN | Yes | Columns `pending_delivery.channel` and `language` to NVARCHAR (Hibernate reads text as NCHAR); drops and re-creates `uq_pending_delivery_channel` and `ck_pending_delivery_channel` |
 <!-- migrations:end -->
 
 ## How a changeset looks
@@ -199,7 +200,7 @@ ALTER TABLE [booking].booking_service ADD loyalty_points INT NULL;
 | Behaviour | Where | What it means |
 |---|---|---|
 | `onFail:MARK_RAN` + `expectedResult:0` (the object does not exist yet) | Every structural changeset of the Java services, payment `001`, `002`, `016`, `018`, `020` and the column changeset of `022` | If the schema, table, column, index or trigger already exists, the changeset is marked as run without executing. A database migrated by hand converges instead of failing |
-| `onFail:MARK_RAN` + `expectedResult:1` | security `026` (drop `custom_role`), booking `024` (drop `service_bay.operator_id`), booking `045` (`ALTER TRIGGER tr_touch_booking`), booking seeds `110`, `111` and `113` | Run only when the thing to drop or update is there |
+| `onFail:MARK_RAN` + `expectedResult:1` | security `026` (drop `custom_role`), booking `024` (drop `service_bay.operator_id`), booking `045` (`ALTER TRIGGER tr_touch_booking`), notification `048` (`channel` still VARCHAR), booking seeds `110`, `111` and `113` | Run only when the thing to drop or update is there |
 | `onFail:MARK_RAN` + seed check `SELECT COUNT(*) … = 0` | Seeds `102`, `103`, `104`, `105`, `109`, `112`, security `026` seeds | Insert only into an empty table, so a seeded database does not break the `UNIQUE (code)` constraints |
 | `onFail:CONTINUE` | payment `021` (`ux_booking_promotion_one_per_booking`) and `023` (`v_live_transaction_reference`) | If some booking already has two coupons, the index is **not** created and Liquibase tries again on the next update. Find them with `SELECT booking_id, COUNT(*) FROM [promotion].booking_promotion GROUP BY booking_id HAVING COUNT(*) > 1`. Likewise, if a transaction reference is already repeated among live payments, the view is not created; the query that finds them is in the header of `023` |
 | `onFail:HALT` | payment `015` (`APPROVED` must be id 3), `019` (payment status ids 1–5, discount and movement codes) and `023` (no booking with two open payments left after its first changeset) | Stops the whole migration: the code, `ux_payment_one_approved_per_booking` and `ux_payment_one_open_per_booking` depend on those values |
@@ -297,7 +298,7 @@ they can ship in different releases.
 
 ## How the docs are checked
 
-On 2026-10-24 a script rebuilt the final model from the 75 files above (162 changesets: `CREATE`,
+On 2026-10-24 a script rebuilt the final model from the 76 files above (163 changesets: `CREATE`,
 `ALTER … ADD/DROP/ALTER COLUMN`, `DROP TABLE`, indexes, triggers and their `ALTER`, and the indexed
 view, in master order) — 58 tables, 678 columns, 43 indexes that are not constraints (one of them on
 the view), 19 triggers, 1 view — and compared it with:
