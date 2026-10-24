@@ -1,1325 +1,3145 @@
-# Generated from the running booking-service (springdoc, GET /v3/api-docs) on 2026-10-21.
-# Do not edit by hand: regenerate from the code so the contract never drifts.
-openapi: "3.1.0"
+# Contract of booking-service, rebuilt on 2026-10-23 from the code on origin/develop (see 07-api/README.md).
+# Regenerate it from the code instead of editing by hand, so it never drifts.
+openapi: 3.0.3
 info:
-  title: "LavaRápido booking-service API"
-  version: "v1"
-  description: "Contract of booking-service. Public paths are reached through the API gateway."
+  title: LavaRápido booking-service API
+  version: v1
+  description: |-
+    Contract of booking-service, rebuilt from the controllers of `lavarapido-booking-service` on `origin/develop` (`38681b2`, 2026-10-23) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
+
+    **Security.** Operations without `security` use the bearer JWT (`bearerAuth`). `security: []` = public. `x-roles` = roles the service accepts on that path (from its `SecurityConfig`); `x-access` = `public`, `authenticated` (any role), `roles`, `internal` (only `X-Internal-Key`, not published by the gateway) or `roles + internal key`. Ownership checks (a client only sees its own data) answer 404, not 403.
+
+    **Errors.** Every error is a `ProblemDetail` with `code`. Each error response lists its codes in `x-codes`. Catalogue of this service:
+
+    | `code` | HTTP | Raised by / when |
+    |---|---|---|
+    | `BAD_REQUEST` | 400 | Spring MVC rejected the request before the controller: malformed JSON, missing required query parameter or wrong parameter type |
+    | `BAY_NEW_IN_MAINTENANCE` | 400 | `InvalidValueException` — `POST /api/v1/admin/bays` |
+    | `DATE_REQUIRED` | 400 | `InvalidValueException` — 5 operations (see `x-codes` of each response) |
+    | `DUPLICATED_SERVICE` | 400 | `InvalidValueException` — 4 operations (see `x-codes` of each response) |
+    | `DUPLICATED_VEHICLE_TYPE` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
+    | `ESTABLISHMENT_INVALID_EMAIL` | 400 | `InvalidValueException` — `PUT /api/v1/admin/establishment` |
+    | `ESTABLISHMENT_INVALID_FOUNDATION_DATE` | 400 | `InvalidValueException` — `PUT /api/v1/admin/establishment` |
+    | `ESTABLISHMENT_INVALID_PHONE` | 400 | `InvalidValueException` — `PUT /api/v1/admin/establishment` |
+    | `ESTABLISHMENT_REQUIRED_FIELD` | 400 | `InvalidValueException` — `PUT /api/v1/admin/establishment` |
+    | `INVALID_BAY_NAME` | 400 | `InvalidValueException` — `POST /api/v1/admin/bays`, `PUT /api/v1/admin/bays/{id}` |
+    | `INVALID_BAY_STATUS` | 400 | `InvalidValueException` — `POST /api/v1/admin/bays`, `PUT /api/v1/admin/bays/{id}` |
+    | `INVALID_BREAK` | 400 | `InvalidValueException` — 7 operations (see `x-codes` of each response) |
+    | `INVALID_CANCELLATION_REASON` | 400 | `InvalidValueException` — `PATCH /api/v1/admin/bookings/{id}/status`, `POST /api/v1/bookings/{id}/cancel` |
+    | `INVALID_CATEGORY` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
+    | `INVALID_DATE` | 400 | `InvalidValueException` — 9 operations (see `x-codes` of each response) |
+    | `INVALID_DAY` | 400 | `InvalidValueException` — 7 operations (see `x-codes` of each response) |
+    | `INVALID_DURATION` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
+    | `INVALID_HOURS` | 400 | `InvalidValueException` — 11 operations (see `x-codes` of each response) |
+    | `INVALID_LOYALTY_POINTS` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
+    | `INVALID_NOTES` | 400 | `InvalidValueException` — 4 operations (see `x-codes` of each response) |
+    | `INVALID_PRICE` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
+    | `INVALID_QUANTITY` | 400 | `InvalidValueException` — 4 operations (see `x-codes` of each response) |
+    | `INVALID_RANGE` | 400 | `InvalidValueException` — 7 operations (see `x-codes` of each response) |
+    | `INVALID_REASON` | 400 | `InvalidValueException` — 11 operations (see `x-codes` of each response) |
+    | `INVALID_SERVICE_CODE` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services` |
+    | `INVALID_SERVICE_NAME` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
+    | `INVALID_STATUS` | 400 | `InvalidValueException` — `GET /api/v1/admin/bookings`, `PATCH /api/v1/admin/bookings/{id}/status`, `PATCH /api/v1/operator/bookings/{id}/status` |
+    | `INVALID_TOKEN` | 400 | `InvalidValueException` — 26 operations (see `x-codes` of each response) |
+    | `INVALID_VEHICLE` | 400 | `InvalidValueException` — `POST /api/v1/admin/bookings`, `POST /api/v1/bookings` |
+    | `INVALID_VEHICLE_TYPE` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
+    | `INVALID_WEEK` | 400 | `InvalidValueException` — `PUT /api/v1/admin/schedule/business-hours` |
+    | `PRICES_REQUIRED` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
+    | `SERVICES_REQUIRED` | 400 | `InvalidValueException` — 5 operations (see `x-codes` of each response) |
+    | `TIME_REQUIRED` | 400 | `InvalidValueException` — 4 operations (see `x-codes` of each response) |
+    | `VALIDATION_ERROR` | 400 | Bean Validation failed on the body (`errors`: field → message) or, where the service maps it, a path/query parameter has the wrong type |
+    | `VEHICLE_REQUIRED` | 400 | `InvalidValueException` — `POST /api/v1/admin/bookings`, `POST /api/v1/bookings` |
+    | `UNAUTHORIZED` | 401 | No `Authorization: Bearer` token, invalid or expired token, closed session (the gateway checks it), or missing/wrong `X-Internal-Key` on `/internal/**` |
+    | `FORBIDDEN` | 403 | The token is valid but its role is not allowed on this path |
+    | `BAY_NOT_FOUND` | 404 | `NotFoundException` — `PUT /api/v1/admin/bays/{id}`, `DELETE /api/v1/admin/bays/{id}` |
+    | `BOOKING_NOT_FOUND` | 404 | `NotFoundException` — 13 operations (see `x-codes` of each response) |
+    | `ESTABLISHMENT_NOT_FOUND` | 404 | `NotFoundException` — `GET /api/v1/establishment`, `GET /api/v1/admin/establishment`, `PUT /api/v1/admin/establishment` |
+    | `EXCEPTION_NOT_FOUND` | 404 | `NotFoundException` — `POST /api/v1/admin/schedule/exceptions`, `PUT /api/v1/admin/schedule/exceptions/{id}`, `DELETE /api/v1/admin/schedule/exceptions/{id}` |
+    | `NOT_FOUND` | 404 | No route matches (Spring MVC) |
+    | `SERVICE_NOT_FOUND` | 404 | `NotFoundException` — 9 operations (see `x-codes` of each response) |
+    | `VEHICLE_NOT_FOUND` | 404 | `NotFoundException` — 4 operations (see `x-codes` of each response) |
+    | `METHOD_NOT_ALLOWED` | 405 | The path exists but not with this HTTP method |
+    | `BAY_HAS_BOOKINGS` | 409 | `ConflictException` — `DELETE /api/v1/admin/bays/{id}` |
+    | `BAY_NAME_TAKEN` | 409 | `ConflictException` — `POST /api/v1/admin/bays`, `PUT /api/v1/admin/bays/{id}` |
+    | `BOOKING_NOT_CHANGEABLE` | 409 | `ConflictException` — 4 operations (see `x-codes` of each response) |
+    | `BOOKING_NOT_EXPIRED` | 409 | `ConflictException` — `POST /internal/v1/bookings/{id}/no-show` |
+    | `CONFLICT` | 409 | The database rejected the change (unique index, trigger or check) after the code's own checks |
+    | `EXCEPTION_DATE_TAKEN` | 409 | `ConflictException` — `POST /api/v1/admin/schedule/exceptions`, `PUT /api/v1/admin/schedule/exceptions/{id}` |
+    | `INVALID_STATUS_TRANSITION` | 409 | `ConflictException` — `PATCH /api/v1/admin/bookings/{id}/status`, `POST /internal/v1/bookings/{id}/no-show`, `PATCH /api/v1/operator/bookings/{id}/status` |
+    | `SCHEDULE_BUSY` | 409 | `ConflictException` — 5 operations (see `x-codes` of each response) |
+    | `SERVICE_CODE_TAKEN` | 409 | `ConflictException` — `POST /api/v1/admin/catalog/services` |
+    | `SERVICE_NOT_AVAILABLE_FOR_VEHICLE` | 409 | `ConflictException` — 5 operations (see `x-codes` of each response) |
+    | `SERVICE_TOO_EARLY` | 409 | `ConflictException` — `PATCH /api/v1/operator/bookings/{id}/status` |
+    | `SLOT_UNAVAILABLE` | 409 | `SlotUnavailableException` — 4 operations (see `x-codes` of each response) |
+    | `VEHICLE_ALREADY_BOOKED` | 409 | `ConflictException` — 4 operations (see `x-codes` of each response) |
+    | `INTERNAL_ERROR` | 500 | Unexpected error (logged with its correlation id) |
+    | `CUSTOMER_SERVICE_UNAVAILABLE` | 503 | `DependencyUnavailableException` — 13 operations (see `x-codes` of each response) |
 servers:
-  - url: "http://localhost:8080"
-    description: "Through the API gateway (ADR-005)"
-  - url: "http://localhost:3003"
-    description: "booking-service directly (local development)"
+  - url: http://localhost:8080
+    description: Through the API gateway (ADR-005); `/internal/**` is not reachable here
+  - url: http://localhost:3003
+    description: booking-service directly (local development and service-to-service calls)
+security:
+  - bearerAuth: []
+tags:
+  - name: Admin Booking
+  - name: Booking
+  - name: Catalog
+  - name: Internal Booking
+  - name: Operator Booking
+  - name: Schedule
 paths:
-  "/api/v1/bookings/{id}":
+  /api/v1/admin/bays:
     get:
       tags:
-        - "booking-controller"
-      operationId: "get"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
+        - Schedule
+      operationId: bays
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/ScheduleController.java:101
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/BookingResponse"
+                type: array
+                items:
+                  $ref: "#/components/schemas/BayResponse"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    post:
+      tags:
+        - Schedule
+      operationId: createBay
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/ScheduleController.java:107
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BayRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BayResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `BAY_NEW_IN_MAINTENANCE`, `INVALID_BAY_NAME`, `INVALID_BAY_STATUS`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - BAY_NEW_IN_MAINTENANCE
+            - INVALID_BAY_NAME
+            - INVALID_BAY_STATUS
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `BAY_NAME_TAKEN`."
+          x-codes:
+            - BAY_NAME_TAKEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/bays/{id}:
     put:
       tags:
-        - "booking-controller"
-      operationId: "reschedule"
+        - Schedule
+      operationId: updateBay
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/ScheduleController.java:114
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int64"
+            type: integer
+            format: int32
       requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/RescheduleRequest"
         required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BayRequest"
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/BookingResponse"
-  "/api/v1/admin/schedule/exceptions/{id}":
-    put:
-      tags:
-        - "schedule-controller"
-      operationId: "updateException"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int32"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ExceptionRequest"
-        required: true
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/BayResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_BAY_NAME`, `INVALID_BAY_STATUS`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_BAY_NAME
+            - INVALID_BAY_STATUS
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/ExceptionResponse"
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BAY_NOT_FOUND`."
+          x-codes:
+            - BAY_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `BAY_NAME_TAKEN`."
+          x-codes:
+            - BAY_NAME_TAKEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
     delete:
       tags:
-        - "schedule-controller"
-      operationId: "deleteException"
+        - Schedule
+      operationId: deleteBay
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/ScheduleController.java:121
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int32
       responses:
         "204":
-          description: "No Content"
-  "/api/v1/admin/schedule/business-hours":
+          description: No Content
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BAY_NOT_FOUND`."
+          x-codes:
+            - BAY_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `BAY_HAS_BOOKINGS`."
+          x-codes:
+            - BAY_HAS_BOOKINGS
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/bookings:
+    get:
+      tags:
+        - Admin Booking
+      operationId: list
+      description: "Javadoc: Reservas que empiezan entre from y to (fechas locales, incluidas). Sin fechas: las de hoy."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/AdminBookingController.java:45
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_RANGE`, `INVALID_STATUS`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_RANGE
+            - INVALID_STATUS
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `CUSTOMER_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - CUSTOMER_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    post:
+      tags:
+        - Admin Booking
+      operationId: create
+      description: "Javadoc: El admin reserva a nombre de un cliente: vehicleId es de ese cliente (lo busca por placa en customer)."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/AdminBookingController.java:66
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookingRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+          headers:
+            Location:
+              description: URL of the created resource
+              schema:
+                type: string
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `DATE_REQUIRED`, `DUPLICATED_SERVICE`, `INVALID_BREAK`, `INVALID_DATE`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_NOTES`, `INVALID_QUANTITY`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `INVALID_VEHICLE`, `SERVICES_REQUIRED`, `TIME_REQUIRED`, `VALIDATION_ERROR`, `VEHICLE_REQUIRED`."
+          x-codes:
+            - BAD_REQUEST
+            - DATE_REQUIRED
+            - DUPLICATED_SERVICE
+            - INVALID_BREAK
+            - INVALID_DATE
+            - INVALID_DAY
+            - INVALID_HOURS
+            - INVALID_NOTES
+            - INVALID_QUANTITY
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - INVALID_VEHICLE
+            - SERVICES_REQUIRED
+            - TIME_REQUIRED
+            - VALIDATION_ERROR
+            - VEHICLE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `SERVICE_NOT_FOUND`, `VEHICLE_NOT_FOUND`."
+          x-codes:
+            - SERVICE_NOT_FOUND
+            - VEHICLE_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `SCHEDULE_BUSY`, `SERVICE_NOT_AVAILABLE_FOR_VEHICLE`, `SLOT_UNAVAILABLE`, `VEHICLE_ALREADY_BOOKED`."
+          x-codes:
+            - SCHEDULE_BUSY
+            - SERVICE_NOT_AVAILABLE_FOR_VEHICLE
+            - SLOT_UNAVAILABLE
+            - VEHICLE_ALREADY_BOOKED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `CUSTOMER_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - CUSTOMER_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/bookings/{id}:
+    get:
+      tags:
+        - Admin Booking
+      operationId: get
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/AdminBookingController.java:59
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `CUSTOMER_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - CUSTOMER_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
     put:
       tags:
-        - "schedule-controller"
-      operationId: "updateBusinessHours"
+        - Admin Booking
+      operationId: reschedule
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/AdminBookingController.java:75
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
       requestBody:
+        required: true
         content:
-          "application/json":
+          application/json:
             schema:
-              type: "array"
+              $ref: "#/components/schemas/RescheduleRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `DATE_REQUIRED`, `DUPLICATED_SERVICE`, `INVALID_BREAK`, `INVALID_DATE`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_NOTES`, `INVALID_QUANTITY`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `SERVICES_REQUIRED`, `TIME_REQUIRED`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - DATE_REQUIRED
+            - DUPLICATED_SERVICE
+            - INVALID_BREAK
+            - INVALID_DATE
+            - INVALID_DAY
+            - INVALID_HOURS
+            - INVALID_NOTES
+            - INVALID_QUANTITY
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - SERVICES_REQUIRED
+            - TIME_REQUIRED
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `SERVICE_NOT_FOUND`, `VEHICLE_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - SERVICE_NOT_FOUND
+            - VEHICLE_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `BOOKING_NOT_CHANGEABLE`, `SCHEDULE_BUSY`, `SERVICE_NOT_AVAILABLE_FOR_VEHICLE`, `SLOT_UNAVAILABLE`, `VEHICLE_ALREADY_BOOKED`."
+          x-codes:
+            - BOOKING_NOT_CHANGEABLE
+            - SCHEDULE_BUSY
+            - SERVICE_NOT_AVAILABLE_FOR_VEHICLE
+            - SLOT_UNAVAILABLE
+            - VEHICLE_ALREADY_BOOKED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `CUSTOMER_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - CUSTOMER_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/bookings/{id}/status:
+    patch:
+      tags:
+        - Admin Booking
+      operationId: changeStatus
+      description: |-
+        The administrator moves a booking to another status. To cancel, `reasonCode` may be any reason except `EXPIRED` (A-20). The change is published to the client as a booking event (A-11).
+
+        Javadoc: IN_PROGRESS, COMPLETED, NO_SHOW, CONFIRMED o CANCELLED (con reasonCode).
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/AdminBookingController.java:82
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_CANCELLATION_REASON`, `INVALID_REASON`, `INVALID_STATUS`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_CANCELLATION_REASON
+            - INVALID_REASON
+            - INVALID_STATUS
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `BOOKING_NOT_CHANGEABLE`, `INVALID_STATUS_TRANSITION`."
+          x-codes:
+            - BOOKING_NOT_CHANGEABLE
+            - INVALID_STATUS_TRANSITION
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `CUSTOMER_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - CUSTOMER_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/bookings/day-summary:
+    get:
+      tags:
+        - Admin Booking
+      operationId: daySummary
+      description: "Javadoc: Reservas del día frente al día anterior, para la tarjeta del inicio (date: por defecto hoy)."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/AdminBookingController.java:54
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DaySummary"
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/catalog/services:
+    get:
+      tags:
+        - Catalog
+      operationId: allServices
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/CatalogController.java:51
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ServiceResponse"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    post:
+      tags:
+        - Catalog
+      operationId: catalogCreate
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/CatalogController.java:57
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `DUPLICATED_VEHICLE_TYPE`, `INVALID_CATEGORY`, `INVALID_DURATION`, `INVALID_LOYALTY_POINTS`, `INVALID_PRICE`, `INVALID_SERVICE_CODE`, `INVALID_SERVICE_NAME`, `INVALID_TOKEN`, `INVALID_VEHICLE_TYPE`, `PRICES_REQUIRED`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - DUPLICATED_VEHICLE_TYPE
+            - INVALID_CATEGORY
+            - INVALID_DURATION
+            - INVALID_LOYALTY_POINTS
+            - INVALID_PRICE
+            - INVALID_SERVICE_CODE
+            - INVALID_SERVICE_NAME
+            - INVALID_TOKEN
+            - INVALID_VEHICLE_TYPE
+            - PRICES_REQUIRED
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `SERVICE_NOT_FOUND`."
+          x-codes:
+            - SERVICE_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `SERVICE_CODE_TAKEN`."
+          x-codes:
+            - SERVICE_CODE_TAKEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/catalog/services/{id}:
+    put:
+      tags:
+        - Catalog
+      operationId: update
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/CatalogController.java:63
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `DUPLICATED_VEHICLE_TYPE`, `INVALID_CATEGORY`, `INVALID_DURATION`, `INVALID_LOYALTY_POINTS`, `INVALID_PRICE`, `INVALID_SERVICE_NAME`, `INVALID_TOKEN`, `INVALID_VEHICLE_TYPE`, `PRICES_REQUIRED`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - DUPLICATED_VEHICLE_TYPE
+            - INVALID_CATEGORY
+            - INVALID_DURATION
+            - INVALID_LOYALTY_POINTS
+            - INVALID_PRICE
+            - INVALID_SERVICE_NAME
+            - INVALID_TOKEN
+            - INVALID_VEHICLE_TYPE
+            - PRICES_REQUIRED
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `SERVICE_NOT_FOUND`."
+          x-codes:
+            - SERVICE_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    delete:
+      tags:
+        - Catalog
+      operationId: delete
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/CatalogController.java:75
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `SERVICE_NOT_FOUND`."
+          x-codes:
+            - SERVICE_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/catalog/services/{id}/status:
+    patch:
+      tags:
+        - Catalog
+      operationId: setActive
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/CatalogController.java:69
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActiveRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `SERVICE_NOT_FOUND`."
+          x-codes:
+            - SERVICE_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/establishment:
+    get:
+      tags:
+        - Schedule
+      operationId: businessData
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/ScheduleController.java:63
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessDataDto"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `ESTABLISHMENT_NOT_FOUND`."
+          x-codes:
+            - ESTABLISHMENT_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+    put:
+      tags:
+        - Schedule
+      operationId: updateBusinessData
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/ScheduleController.java:68
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BusinessDataDto"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessDataDto"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `ESTABLISHMENT_INVALID_EMAIL`, `ESTABLISHMENT_INVALID_FOUNDATION_DATE`, `ESTABLISHMENT_INVALID_PHONE`, `ESTABLISHMENT_REQUIRED_FIELD`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - ESTABLISHMENT_INVALID_EMAIL
+            - ESTABLISHMENT_INVALID_FOUNDATION_DATE
+            - ESTABLISHMENT_INVALID_PHONE
+            - ESTABLISHMENT_REQUIRED_FIELD
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `ESTABLISHMENT_NOT_FOUND`."
+          x-codes:
+            - ESTABLISHMENT_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/schedule/business-hours:
+    put:
+      tags:
+        - Schedule
+      operationId: updateBusinessHours
+      description: "Javadoc: Los 7 dias de una vez: la pantalla guarda la semana completa con \"Guardar cambios\"."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/ScheduleController.java:75
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
               items:
-                "$ref": "#/components/schemas/BusinessHourDto"
-        required: true
+                $ref: "#/components/schemas/BusinessHourDto"
+              minItems: 1
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                type: "array"
+                type: array
                 items:
-                  "$ref": "#/components/schemas/BusinessHourDto"
-  "/api/v1/admin/establishment":
-    get:
-      tags:
-        - "schedule-controller"
-      operationId: "businessData"
-      responses:
-        "200":
-          description: "OK"
+                  $ref: "#/components/schemas/BusinessHourDto"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_BREAK`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_TOKEN`, `INVALID_WEEK`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_BREAK
+            - INVALID_DAY
+            - INVALID_HOURS
+            - INVALID_TOKEN
+            - INVALID_WEEK
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/BusinessDataDto"
-    put:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/schedule/exceptions:
+    post:
       tags:
-        - "schedule-controller"
-      operationId: "updateBusinessData"
+        - Schedule
+      operationId: createException
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/ScheduleController.java:84
       requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/BusinessDataDto"
         required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExceptionRequest"
       responses:
-        "200":
-          description: "OK"
+        "201":
+          description: Created
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/BusinessDataDto"
-  "/api/v1/admin/catalog/services/{id}":
+                $ref: "#/components/schemas/ExceptionResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DATE`, `INVALID_HOURS`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_DATE
+            - INVALID_HOURS
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `EXCEPTION_NOT_FOUND`."
+          x-codes:
+            - EXCEPTION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `EXCEPTION_DATE_TAKEN`."
+          x-codes:
+            - EXCEPTION_DATE_TAKEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/schedule/exceptions/{id}:
     put:
       tags:
-        - "catalog-controller"
-      operationId: "update"
+        - Schedule
+      operationId: updateException
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/ScheduleController.java:90
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int32
       requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ServiceRequest"
         required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExceptionRequest"
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/ServiceResponse"
+                $ref: "#/components/schemas/ExceptionResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DATE`, `INVALID_HOURS`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_DATE
+            - INVALID_HOURS
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `EXCEPTION_NOT_FOUND`."
+          x-codes:
+            - EXCEPTION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `EXCEPTION_DATE_TAKEN`."
+          x-codes:
+            - EXCEPTION_DATE_TAKEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
     delete:
       tags:
-        - "catalog-controller"
-      operationId: "delete"
+        - Schedule
+      operationId: deleteException
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/ScheduleController.java:96
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int32
       responses:
         "204":
-          description: "No Content"
-  "/api/v1/admin/bookings/{id}":
+          description: No Content
+        "400":
+          description: "Bad Request. `code`: `INVALID_DATE`, `INVALID_HOURS`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_DATE
+            - INVALID_HOURS
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `EXCEPTION_NOT_FOUND`."
+          x-codes:
+            - EXCEPTION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/admin/schedule/history:
     get:
       tags:
-        - "admin-booking-controller"
-      operationId: "get_1"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
+        - Schedule
+      operationId: history
+      description: "Javadoc: Historial de cambios de horario, excepciones y bahias, mas reciente primero."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/ScheduleController.java:127
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/BookingResponse"
+                type: array
+                items:
+                  $ref: "#/components/schemas/HistoryEntryResponse"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/bookings:
+    post:
+      tags:
+        - Booking
+      operationId: bookingCreate
+      description: "Javadoc: 201 con la reserva ya confirmada y su bahia. Si la hora esta ocupada: 409 SLOT_UNAVAILABLE con hasta 5 horas alternativas del mismo dia (no se guarda nada)."
+      x-access: authenticated
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:57
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookingRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+          headers:
+            Location:
+              description: URL of the created resource
+              schema:
+                type: string
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `DATE_REQUIRED`, `DUPLICATED_SERVICE`, `INVALID_BREAK`, `INVALID_DATE`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_NOTES`, `INVALID_QUANTITY`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `INVALID_VEHICLE`, `SERVICES_REQUIRED`, `TIME_REQUIRED`, `VALIDATION_ERROR`, `VEHICLE_REQUIRED`."
+          x-codes:
+            - BAD_REQUEST
+            - DATE_REQUIRED
+            - DUPLICATED_SERVICE
+            - INVALID_BREAK
+            - INVALID_DATE
+            - INVALID_DAY
+            - INVALID_HOURS
+            - INVALID_NOTES
+            - INVALID_QUANTITY
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - INVALID_VEHICLE
+            - SERVICES_REQUIRED
+            - TIME_REQUIRED
+            - VALIDATION_ERROR
+            - VEHICLE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `SERVICE_NOT_FOUND`, `VEHICLE_NOT_FOUND`."
+          x-codes:
+            - SERVICE_NOT_FOUND
+            - VEHICLE_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `SCHEDULE_BUSY`, `SERVICE_NOT_AVAILABLE_FOR_VEHICLE`, `SLOT_UNAVAILABLE`, `VEHICLE_ALREADY_BOOKED`."
+          x-codes:
+            - SCHEDULE_BUSY
+            - SERVICE_NOT_AVAILABLE_FOR_VEHICLE
+            - SLOT_UNAVAILABLE
+            - VEHICLE_ALREADY_BOOKED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `CUSTOMER_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - CUSTOMER_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/bookings/{id}:
+    get:
+      tags:
+        - Booking
+      operationId: bookingGet
+      x-access: authenticated
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:77
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `CUSTOMER_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - CUSTOMER_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
     put:
       tags:
-        - "admin-booking-controller"
-      operationId: "reschedule_1"
+        - Booking
+      operationId: bookingReschedule
+      description: "Javadoc: Cambiar fecha, hora o servicios (RF-007: solo antes de la hora de inicio)."
+      x-access: authenticated
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:84
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int64"
+            type: integer
+            format: int64
       requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/RescheduleRequest"
         required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RescheduleRequest"
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/BookingResponse"
-  "/api/v1/admin/bays/{id}":
-    put:
-      tags:
-        - "schedule-controller"
-      operationId: "updateBay"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int32"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/BayRequest"
-        required: true
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `DATE_REQUIRED`, `DUPLICATED_SERVICE`, `INVALID_BREAK`, `INVALID_DATE`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_NOTES`, `INVALID_QUANTITY`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `SERVICES_REQUIRED`, `TIME_REQUIRED`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - DATE_REQUIRED
+            - DUPLICATED_SERVICE
+            - INVALID_BREAK
+            - INVALID_DATE
+            - INVALID_DAY
+            - INVALID_HOURS
+            - INVALID_NOTES
+            - INVALID_QUANTITY
+            - INVALID_RANGE
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - SERVICES_REQUIRED
+            - TIME_REQUIRED
+            - VALIDATION_ERROR
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/BayResponse"
-    delete:
-      tags:
-        - "schedule-controller"
-      operationId: "deleteBay"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int32"
-      responses:
-        "204":
-          description: "No Content"
-  "/internal/v1/bookings/{id}/no-show":
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `SERVICE_NOT_FOUND`, `VEHICLE_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - SERVICE_NOT_FOUND
+            - VEHICLE_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `BOOKING_NOT_CHANGEABLE`, `SCHEDULE_BUSY`, `SERVICE_NOT_AVAILABLE_FOR_VEHICLE`, `SLOT_UNAVAILABLE`, `VEHICLE_ALREADY_BOOKED`."
+          x-codes:
+            - BOOKING_NOT_CHANGEABLE
+            - SCHEDULE_BUSY
+            - SERVICE_NOT_AVAILABLE_FOR_VEHICLE
+            - SLOT_UNAVAILABLE
+            - VEHICLE_ALREADY_BOOKED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `CUSTOMER_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - CUSTOMER_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/bookings/{id}/cancel:
     post:
       tags:
-        - "internal-booking-controller"
-      operationId: "noShow"
+        - Booking
+      operationId: cancel
+      description: |-
+        The client cancels its own booking. The body is optional; without `reasonCode` the reason is `CUSTOMER_REQUEST`. Only the client-side reasons are accepted (A-20).
+
+        Javadoc: El cliente cancela con el motivo que elige (A-20: solo los de su lado); el cuerpo es opcional y sin motivo queda CUSTOMER_REQUEST.
+      x-access: authenticated
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:94
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/BookingResponse"
-  "/api/v1/bookings":
-    post:
-      tags:
-        - "booking-controller"
-      operationId: "create"
+            type: integer
+            format: int64
       requestBody:
+        required: false
         content:
-          "application/json":
+          application/json:
             schema:
-              "$ref": "#/components/schemas/CreateBookingRequest"
-        required: true
+              $ref: "#/components/schemas/CancelRequest"
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/BookingResponse"
-  "/api/v1/bookings/{id}/cancel":
-    post:
+                $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_CANCELLATION_REASON`, `INVALID_REASON`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_CANCELLATION_REASON
+            - INVALID_REASON
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `BOOKING_NOT_CHANGEABLE`."
+          x-codes:
+            - BOOKING_NOT_CHANGEABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `CUSTOMER_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - CUSTOMER_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/bookings/availability:
+    get:
       tags:
-        - "booking-controller"
-      operationId: "cancel"
+        - Booking
+      operationId: availability
+      description: "Javadoc: Horas libres de un dia para esos servicios y ese tipo de vehiculo (RF-006)."
+      x-access: authenticated
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:47
       parameters:
-        - name: "id"
-          in: "path"
+        - name: date
+          in: query
           required: true
           schema:
-            type: "integer"
-            format: "int64"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/CancelRequest"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/BookingResponse"
-  "/api/v1/admin/schedule/exceptions":
-    post:
-      tags:
-        - "schedule-controller"
-      operationId: "createException"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ExceptionRequest"
-        required: true
-      responses:
-        "201":
-          description: "Created"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/ExceptionResponse"
-  "/api/v1/admin/catalog/services":
-    get:
-      tags:
-        - "catalog-controller"
-      operationId: "allServices"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/ServiceResponse"
-    post:
-      tags:
-        - "catalog-controller"
-      operationId: "create_1"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ServiceRequest"
-        required: true
-      responses:
-        "201":
-          description: "Created"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/ServiceResponse"
-  "/api/v1/admin/bookings":
-    get:
-      tags:
-        - "admin-booking-controller"
-      operationId: "list"
-      parameters:
-        - name: "from"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-        - name: "to"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-        - name: "status"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/BookingResponse"
-    post:
-      tags:
-        - "admin-booking-controller"
-      operationId: "create_2"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/CreateBookingRequest"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/BookingResponse"
-  "/api/v1/admin/bays":
-    get:
-      tags:
-        - "schedule-controller"
-      operationId: "bays"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/BayResponse"
-    post:
-      tags:
-        - "schedule-controller"
-      operationId: "createBay"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/BayRequest"
-        required: true
-      responses:
-        "201":
-          description: "Created"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/BayResponse"
-  "/api/v1/operator/bookings/{id}/status":
-    patch:
-      tags:
-        - "operator-booking-controller"
-      operationId: "advance"
-      parameters:
-        - name: "id"
-          in: "path"
+            type: string
+            format: date
+        - name: vehicleTypeId
+          in: query
           required: true
           schema:
-            type: "integer"
-            format: "int64"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/StatusRequest"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/BookingResponse"
-  "/api/v1/admin/catalog/services/{id}/status":
-    patch:
-      tags:
-        - "catalog-controller"
-      operationId: "setActive"
-      parameters:
-        - name: "id"
-          in: "path"
+            type: integer
+            format: int32
+        - name: serviceIds
+          in: query
           required: true
           schema:
-            type: "integer"
-            format: "int32"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ActiveRequest"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/ServiceResponse"
-  "/api/v1/admin/bookings/{id}/status":
-    patch:
-      tags:
-        - "admin-booking-controller"
-      operationId: "changeStatus"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/StatusRequest"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/BookingResponse"
-  "/internal/v1/bookings":
-    get:
-      tags:
-        - "internal-booking-controller"
-      operationId: "list_1"
-      parameters:
-        - name: "from"
-          in: "query"
-          required: true
-          schema:
-            type: "string"
-            format: "date"
-        - name: "to"
-          in: "query"
-          required: true
-          schema:
-            type: "string"
-            format: "date"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/BookingResponse"
-  "/internal/v1/bookings/{id}":
-    get:
-      tags:
-        - "internal-booking-controller"
-      operationId: "get_2"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/BookingResponse"
-  "/api/v1/schedule/exceptions":
-    get:
-      tags:
-        - "schedule-controller"
-      operationId: "exceptions"
-      parameters:
-        - name: "from"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/ExceptionResponse"
-  "/api/v1/schedule/business-hours":
-    get:
-      tags:
-        - "schedule-controller"
-      operationId: "businessHours"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/BusinessHourDto"
-  "/api/v1/operator/bookings":
-    get:
-      tags:
-        - "operator-booking-controller"
-      operationId: "day"
-      parameters:
-        - name: "date"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-        - name: "to"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/BookingResponse"
-  "/api/v1/operator/bookings/{id}":
-    get:
-      tags:
-        - "operator-booking-controller"
-      operationId: "get_3"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/BookingResponse"
-  "/api/v1/establishment":
-    get:
-      tags:
-        - "schedule-controller"
-      operationId: "establishment"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/EstablishmentResponse"
-  "/api/v1/catalog/services":
-    get:
-      tags:
-        - "catalog-controller"
-      operationId: "services"
-      parameters:
-        - name: "vehicleTypeId"
-          in: "query"
-          required: false
-          schema:
-            type: "integer"
-            format: "int32"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/ServiceResponse"
-  "/api/v1/catalog/categories":
-    get:
-      tags:
-        - "catalog-controller"
-      operationId: "categories"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/CategoryResponse"
-  "/api/v1/bookings/me":
-    get:
-      tags:
-        - "booking-controller"
-      operationId: "mine"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/BookingResponse"
-  "/api/v1/bookings/cancellation-reasons":
-    get:
-      tags:
-        - "booking-controller"
-      operationId: "cancellationReasons"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/ReasonResponse"
-  "/api/v1/bookings/availability":
-    get:
-      tags:
-        - "booking-controller"
-      operationId: "availability"
-      parameters:
-        - name: "date"
-          in: "query"
-          required: true
-          schema:
-            type: "string"
-            format: "date"
-        - name: "vehicleTypeId"
-          in: "query"
-          required: true
-          schema:
-            type: "integer"
-            format: "int32"
-        - name: "serviceIds"
-          in: "query"
-          required: true
-          schema:
-            type: "array"
+            type: array
             items:
-              type: "integer"
-              format: "int32"
-        - name: "excludeBookingId"
-          in: "query"
+              type: integer
+              format: int32
+          style: form
+          explode: true
+        - name: excludeBookingId
+          in: query
           required: false
           schema:
-            type: "integer"
-            format: "int64"
+            type: integer
+            format: int64
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/AvailabilityResponse"
-  "/api/v1/admin/schedule/history":
+                $ref: "#/components/schemas/AvailabilityResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `DATE_REQUIRED`, `INVALID_BREAK`, `INVALID_DATE`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_REASON`, `SERVICES_REQUIRED`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - DATE_REQUIRED
+            - INVALID_BREAK
+            - INVALID_DATE
+            - INVALID_DAY
+            - INVALID_HOURS
+            - INVALID_REASON
+            - SERVICES_REQUIRED
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `SERVICE_NOT_FOUND`."
+          x-codes:
+            - SERVICE_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `SERVICE_NOT_AVAILABLE_FOR_VEHICLE`."
+          x-codes:
+            - SERVICE_NOT_AVAILABLE_FOR_VEHICLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/bookings/cancellation-reasons:
     get:
       tags:
-        - "schedule-controller"
-      operationId: "history"
+        - Booking
+      operationId: cancellationReasons
+      description: "Cancellation reasons that can be chosen by hand: every row of `booking.cancellation_reason` except the system reason `EXPIRED`. A client may only cancel with `CUSTOMER_REQUEST`, `SCHEDULE_CONFLICT`, `VEHICLE_ISSUE` or `OTHER`; the administrator may also use `SHOP_ISSUE` and `LATE_ARRIVAL` (A-20, `CancellationReason.selectableBy`). Any other reason answers 400 `INVALID_CANCELLATION_REASON`."
+      x-access: authenticated
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:72
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                type: "array"
+                type: array
                 items:
-                  "$ref": "#/components/schemas/HistoryEntryResponse"
-  "/api/v1/admin/bookings/day-summary":
+                  $ref: "#/components/schemas/ReasonResponse"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/bookings/me:
     get:
       tags:
-        - "admin-booking-controller"
-      operationId: "daySummary"
-      parameters:
-        - name: "date"
-          in: "query"
-          required: false
-          schema:
-            type: "string"
-            format: "date"
+        - Booking
+      operationId: mine
+      x-access: authenticated
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/BookingController.java:65
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/DaySummary"
+                type: array
+                items:
+                  $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`."
+          x-codes:
+            - INVALID_TOKEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `CUSTOMER_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - CUSTOMER_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/catalog/categories:
+    get:
+      tags:
+        - Catalog
+      operationId: categories
+      security: []
+      x-access: public
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/CatalogController.java:40
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CategoryResponse"
+  /api/v1/catalog/services:
+    get:
+      tags:
+        - Catalog
+      operationId: services
+      description: "Javadoc: Servicios activos. Con vehicleTypeId trae solo el precio de ese tipo de vehiculo."
+      security: []
+      x-access: public
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/CatalogController.java:46
+      parameters:
+        - name: vehicleTypeId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ServiceResponse"
+        "400":
+          description: "Bad Request. `code`: `VALIDATION_ERROR`."
+          x-codes:
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/establishment:
+    get:
+      tags:
+        - Schedule
+      operationId: establishment
+      security: []
+      x-access: public
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/ScheduleController.java:58
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstablishmentResponse"
+        "404":
+          description: "Not Found. `code`: `ESTABLISHMENT_NOT_FOUND`."
+          x-codes:
+            - ESTABLISHMENT_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/operator/bookings:
+    get:
+      tags:
+        - Operator Booking
+      operationId: day
+      description: |-
+        E-01: requires an `OPERATOR` or `ADMIN` token **and** `X-Internal-Key`, so only operations-service reaches it, on behalf of the operator. Not published by the API gateway; without the key it answers 403.
+
+        Javadoc: Reservas del dia (hoy si no se manda date) o entre date y to, sin las canceladas.
+      security:
+        - bearerAuth: []
+          internalKey: []
+      x-access: roles + internal key
+      x-roles:
+        - OPERATOR
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/OperatorBookingController.java:39
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_RANGE`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_RANGE
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `CUSTOMER_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - CUSTOMER_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/operator/bookings/{id}:
+    get:
+      tags:
+        - Operator Booking
+      operationId: operatorBookingGet
+      description: |-
+        E-01: requires an `OPERATOR` or `ADMIN` token **and** `X-Internal-Key` (only operations-service, after checking the booking is assigned to that operator). Not published by the API gateway.
+
+        Javadoc: Una reserva (operations-service la lee con el token del operario para iniciarla o terminarla).
+      security:
+        - bearerAuth: []
+          internalKey: []
+      x-access: roles + internal key
+      x-roles:
+        - OPERATOR
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/OperatorBookingController.java:47
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `CUSTOMER_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - CUSTOMER_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/operator/bookings/{id}/status:
+    patch:
+      tags:
+        - Operator Booking
+      operationId: advance
+      description: |-
+        E-01: requires an `OPERATOR` or `ADMIN` token **and** `X-Internal-Key` (only operations-service, when the operator starts or finishes). Not published by the API gateway. `SERVICE_TOO_EARLY` = more than 15 minutes before the start.
+
+        Javadoc: Solo IN_PROGRESS (empezar) o COMPLETED (terminar).
+      security:
+        - bearerAuth: []
+          internalKey: []
+      x-access: roles + internal key
+      x-roles:
+        - OPERATOR
+        - ADMIN
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/OperatorBookingController.java:55
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_STATUS`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_STATUS
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `INVALID_STATUS_TRANSITION`, `SERVICE_TOO_EARLY`."
+          x-codes:
+            - INVALID_STATUS_TRANSITION
+            - SERVICE_TOO_EARLY
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          description: "Service Unavailable. `code`: `CUSTOMER_SERVICE_UNAVAILABLE`."
+          x-codes:
+            - CUSTOMER_SERVICE_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/schedule/business-hours:
+    get:
+      tags:
+        - Schedule
+      operationId: businessHours
+      security: []
+      x-access: public
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/ScheduleController.java:48
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BusinessHourDto"
+        "400":
+          description: "Bad Request. `code`: `INVALID_BREAK`, `INVALID_DAY`, `INVALID_HOURS`."
+          x-codes:
+            - INVALID_BREAK
+            - INVALID_DAY
+            - INVALID_HOURS
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/schedule/exceptions:
+    get:
+      tags:
+        - Schedule
+      operationId: exceptions
+      security: []
+      x-access: public
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/ScheduleController.java:53
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExceptionResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_DATE`, `INVALID_HOURS`, `INVALID_REASON`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_DATE
+            - INVALID_HOURS
+            - INVALID_REASON
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /internal/v1/bookings:
+    get:
+      tags:
+        - Internal Booking
+      operationId: internalBookingList
+      security:
+        - internalKey: []
+      x-internal: true
+      x-access: internal
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/InternalBookingController.java:32
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_RANGE`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_RANGE
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /internal/v1/bookings/{id}:
+    get:
+      tags:
+        - Internal Booking
+      operationId: internalBookingGet
+      security:
+        - internalKey: []
+      x-internal: true
+      x-access: internal
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/InternalBookingController.java:37
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: "Bad Request. `code`: `VALIDATION_ERROR`."
+          x-codes:
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /internal/v1/bookings/{id}/no-show:
+    post:
+      tags:
+        - Internal Booking
+      operationId: noShow
+      description: "Javadoc: operations-service cierra como no asistio una confirmada vencida que nunca tuvo operario."
+      security:
+        - internalKey: []
+      x-internal: true
+      x-access: internal
+      x-source: com/lavarapido/booking/infrastructure/adapter/in/web/InternalBookingController.java:43
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "400":
+          description: "Bad Request. `code`: `VALIDATION_ERROR`."
+          x-codes:
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          x-codes:
+            - BOOKING_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "409":
+          description: "Conflict. `code`: `BOOKING_NOT_EXPIRED`, `INVALID_STATUS_TRANSITION`, `SCHEDULE_BUSY`."
+          x-codes:
+            - BOOKING_NOT_EXPIRED
+            - INVALID_STATUS_TRANSITION
+            - SCHEDULE_BUSY
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token from `POST /api/v1/auth/login` (security-service, HS256, claims `sub`, `roles`, `sid`). Every service validates it itself (ADR-006); the gateway forwards it unchanged.
+    internalKey:
+      type: apiKey
+      in: header
+      name: X-Internal-Key
+      description: Shared key between services (`app.internal.api-key` / `INTERNAL_API_KEY`). Only for `/internal/**` (and, in booking-service, `/api/v1/operator/**`). These routes are not published by the API gateway.
   schemas:
-    RescheduleRequest:
-      type: "object"
-      properties:
-        serviceIds:
-          type: "array"
-          items:
-            type: "integer"
-            format: "int32"
-        date:
-          type: "string"
-          format: "date"
-        time:
-          type: "string"
-        notes:
-          type: "string"
-          maxLength: 300
-          minLength: 0
+    ProblemDetail:
+      type: object
+      description: "RFC 7807 problem detail returned by every error (`Content-Type: application/problem+json`). `code` is the stable value the web and the app translate; `detail` is an English message for logs."
       required:
-        - "date"
-        - "time"
-    BayResponse:
-      type: "object"
+        - status
+        - code
       properties:
-        id:
-          type: "integer"
-          format: "int32"
-        code:
-          type: "string"
-        name:
-          type: "string"
+        type:
+          type: string
+          example: about:blank
+        title:
+          type: string
+          example: Conflict
         status:
-          type: "string"
-    BookingResponse:
-      type: "object"
+          type: integer
+          example: 409
+        detail:
+          type: string
+          example: The data conflicts with an existing record
+        instance:
+          type: string
+          example: /api/v1/bookings
+        code:
+          type: string
+          description: Error code (catalogue in `info.description` and `x-error-codes`)
+          example: CONFLICT
+        errors:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Only with `VALIDATION_ERROR`: invalid field → message"
+        alternatives:
+          type: array
+          items:
+            type: string
+            example: "10:30"
+          description: "Only with `SLOT_UNAVAILABLE`: up to 5 free start times (HH:mm) of the same day"
+        reason:
+          type: string
+          enum:
+            - CLOSED_DAY
+            - OUTSIDE_HOURS
+            - TIME_PASSED
+            - NO_FREE_BAY
+          description: "Only with `SLOT_UNAVAILABLE`: why the time is not free"
+      additionalProperties: true
+    ActiveRequest:
+      type: object
       properties:
-        id:
-          type: "integer"
-          format: "int64"
-        code:
-          type: "string"
-        status:
-          type: "string"
+        active:
+          type: boolean
+      required:
+        - active
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/CatalogDtos.java:77
+    AvailabilityResponse:
+      type: object
+      properties:
         date:
-          type: "string"
-          format: "date"
-        startTime:
-          type: "string"
-        endTime:
-          type: "string"
+          type: string
+          format: date
+        open:
+          type: boolean
         durationMinutes:
-          type: "integer"
-          format: "int32"
-        scheduledStart:
-          type: "string"
-          format: "date-time"
-        scheduledEnd:
-          type: "string"
-          format: "date-time"
-        bay:
-          "$ref": "#/components/schemas/BayResponse"
-        vehicle:
-          "$ref": "#/components/schemas/VehicleResponse"
-        ownerUserId:
-          type: "integer"
-          format: "int64"
-        bookedBy:
-          type: "integer"
-          format: "int64"
-        services:
-          type: "array"
+          type: integer
+          format: int32
+        slots:
+          type: array
           items:
-            "$ref": "#/components/schemas/LineResponse"
-        subtotal:
-          type: "number"
-        pointsDiscountAmount:
-          type: "number"
-        total:
-          type: "number"
-        totalLoyaltyPoints:
-          type: "integer"
-          format: "int32"
-        cancellationReason:
-          "$ref": "#/components/schemas/ReasonResponse"
-        notes:
-          type: "string"
-        changeable:
-          type: "boolean"
-        createdAt:
-          type: "string"
-          format: "date-time"
-    LineResponse:
-      type: "object"
+            $ref: "#/components/schemas/SlotResponse"
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:64
+    BayRequest:
+      type: object
       properties:
-        lineId:
-          type: "integer"
-          format: "int64"
-        serviceId:
-          type: "integer"
-          format: "int32"
-        code:
-          type: "string"
         name:
-          type: "string"
-        price:
-          type: "number"
-        estimatedMinutes:
-          type: "integer"
-          format: "int32"
-        quantity:
-          type: "integer"
-          format: "int32"
-        loyaltyPoints:
-          type: "integer"
-          format: "int32"
-    ReasonResponse:
-      type: "object"
-      properties:
-        code:
-          type: "string"
-        name:
-          type: "string"
-    VehicleResponse:
-      type: "object"
-      properties:
-        id:
-          type: "integer"
-          format: "int64"
-        licensePlate:
-          type: "string"
-        licensePlateFormatted:
-          type: "string"
-        vehicleType:
-          type: "string"
-        vehicleTypeName:
-          type: "string"
-        brand:
-          type: "string"
-        model:
-          type: "string"
-    ExceptionRequest:
-      type: "object"
-      properties:
-        date:
-          type: "string"
-          format: "date"
-        closed:
-          type: "boolean"
-        opensAt:
-          type: "string"
-        closesAt:
-          type: "string"
-        reason:
-          type: "string"
-          maxLength: 120
-          minLength: 0
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 60
+        status:
+          type: string
       required:
-        - "closed"
-        - "date"
-        - "reason"
-    ExceptionResponse:
-      type: "object"
+        - name
+      description: "status: ACTIVE, MAINTENANCE o INACTIVE (ADR-010)."
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/ScheduleDtos.java:72
+    BayResponse:
+      type: object
       properties:
         id:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
+        code:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/ScheduleDtos.java:79
+    BookingResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        code:
+          type: string
+        status:
+          type: string
         date:
-          type: "string"
-          format: "date"
-        closed:
-          type: "boolean"
-        opensAt:
-          type: "string"
-        closesAt:
-          type: "string"
-        reason:
-          type: "string"
+          type: string
+          format: date
+        startTime:
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
+        endTime:
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
+        durationMinutes:
+          type: integer
+          format: int32
+        scheduledStart:
+          type: string
+          format: date-time
+        scheduledEnd:
+          type: string
+          format: date-time
+        bay:
+          $ref: "#/components/schemas/BayResponse"
+        vehicle:
+          $ref: "#/components/schemas/VehicleResponse"
+        ownerUserId:
+          type: integer
+          format: int64
+        bookedBy:
+          type: integer
+          format: int64
+        services:
+          type: array
+          items:
+            $ref: "#/components/schemas/LineResponse"
+        subtotal:
+          type: number
+        pointsDiscountAmount:
+          type: number
+        total:
+          type: number
+        totalLoyaltyPoints:
+          type: integer
+          format: int32
+        cancellationReason:
+          $ref: "#/components/schemas/ReasonResponse"
+        notes:
+          type: string
+        changeable:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      description: La reserva lista para pintar. changeable dice si quien la ve todavia la puede cambiar o cancelar (lo decide el backend con RF-007). ownerUserId solo llega en las rutas del admin.
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:108
+    BusinessDataDto:
+      type: object
+      properties:
+        tradeName:
+          type: string
+          maxLength: 150
+        legalName:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 150
+        taxId:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 30
+        businessType:
+          type: string
+          maxLength: 100
+        foundedOn:
+          type: string
+          format: date
+        legalRepresentative:
+          type: string
+          maxLength: 150
+        legalRepresentativeDocument:
+          type: string
+          maxLength: 30
+        address:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 200
+        phone:
+          type: string
+          maxLength: 20
+        email:
+          type: string
+          maxLength: 120
+        website:
+          type: string
+          maxLength: 200
+        taxRegime:
+          type: string
+          maxLength: 150
+        ciiuActivity:
+          type: string
+          maxLength: 150
+        dianResolution:
+          type: string
+          maxLength: 60
+        invoicePrefix:
+          type: string
+          maxLength: 10
+        invoiceRange:
+          type: string
+          maxLength: 30
+        instagram:
+          type: string
+          maxLength: 100
+        facebook:
+          type: string
+          maxLength: 150
+        supportLine:
+          type: string
+          maxLength: 30
+        serviceHoursNote:
+          type: string
+          maxLength: 150
+      required:
+        - legalName
+        - taxId
+        - address
+      description: Todos los datos del negocio, para Configuracion del admin.
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/ScheduleDtos.java:110
     BusinessHourDto:
-      type: "object"
+      type: object
       properties:
         dayOfWeek:
-          type: "integer"
-          format: "int32"
-          maximum: 7
+          type: integer
+          format: int32
           minimum: 1
+          maximum: 7
         working:
-          type: "boolean"
+          type: boolean
         opensAt:
-          type: "string"
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
         closesAt:
-          type: "string"
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
         breakStartsAt:
-          type: "string"
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
         breakEndsAt:
-          type: "string"
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
       required:
-        - "closesAt"
-        - "dayOfWeek"
-        - "opensAt"
-        - "working"
-    BusinessDataDto:
-      type: "object"
+        - dayOfWeek
+        - working
+        - opensAt
+        - closesAt
+      description: "Un dia de la semana: 1 = lunes ... 7 = domingo."
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/ScheduleDtos.java:27
+    CancelRequest:
+      type: object
       properties:
-        tradeName:
-          type: "string"
-          maxLength: 150
-          minLength: 0
-        legalName:
-          type: "string"
-          maxLength: 150
-          minLength: 0
-        taxId:
-          type: "string"
-          maxLength: 30
-          minLength: 0
-        businessType:
-          type: "string"
-          maxLength: 100
-          minLength: 0
-        foundedOn:
-          type: "string"
-          format: "date"
-        legalRepresentative:
-          type: "string"
-          maxLength: 150
-          minLength: 0
-        legalRepresentativeDocument:
-          type: "string"
-          maxLength: 30
-          minLength: 0
-        address:
-          type: "string"
-          maxLength: 200
-          minLength: 0
-        phone:
-          type: "string"
-          maxLength: 20
-          minLength: 0
-        email:
-          type: "string"
-          maxLength: 120
-          minLength: 0
-        website:
-          type: "string"
-          maxLength: 200
-          minLength: 0
-        taxRegime:
-          type: "string"
-          maxLength: 150
-          minLength: 0
-        ciiuActivity:
-          type: "string"
-          maxLength: 150
-          minLength: 0
-        dianResolution:
-          type: "string"
-          maxLength: 60
-          minLength: 0
-        invoicePrefix:
-          type: "string"
-          maxLength: 10
-          minLength: 0
-        invoiceRange:
-          type: "string"
-          maxLength: 30
-          minLength: 0
-        instagram:
-          type: "string"
-          maxLength: 100
-          minLength: 0
-        facebook:
-          type: "string"
-          maxLength: 150
-          minLength: 0
-        supportLine:
-          type: "string"
-          maxLength: 30
-          minLength: 0
-        serviceHoursNote:
-          type: "string"
-          maxLength: 150
-          minLength: 0
-      required:
-        - "address"
-        - "legalName"
-        - "taxId"
-    PriceRequest:
-      type: "object"
-      properties:
-        vehicleTypeId:
-          type: "integer"
-          format: "int32"
-        price:
-          type: "number"
-        estimatedMinutes:
-          type: "integer"
-          format: "int32"
-      required:
-        - "estimatedMinutes"
-        - "price"
-        - "vehicleTypeId"
-    ServiceRequest:
-      type: "object"
-      properties:
-        code:
-          type: "string"
-          maxLength: 30
-          minLength: 0
-        name:
-          type: "string"
-          maxLength: 100
-          minLength: 0
-        description:
-          type: "string"
-        categoryId:
-          type: "integer"
-          format: "int32"
-        prices:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/PriceRequest"
-        loyaltyPoints:
-          type: "integer"
-          format: "int32"
-      required:
-        - "categoryId"
-        - "name"
+        reasonCode:
+          type: string
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:58
     CategoryResponse:
-      type: "object"
+      type: object
       properties:
         id:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         code:
-          type: "string"
+          type: string
         name:
-          type: "string"
-    PriceResponse:
-      type: "object"
-      properties:
-        vehicleTypeId:
-          type: "integer"
-          format: "int32"
-        price:
-          type: "number"
-        estimatedMinutes:
-          type: "integer"
-          format: "int32"
-        validFrom:
-          type: "string"
-          format: "date"
-    ServiceResponse:
-      type: "object"
-      properties:
-        id:
-          type: "integer"
-          format: "int32"
-        code:
-          type: "string"
-        name:
-          type: "string"
-        description:
-          type: "string"
-        category:
-          "$ref": "#/components/schemas/CategoryResponse"
-        active:
-          type: "boolean"
-        prices:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/PriceResponse"
-        loyaltyPoints:
-          type: "integer"
-          format: "int32"
-    BayRequest:
-      type: "object"
-      properties:
-        name:
-          type: "string"
-          maxLength: 60
-          minLength: 0
-        status:
-          type: "string"
-      required:
-        - "name"
+          type: string
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/CatalogDtos.java:23
     CreateBookingRequest:
-      type: "object"
+      type: object
       properties:
         vehicleId:
-          type: "integer"
-          format: "int64"
+          type: integer
+          format: int64
         serviceIds:
-          type: "array"
+          type: array
           items:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int32
           minItems: 1
         date:
-          type: "string"
-          format: "date"
+          type: string
+          format: date
         time:
-          type: "string"
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
         notes:
-          type: "string"
+          type: string
           maxLength: 300
-          minLength: 0
         preferredOperatorId:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
+          minimum: 0
+          exclusiveMinimum: true
       required:
-        - "date"
-        - "serviceIds"
-        - "time"
-        - "vehicleId"
-    CancelRequest:
-      type: "object"
+        - vehicleId
+        - serviceIds
+        - date
+        - time
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:32
+    DaySummary:
+      type: object
       properties:
-        reasonCode:
-          type: "string"
-    StatusRequest:
-      type: "object"
-      properties:
-        status:
-          type: "string"
-          minLength: 1
-        reasonCode:
-          type: "string"
-      required:
-        - "status"
-    ActiveRequest:
-      type: "object"
-      properties:
-        active:
-          type: "boolean"
-      required:
-        - "active"
+        date:
+          type: string
+          format: date
+        bookings:
+          type: integer
+          format: int32
+        previousDayBookings:
+          type: integer
+          format: int32
+        difference:
+          type: integer
+          format: int32
+      description: Reservas de un día del lavadero (en su zona horaria) frente al día anterior, para el inicio del administrador. Cuenta todas las reservas con fecha de ese día, igual que la tarjeta "Reservas de hoy". @param difference reservas de ese día menos las del día anterior (negativa si hay menos)
+      x-java: com/lavarapido/booking/domain/model/DaySummary.java:11
     EstablishmentResponse:
-      type: "object"
+      type: object
       properties:
         tradeName:
-          type: "string"
+          type: string
         legalName:
-          type: "string"
+          type: string
         taxId:
-          type: "string"
+          type: string
         address:
-          type: "string"
+          type: string
         phone:
-          type: "string"
+          type: string
         email:
-          type: "string"
+          type: string
         logoUrl:
-          type: "string"
+          type: string
         website:
-          type: "string"
+          type: string
         instagram:
-          type: "string"
+          type: string
         facebook:
-          type: "string"
+          type: string
         supportLine:
-          type: "string"
+          type: string
         serviceHoursNote:
-          type: "string"
-    AvailabilityResponse:
-      type: "object"
+          type: string
+      description: "Lo publico de la sede (landing y app sin sesion): sin representante legal ni datos fiscales."
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/ScheduleDtos.java:96
+    ExceptionRequest:
+      type: object
       properties:
         date:
-          type: "string"
-          format: "date"
-        open:
-          type: "boolean"
-        durationMinutes:
-          type: "integer"
-          format: "int32"
-        slots:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/SlotResponse"
-    SlotResponse:
-      type: "object"
-      properties:
-        time:
-          type: "string"
-        available:
-          type: "boolean"
-    HistoryEntryResponse:
-      type: "object"
+          type: string
+          format: date
+        closed:
+          type: boolean
+        opensAt:
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
+        closesAt:
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
+        reason:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 120
+      required:
+        - date
+        - closed
+        - reason
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/ScheduleDtos.java:45
+    ExceptionResponse:
+      type: object
       properties:
         id:
-          type: "integer"
-          format: "int64"
-        entityType:
-          type: "string"
-        title:
-          type: "string"
-        detail:
-          type: "string"
-        changedAt:
-          type: "string"
-          format: "date-time"
-        changedBy:
-          type: "integer"
-          format: "int64"
-    DaySummary:
-      type: "object"
-      properties:
+          type: integer
+          format: int32
         date:
-          type: "string"
-          format: "date"
-        bookings:
-          type: "integer"
-          format: "int32"
-        previousDayBookings:
-          type: "integer"
-          format: "int32"
-        difference:
-          type: "integer"
-          format: "int32"
+          type: string
+          format: date
+        closed:
+          type: boolean
+        opensAt:
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
+        closesAt:
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
+        reason:
+          type: string
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/ScheduleDtos.java:57
+    HistoryEntryResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        entityType:
+          type: string
+        title:
+          type: string
+        detail:
+          type: string
+        changedAt:
+          type: string
+          format: date-time
+        changedBy:
+          type: integer
+          format: int64
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/ScheduleDtos.java:86
+    LineResponse:
+      type: object
+      properties:
+        lineId:
+          type: integer
+          format: int64
+        serviceId:
+          type: integer
+          format: int32
+        code:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+        estimatedMinutes:
+          type: integer
+          format: int32
+        quantity:
+          type: integer
+          format: int32
+        loyaltyPoints:
+          type: integer
+          format: int32
+      description: lineId = booking_service_id (operations-service ejecuta y califica por linea).
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:95
+    PriceRequest:
+      type: object
+      properties:
+        vehicleTypeId:
+          type: integer
+          format: int32
+        price:
+          type: number
+        estimatedMinutes:
+          type: integer
+          format: int32
+      required:
+        - vehicleTypeId
+        - price
+        - estimatedMinutes
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/CatalogDtos.java:48
+    PriceResponse:
+      type: object
+      properties:
+        vehicleTypeId:
+          type: integer
+          format: int32
+        price:
+          type: number
+        estimatedMinutes:
+          type: integer
+          format: int32
+        validFrom:
+          type: string
+          format: date
+      description: Tarifa vigente de un tipo de vehiculo (vehicleTypeId es el de customer-service).
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/CatalogDtos.java:31
+    ReasonResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:77
+    RescheduleRequest:
+      type: object
+      properties:
+        serviceIds:
+          type: array
+          items:
+            type: integer
+            format: int32
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
+        notes:
+          type: string
+          maxLength: 300
+      required:
+        - date
+        - time
+      description: serviceIds vacio conserva los servicios que ya tenia.
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:47
+    ServiceRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          maxLength: 30
+        name:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 100
+        description:
+          type: string
+        categoryId:
+          type: integer
+          format: int32
+        prices:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceRequest"
+        loyaltyPoints:
+          type: integer
+          format: int32
+      required:
+        - name
+        - categoryId
+      description: Alta o edicion. code es opcional (si no llega se arma con el nombre). Al editar, prices vacio deja las tarifas como estan.
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/CatalogDtos.java:62
+    ServiceResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          $ref: "#/components/schemas/CategoryResponse"
+        active:
+          type: boolean
+        prices:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceResponse"
+        loyaltyPoints:
+          type: integer
+          format: int32
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/CatalogDtos.java:38
+    SlotResponse:
+      type: object
+      properties:
+        time:
+          type: string
+          pattern: ^\d{2}:\d{2}$
+          example: "08:30"
+        available:
+          type: boolean
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:74
+    StatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          minLength: 1
+          x-not-blank: true
+        reasonCode:
+          type: string
+      required:
+        - status
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:61
+    VehicleResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        licensePlate:
+          type: string
+        licensePlateFormatted:
+          type: string
+        vehicleType:
+          type: string
+        vehicleTypeName:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:84
+x-error-codes:
+  BAD_REQUEST: 400
+  BAY_HAS_BOOKINGS: 409
+  BAY_NAME_TAKEN: 409
+  BAY_NEW_IN_MAINTENANCE: 400
+  BAY_NOT_FOUND: 404
+  BOOKING_NOT_CHANGEABLE: 409
+  BOOKING_NOT_EXPIRED: 409
+  BOOKING_NOT_FOUND: 404
+  CONFLICT: 409
+  CUSTOMER_SERVICE_UNAVAILABLE: 503
+  DATE_REQUIRED: 400
+  DUPLICATED_SERVICE: 400
+  DUPLICATED_VEHICLE_TYPE: 400
+  ESTABLISHMENT_INVALID_EMAIL: 400
+  ESTABLISHMENT_INVALID_FOUNDATION_DATE: 400
+  ESTABLISHMENT_INVALID_PHONE: 400
+  ESTABLISHMENT_NOT_FOUND: 404
+  ESTABLISHMENT_REQUIRED_FIELD: 400
+  EXCEPTION_DATE_TAKEN: 409
+  EXCEPTION_NOT_FOUND: 404
+  FORBIDDEN: 403
+  INTERNAL_ERROR: 500
+  INVALID_BAY_NAME: 400
+  INVALID_BAY_STATUS: 400
+  INVALID_BREAK: 400
+  INVALID_CANCELLATION_REASON: 400
+  INVALID_CATEGORY: 400
+  INVALID_DATE: 400
+  INVALID_DAY: 400
+  INVALID_DURATION: 400
+  INVALID_HOURS: 400
+  INVALID_LOYALTY_POINTS: 400
+  INVALID_NOTES: 400
+  INVALID_PRICE: 400
+  INVALID_QUANTITY: 400
+  INVALID_RANGE: 400
+  INVALID_REASON: 400
+  INVALID_SERVICE_CODE: 400
+  INVALID_SERVICE_NAME: 400
+  INVALID_STATUS: 400
+  INVALID_STATUS_TRANSITION: 409
+  INVALID_TOKEN: 400
+  INVALID_VEHICLE: 400
+  INVALID_VEHICLE_TYPE: 400
+  INVALID_WEEK: 400
+  METHOD_NOT_ALLOWED: 405
+  NOT_FOUND: 404
+  PRICES_REQUIRED: 400
+  SCHEDULE_BUSY: 409
+  SERVICES_REQUIRED: 400
+  SERVICE_CODE_TAKEN: 409
+  SERVICE_NOT_AVAILABLE_FOR_VEHICLE: 409
+  SERVICE_NOT_FOUND: 404
+  SERVICE_TOO_EARLY: 409
+  SLOT_UNAVAILABLE: 409
+  TIME_REQUIRED: 400
+  UNAUTHORIZED: 401
+  VALIDATION_ERROR: 400
+  VEHICLE_ALREADY_BOOKED: 409
+  VEHICLE_NOT_FOUND: 404
+  VEHICLE_REQUIRED: 400

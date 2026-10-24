@@ -36,7 +36,7 @@ isn't a normalization trade-off, just choosing not to pay a join for data that's
 optional and always 1:1 with its row. See `models.md`'s `service_execution` decisions for the
 full reasoning (rating per line, not per booking, and why `AVG` never uses `COALESCE`).
 
-**Catalog/lookup values are 11 separate tables, not 1 generic `status` table.**
+**Catalog/lookup values are 12 separate tables, not 1 generic `status` table.**
 This isn't a normalization rule in the strict sense, but the same instinct applies: a shared
 `status` table would let a foreign key from `booking` accept a payment status by accident,
 because nothing about the column would say otherwise. Splitting them lets the foreign key
@@ -48,8 +48,9 @@ itself be the constraint. See `modeling-conventions.md` for the full reasoning.
 |---|---|---|---|
 | `customer.customer.loyalty_points` | The balance of that customer's ledger, which lives in `payment.loyalty_transaction` (another service since ADR-009) | Profile and dashboard screens show the balance without calling `payment-service` | Planned as a display copy updated from loyalty events. As built (ADR-015, checked 2026-10-20) nothing updates it: every screen reads the balance live from payment-service (`GET /api/v1/loyalty/balance`), and coupons validate against the ledger, never against the copy |
 | `booking.booking_service.service_price_id` → frozen price | The price at booking time, reached by reference rather than copied as a number | Needed *because* prices change over time and a booking must keep the price it was actually charged | `catalog.service_price` rows are immutable after creation (`tr_service_price_immutable`), so the reference itself can never drift — no separate reconciliation needed |
+| `booking.booking_service.loyalty_points` | The points of `catalog.service.loyalty_points` at booking time (migration 043, A-09) | The admin can change the points of a service; a booking must earn what it was offered | Copied once when the line is created and never updated; `catalog.service` keeps the current value |
 | `promotion.booking_promotion.applied_amount` | The discount a promotion granted, frozen at the moment it was applied | The promotion's terms can change or expire after the fact; what was actually discounted that day is a historical fact | Never recalculated — treated purely as a record, not a live value |
-| `audit.audit_log.previous_data` / `new_data` | Whole-row snapshots as JSON, not normalized into typed columns | Every audited entity has a different shape; one shared table can't have one schema per entity | Deliberately schema-less by design — this is the one place in the model where "normalize it" doesn't apply, because the table's job is to store arbitrary shapes, not query them relationally. Nothing writes to the table yet (`05-architecture/cross-cutting.md` §1) |
+| `audit.audit_log.previous_data` / `new_data` | Whole-row snapshots as JSON, not normalized into typed columns | Every audited entity has a different shape; one shared table can't have one schema per entity | Deliberately schema-less by design — this is the one place in the model where "normalize it" doesn't apply, because the table's job is to store arbitrary shapes, not query them relationally. Nothing writes to the table yet (checked 2026-10-23; `05-architecture/cross-cutting.md` §1) |
 | `booking.booking.points_redeemed` / `points_discount_amount` | The redemption also recorded as a `REDEEMED` movement in `payment.loyalty_transaction` | The booking total is derived inside `booking-service` and must not call another service to compute it | Planned for a points-to-cash redemption that was never built: both columns stay `0` (ADR-015); points only unlock coupons and are never spent |
 
 ## Non-denormalizations worth flagging (things that look like shortcuts but aren't)

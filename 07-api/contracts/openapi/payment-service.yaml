@@ -1,1070 +1,2077 @@
-# Generated from the running payment-service (Swashbuckle, GET /swagger/v1/swagger.json) on 2026-10-19.
-# Do not edit by hand: regenerate from the code so the contract never drifts.
-openapi: "3.0.1"
+# Contract of payment-service, rebuilt on 2026-10-23 from the code on origin/develop (see 07-api/README.md).
+# Regenerate it from the code instead of editing by hand, so it never drifts.
+openapi: 3.0.3
 info:
-  title: "LavaRápido payment-service API"
-  version: "v1"
-  description: "Contract of payment-service. Public paths are reached through the API gateway."
+  title: LavaRápido payment-service API
+  version: v1
+  description: |-
+    Contract of payment-service (.NET 8, ADR-013), rebuilt from the controllers and minimal endpoints of `lavarapido-payment-service` on `origin/develop` (`16a6fac`, 2026-10-23) and checked against them (`07-api/README.md`). JSON is camelCase (System.Text.Json defaults); the error codes of each action were traced from the controller through the use cases, domain and adapters.
+
+    **Security.** `[Authorize]` = any valid bearer token; `x-roles` = `[Authorize(Roles = …)]`. The roles come from the JWT `roles` claim. `security: []` = public.
+
+    **Errors.** Errors raised by the code are `ProblemDetail` with `code` (`GlobalExceptionHandler`): `DomainException` and `InvalidRequestException` 400, `NotFoundException` 404, `ConflictException` 409, `ServiceUnavailableException` 503. The automatic `[ApiController]` validation answers 400 `ValidationProblemDetails` without `code`, and the JWT middleware answers 401/403 with an empty body. Catalogue (`ErrorCodes` and `DomainErrorCodes`):
+
+    | `code` | HTTP | Raised by / when |
+    |---|---|---|
+    | `INVALID_ACCOUNT_HOLDER` | 400 | `DomainException` — `POST /api/v1/admin/payment-accounts`, `PUT /api/v1/admin/payment-accounts/{id}` |
+    | `INVALID_ACCOUNT_INSTRUCTIONS` | 400 | `DomainException` — `POST /api/v1/admin/payment-accounts`, `PUT /api/v1/admin/payment-accounts/{id}` |
+    | `INVALID_ACCOUNT_NUMBER` | 400 | `DomainException` — `POST /api/v1/admin/payment-accounts`, `PUT /api/v1/admin/payment-accounts/{id}` |
+    | `INVALID_DATE_RANGE` | 400 | `InvalidRequestException` — `GET /api/v1/payments/me` |
+    | `INVALID_DISCOUNT_TYPE` | 400 | `DomainException` — not returned by any endpoint |
+    | `INVALID_LOYALTY_BALANCE` | 400 | `DomainException` — 6 operations (see `x-codes`) |
+    | `INVALID_LOYALTY_BOOKING` | 400 | `DomainException` — `POST /api/v1/admin/payments`, `POST /api/v1/admin/payments/{id}/approve`, `POST /api/v1/admin/payments/{id}/refund` |
+    | `INVALID_LOYALTY_CUSTOMER` | 400 | `DomainException` — `POST /api/v1/admin/payments`, `POST /api/v1/admin/payments/{id}/approve`, `POST /api/v1/admin/payments/{id}/refund` |
+    | `INVALID_LOYALTY_DESCRIPTION` | 400 | `DomainException` — `POST /api/v1/admin/payments`, `POST /api/v1/admin/payments/{id}/approve`, `POST /api/v1/admin/payments/{id}/refund` |
+    | `INVALID_LOYALTY_POINTS` | 400 | `DomainException` — `POST /api/v1/admin/payments`, `POST /api/v1/admin/payments/{id}/approve`, `POST /api/v1/admin/payments/{id}/refund` |
+    | `INVALID_PAYMENT_ACCOUNT` | 400 | `DomainException` — `POST /api/v1/admin/payments`, `POST /api/v1/payments` |
+    | `INVALID_PAYMENT_AMOUNT` | 400 | `DomainException` — `POST /api/v1/admin/payments`, `POST /api/v1/payments` |
+    | `INVALID_PAYMENT_BOOKING` | 400 | `DomainException` — `POST /api/v1/admin/payments`, `POST /api/v1/payments` |
+    | `INVALID_PAYMENT_METHOD` | 400 | `InvalidRequestException` — `POST /api/v1/admin/payment-accounts`, `PUT /api/v1/admin/payment-accounts/{id}` |
+    | `INVALID_PAYMENT_STATUS` | 400 | `DomainException` — `GET /api/v1/admin/payments` |
+    | `INVALID_PAYMENT_STATUS_TRANSITION` | 400 | `DomainException` — 5 operations (see `x-codes`) |
+    | `INVALID_PROMOTION_BENEFITS` | 400 | `DomainException` — `POST /api/v1/admin/promotions`, `PUT /api/v1/admin/promotions/{id}` |
+    | `INVALID_PROMOTION_CODE` | 400 | `DomainException` — `POST /api/v1/admin/promotions`, `PUT /api/v1/admin/promotions/{id}` |
+    | `INVALID_PROMOTION_DESCRIPTION` | 400 | `DomainException` — `POST /api/v1/admin/promotions`, `PUT /api/v1/admin/promotions/{id}` |
+    | `INVALID_PROMOTION_DISCOUNT` | 400 | `DomainException` — `POST /api/v1/admin/promotions`, `PUT /api/v1/admin/promotions/{id}` |
+    | `INVALID_PROMOTION_DURATION` | 400 | `DomainException` — `POST /api/v1/admin/promotions`, `PUT /api/v1/admin/promotions/{id}` |
+    | `INVALID_PROMOTION_ICON` | 400 | `DomainException` — `POST /api/v1/admin/promotions`, `PUT /api/v1/admin/promotions/{id}` |
+    | `INVALID_PROMOTION_NAME` | 400 | `DomainException` — `POST /api/v1/admin/promotions`, `PUT /api/v1/admin/promotions/{id}` |
+    | `INVALID_PROMOTION_PRICE` | 400 | `DomainException` — `POST /api/v1/admin/promotions`, `PUT /api/v1/admin/promotions/{id}` |
+    | `INVALID_PROMOTION_RANGE` | 400 | `DomainException` — `POST /api/v1/admin/promotions`, `PUT /api/v1/admin/promotions/{id}` |
+    | `INVALID_PROMOTION_REQUIRED_POINTS` | 400 | `DomainException` — `POST /api/v1/admin/promotions`, `PUT /api/v1/admin/promotions/{id}` |
+    | `INVALID_QR_IMAGE` | 400 | `DomainException` — `POST /api/v1/admin/payment-accounts`, `PUT /api/v1/admin/payment-accounts/{id}` |
+    | `INVALID_RECEIPT_FILE` | 400 | `DomainException` — `POST /api/v1/admin/payments`, `POST /api/v1/payments` |
+    | `INVALID_RECEIPT_UPLOADER` | 400 | `DomainException` — `POST /api/v1/admin/payments`, `POST /api/v1/payments` |
+    | `INVALID_REDEMPTION_BOOKING` | 400 | `DomainException` — `POST /api/v1/loyalty/redeem` |
+    | `INVALID_REJECTION_REASON` | 400 | `DomainException` — `POST /api/v1/admin/payments/{id}/reject` |
+    | `INVALID_REPORTED_AMOUNT` | 400 | `DomainException` — `POST /api/v1/admin/payments`, `POST /api/v1/payments` |
+    | `INVALID_REVIEW_COMMENT` | 400 | `DomainException` — not returned by any endpoint |
+    | `INVALID_REVIEWER` | 400 | `DomainException` — `POST /api/v1/admin/payments`, `POST /api/v1/admin/payments/{id}/approve`, `POST /api/v1/admin/payments/{id}/reject` |
+    | `INVALID_TRANSACTION_REFERENCE` | 400 | `DomainException` — `POST /api/v1/admin/payments`, `POST /api/v1/payments` |
+    | `LOYALTY_INSUFFICIENT_BALANCE` | 400 | `DomainException` — `POST /api/v1/admin/payments`, `POST /api/v1/admin/payments/{id}/approve`, `POST /api/v1/admin/payments/{id}/refund` |
+    | `PAYMENT_RECEIPT_REQUIRED` | 400 | `DomainException` — `POST /api/v1/admin/payments`, `POST /api/v1/payments` |
+    | `PROMOTION_ALREADY_REDEEMED` | 400 | `DomainException` — `POST /api/v1/loyalty/redeem` |
+    | `PROMOTION_CUSTOMER_LIMIT_REACHED` | 400 | `DomainException` — `POST /api/v1/loyalty/redeem` |
+    | `PROMOTION_DISCOUNT_UNSUPPORTED` | 400 | `DomainException` — not returned by any endpoint |
+    | `PROMOTION_EXHAUSTED` | 400 | `DomainException` — `POST /api/v1/loyalty/redeem` |
+    | `PROMOTION_MIN_PURCHASE_NOT_MET` | 400 | `DomainException` — `POST /api/v1/loyalty/redeem` |
+    | `PROMOTION_NOT_REDEEMABLE` | 400 | `DomainException` — `POST /api/v1/loyalty/redeem` |
+    | `PROMOTION_NOTHING_TO_DISCOUNT` | 400 | `DomainException` — `POST /api/v1/loyalty/redeem` |
+    | `PROMOTION_ONE_PER_BOOKING` | 400 | `DomainException` — `POST /api/v1/loyalty/redeem` |
+    | `RECEIPT_TOO_LARGE` | 400 | `DomainException` — `POST /api/v1/payments` |
+    | `UNAUTHORIZED` | 401 | Token without a valid numeric `sub` (`UnauthorizedAccessException`). A missing or invalid token gets an empty 401 from the JWT middleware |
+    | `BOOKING_NOT_FOUND` | 404 | `NotFoundException` — 6 operations (see `x-codes`) |
+    | `PAYMENT_ACCOUNT_NOT_FOUND` | 404 | `NotFoundException` — `PUT /api/v1/admin/payment-accounts/{id}` |
+    | `PAYMENT_NOT_FOUND` | 404 | `NotFoundException` — 5 operations (see `x-codes`) |
+    | `PROMOTION_NOT_FOUND` | 404 | `NotFoundException` — 4 operations (see `x-codes`) |
+    | `PROMOTION_REDEMPTION_NOT_FOUND` | 404 | `NotFoundException` — `DELETE /api/v1/loyalty/redemptions/{bookingId}/{promotionId}` |
+    | `BOOKING_NOT_PAYABLE` | 409 | `ConflictException` — 5 operations (see `x-codes`) |
+    | `DATA_CONFLICT` | 409 | `ConflictException` — 13 operations (see `x-codes`) |
+    | `PAYMENT_ALREADY_APPROVED` | 409 | `ConflictException` — 5 operations (see `x-codes`) |
+    | `PAYMENT_ALREADY_REPORTED` | 409 | `ConflictException` — 4 operations (see `x-codes`) |
+    | `PROMOTION_CODE_TAKEN` | 409 | `ConflictException` — `POST /api/v1/admin/promotions`, `PUT /api/v1/admin/promotions/{id}` |
+    | `TRANSACTION_REFERENCE_REUSED` | 409 | `ConflictException` — `POST /api/v1/admin/payments`, `POST /api/v1/payments` |
+    | `BOOKING_SERVICE_UNAVAILABLE` | 503 | `ServiceUnavailableException` — 13 operations (see `x-codes`) |
 servers:
-  - url: "http://localhost:8080"
-    description: "Through the API gateway (ADR-005)"
-  - url: "http://localhost:3005"
-    description: "payment-service directly (local development)"
+  - url: http://localhost:8080
+    description: Through the API gateway (ADR-005)
+  - url: http://localhost:3005
+    description: payment-service directly (local development)
+security:
+  - bearerAuth: []
+tags:
+  - name: Admin Payment Accounts
+  - name: Admin Payments
+  - name: Loyalty
+  - name: Payments
+  - name: Promotions
+  - name: Health
 paths:
-  "/api/v1/admin/payment-accounts":
+  /actuator/health:
     get:
       tags:
-        - "AdminPaymentAccounts"
+        - Health
+      operationId: actuatorHealth
+      security: []
+      x-access: public
+      x-source: src/PaymentService.Api/Configuration/HealthEndpoints.cs
       responses:
         "200":
-          description: "OK"
+          description: Up (`{"status":"UP"}` or `{"service":"payment-service","status":"ok"}`)
           content:
-            "text/plain":
+            application/json:
               schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentAccountDto"
-            "application/json":
+                type: object
+                additionalProperties: true
+        "503":
+          description: SQL Server does not answer within 3 s (`DOWN` / `down`)
+          content:
+            application/json:
               schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentAccountDto"
-            "text/json":
+                type: object
+                additionalProperties: true
+  /api/v1/admin/payment-accounts:
+    get:
+      tags:
+        - Admin Payment Accounts
+      operationId: accounts
+      description: "XML doc: Todas las cuentas, activas o no."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/AdminPaymentAccountsController.cs
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
               schema:
-                type: "array"
+                type: array
                 items:
-                  "$ref": "#/components/schemas/PaymentAccountDto"
+                  $ref: "#/components/schemas/PaymentAccountDto"
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
     post:
       tags:
-        - "AdminPaymentAccounts"
+        - Admin Payment Accounts
+      operationId: create
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/AdminPaymentAccountsController.cs
       requestBody:
+        required: true
         content:
-          "application/json":
+          application/json:
             schema:
-              "$ref": "#/components/schemas/SaveAccountRequest"
-          "text/json":
-            schema:
-              "$ref": "#/components/schemas/SaveAccountRequest"
-          "application/*+json":
-            schema:
-              "$ref": "#/components/schemas/SaveAccountRequest"
+              $ref: "#/components/schemas/SaveAccountRequest"
       responses:
-        "200":
-          description: "OK"
+        "201":
+          description: Created
           content:
-            "text/plain":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/PaymentAccountDto"
-            "application/json":
+                $ref: "#/components/schemas/PaymentAccountDto"
+          headers:
+            Location:
+              description: URL of the created resource
               schema:
-                "$ref": "#/components/schemas/PaymentAccountDto"
-            "text/json":
-              schema:
-                "$ref": "#/components/schemas/PaymentAccountDto"
-  "/api/v1/admin/payment-methods":
-    get:
-      tags:
-        - "AdminPaymentAccounts"
-      responses:
-        "200":
-          description: "OK"
+                type: string
+        "400":
+          description: "Bad Request. `code`: `INVALID_ACCOUNT_HOLDER`, `INVALID_ACCOUNT_INSTRUCTIONS`, `INVALID_ACCOUNT_NUMBER`, `INVALID_PAYMENT_METHOD`, `INVALID_QR_IMAGE`. Also the automatic `[ApiController]` validation (malformed JSON or a missing non-nullable field): `ValidationProblemDetails` with `errors` and without `code`."
           content:
-            "text/plain":
+            application/problem+json:
               schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentMethodDto"
-            "application/json":
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - INVALID_ACCOUNT_HOLDER
+            - INVALID_ACCOUNT_INSTRUCTIONS
+            - INVALID_ACCOUNT_NUMBER
+            - INVALID_PAYMENT_METHOD
+            - INVALID_QR_IMAGE
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
               schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentMethodDto"
-            "text/json":
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "409":
+          description: "Conflict. `code`: `DATA_CONFLICT`."
+          content:
+            application/problem+json:
               schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentMethodDto"
-  "/api/v1/admin/payment-accounts/{id}":
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - DATA_CONFLICT
+  /api/v1/admin/payment-accounts/{id}:
     put:
       tags:
-        - "AdminPaymentAccounts"
+        - Admin Payment Accounts
+      operationId: update
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/AdminPaymentAccountsController.cs
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int32
       requestBody:
+        required: true
         content:
-          "application/json":
+          application/json:
             schema:
-              "$ref": "#/components/schemas/SaveAccountRequest"
-          "text/json":
-            schema:
-              "$ref": "#/components/schemas/SaveAccountRequest"
-          "application/*+json":
-            schema:
-              "$ref": "#/components/schemas/SaveAccountRequest"
+              $ref: "#/components/schemas/SaveAccountRequest"
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "text/plain":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/PaymentAccountDto"
-            "application/json":
+                $ref: "#/components/schemas/PaymentAccountDto"
+        "400":
+          description: "Bad Request. `code`: `INVALID_ACCOUNT_HOLDER`, `INVALID_ACCOUNT_INSTRUCTIONS`, `INVALID_ACCOUNT_NUMBER`, `INVALID_PAYMENT_METHOD`, `INVALID_QR_IMAGE`. Also the automatic `[ApiController]` validation (malformed JSON or a missing non-nullable field): `ValidationProblemDetails` with `errors` and without `code`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PaymentAccountDto"
-            "text/json":
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - INVALID_ACCOUNT_HOLDER
+            - INVALID_ACCOUNT_INSTRUCTIONS
+            - INVALID_ACCOUNT_NUMBER
+            - INVALID_PAYMENT_METHOD
+            - INVALID_QR_IMAGE
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PaymentAccountDto"
-  "/api/v1/admin/payments":
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "404":
+          description: "Not Found. `code`: `PAYMENT_ACCOUNT_NOT_FOUND`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - PAYMENT_ACCOUNT_NOT_FOUND
+        "409":
+          description: "Conflict. `code`: `DATA_CONFLICT`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - DATA_CONFLICT
+  /api/v1/admin/payment-methods:
     get:
       tags:
-        - "AdminPayments"
-      parameters:
-        - name: "status"
-          in: "query"
-          schema:
-            type: "string"
+        - Admin Payment Accounts
+      operationId: methods
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/AdminPaymentAccountsController.cs
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "text/plain":
+            application/json:
               schema:
-                type: "array"
+                type: array
                 items:
-                  "$ref": "#/components/schemas/PaymentDto"
-            "application/json":
+                  $ref: "#/components/schemas/PaymentMethodDto"
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
               schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentDto"
-            "text/json":
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+  /api/v1/admin/payments:
+    get:
+      tags:
+        - Admin Payments
+      operationId: list
+      description: "XML doc: Cola de pagos, opcionalmente filtrada por estado (PENDING, IN_REVIEW, APPROVED, REJECTED, REFUNDED)."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/AdminPaymentsController.cs
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
               schema:
-                type: "array"
+                type: array
                 items:
-                  "$ref": "#/components/schemas/PaymentDto"
+                  $ref: "#/components/schemas/PaymentDto"
+        "400":
+          description: "Bad Request. `code`: `INVALID_PAYMENT_STATUS`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - INVALID_PAYMENT_STATUS
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
     post:
       tags:
-        - "AdminPayments"
+        - Admin Payments
+      operationId: registerManual
+      description: "XML doc: Pago recibido en el lavadero: queda aprobado con lo que falta por pagar de la reserva."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/AdminPaymentsController.cs
       requestBody:
+        required: true
         content:
-          "application/json":
+          application/json:
             schema:
-              "$ref": "#/components/schemas/ManualPaymentRequest"
-          "text/json":
-            schema:
-              "$ref": "#/components/schemas/ManualPaymentRequest"
-          "application/*+json":
-            schema:
-              "$ref": "#/components/schemas/ManualPaymentRequest"
+              $ref: "#/components/schemas/ManualPaymentRequest"
       responses:
-        "200":
-          description: "OK"
+        "201":
+          description: Created
           content:
-            "text/plain":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/PaymentDto"
-            "application/json":
+                $ref: "#/components/schemas/PaymentDto"
+          headers:
+            Location:
+              description: URL of the created resource
               schema:
-                "$ref": "#/components/schemas/PaymentDto"
-            "text/json":
+                type: string
+        "400":
+          description: "Bad Request. `code`: `INVALID_LOYALTY_BALANCE`, `INVALID_LOYALTY_BOOKING`, `INVALID_LOYALTY_CUSTOMER`, `INVALID_LOYALTY_DESCRIPTION`, `INVALID_LOYALTY_POINTS`, `INVALID_PAYMENT_ACCOUNT`, `INVALID_PAYMENT_AMOUNT`, `INVALID_PAYMENT_BOOKING`, `INVALID_PAYMENT_STATUS_TRANSITION`, `INVALID_RECEIPT_FILE`, `INVALID_RECEIPT_UPLOADER`, `INVALID_REPORTED_AMOUNT`, `INVALID_REVIEWER`, `INVALID_TRANSACTION_REFERENCE`, `LOYALTY_INSUFFICIENT_BALANCE`, `PAYMENT_RECEIPT_REQUIRED`. Also the automatic `[ApiController]` validation (malformed JSON or a missing non-nullable field): `ValidationProblemDetails` with `errors` and without `code`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PaymentDto"
-  "/api/v1/admin/payments/{id}":
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - INVALID_LOYALTY_BALANCE
+            - INVALID_LOYALTY_BOOKING
+            - INVALID_LOYALTY_CUSTOMER
+            - INVALID_LOYALTY_DESCRIPTION
+            - INVALID_LOYALTY_POINTS
+            - INVALID_PAYMENT_ACCOUNT
+            - INVALID_PAYMENT_AMOUNT
+            - INVALID_PAYMENT_BOOKING
+            - INVALID_PAYMENT_STATUS_TRANSITION
+            - INVALID_RECEIPT_FILE
+            - INVALID_RECEIPT_UPLOADER
+            - INVALID_REPORTED_AMOUNT
+            - INVALID_REVIEWER
+            - INVALID_TRANSACTION_REFERENCE
+            - LOYALTY_INSUFFICIENT_BALANCE
+            - PAYMENT_RECEIPT_REQUIRED
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_NOT_FOUND
+        "409":
+          description: "Conflict. `code`: `BOOKING_NOT_PAYABLE`, `DATA_CONFLICT`, `PAYMENT_ALREADY_APPROVED`, `PAYMENT_ALREADY_REPORTED`, `TRANSACTION_REFERENCE_REUSED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_NOT_PAYABLE
+            - DATA_CONFLICT
+            - PAYMENT_ALREADY_APPROVED
+            - PAYMENT_ALREADY_REPORTED
+            - TRANSACTION_REFERENCE_REUSED
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+  /api/v1/admin/payments/{id}:
     get:
       tags:
-        - "AdminPayments"
+        - Admin Payments
+      operationId: get
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/AdminPaymentsController.cs
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int64"
+            type: integer
+            format: int64
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "text/plain":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/PaymentDto"
-            "application/json":
-              schema:
-                "$ref": "#/components/schemas/PaymentDto"
-            "text/json":
-              schema:
-                "$ref": "#/components/schemas/PaymentDto"
-  "/api/v1/admin/payments/amount-due":
-    get:
-      tags:
-        - "AdminPayments"
-      parameters:
-        - name: "bookingId"
-          in: "query"
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/PaymentDto"
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
           content:
-            "text/plain":
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/AmountDueDto"
-            "application/json":
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "404":
+          description: "Not Found. `code`: `PAYMENT_NOT_FOUND`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/AmountDueDto"
-            "text/json":
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - PAYMENT_NOT_FOUND
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/AmountDueDto"
-  "/api/v1/admin/payments/{id}/approve":
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+  /api/v1/admin/payments/{id}/approve:
     post:
       tags:
-        - "AdminPayments"
+        - Admin Payments
+      operationId: approve
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/AdminPaymentsController.cs
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int64"
+            type: integer
+            format: int64
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "text/plain":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/PaymentDto"
-            "application/json":
+                $ref: "#/components/schemas/PaymentDto"
+        "400":
+          description: "Bad Request. `code`: `INVALID_LOYALTY_BALANCE`, `INVALID_LOYALTY_BOOKING`, `INVALID_LOYALTY_CUSTOMER`, `INVALID_LOYALTY_DESCRIPTION`, `INVALID_LOYALTY_POINTS`, `INVALID_PAYMENT_STATUS_TRANSITION`, `INVALID_REVIEWER`, `LOYALTY_INSUFFICIENT_BALANCE`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PaymentDto"
-            "text/json":
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - INVALID_LOYALTY_BALANCE
+            - INVALID_LOYALTY_BOOKING
+            - INVALID_LOYALTY_CUSTOMER
+            - INVALID_LOYALTY_DESCRIPTION
+            - INVALID_LOYALTY_POINTS
+            - INVALID_PAYMENT_STATUS_TRANSITION
+            - INVALID_REVIEWER
+            - LOYALTY_INSUFFICIENT_BALANCE
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PaymentDto"
-  "/api/v1/admin/payments/{id}/reject":
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `PAYMENT_NOT_FOUND`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - PAYMENT_NOT_FOUND
+        "409":
+          description: "Conflict. `code`: `BOOKING_NOT_PAYABLE`, `DATA_CONFLICT`, `PAYMENT_ALREADY_APPROVED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_NOT_PAYABLE
+            - DATA_CONFLICT
+            - PAYMENT_ALREADY_APPROVED
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+  /api/v1/admin/payments/{id}/refund:
     post:
       tags:
-        - "AdminPayments"
+        - Admin Payments
+      operationId: refund
+      description: "XML doc: Devuelve un pago aprobado. Responde 204 (contrato previo de la web)."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/AdminPaymentsController.cs
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int64"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/RejectPaymentRequest"
-          "text/json":
-            schema:
-              "$ref": "#/components/schemas/RejectPaymentRequest"
-          "application/*+json":
-            schema:
-              "$ref": "#/components/schemas/RejectPaymentRequest"
+            type: integer
+            format: int64
       responses:
-        "200":
-          description: "OK"
+        "204":
+          description: No Content
+        "400":
+          description: "Bad Request. `code`: `INVALID_LOYALTY_BALANCE`, `INVALID_LOYALTY_BOOKING`, `INVALID_LOYALTY_CUSTOMER`, `INVALID_LOYALTY_DESCRIPTION`, `INVALID_LOYALTY_POINTS`, `INVALID_PAYMENT_STATUS_TRANSITION`, `LOYALTY_INSUFFICIENT_BALANCE`."
           content:
-            "text/plain":
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PaymentDto"
-            "application/json":
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - INVALID_LOYALTY_BALANCE
+            - INVALID_LOYALTY_BOOKING
+            - INVALID_LOYALTY_CUSTOMER
+            - INVALID_LOYALTY_DESCRIPTION
+            - INVALID_LOYALTY_POINTS
+            - INVALID_PAYMENT_STATUS_TRANSITION
+            - LOYALTY_INSUFFICIENT_BALANCE
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PaymentDto"
-            "text/json":
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "404":
+          description: "Not Found. `code`: `PAYMENT_NOT_FOUND`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PaymentDto"
-  "/api/v1/admin/payments/{id}/refund":
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - PAYMENT_NOT_FOUND
+        "409":
+          description: "Conflict. `code`: `DATA_CONFLICT`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - DATA_CONFLICT
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+  /api/v1/admin/payments/{id}/reject:
     post:
       tags:
-        - "AdminPayments"
+        - Admin Payments
+      operationId: reject
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/AdminPaymentsController.cs
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
-  "/api/v1/loyalty/balance":
-    get:
-      tags:
-        - "Loyalty"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "text/plain":
-              schema:
-                "$ref": "#/components/schemas/LoyaltyBalanceDto"
-            "application/json":
-              schema:
-                "$ref": "#/components/schemas/LoyaltyBalanceDto"
-            "text/json":
-              schema:
-                "$ref": "#/components/schemas/LoyaltyBalanceDto"
-  "/api/v1/loyalty/promotions":
-    get:
-      tags:
-        - "Loyalty"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "text/plain":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PromotionForCustomerDto"
-            "application/json":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PromotionForCustomerDto"
-            "text/json":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PromotionForCustomerDto"
-  "/api/v1/loyalty/redeem":
-    post:
-      tags:
-        - "Loyalty"
+            type: integer
+            format: int64
       requestBody:
+        required: true
         content:
-          "application/json":
+          application/json:
             schema:
-              "$ref": "#/components/schemas/RedeemPromotionRequest"
-          "text/json":
-            schema:
-              "$ref": "#/components/schemas/RedeemPromotionRequest"
-          "application/*+json":
-            schema:
-              "$ref": "#/components/schemas/RedeemPromotionRequest"
+              $ref: "#/components/schemas/RejectPaymentRequest"
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "text/plain":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/RedeemPromotionResultDto"
-            "application/json":
+                $ref: "#/components/schemas/PaymentDto"
+        "400":
+          description: "Bad Request. `code`: `INVALID_PAYMENT_STATUS_TRANSITION`, `INVALID_REJECTION_REASON`, `INVALID_REVIEWER`. Also the automatic `[ApiController]` validation (malformed JSON or a missing non-nullable field): `ValidationProblemDetails` with `errors` and without `code`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/RedeemPromotionResultDto"
-            "text/json":
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - INVALID_PAYMENT_STATUS_TRANSITION
+            - INVALID_REJECTION_REASON
+            - INVALID_REVIEWER
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/RedeemPromotionResultDto"
-  "/api/v1/payment-accounts":
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "404":
+          description: "Not Found. `code`: `PAYMENT_NOT_FOUND`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - PAYMENT_NOT_FOUND
+        "409":
+          description: "Conflict. `code`: `DATA_CONFLICT`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - DATA_CONFLICT
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+  /api/v1/admin/payments/amount-due:
     get:
       tags:
-        - "Payments"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "text/plain":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentAccountDto"
-            "application/json":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentAccountDto"
-            "text/json":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentAccountDto"
-  "/api/v1/payments":
-    post:
-      tags:
-        - "Payments"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/ReportPaymentRequest"
-          "text/json":
-            schema:
-              "$ref": "#/components/schemas/ReportPaymentRequest"
-          "application/*+json":
-            schema:
-              "$ref": "#/components/schemas/ReportPaymentRequest"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "text/plain":
-              schema:
-                "$ref": "#/components/schemas/PaymentDto"
-            "application/json":
-              schema:
-                "$ref": "#/components/schemas/PaymentDto"
-            "text/json":
-              schema:
-                "$ref": "#/components/schemas/PaymentDto"
-  "/api/v1/payments/me":
-    get:
-      tags:
-        - "Payments"
+        - Admin Payments
+      operationId: amountDue
+      description: "XML doc: Lo que falta por pagar de una reserva (total menos cupones): el monto de un pago en caja."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/AdminPaymentsController.cs
       parameters:
-        - name: "from"
-          in: "query"
+        - name: bookingId
+          in: query
+          required: false
           schema:
-            type: "string"
-            format: "date"
-        - name: "to"
-          in: "query"
-          schema:
-            type: "string"
-            format: "date"
-        - name: "service"
-          in: "query"
-          schema:
-            type: "string"
+            type: integer
+            format: int64
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "text/plain":
+            application/json:
               schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentDto"
-            "application/json":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentDto"
-            "text/json":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PaymentDto"
-  "/api/v1/payments/me/bookings":
-    get:
-      tags:
-        - "Payments"
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/AmountDueDto"
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
           content:
-            "text/plain":
+            application/problem+json:
               schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/BookingPaymentStateDto"
-            "application/json":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/BookingPaymentStateDto"
-            "text/json":
-              schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/BookingPaymentStateDto"
-  "/api/v1/payments/{id}":
-    get:
-      tags:
-        - "Payments"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
           content:
-            "text/plain":
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PaymentDto"
-            "application/json":
-              schema:
-                "$ref": "#/components/schemas/PaymentDto"
-            "text/json":
-              schema:
-                "$ref": "#/components/schemas/PaymentDto"
-  "/health":
-    get:
-      tags:
-        - "PaymentService.Api"
-      responses:
-        "200":
-          description: "OK"
-  "/actuator/health":
-    get:
-      tags:
-        - "PaymentService.Api"
-      responses:
-        "200":
-          description: "OK"
-  "/api/v1/admin/promotions":
-    get:
-      tags:
-        - "Promotions"
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_NOT_FOUND
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
           content:
-            "text/plain":
+            application/problem+json:
               schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PromotionDto"
-            "application/json":
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+  /api/v1/admin/promotions:
+    get:
+      tags:
+        - Promotions
+      operationId: promotionsList
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/PromotionsController.cs
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
               schema:
-                type: "array"
+                type: array
                 items:
-                  "$ref": "#/components/schemas/PromotionDto"
-            "text/json":
+                  $ref: "#/components/schemas/PromotionDto"
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
               schema:
-                type: "array"
-                items:
-                  "$ref": "#/components/schemas/PromotionDto"
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
     post:
       tags:
-        - "Promotions"
+        - Promotions
+      operationId: promotionsCreate
+      description: "E-07: a percentage discount must be between 1 and 99 (`INVALID_PROMOTION_DISCOUNT`); a fixed discount must be greater than 0."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/PromotionsController.cs
       requestBody:
+        required: true
         content:
-          "application/json":
+          application/json:
             schema:
-              "$ref": "#/components/schemas/SavePromotionRequest"
-          "text/json":
-            schema:
-              "$ref": "#/components/schemas/SavePromotionRequest"
-          "application/*+json":
-            schema:
-              "$ref": "#/components/schemas/SavePromotionRequest"
+              $ref: "#/components/schemas/SavePromotionRequest"
       responses:
-        "200":
-          description: "OK"
+        "201":
+          description: Created
           content:
-            "text/plain":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/PromotionDto"
-            "application/json":
+                $ref: "#/components/schemas/PromotionDto"
+          headers:
+            Location:
+              description: URL of the created resource
               schema:
-                "$ref": "#/components/schemas/PromotionDto"
-            "text/json":
-              schema:
-                "$ref": "#/components/schemas/PromotionDto"
-  "/api/v1/admin/promotions/metrics":
-    get:
-      tags:
-        - "Promotions"
-      responses:
-        "200":
-          description: "OK"
+                type: string
+        "400":
+          description: "Bad Request. `code`: `INVALID_PROMOTION_BENEFITS`, `INVALID_PROMOTION_CODE`, `INVALID_PROMOTION_DESCRIPTION`, `INVALID_PROMOTION_DISCOUNT`, `INVALID_PROMOTION_DURATION`, `INVALID_PROMOTION_ICON`, `INVALID_PROMOTION_NAME`, `INVALID_PROMOTION_PRICE`, `INVALID_PROMOTION_RANGE`, `INVALID_PROMOTION_REQUIRED_POINTS`. Also the automatic `[ApiController]` validation (malformed JSON or a missing non-nullable field): `ValidationProblemDetails` with `errors` and without `code`."
           content:
-            "text/plain":
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PromotionMetricsDto"
-            "application/json":
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - INVALID_PROMOTION_BENEFITS
+            - INVALID_PROMOTION_CODE
+            - INVALID_PROMOTION_DESCRIPTION
+            - INVALID_PROMOTION_DISCOUNT
+            - INVALID_PROMOTION_DURATION
+            - INVALID_PROMOTION_ICON
+            - INVALID_PROMOTION_NAME
+            - INVALID_PROMOTION_PRICE
+            - INVALID_PROMOTION_RANGE
+            - INVALID_PROMOTION_REQUIRED_POINTS
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PromotionMetricsDto"
-            "text/json":
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "409":
+          description: "Conflict. `code`: `DATA_CONFLICT`, `PROMOTION_CODE_TAKEN`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PromotionMetricsDto"
-  "/api/v1/admin/promotions/{id}":
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - DATA_CONFLICT
+            - PROMOTION_CODE_TAKEN
+  /api/v1/admin/promotions/{id}:
     put:
       tags:
-        - "Promotions"
+        - Promotions
+      operationId: promotionsUpdate
+      description: "E-07: same discount limits as when creating (`INVALID_PROMOTION_DISCOUNT`)."
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/PromotionsController.cs
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int32
       requestBody:
+        required: true
         content:
-          "application/json":
+          application/json:
             schema:
-              "$ref": "#/components/schemas/SavePromotionRequest"
-          "text/json":
-            schema:
-              "$ref": "#/components/schemas/SavePromotionRequest"
-          "application/*+json":
-            schema:
-              "$ref": "#/components/schemas/SavePromotionRequest"
+              $ref: "#/components/schemas/SavePromotionRequest"
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "text/plain":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/PromotionDto"
-            "application/json":
+                $ref: "#/components/schemas/PromotionDto"
+        "400":
+          description: "Bad Request. `code`: `INVALID_PROMOTION_BENEFITS`, `INVALID_PROMOTION_CODE`, `INVALID_PROMOTION_DESCRIPTION`, `INVALID_PROMOTION_DISCOUNT`, `INVALID_PROMOTION_DURATION`, `INVALID_PROMOTION_ICON`, `INVALID_PROMOTION_NAME`, `INVALID_PROMOTION_PRICE`, `INVALID_PROMOTION_RANGE`, `INVALID_PROMOTION_REQUIRED_POINTS`. Also the automatic `[ApiController]` validation (malformed JSON or a missing non-nullable field): `ValidationProblemDetails` with `errors` and without `code`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PromotionDto"
-            "text/json":
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - INVALID_PROMOTION_BENEFITS
+            - INVALID_PROMOTION_CODE
+            - INVALID_PROMOTION_DESCRIPTION
+            - INVALID_PROMOTION_DISCOUNT
+            - INVALID_PROMOTION_DURATION
+            - INVALID_PROMOTION_ICON
+            - INVALID_PROMOTION_NAME
+            - INVALID_PROMOTION_PRICE
+            - INVALID_PROMOTION_RANGE
+            - INVALID_PROMOTION_REQUIRED_POINTS
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PromotionDto"
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "404":
+          description: "Not Found. `code`: `PROMOTION_NOT_FOUND`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - PROMOTION_NOT_FOUND
+        "409":
+          description: "Conflict. `code`: `DATA_CONFLICT`, `PROMOTION_CODE_TAKEN`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - DATA_CONFLICT
+            - PROMOTION_CODE_TAKEN
     delete:
       tags:
-        - "Promotions"
+        - Promotions
+      operationId: delete
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/PromotionsController.cs
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int32
       responses:
-        "200":
-          description: "OK"
-  "/api/v1/admin/promotions/{id}/active":
+        "204":
+          description: No Content
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "404":
+          description: "Not Found. `code`: `PROMOTION_NOT_FOUND`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - PROMOTION_NOT_FOUND
+        "409":
+          description: "Conflict. `code`: `DATA_CONFLICT`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - DATA_CONFLICT
+  /api/v1/admin/promotions/{id}/active:
     patch:
       tags:
-        - "Promotions"
+        - Promotions
+      operationId: setActive
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/PromotionsController.cs
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int32
       requestBody:
+        required: true
         content:
-          "application/json":
+          application/json:
             schema:
-              "$ref": "#/components/schemas/SetPromotionActiveRequest"
-          "text/json":
-            schema:
-              "$ref": "#/components/schemas/SetPromotionActiveRequest"
-          "application/*+json":
-            schema:
-              "$ref": "#/components/schemas/SetPromotionActiveRequest"
+              $ref: "#/components/schemas/SetPromotionActiveRequest"
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "text/plain":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/PromotionDto"
-            "application/json":
+                $ref: "#/components/schemas/PromotionDto"
+        "400":
+          description: "Bad Request. Also the automatic `[ApiController]` validation (malformed JSON or a missing non-nullable field): `ValidationProblemDetails` with `errors` and without `code`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PromotionDto"
-            "text/json":
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/PromotionDto"
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "404":
+          description: "Not Found. `code`: `PROMOTION_NOT_FOUND`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - PROMOTION_NOT_FOUND
+        "409":
+          description: "Conflict. `code`: `DATA_CONFLICT`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - DATA_CONFLICT
+  /api/v1/admin/promotions/metrics:
+    get:
+      tags:
+        - Promotions
+      operationId: metrics
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: src/PaymentService.Api/Controllers/PromotionsController.cs
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromotionMetricsDto"
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+  /api/v1/loyalty/balance:
+    get:
+      tags:
+        - Loyalty
+      operationId: balance
+      x-access: roles
+      x-roles:
+        - CLIENT
+      x-source: src/PaymentService.Api/Controllers/LoyaltyController.cs
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoyaltyBalanceDto"
+        "400":
+          description: "Bad Request. `code`: `INVALID_LOYALTY_BALANCE`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - INVALID_LOYALTY_BALANCE
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+  /api/v1/loyalty/promotions:
+    get:
+      tags:
+        - Loyalty
+      operationId: promotions
+      description: "XML doc: Promociones vigentes, marcando cuáles ya desbloqueó el cliente con sus puntos."
+      x-access: roles
+      x-roles:
+        - CLIENT
+      x-source: src/PaymentService.Api/Controllers/LoyaltyController.cs
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PromotionForCustomerDto"
+        "400":
+          description: "Bad Request. `code`: `INVALID_LOYALTY_BALANCE`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - INVALID_LOYALTY_BALANCE
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+  /api/v1/loyalty/redeem:
+    post:
+      tags:
+        - Loyalty
+      operationId: redeem
+      description: |-
+        Redeems a coupon (promotion code) on a booking of the caller that has no payment yet. E-09: a booking takes at most one coupon (400 `PROMOTION_ONE_PER_BOOKING`; `ux_booking_promotion_one_per_booking` backs it).
+
+        XML doc: Canjea un cupón en una reserva propia que todavía no tiene pago reportado.
+      x-access: roles
+      x-roles:
+        - CLIENT
+      x-source: src/PaymentService.Api/Controllers/LoyaltyController.cs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RedeemPromotionRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedeemPromotionResultDto"
+        "400":
+          description: "Bad Request. `code`: `INVALID_LOYALTY_BALANCE`, `INVALID_REDEMPTION_BOOKING`, `PROMOTION_ALREADY_REDEEMED`, `PROMOTION_CUSTOMER_LIMIT_REACHED`, `PROMOTION_EXHAUSTED`, `PROMOTION_MIN_PURCHASE_NOT_MET`, `PROMOTION_NOTHING_TO_DISCOUNT`, `PROMOTION_NOT_REDEEMABLE`, `PROMOTION_ONE_PER_BOOKING`. Also the automatic `[ApiController]` validation (malformed JSON or a missing non-nullable field): `ValidationProblemDetails` with `errors` and without `code`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - INVALID_LOYALTY_BALANCE
+            - INVALID_REDEMPTION_BOOKING
+            - PROMOTION_ALREADY_REDEEMED
+            - PROMOTION_CUSTOMER_LIMIT_REACHED
+            - PROMOTION_EXHAUSTED
+            - PROMOTION_MIN_PURCHASE_NOT_MET
+            - PROMOTION_NOTHING_TO_DISCOUNT
+            - PROMOTION_NOT_REDEEMABLE
+            - PROMOTION_ONE_PER_BOOKING
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `PROMOTION_NOT_FOUND`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - PROMOTION_NOT_FOUND
+        "409":
+          description: "Conflict. `code`: `BOOKING_NOT_PAYABLE`, `DATA_CONFLICT`, `PAYMENT_ALREADY_APPROVED`, `PAYMENT_ALREADY_REPORTED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_NOT_PAYABLE
+            - DATA_CONFLICT
+            - PAYMENT_ALREADY_APPROVED
+            - PAYMENT_ALREADY_REPORTED
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+  /api/v1/loyalty/redemptions/{bookingId}/{promotionId}:
+    delete:
+      tags:
+        - Loyalty
+      operationId: cancelRedemption
+      description: |-
+        E-08 "remove coupon": undoes the redemption of that promotion on a booking of the caller. Allowed while the booking has no payment reported, in review or approved (otherwise 409). The `booking_promotion` row is deleted (no event is published) and the response is what is now due.
+
+        XML doc: "Quitar cupón" (E-08): anula el canje en una reserva propia sin pago en revisión ni aprobado (si no, 409) y devuelve lo que ahora falta por pagar.
+      x-access: roles
+      x-roles:
+        - CLIENT
+      x-source: src/PaymentService.Api/Controllers/LoyaltyController.cs
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: promotionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AmountDueDto"
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`, `PROMOTION_REDEMPTION_NOT_FOUND`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_NOT_FOUND
+            - PROMOTION_REDEMPTION_NOT_FOUND
+        "409":
+          description: "Conflict. `code`: `BOOKING_NOT_PAYABLE`, `DATA_CONFLICT`, `PAYMENT_ALREADY_APPROVED`, `PAYMENT_ALREADY_REPORTED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_NOT_PAYABLE
+            - DATA_CONFLICT
+            - PAYMENT_ALREADY_APPROVED
+            - PAYMENT_ALREADY_REPORTED
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+  /api/v1/payment-accounts:
+    get:
+      tags:
+        - Payments
+      operationId: paymentsAccounts
+      description: "XML doc: Cuentas activas del lavadero: las de QR (Nequi, Daviplata, transferencia) y el efectivo si está activo."
+      x-access: authenticated
+      x-source: src/PaymentService.Api/Controllers/PaymentsController.cs
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentAccountDto"
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/payments:
+    post:
+      tags:
+        - Payments
+      operationId: report
+      description: "XML doc: Reporta un pago con su comprobante; queda en revisión."
+      x-access: roles
+      x-roles:
+        - CLIENT
+      x-source: src/PaymentService.Api/Controllers/PaymentsController.cs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportPaymentRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentDto"
+          headers:
+            Location:
+              description: URL of the created resource
+              schema:
+                type: string
+        "400":
+          description: "Bad Request. `code`: `INVALID_PAYMENT_ACCOUNT`, `INVALID_PAYMENT_AMOUNT`, `INVALID_PAYMENT_BOOKING`, `INVALID_PAYMENT_STATUS_TRANSITION`, `INVALID_RECEIPT_FILE`, `INVALID_RECEIPT_UPLOADER`, `INVALID_REPORTED_AMOUNT`, `INVALID_TRANSACTION_REFERENCE`, `PAYMENT_RECEIPT_REQUIRED`, `RECEIPT_TOO_LARGE`. Also the automatic `[ApiController]` validation (malformed JSON or a missing non-nullable field): `ValidationProblemDetails` with `errors` and without `code`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - INVALID_PAYMENT_ACCOUNT
+            - INVALID_PAYMENT_AMOUNT
+            - INVALID_PAYMENT_BOOKING
+            - INVALID_PAYMENT_STATUS_TRANSITION
+            - INVALID_RECEIPT_FILE
+            - INVALID_RECEIPT_UPLOADER
+            - INVALID_REPORTED_AMOUNT
+            - INVALID_TRANSACTION_REFERENCE
+            - PAYMENT_RECEIPT_REQUIRED
+            - RECEIPT_TOO_LARGE
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "404":
+          description: "Not Found. `code`: `BOOKING_NOT_FOUND`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_NOT_FOUND
+        "409":
+          description: "Conflict. `code`: `BOOKING_NOT_PAYABLE`, `DATA_CONFLICT`, `PAYMENT_ALREADY_APPROVED`, `PAYMENT_ALREADY_REPORTED`, `TRANSACTION_REFERENCE_REUSED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_NOT_PAYABLE
+            - DATA_CONFLICT
+            - PAYMENT_ALREADY_APPROVED
+            - PAYMENT_ALREADY_REPORTED
+            - TRANSACTION_REFERENCE_REUSED
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+  /api/v1/payments/{id}:
+    get:
+      tags:
+        - Payments
+      operationId: getMine
+      description: "XML doc: Un pago propio (404 si no existe o es de otra persona)."
+      x-access: roles
+      x-roles:
+        - CLIENT
+      x-source: src/PaymentService.Api/Controllers/PaymentsController.cs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentDto"
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "404":
+          description: "Not Found. `code`: `PAYMENT_NOT_FOUND`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - PAYMENT_NOT_FOUND
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+  /api/v1/payments/me:
+    get:
+      tags:
+        - Payments
+      operationId: mine
+      description: "XML doc: Historial de pagos del cliente que llama (RF-015), de la reserva más reciente a la más antigua. Filtros opcionales: from y to (fechas de la reserva, yyyy-MM-dd) y service."
+      x-access: roles
+      x-roles:
+        - CLIENT
+      x-source: src/PaymentService.Api/Controllers/PaymentsController.cs
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: service
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentDto"
+        "400":
+          description: "Bad Request. `code`: `INVALID_DATE_RANGE`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - INVALID_DATE_RANGE
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+  /api/v1/payments/me/bookings:
+    get:
+      tags:
+        - Payments
+      operationId: myBookings
+      description: "XML doc: Cada reserva del cliente con el estado de su último pago y si todavía se puede pagar: el historial muestra \"Pagar\" con este dato, sin repetir la regla en la web ni en la app."
+      x-access: roles
+      x-roles:
+        - CLIENT
+      x-source: src/PaymentService.Api/Controllers/PaymentsController.cs
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BookingPaymentStateDto"
+        "401":
+          description: "Unauthorized. Without a valid bearer token ASP.NET answers 401 with an empty body and `WWW-Authenticate: Bearer`; a token without a numeric `sub` answers the ProblemDetail `UNAUTHORIZED`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. Token without the required role: empty body."
+        "503":
+          description: "Service Unavailable. `code`: `BOOKING_SERVICE_UNAVAILABLE`."
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+          x-codes:
+            - BOOKING_SERVICE_UNAVAILABLE
+  /health:
+    get:
+      tags:
+        - Health
+      operationId: health
+      security: []
+      x-access: public
+      x-source: src/PaymentService.Api/Configuration/HealthEndpoints.cs
+      responses:
+        "200":
+          description: Up (`{"status":"UP"}` or `{"service":"payment-service","status":"ok"}`)
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "503":
+          description: SQL Server does not answer within 3 s (`DOWN` / `down`)
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token from `POST /api/v1/auth/login` (security-service, HS256, claims `sub`, `roles`, `sid`). Every service validates it itself (ADR-006); the gateway forwards it unchanged.
   schemas:
+    ProblemDetail:
+      type: object
+      description: "RFC 7807 problem detail of `GlobalExceptionHandler` (`application/problem+json`): `code` is the stable value the web and the app translate; `detail` is a Spanish message."
+      required:
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          example: about:blank
+        title:
+          type: string
+          example: Conflict
+        status:
+          type: integer
+          example: 409
+        detail:
+          type: string
+          example: The data conflicts with an existing record
+        instance:
+          type: string
+          example: /api/v1/bookings
+        code:
+          type: string
+          description: Error code (catalogue in `info.description` and `x-error-codes`)
+          example: CONFLICT
+      additionalProperties: true
     AmountDueDto:
-      type: "object"
+      type: object
       properties:
         bookingId:
-          type: "integer"
-          format: "int64"
+          type: integer
+          format: int64
         bookingTotal:
-          type: "number"
-          format: "double"
+          type: number
+          format: double
         appliedDiscounts:
-          type: "number"
-          format: "double"
+          type: number
+          format: double
         amountDue:
-          type: "number"
-          format: "double"
-      additionalProperties: false
+          type: number
+          format: double
+      required:
+        - bookingId
+        - bookingTotal
+        - appliedDiscounts
+        - amountDue
+      description: "Lo que falta por pagar de una reserva: su total, lo ya descontado por cupones y la diferencia, que es exactamente el monto con el que se registra el pago."
+      x-dotnet: src/PaymentService.Application/Payments/PaymentContracts.cs:45
     BookingPaymentStateDto:
-      type: "object"
+      type: object
       properties:
         bookingId:
-          type: "integer"
-          format: "int64"
+          type: integer
+          format: int64
         paymentStatus:
-          type: "string"
+          type: string
           nullable: true
         payable:
-          type: "boolean"
-      additionalProperties: false
+          type: boolean
+      required:
+        - bookingId
+        - payable
+      description: "Cómo va el pago de una reserva del cliente: el estado de su último pago (null si no tiene) y si todavía se puede pagar. Payable lo decide PaymentPolicy, así la web y la app solo muestran \"Pagar\" cuando payment-service aceptaría el reporte."
+      x-dotnet: src/PaymentService.Application/Payments/PaymentContracts.cs:56
     LoyaltyBalanceDto:
-      type: "object"
+      type: object
       properties:
         points:
-          type: "integer"
-          format: "int32"
-      additionalProperties: false
+          type: integer
+          format: int32
+      required:
+        - points
+      description: Saldo de puntos del cliente.
+      x-dotnet: src/PaymentService.Application/Loyalty/LoyaltyContracts.cs:4
     ManualPaymentRequest:
-      type: "object"
+      type: object
       properties:
         bookingId:
-          type: "integer"
-          format: "int64"
+          type: integer
+          format: int64
         paymentAccountId:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         transactionReference:
-          type: "string"
+          type: string
           nullable: true
-      additionalProperties: false
+      required:
+        - bookingId
+        - paymentAccountId
+      description: El admin registra un pago recibido en el lavadero.
+      x-dotnet: src/PaymentService.Api/Contracts/PaymentRequests.cs:15
     PaymentAccountDto:
-      type: "object"
+      type: object
       properties:
         id:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         methodCode:
-          type: "string"
-          nullable: true
+          type: string
         methodName:
-          type: "string"
-          nullable: true
+          type: string
         accountHolder:
-          type: "string"
-          nullable: true
+          type: string
         accountNumber:
-          type: "string"
+          type: string
           nullable: true
         qrImageUrl:
-          type: "string"
+          type: string
           nullable: true
         instructions:
-          type: "string"
+          type: string
           nullable: true
         active:
-          type: "boolean"
+          type: boolean
         requiresReceipt:
-          type: "boolean"
-      additionalProperties: false
+          type: boolean
+      required:
+        - id
+        - methodCode
+        - methodName
+        - accountHolder
+        - active
+        - requiresReceipt
+      description: Cuenta del lavadero con los datos de su medio de pago, como la ven la web y la app.
+      x-dotnet: src/PaymentService.Application/PaymentAccounts/PaymentAccountContracts.cs:4
     PaymentBookingDto:
-      type: "object"
+      type: object
       properties:
         id:
-          type: "integer"
-          format: "int64"
+          type: integer
+          format: int64
         code:
-          type: "string"
-          nullable: true
+          type: string
         status:
-          type: "string"
-          nullable: true
+          type: string
         total:
-          type: "number"
-          format: "double"
+          type: number
+          format: double
         date:
-          type: "string"
-          nullable: true
+          type: string
         startTime:
-          type: "string"
-          nullable: true
+          type: string
         services:
-          type: "string"
-          nullable: true
+          type: string
         vehicle:
-          type: "string"
-          nullable: true
+          type: string
         plate:
-          type: "string"
-          nullable: true
+          type: string
         ownerUserId:
-          type: "integer"
-          format: "int64"
+          type: integer
+          format: int64
           nullable: true
-      additionalProperties: false
+      required:
+        - id
+        - code
+        - status
+        - total
+        - date
+        - startTime
+        - services
+        - vehicle
+        - plate
+      description: Los datos de la reserva que se muestran junto al pago.
+      x-dotnet: src/PaymentService.Application/Payments/PaymentContracts.cs:62
     PaymentDto:
-      type: "object"
+      type: object
       properties:
         id:
-          type: "integer"
-          format: "int64"
+          type: integer
+          format: int64
         status:
-          type: "string"
-          nullable: true
+          type: string
         amount:
-          type: "number"
-          format: "double"
+          type: number
+          format: double
         processedAtUtc:
-          type: "string"
-          format: "date-time"
+          type: string
+          format: date-time
           nullable: true
         rejectionReason:
-          type: "string"
+          type: string
           nullable: true
         transactionReference:
-          type: "string"
+          type: string
           nullable: true
         reportedAmount:
-          type: "number"
-          format: "double"
+          type: number
+          format: double
           nullable: true
         receiptImage:
-          type: "string"
+          type: string
           nullable: true
         reportedAtUtc:
-          type: "string"
-          format: "date-time"
+          type: string
+          format: date-time
           nullable: true
         reportedBy:
-          type: "integer"
-          format: "int64"
+          type: integer
+          format: int64
           nullable: true
         account:
-          "$ref": "#/components/schemas/PaymentAccountDto"
+          allOf:
+            - $ref: "#/components/schemas/PaymentAccountDto"
+          nullable: true
         booking:
-          "$ref": "#/components/schemas/PaymentBookingDto"
-      additionalProperties: false
+          allOf:
+            - $ref: "#/components/schemas/PaymentBookingDto"
+          nullable: true
+      required:
+        - id
+        - status
+        - amount
+      x-dotnet: src/PaymentService.Application/Payments/PaymentContracts.cs:27
     PaymentMethodDto:
-      type: "object"
+      type: object
       properties:
         id:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         code:
-          type: "string"
-          nullable: true
+          type: string
         name:
-          type: "string"
-          nullable: true
+          type: string
         requiresReceipt:
-          type: "boolean"
-      additionalProperties: false
+          type: boolean
+      required:
+        - id
+        - code
+        - name
+        - requiresReceipt
+      description: Medio de pago del catálogo.
+      x-dotnet: src/PaymentService.Application/PaymentAccounts/PaymentAccountContracts.cs:16
     PromotionDto:
-      type: "object"
+      type: object
       properties:
         id:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         code:
-          type: "string"
-          nullable: true
+          type: string
         name:
-          type: "string"
-          nullable: true
+          type: string
         description:
-          type: "string"
+          type: string
           nullable: true
         price:
-          type: "number"
-          format: "double"
+          type: number
+          format: double
           nullable: true
         durationMinutes:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
           nullable: true
         icon:
-          type: "string"
+          type: string
           nullable: true
         featured:
-          type: "boolean"
+          type: boolean
         benefits:
-          type: "array"
+          type: array
           items:
-            type: "string"
-          nullable: true
+            type: string
         validFrom:
-          type: "string"
-          format: "date"
+          type: string
+          format: date
         validTo:
-          type: "string"
-          format: "date"
+          type: string
+          format: date
         status:
-          type: "string"
-          nullable: true
+          type: string
         redemptions:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         discountPercent:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         requiredPoints:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         discountType:
-          type: "string"
-          nullable: true
+          type: string
         discountValue:
-          type: "number"
-          format: "double"
-      additionalProperties: false
+          type: number
+          format: double
+      required:
+        - id
+        - code
+        - name
+        - featured
+        - benefits
+        - validFrom
+        - validTo
+        - status
+        - redemptions
+        - discountPercent
+        - requiredPoints
+        - discountType
+        - discountValue
+      description: Promoción para la pantalla del admin. Status (active / scheduled / paused) se calcula, no se guarda. DiscountType y DiscountValue se agregaron al contrato sin quitar DiscountPercent, que la web ya usa.
+      x-dotnet: src/PaymentService.Application/Promotions/PromotionContracts.cs:8
     PromotionForCustomerDto:
-      type: "object"
+      type: object
       properties:
         id:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         code:
-          type: "string"
-          nullable: true
+          type: string
         name:
-          type: "string"
-          nullable: true
+          type: string
         description:
-          type: "string"
+          type: string
           nullable: true
         icon:
-          type: "string"
+          type: string
           nullable: true
         featured:
-          type: "boolean"
+          type: boolean
         benefits:
-          type: "array"
+          type: array
           items:
-            type: "string"
-          nullable: true
+            type: string
         discountPercent:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         requiredPoints:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         unlocked:
-          type: "boolean"
-      additionalProperties: false
+          type: boolean
+      required:
+        - id
+        - code
+        - name
+        - featured
+        - benefits
+        - discountPercent
+        - requiredPoints
+        - unlocked
+      description: Promoción vigente tal como la ve el cliente, marcando si ya la desbloqueó con sus puntos.
+      x-dotnet: src/PaymentService.Application/Promotions/CustomerPromotionContracts.cs:4
     PromotionMetricsDto:
-      type: "object"
+      type: object
       properties:
         redemptions:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         savings:
-          type: "number"
-          format: "double"
-      additionalProperties: false
+          type: number
+          format: double
+      required:
+        - redemptions
+        - savings
+      description: "Métricas del panel: canjes y ahorro de las promociones vigentes en el catálogo (las borradas no cuentan, así el total coincide con la suma de las tarjetas)."
+      x-dotnet: src/PaymentService.Application/Promotions/PromotionContracts.cs:31
     RedeemPromotionRequest:
-      type: "object"
+      type: object
       properties:
         bookingId:
-          type: "integer"
-          format: "int64"
+          type: integer
+          format: int64
         code:
-          type: "string"
-          nullable: true
-      additionalProperties: false
+          type: string
+      required:
+        - bookingId
+        - code
+      description: Canjear un cupón (código de la promoción) en una reserva propia.
+      x-dotnet: src/PaymentService.Api/Contracts/LoyaltyRequests.cs:4
     RedeemPromotionResultDto:
-      type: "object"
+      type: object
       properties:
         promotionId:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         promotionCode:
-          type: "string"
-          nullable: true
+          type: string
         promotionName:
-          type: "string"
-          nullable: true
+          type: string
         discountAmount:
-          type: "number"
-          format: "double"
+          type: number
+          format: double
         newTotal:
-          type: "number"
-          format: "double"
-      additionalProperties: false
+          type: number
+          format: double
+      required:
+        - promotionId
+        - promotionCode
+        - promotionName
+        - discountAmount
+        - newTotal
+      description: "Resultado de canjear un cupón: cuánto se descontó y cuánto queda por pagar."
+      x-dotnet: src/PaymentService.Application/Promotions/CustomerPromotionContracts.cs:20
     RejectPaymentRequest:
-      type: "object"
+      type: object
       properties:
         reason:
-          type: "string"
-          nullable: true
-      additionalProperties: false
+          type: string
+      required:
+        - reason
+      description: Motivo del rechazo (obligatorio, máximo 200 caracteres).
+      x-dotnet: src/PaymentService.Api/Contracts/PaymentRequests.cs:18
     ReportPaymentRequest:
-      type: "object"
+      type: object
       properties:
         bookingId:
-          type: "integer"
-          format: "int64"
+          type: integer
+          format: int64
         paymentAccountId:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         transactionReference:
-          type: "string"
+          type: string
           nullable: true
         receiptImage:
-          type: "string"
-          nullable: true
+          type: string
         reportedAmount:
-          type: "number"
-          format: "double"
+          type: number
+          format: double
           nullable: true
-      additionalProperties: false
+      required:
+        - bookingId
+        - paymentAccountId
+        - receiptImage
+      description: "El cliente reporta un pago: reserva, cuenta a la que pagó, referencia, imagen del comprobante (data URL) y, opcionalmente, el monto que figura en el comprobante."
+      x-dotnet: src/PaymentService.Api/Contracts/PaymentRequests.cs:11
     SaveAccountRequest:
-      type: "object"
+      type: object
       properties:
         methodCode:
-          type: "string"
-          nullable: true
+          type: string
         accountHolder:
-          type: "string"
-          nullable: true
+          type: string
         accountNumber:
-          type: "string"
+          type: string
           nullable: true
         qrImageUrl:
-          type: "string"
+          type: string
           nullable: true
         instructions:
-          type: "string"
+          type: string
           nullable: true
         active:
-          type: "boolean"
-      additionalProperties: false
+          type: boolean
+      required:
+        - methodCode
+        - accountHolder
+        - active
+      description: Crear o editar una cuenta del lavadero; el medio se indica por su código (NEQUI, EFECTIVO...).
+      x-dotnet: src/PaymentService.Api/Contracts/PaymentAccountRequests.cs:4
     SavePromotionRequest:
-      type: "object"
+      type: object
       properties:
         code:
-          type: "string"
-          nullable: true
+          type: string
         name:
-          type: "string"
-          nullable: true
+          type: string
         description:
-          type: "string"
+          type: string
           nullable: true
         price:
-          type: "number"
-          format: "double"
+          type: number
+          format: double
           nullable: true
         durationMinutes:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
           nullable: true
         icon:
-          type: "string"
+          type: string
           nullable: true
         featured:
-          type: "boolean"
+          type: boolean
         benefits:
-          type: "array"
+          type: array
           items:
-            type: "string"
+            type: string
           nullable: true
         validFrom:
-          type: "string"
-          format: "date"
+          type: string
+          format: date
         validTo:
-          type: "string"
-          format: "date"
+          type: string
+          format: date
         discountPercent:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         requiredPoints:
-          type: "integer"
-          format: "int32"
+          type: integer
+          format: int32
         discountType:
-          type: "string"
+          type: string
           nullable: true
         discountValue:
-          type: "number"
-          format: "double"
+          type: number
+          format: double
           nullable: true
-      additionalProperties: false
+      required:
+        - code
+        - name
+        - featured
+        - validFrom
+        - validTo
+        - discountPercent
+        - requiredPoints
+      description: "Crear o editar una promoción. DiscountType (PERCENT o FIXED) y DiscountValue son opcionales: si no vienen, el descuento es DiscountPercent por ciento (lo que manda la web actual). Price y DurationMinutes son opcionales: la web y la app ya no los piden."
+      x-dotnet: src/PaymentService.Api/Contracts/PromotionRequests.cs:8
     SetPromotionActiveRequest:
-      type: "object"
+      type: object
       properties:
         active:
-          type: "boolean"
-      additionalProperties: false
+          type: boolean
+      required:
+        - active
+      description: Pausar (false) o reanudar (true) una promoción.
+      x-dotnet: src/PaymentService.Api/Contracts/PromotionRequests.cs:25
+x-error-codes:
+  BOOKING_NOT_FOUND: 404
+  BOOKING_NOT_PAYABLE: 409
+  BOOKING_SERVICE_UNAVAILABLE: 503
+  DATA_CONFLICT: 409
+  INVALID_ACCOUNT_HOLDER: 400
+  INVALID_ACCOUNT_INSTRUCTIONS: 400
+  INVALID_ACCOUNT_NUMBER: 400
+  INVALID_DATE_RANGE: 400
+  INVALID_DISCOUNT_TYPE: 400
+  INVALID_LOYALTY_BALANCE: 400
+  INVALID_LOYALTY_BOOKING: 400
+  INVALID_LOYALTY_CUSTOMER: 400
+  INVALID_LOYALTY_DESCRIPTION: 400
+  INVALID_LOYALTY_POINTS: 400
+  INVALID_PAYMENT_ACCOUNT: 400
+  INVALID_PAYMENT_AMOUNT: 400
+  INVALID_PAYMENT_BOOKING: 400
+  INVALID_PAYMENT_METHOD: 400
+  INVALID_PAYMENT_STATUS: 400
+  INVALID_PAYMENT_STATUS_TRANSITION: 400
+  INVALID_PROMOTION_BENEFITS: 400
+  INVALID_PROMOTION_CODE: 400
+  INVALID_PROMOTION_DESCRIPTION: 400
+  INVALID_PROMOTION_DISCOUNT: 400
+  INVALID_PROMOTION_DURATION: 400
+  INVALID_PROMOTION_ICON: 400
+  INVALID_PROMOTION_NAME: 400
+  INVALID_PROMOTION_PRICE: 400
+  INVALID_PROMOTION_RANGE: 400
+  INVALID_PROMOTION_REQUIRED_POINTS: 400
+  INVALID_QR_IMAGE: 400
+  INVALID_RECEIPT_FILE: 400
+  INVALID_RECEIPT_UPLOADER: 400
+  INVALID_REDEMPTION_BOOKING: 400
+  INVALID_REJECTION_REASON: 400
+  INVALID_REPORTED_AMOUNT: 400
+  INVALID_REVIEWER: 400
+  INVALID_REVIEW_COMMENT: 400
+  INVALID_TRANSACTION_REFERENCE: 400
+  LOYALTY_INSUFFICIENT_BALANCE: 400
+  PAYMENT_ACCOUNT_NOT_FOUND: 404
+  PAYMENT_ALREADY_APPROVED: 409
+  PAYMENT_ALREADY_REPORTED: 409
+  PAYMENT_NOT_FOUND: 404
+  PAYMENT_RECEIPT_REQUIRED: 400
+  PROMOTION_ALREADY_REDEEMED: 400
+  PROMOTION_CODE_TAKEN: 409
+  PROMOTION_CUSTOMER_LIMIT_REACHED: 400
+  PROMOTION_DISCOUNT_UNSUPPORTED: 400
+  PROMOTION_EXHAUSTED: 400
+  PROMOTION_MIN_PURCHASE_NOT_MET: 400
+  PROMOTION_NOTHING_TO_DISCOUNT: 400
+  PROMOTION_NOT_FOUND: 404
+  PROMOTION_NOT_REDEEMABLE: 400
+  PROMOTION_ONE_PER_BOOKING: 400
+  PROMOTION_REDEMPTION_NOT_FOUND: 404
+  RECEIPT_TOO_LARGE: 400
+  TRANSACTION_REFERENCE_REUSED: 409
+  UNAUTHORIZED: 401

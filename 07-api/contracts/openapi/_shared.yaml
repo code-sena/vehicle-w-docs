@@ -1,102 +1,118 @@
 openapi: 3.0.3
 info:
   title: Shared Components
-  version: 1.0.0
+  version: 1.1.0
   description: |
-    Schemas y componentes compartidos entre todos los contratos API del proyecto.
-    Referencia estos componentes en tus contratos con: $ref: './_shared.yaml#/components/...'
+    Componentes compartidos para escribir el contrato de un servicio nuevo, con las convenciones que
+    siguen los servicios construidos (07-api/guidelines.md, revisado contra el código el 2026-10-23):
+    errores ProblemDetail con `code`, ids numéricos, paginación `page`/`size` desde 0.
+    Referencia estos componentes con: $ref: './_shared.yaml#/components/...'
+    Los contratos de los servicios reales no dependen de este archivo.
 
 components:
   schemas:
     # ─── Paginación ───────────────────────────────────────────────────────────
-    PaginatedMeta:
+    PageResponse:
       type: object
-      description: Metadatos de paginación incluidos en respuestas de listas
-      required: [page, limit, total, totalPages]
+      description: Respuesta de una lista paginada (GET /api/v1/admin/users, GET /api/v1/notifications)
+      required: [items, page, size, totalElements, totalPages]
       properties:
+        items:
+          type: array
+          items: {}
         page:
           type: integer
-          minimum: 1
-          example: 1
-        limit:
+          minimum: 0
+          example: 0
+        size:
           type: integer
           minimum: 1
           maximum: 100
           example: 20
-        total:
+        totalElements:
           type: integer
+          format: int64
           description: Total de registros que coinciden con el filtro
-          example: 142
+          example: 57
         totalPages:
           type: integer
-          example: 8
+          example: 3
 
     # ─── Errores ──────────────────────────────────────────────────────────────
-    ErrorResponse:
+    ProblemDetail:
       type: object
-      description: Formato estándar de error para todos los endpoints
-      required: [error, message]
+      description: RFC 9457 problem detail (`application/problem+json`) con el código estable `code`
+      required: [status, code]
       properties:
-        error:
+        type:
           type: string
-          description: Código de error en SCREAMING_SNAKE_CASE
+          example: about:blank
+        title:
+          type: string
+          example: Bad Request
+        status:
+          type: integer
+          example: 400
+        detail:
+          type: string
+          description: Mensaje para desarrolladores, no para la pantalla
+          example: The request has invalid fields
+        instance:
+          type: string
+          example: /api/v1/vehicles
+        code:
+          type: string
+          description: Código en UPPER_SNAKE_CASE que la web y la app traducen
           example: VALIDATION_ERROR
-        message:
-          type: string
-          description: Mensaje legible por humanos
-          example: El campo email es requerido
-        details:
-          type: array
-          description: Lista de errores específicos (para errores de validación)
-          items:
-            type: object
-            properties:
-              field:
-                type: string
-                example: email
-              message:
-                type: string
-                example: El campo email es requerido
-        traceId:
-          type: string
-          description: ID de traza para correlacionar con logs
-          example: 550e8400-e29b-41d4-a716-446655440000
+        errors:
+          type: object
+          description: Solo con VALIDATION_ERROR (campo → mensaje)
+          additionalProperties:
+            type: string
+      additionalProperties: true
 
     # ─── Tipos comunes ────────────────────────────────────────────────────────
+    Id:
+      type: integer
+      format: int64
+      example: 42
+
     UUID:
       type: string
       format: uuid
+      description: Solo para tokens aleatorios; los ids de las entidades son numéricos (Id)
       example: 550e8400-e29b-41d4-a716-446655440000
 
     Timestamp:
       type: string
       format: date-time
-      example: '2024-01-15T10:30:00Z'
+      description: Instante en UTC (ISO-8601)
+      example: '2026-10-23T14:00:00Z'
 
     AuditFields:
       type: object
-      description: Campos de auditoría incluidos en todas las entidades
+      description: Campos de auditoría que algunas respuestas exponen
       properties:
         createdAt:
           $ref: '#/components/schemas/Timestamp'
         updatedAt:
           $ref: '#/components/schemas/Timestamp'
         createdBy:
-          $ref: '#/components/schemas/UUID'
+          $ref: '#/components/schemas/Id'
 
   # ─── Parámetros reutilizables ────────────────────────────────────────────
   parameters:
     PageParam:
       name: page
       in: query
-      description: Número de página (empezando en 1)
+      description: Número de página, empezando en 0
       schema:
         type: integer
-        minimum: 1
-        default: 1
+        minimum: 0
+        default: 0
 
-    LimitParam:
-      name: limit
+    SizeParam:
+      name: size
       in: query
       description: Cantidad de resultados por página
       schema:
@@ -109,64 +125,78 @@ components:
       name: id
       in: path
       required: true
-      description: ID único del recurso (UUID)
+      description: Id numérico del recurso
       schema:
-        $ref: '#/components/schemas/UUID'
+        $ref: '#/components/schemas/Id'
 
   # ─── Respuestas reutilizables ────────────────────────────────────────────
   responses:
     BadRequest:
-      description: Error de validación en los datos enviados
+      description: Datos de entrada inválidos
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetail'
           example:
-            error: VALIDATION_ERROR
-            message: Datos de entrada inválidos
-            details:
-              - field: email
-                message: Formato de email inválido
+            type: about:blank
+            title: Bad Request
+            status: 400
+            detail: The request has invalid fields
+            code: VALIDATION_ERROR
+            errors:
+              licensePlate: must not be blank
 
     Unauthorized:
-      description: Token de autenticación ausente o inválido
+      description: Token ausente, inválido, vencido o de una sesión cerrada
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetail'
           example:
-            error: UNAUTHORIZED
-            message: Token de autenticación requerido
+            type: about:blank
+            title: Unauthorized
+            status: 401
+            detail: Authentication is required or the token is invalid
+            code: UNAUTHORIZED
 
     Forbidden:
-      description: El usuario no tiene permisos para esta operación
+      description: El rol del token no puede usar esta ruta
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetail'
           example:
-            error: FORBIDDEN
-            message: No tienes permisos para realizar esta acción
+            type: about:blank
+            title: Forbidden
+            status: 403
+            detail: You do not have permission to perform this action
+            code: FORBIDDEN
 
     NotFound:
-      description: El recurso solicitado no existe
+      description: No existe, o es de otro usuario (no se revela)
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetail'
           example:
-            error: NOT_FOUND
-            message: El recurso solicitado no existe
+            type: about:blank
+            title: Not Found
+            status: 404
+            detail: Vehicle not found
+            code: VEHICLE_NOT_FOUND
 
     InternalError:
-      description: Error interno del servidor
+      description: Error inesperado (el detalle queda solo en el log)
       content:
-        application/json:
+        application/problem+json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ProblemDetail'
           example:
-            error: INTERNAL_ERROR
-            message: Error interno del servidor
+            type: about:blank
+            title: Internal Server Error
+            status: 500
+            detail: An unexpected error occurred
+            code: INTERNAL_ERROR
 
   # ─── Seguridad ───────────────────────────────────────────────────────────
   securitySchemes:
@@ -175,5 +205,10 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: |
-        Token JWT obtenido del endpoint POST /auth/login del servicio IAM.
-        Incluir en el header: Authorization: Bearer <token>
+        Token JWT de POST /api/v1/auth/login (security-service).
+        Header: Authorization: Bearer <token>
+    internalKey:
+      type: apiKey
+      in: header
+      name: X-Internal-Key
+      description: Llave compartida entre servicios, solo para /internal/** (no pasa por el gateway)

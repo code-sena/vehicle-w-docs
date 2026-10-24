@@ -10,7 +10,7 @@ How the Vehicle Washing Service Management System stores, structures, and migrat
 In practice, that means the 57 tables in this system are split across 9 SQL Server schemas
 owned by 6 microservices (ADR-009) — **every schema has exactly one owning service**, and
 **no foreign key crosses from one service's schemas into another's**. Where one service
-genuinely needs another's data (21 columns, listed at the end of `models.md`), it's a plain,
+genuinely needs another's data (26 columns, listed at the end of `models.md`), it's a plain,
 indexed column with no FK, validated by the application instead of the database. See
 `modeling-conventions.md` for why we run this as schemas inside one instance rather than six
 separate physical databases, and what that trade-off costs us.
@@ -20,9 +20,10 @@ separate physical databases, and what that trade-off costs us.
 ### [`models.md`](./models.md) ⭐
 The full schema, service by service: DB engine, every table's DDL, its data dictionary, its
 indexes, and the reasoning behind the non-obvious decisions (why a column is immutable, why a
-FK is missing on purpose, why a value is denormalized). This is the source of truth — if
-the services' Liquibase changelogs (or the global script `lavarapido-6-services-sqlserver.sql`) and
-this file ever disagree, the SQL wins and this file is out of date.
+FK is missing on purpose, why a value is denormalized). The services' Liquibase changelogs are the
+source of truth: if they and this file ever disagree, the changelogs win and this file is out of
+date. There is no global SQL script (see `migration-strategy.md`). Checked against the changelogs on
+2026-10-23: 0 differences.
 
 ### [`data-dictionary.md`](./data-dictionary.md) ⭐
 The fields that are easy to get wrong across services: status codes with hard-coded IDs,
@@ -39,9 +40,10 @@ Where the model normalizes strictly (and why), and the handful of places it deli
 doesn't — each one named, with the reason and the guard that keeps it from drifting.
 
 ### [`migration-strategy.md`](./migration-strategy.md)
-How each service versions its schema with Liquibase (one changelog per service, shared
-numbering), the two IDs that must never be re-seeded out of order, and how to make a breaking
-change without downtime.
+How each service versions its schema with Liquibase (one changelog per service, one shared
+numbering for the Java services and its own for payment-service), every migration file with its
+precondition and rollback, the next free numbers, the IDs that must never be re-seeded out of order,
+and how to make a breaking change without downtime.
 
 ## SQL or NoSQL?
 
@@ -76,7 +78,7 @@ dead-letter queues. Details → `05-architecture/pattern-guide.md`.
 | `05-architecture/` — engine decisions per service | The `DB Engine` line in each service section of `models.md` |
 | `models.md` | `07-api/contracts/openapi/` — what each service exposes over its API |
 | `models.md` | `08-uml/` — diagrams |
-| `models.md` | `09-microservices/services/<service>/data-model.md` |
+| `models.md` | `09-microservices/services/<service>/data-model.md` (every column, key, index, trigger and migration of that service) |
 
 ## What this section answers
 

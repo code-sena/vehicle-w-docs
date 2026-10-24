@@ -1,354 +1,728 @@
-# Generated from the running notification-service (springdoc, GET /v3/api-docs) on 2026-10-19.
-# Do not edit by hand: regenerate from the code so the contract never drifts.
-openapi: "3.1.0"
+# Contract of notification-service, rebuilt on 2026-10-23 from the code on origin/develop (see 07-api/README.md).
+# Regenerate it from the code instead of editing by hand, so it never drifts.
+openapi: 3.0.3
 info:
-  title: "LavaRápido notification-service API"
-  version: "v1"
-  description: "Contract of notification-service. Public paths are reached through the API gateway."
+  title: LavaRápido notification-service API
+  version: v1
+  description: |-
+    Contract of notification-service, rebuilt from the controllers of `lavarapido-notification-service` on `origin/develop` (`0831ce7`, 2026-10-23) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
+
+    **Security.** Operations without `security` use the bearer JWT (`bearerAuth`). `security: []` = public. `x-roles` = roles the service accepts on that path (from its `SecurityConfig`); `x-access` = `public`, `authenticated` (any role), `roles`, `internal` (only `X-Internal-Key`, not published by the gateway) or `roles + internal key`. Ownership checks (a client only sees its own data) answer 404, not 403.
+
+    **Errors.** Every error is a `ProblemDetail` with `code`. Each error response lists its codes in `x-codes`. Catalogue of this service:
+
+    | `code` | HTTP | Raised by / when |
+    |---|---|---|
+    | `BAD_REQUEST` | 400 | Spring MVC rejected the request before the controller: malformed JSON, missing required query parameter or wrong parameter type |
+    | `INVALID_DATE_RANGE` | 400 | `InvalidValueException` — `GET /api/v1/notifications` |
+    | `INVALID_DEVICE_TOKEN` | 400 | `InvalidValueException` — `PUT /api/v1/notifications/devices`, `POST /api/v1/notifications/devices/unregister` |
+    | `INVALID_MESSAGE` | 400 | `InvalidValueException` — `POST /api/v1/admin/notifications`, `POST /internal/v1/notifications/app-update` |
+    | `INVALID_PAGE` | 400 | `InvalidValueException` — `GET /api/v1/notifications` |
+    | `INVALID_PLATFORM` | 400 | `InvalidValueException` — `PUT /api/v1/notifications/devices` |
+    | `INVALID_RECIPIENT` | 400 | `InvalidValueException` — `POST /api/v1/admin/notifications`, `PUT /api/v1/notifications/devices`, `POST /internal/v1/notifications/app-update` |
+    | `INVALID_REFERENCE` | 400 | `InvalidValueException` — `POST /api/v1/admin/notifications`, `POST /internal/v1/notifications/app-update` |
+    | `INVALID_REMINDER` | 400 | `InvalidValueException` — not reached from HTTP (events or scheduled jobs) |
+    | `INVALID_TITLE` | 400 | `InvalidValueException` — `POST /api/v1/admin/notifications`, `POST /internal/v1/notifications/app-update` |
+    | `INVALID_TOKEN` | 400 | `InvalidValueException` — 8 operations (see `x-codes` of each response) |
+    | `INVALID_VERSION` | 400 | `InvalidValueException` — `POST /internal/v1/notifications/app-update` |
+    | `NOTIFICATION_TYPE_NOT_ALLOWED` | 400 | `NotificationTypeNotAllowedException` — `POST /api/v1/admin/notifications` |
+    | `UNKNOWN_NOTIFICATION_TYPE` | 400 | `UnknownNotificationTypeException` — 6 operations (see `x-codes` of each response) |
+    | `VALIDATION_ERROR` | 400 | Bean Validation failed on the body (`errors`: field → message) or, where the service maps it, a path/query parameter has the wrong type |
+    | `UNAUTHORIZED` | 401 | No `Authorization: Bearer` token, invalid or expired token, closed session (the gateway checks it), or missing/wrong `X-Internal-Key` on `/internal/**` |
+    | `FORBIDDEN` | 403 | The token is valid but its role is not allowed on this path |
+    | `NOT_FOUND` | 404 | No route matches (Spring MVC) |
+    | `NOTIFICATION_NOT_FOUND` | 404 | `NotificationNotFoundException` — `PATCH /api/v1/notifications/{id}/read`, `PATCH /api/v1/notifications/{id}/unread`, `DELETE /api/v1/notifications/{id}` |
+    | `METHOD_NOT_ALLOWED` | 405 | The path exists but not with this HTTP method |
+    | `CONFLICT` | 409 | The database rejected the change (unique index, trigger or check) after the code's own checks |
+    | `INTERNAL_ERROR` | 500 | Unexpected error (logged with its correlation id) |
 servers:
-  - url: "http://localhost:8080"
-    description: "Through the API gateway (ADR-005)"
-  - url: "http://localhost:3006"
-    description: "notification-service directly (local development)"
+  - url: http://localhost:8080
+    description: Through the API gateway (ADR-005); `/internal/**` is not reachable here
+  - url: http://localhost:3006
+    description: notification-service directly (local development and service-to-service calls)
 security:
   - bearerAuth: []
+tags:
+  - name: Admin Notification
+  - name: Device
+  - name: Internal App Update
+  - name: Notification
 paths:
-  "/api/v1/notifications/devices":
-    put:
-      tags:
-        - "device-controller"
-      operationId: "register"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/RegisterDeviceRequest"
-        required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/DeviceResponse"
-  "/internal/v1/notifications/app-update":
+  /api/v1/admin/notifications:
     post:
       tags:
-        - "internal-app-update-controller"
-      operationId: "announce"
+        - Admin Notification
+      operationId: send
+      x-access: roles
+      x-roles:
+        - ADMIN
+      x-source: com/lavarapido/notification/infrastructure/adapter/in/web/AdminNotificationController.java:49
       requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/AppUpdateRequest"
         required: true
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                "$ref": "#/components/schemas/AppUpdateResponse"
-  "/api/v1/notifications/read-all":
-    post:
-      tags:
-        - "notification-controller"
-      operationId: "markAllRead"
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "*/*":
-              schema:
-                type: "object"
-                additionalProperties:
-                  type: "integer"
-                  format: "int32"
-  "/api/v1/notifications/devices/unregister":
-    post:
-      tags:
-        - "device-controller"
-      operationId: "unregister"
-      requestBody:
         content:
-          "application/json":
+          application/json:
             schema:
-              "$ref": "#/components/schemas/UnregisterDeviceRequest"
-        required: true
-      responses:
-        "204":
-          description: "No Content"
-  "/api/v1/admin/notifications":
-    post:
-      tags:
-        - "admin-notification-controller"
-      operationId: "send"
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              "$ref": "#/components/schemas/AdminNotificationRequest"
-        required: true
+              $ref: "#/components/schemas/AdminNotificationRequest"
       responses:
         "201":
-          description: "Created"
+          description: Created
           content:
-            "*/*":
+            application/json:
               schema:
-                type: "object"
+                type: object
                 additionalProperties:
-                  type: "integer"
-                  format: "int32"
-  "/api/v1/notifications/{id}/unread":
-    patch:
-      tags:
-        - "notification-controller"
-      operationId: "markUnread"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
+                  type: integer
+                  format: int32
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_MESSAGE`, `INVALID_RECIPIENT`, `INVALID_REFERENCE`, `INVALID_TITLE`, `NOTIFICATION_TYPE_NOT_ALLOWED`, `UNKNOWN_NOTIFICATION_TYPE`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_MESSAGE
+            - INVALID_RECIPIENT
+            - INVALID_REFERENCE
+            - INVALID_TITLE
+            - NOTIFICATION_TYPE_NOT_ALLOWED
+            - UNKNOWN_NOTIFICATION_TYPE
+            - VALIDATION_ERROR
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/NotificationResponse"
-  "/api/v1/notifications/{id}/read":
-    patch:
-      tags:
-        - "notification-controller"
-      operationId: "markRead"
-      parameters:
-        - name: "id"
-          in: "path"
-          required: true
-          schema:
-            type: "integer"
-            format: "int64"
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                "$ref": "#/components/schemas/NotificationResponse"
-  "/api/v1/notifications":
+                $ref: "#/components/schemas/ProblemDetail"
+        "403":
+          description: "Forbidden. `code`: `FORBIDDEN`."
+          x-codes:
+            - FORBIDDEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/notifications:
     get:
       tags:
-        - "notification-controller"
-      operationId: "list"
+        - Notification
+      operationId: list
+      description: "Javadoc: Filtros opcionales: read (true/false), category (REMINDER, PROMOTION...), from/to (aaaa-mm-dd)."
+      x-access: authenticated
+      x-source: com/lavarapido/notification/infrastructure/adapter/in/web/NotificationController.java:49
       parameters:
-        - name: "read"
-          in: "query"
+        - name: read
+          in: query
           required: false
           schema:
-            type: "boolean"
-        - name: "category"
-          in: "query"
+            type: boolean
+        - name: category
+          in: query
           required: false
           schema:
-            type: "string"
-            enum:
-              - "REMINDER"
-              - "PROMOTION"
-              - "CONFIRMATION"
-              - "CANCELLATION"
-              - "MESSAGE"
-              - "SYSTEM"
-        - name: "from"
-          in: "query"
+            $ref: "#/components/schemas/NotificationCategory"
+        - name: from
+          in: query
           required: false
           schema:
-            type: "string"
-            format: "date"
-        - name: "to"
-          in: "query"
+            type: string
+            format: date
+        - name: to
+          in: query
           required: false
           schema:
-            type: "string"
-            format: "date"
-        - name: "page"
-          in: "query"
+            type: string
+            format: date
+        - name: page
+          in: query
           required: false
           schema:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int32
             default: 0
-        - name: "size"
-          in: "query"
+        - name: size
+          in: query
           required: false
           schema:
-            type: "integer"
-            format: "int32"
+            type: integer
+            format: int32
             default: 20
       responses:
         "200":
-          description: "OK"
+          description: OK
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/PageResponseNotificationResponse"
-  "/api/v1/notifications/unread-count":
-    get:
-      tags:
-        - "notification-controller"
-      operationId: "unreadCount"
-      responses:
-        "200":
-          description: "OK"
+                $ref: "#/components/schemas/PageResponseOfNotificationResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_DATE_RANGE`, `INVALID_PAGE`, `INVALID_TOKEN`, `UNKNOWN_NOTIFICATION_TYPE`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_DATE_RANGE
+            - INVALID_PAGE
+            - INVALID_TOKEN
+            - UNKNOWN_NOTIFICATION_TYPE
+            - VALIDATION_ERROR
           content:
-            "*/*":
+            application/problem+json:
               schema:
-                type: "object"
-                additionalProperties:
-                  type: "integer"
-                  format: "int64"
-  "/api/v1/notifications/{id}":
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/notifications/{id}:
     delete:
       tags:
-        - "notification-controller"
-      operationId: "delete"
+        - Notification
+      operationId: delete
+      description: "Javadoc: Borrado lógico (ningún servicio tiene permiso DELETE en la base): responde 204 sin cuerpo."
+      x-access: authenticated
+      x-source: com/lavarapido/notification/infrastructure/adapter/in/web/NotificationController.java:79
       parameters:
-        - name: "id"
-          in: "path"
+        - name: id
+          in: path
           required: true
           schema:
-            type: "integer"
-            format: "int64"
+            type: integer
+            format: int64
       responses:
         "204":
-          description: "No Content"
+          description: No Content
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `UNKNOWN_NOTIFICATION_TYPE`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - UNKNOWN_NOTIFICATION_TYPE
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `NOTIFICATION_NOT_FOUND`."
+          x-codes:
+            - NOTIFICATION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/notifications/{id}/read:
+    patch:
+      tags:
+        - Notification
+      operationId: markRead
+      x-access: authenticated
+      x-source: com/lavarapido/notification/infrastructure/adapter/in/web/NotificationController.java:62
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `UNKNOWN_NOTIFICATION_TYPE`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - UNKNOWN_NOTIFICATION_TYPE
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `NOTIFICATION_NOT_FOUND`."
+          x-codes:
+            - NOTIFICATION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/notifications/{id}/unread:
+    patch:
+      tags:
+        - Notification
+      operationId: markUnread
+      x-access: authenticated
+      x-source: com/lavarapido/notification/infrastructure/adapter/in/web/NotificationController.java:67
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationResponse"
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`, `UNKNOWN_NOTIFICATION_TYPE`, `VALIDATION_ERROR`."
+          x-codes:
+            - INVALID_TOKEN
+            - UNKNOWN_NOTIFICATION_TYPE
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: "Not Found. `code`: `NOTIFICATION_NOT_FOUND`."
+          x-codes:
+            - NOTIFICATION_NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/notifications/devices:
+    put:
+      tags:
+        - Device
+      operationId: register
+      description: "Javadoc: PUT porque es idempotente: registrar el mismo token otra vez no crea otra fila."
+      x-access: authenticated
+      x-source: com/lavarapido/notification/infrastructure/adapter/in/web/DeviceController.java:31
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterDeviceRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DEVICE_TOKEN`, `INVALID_PLATFORM`, `INVALID_RECIPIENT`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_DEVICE_TOKEN
+            - INVALID_PLATFORM
+            - INVALID_RECIPIENT
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/notifications/devices/unregister:
+    post:
+      tags:
+        - Device
+      operationId: unregister
+      description: "Javadoc: POST y no DELETE con cuerpo: el token lleva corchetes y no conviene ponerlo en la URL."
+      x-access: authenticated
+      x-source: com/lavarapido/notification/infrastructure/adapter/in/web/DeviceController.java:39
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnregisterDeviceRequest"
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_DEVICE_TOKEN`, `INVALID_TOKEN`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_DEVICE_TOKEN
+            - INVALID_TOKEN
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/notifications/read-all:
+    post:
+      tags:
+        - Notification
+      operationId: markAllRead
+      x-access: authenticated
+      x-source: com/lavarapido/notification/infrastructure/adapter/in/web/NotificationController.java:72
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                  format: int32
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`."
+          x-codes:
+            - INVALID_TOKEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /api/v1/notifications/unread-count:
+    get:
+      tags:
+        - Notification
+      operationId: unreadCount
+      description: "Javadoc: El número de la campanita."
+      x-access: authenticated
+      x-source: com/lavarapido/notification/infrastructure/adapter/in/web/NotificationController.java:57
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                  format: int64
+        "400":
+          description: "Bad Request. `code`: `INVALID_TOKEN`."
+          x-codes:
+            - INVALID_TOKEN
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+  /internal/v1/notifications/app-update:
+    post:
+      tags:
+        - Internal App Update
+      operationId: announce
+      security:
+        - internalKey: []
+      x-internal: true
+      x-access: internal
+      x-source: com/lavarapido/notification/infrastructure/adapter/in/web/InternalAppUpdateController.java:27
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppUpdateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppUpdateResponse"
+        "400":
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_MESSAGE`, `INVALID_RECIPIENT`, `INVALID_REFERENCE`, `INVALID_TITLE`, `INVALID_VERSION`, `UNKNOWN_NOTIFICATION_TYPE`, `VALIDATION_ERROR`."
+          x-codes:
+            - BAD_REQUEST
+            - INVALID_MESSAGE
+            - INVALID_RECIPIENT
+            - INVALID_REFERENCE
+            - INVALID_TITLE
+            - INVALID_VERSION
+            - UNKNOWN_NOTIFICATION_TYPE
+            - VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: "Unauthorized. `code`: `UNAUTHORIZED`."
+          x-codes:
+            - UNAUTHORIZED
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
 components:
-  schemas:
-    RegisterDeviceRequest:
-      type: "object"
-      properties:
-        token:
-          type: "string"
-          maxLength: 200
-          minLength: 0
-        platform:
-          type: "string"
-          minLength: 1
-      required:
-        - "platform"
-        - "token"
-    DeviceResponse:
-      type: "object"
-      properties:
-        id:
-          type: "integer"
-          format: "int64"
-        platform:
-          type: "string"
-        active:
-          type: "boolean"
-        lastSeenAt:
-          type: "string"
-          format: "date-time"
-    AppUpdateRequest:
-      type: "object"
-      properties:
-        versionCode:
-          type: "integer"
-          format: "int32"
-      required:
-        - "versionCode"
-    AppUpdateResponse:
-      type: "object"
-      properties:
-        versionCode:
-          type: "integer"
-          format: "int32"
-        notified:
-          type: "integer"
-          format: "int32"
-    UnregisterDeviceRequest:
-      type: "object"
-      properties:
-        token:
-          type: "string"
-          maxLength: 200
-          minLength: 0
-      required:
-        - "token"
-    AdminNotificationRequest:
-      type: "object"
-      properties:
-        userIds:
-          type: "array"
-          items:
-            type: "integer"
-            format: "int64"
-          maxItems: 100
-          minItems: 0
-        type:
-          type: "string"
-        title:
-          type: "string"
-          maxLength: 120
-          minLength: 0
-        message:
-          type: "string"
-          maxLength: 500
-          minLength: 0
-      required:
-        - "message"
-        - "title"
-        - "userIds"
-    NotificationResponse:
-      type: "object"
-      properties:
-        id:
-          type: "integer"
-          format: "int64"
-        type:
-          type: "string"
-        category:
-          type: "string"
-        title:
-          type: "string"
-        message:
-          type: "string"
-        referenceEntity:
-          type: "string"
-        referenceId:
-          type: "integer"
-          format: "int64"
-        read:
-          type: "boolean"
-        readAt:
-          type: "string"
-          format: "date-time"
-        sentAt:
-          type: "string"
-          format: "date-time"
-    PageResponseNotificationResponse:
-      type: "object"
-      properties:
-        items:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/NotificationResponse"
-        page:
-          type: "integer"
-          format: "int32"
-        size:
-          type: "integer"
-          format: "int32"
-        totalElements:
-          type: "integer"
-          format: "int64"
-        totalPages:
-          type: "integer"
-          format: "int32"
   securitySchemes:
     bearerAuth:
-      type: "http"
-      scheme: "bearer"
-      bearerFormat: "JWT"
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token from `POST /api/v1/auth/login` (security-service, HS256, claims `sub`, `roles`, `sid`). Every service validates it itself (ADR-006); the gateway forwards it unchanged.
+    internalKey:
+      type: apiKey
+      in: header
+      name: X-Internal-Key
+      description: Shared key between services (`app.internal.api-key` / `INTERNAL_API_KEY`). Only for `/internal/**` (and, in booking-service, `/api/v1/operator/**`). These routes are not published by the API gateway.
+  schemas:
+    ProblemDetail:
+      type: object
+      description: "RFC 7807 problem detail returned by every error (`Content-Type: application/problem+json`). `code` is the stable value the web and the app translate; `detail` is an English message for logs."
+      required:
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          example: about:blank
+        title:
+          type: string
+          example: Conflict
+        status:
+          type: integer
+          example: 409
+        detail:
+          type: string
+          example: The data conflicts with an existing record
+        instance:
+          type: string
+          example: /api/v1/bookings
+        code:
+          type: string
+          description: Error code (catalogue in `info.description` and `x-error-codes`)
+          example: CONFLICT
+        errors:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Only with `VALIDATION_ERROR`: invalid field → message"
+      additionalProperties: true
+    AdminNotificationRequest:
+      type: object
+      properties:
+        userIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+          minItems: 1
+          maxItems: 100
+        type:
+          type: string
+        title:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 120
+        message:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 500
+      required:
+        - userIds
+        - title
+        - message
+      description: "Mensaje que el administrador envía a uno o varios usuarios (los user_id salen de la lista de usuarios del security-service). type es opcional: por defecto SYSTEM_MESSAGE."
+      x-java: com/lavarapido/notification/infrastructure/adapter/in/web/dto/AdminNotificationRequest.java:14
+    AppUpdateRequest:
+      type: object
+      properties:
+        versionCode:
+          type: integer
+          format: int32
+          minimum: 0
+          exclusiveMinimum: true
+      required:
+        - versionCode
+      x-java: com/lavarapido/notification/infrastructure/adapter/in/web/InternalAppUpdateController.java:31
+    AppUpdateResponse:
+      type: object
+      properties:
+        versionCode:
+          type: integer
+          format: int32
+        notified:
+          type: integer
+          format: int32
+      description: "notified: a cuántos usuarios se les avisó (0 si esa versión ya se había anunciado)."
+      x-java: com/lavarapido/notification/infrastructure/adapter/in/web/InternalAppUpdateController.java:36
+    DeviceResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        platform:
+          type: string
+        active:
+          type: boolean
+        lastSeenAt:
+          type: string
+          format: date-time
+      description: "El token no se devuelve completo: basta con saber que quedó registrado."
+      x-java: com/lavarapido/notification/infrastructure/adapter/in/web/dto/DeviceRequests.java:27
+    NotificationCategory:
+      type: string
+      enum:
+        - REMINDER
+        - PROMOTION
+        - CONFIRMATION
+        - CANCELLATION
+        - MESSAGE
+        - SYSTEM
+    NotificationResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        type:
+          type: string
+        category:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        referenceEntity:
+          type: string
+        referenceId:
+          type: integer
+          format: int64
+        read:
+          type: boolean
+        readAt:
+          type: string
+          format: date-time
+        sentAt:
+          type: string
+          format: date-time
+      description: Notificación como la recibe el frontend. type es el code estable (para traducir); category es la pestaña donde se muestra; reference* permite abrir la pantalla de la reserva o el pago.
+      x-java: com/lavarapido/notification/infrastructure/adapter/in/web/dto/NotificationResponse.java:11
+    PageResponseOfNotificationResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+      description: Misma forma de página que usa el security-service (items, page, size, totalElements, totalPages).
+      x-java: com/lavarapido/notification/infrastructure/adapter/in/web/dto/PageResponse.java:8
+    RegisterDeviceRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 200
+        platform:
+          type: string
+          minLength: 1
+          x-not-blank: true
+      required:
+        - token
+        - platform
+      description: "Lo manda la app al iniciar sesión: el token de Expo y si es Android o iOS."
+      x-java: com/lavarapido/notification/infrastructure/adapter/in/web/dto/DeviceRequests.java:16
+    UnregisterDeviceRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+          x-not-blank: true
+          maxLength: 200
+      required:
+        - token
+      description: Lo manda la app al cerrar sesión, para dejar de recibir push en ese celular.
+      x-java: com/lavarapido/notification/infrastructure/adapter/in/web/dto/DeviceRequests.java:22
+x-error-codes:
+  BAD_REQUEST: 400
+  CONFLICT: 409
+  FORBIDDEN: 403
+  INTERNAL_ERROR: 500
+  INVALID_DATE_RANGE: 400
+  INVALID_DEVICE_TOKEN: 400
+  INVALID_MESSAGE: 400
+  INVALID_PAGE: 400
+  INVALID_PLATFORM: 400
+  INVALID_RECIPIENT: 400
+  INVALID_REFERENCE: 400
+  INVALID_REMINDER: 400
+  INVALID_TITLE: 400
+  INVALID_TOKEN: 400
+  INVALID_VERSION: 400
+  METHOD_NOT_ALLOWED: 405
+  NOTIFICATION_NOT_FOUND: 404
+  NOTIFICATION_TYPE_NOT_ALLOWED: 400
+  NOT_FOUND: 404
+  UNAUTHORIZED: 401
+  UNKNOWN_NOTIFICATION_TYPE: 400
+  VALIDATION_ERROR: 400

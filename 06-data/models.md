@@ -1,6 +1,6 @@
 # Data Models per Service
 
-**Last updated:** 2026-10-20 (rules checked against the code) — 2026-10-15: ADR-010 (bay status, daily break, vehicle model, customer user id, business data, address, operator specialty), ADR-011 (device tokens, processed events, booking reminders), the login lockout (RF-004b), the account registration date and the vehicle inspection report, as applied by the services' migrations.
+**Last updated:** 2026-10-23 — every `CREATE TABLE` block below is the final state after all the Liquibase changesets on `origin/develop` (up to 043 in the Java services and 021 in payment-service), and was checked against them by script (`migration-strategy.md`, "How the docs are checked"). Later columns carry a `-- migration NNN` comment. Earlier: 2026-10-15 ADR-010 and ADR-011 changes, login lockout, registration date, inspection report.
 
 The system is split into **six microservices over nine schemas**, all inside a single SQL
 Server 2016+ instance. Every schema has exactly one owning service; a service may own more
@@ -54,12 +54,12 @@ below.
 
 ```sql
 CREATE TABLE [security].person (
-    person_id       BIGINT       IDENTITY(1,1) NOT NULL,
-    document_number NVARCHAR(20) NOT NULL,
-    first_name      NVARCHAR(60) NOT NULL,
-    last_name       NVARCHAR(60) NOT NULL,
-    phone           NVARCHAR(20)  NULL,
-    email           NVARCHAR(120) NULL,
+    person_id         BIGINT        IDENTITY(1,1) NOT NULL,
+    document_number   NVARCHAR(20)  NOT NULL,
+    first_name        NVARCHAR(60)  NOT NULL,
+    last_name         NVARCHAR(60)  NOT NULL,
+    phone             NVARCHAR(20)  NULL,
+    email             NVARCHAR(120) NULL,
     CONSTRAINT pk_person PRIMARY KEY (person_id),
     CONSTRAINT uq_person_document UNIQUE (document_number)
 );
@@ -88,15 +88,15 @@ CREATE TABLE [security].person (
 
 ```sql
 CREATE TABLE [security].app_user (
-    user_id       BIGINT        IDENTITY(1,1) NOT NULL,
-    person_id     BIGINT        NOT NULL,
-    username      NVARCHAR(60)  NOT NULL,
-    password_hash NVARCHAR(255) NOT NULL,
-    is_active     BIT           NOT NULL CONSTRAINT df_app_user_active DEFAULT 1,
-    last_login    DATETIME2(3)  NULL,
-    created_at    DATETIME2(3)  NOT NULL DEFAULT SYSUTCDATETIME(),   -- migration 036
-    terms_accepted_at       DATETIME2(3) NULL,                       -- migration 039
-    data_policy_accepted_at DATETIME2(3) NULL,                       -- migration 039
+    user_id                   BIGINT        IDENTITY(1,1) NOT NULL,
+    person_id                 BIGINT        NOT NULL,
+    username                  NVARCHAR(60)  NOT NULL,
+    password_hash             NVARCHAR(255) NOT NULL,
+    is_active                 BIT           NOT NULL CONSTRAINT df_app_user_active DEFAULT 1,
+    last_login                DATETIME2(3)  NULL,
+    created_at                DATETIME2(3)  NOT NULL CONSTRAINT df_app_user_created_at DEFAULT SYSUTCDATETIME(),   -- migration 036
+    terms_accepted_at         DATETIME2(3)  NULL,   -- migration 039
+    data_policy_accepted_at   DATETIME2(3)  NULL,   -- migration 039
     CONSTRAINT pk_app_user PRIMARY KEY (user_id),
     CONSTRAINT uq_app_user_person UNIQUE (person_id),
     CONSTRAINT uq_app_user_username UNIQUE (username),
@@ -132,9 +132,9 @@ CREATE TABLE [security].app_user (
 
 ```sql
 CREATE TABLE [security].[role] (
-    role_id SMALLINT     IDENTITY(1,1) NOT NULL,
-    code    NVARCHAR(30) NOT NULL,
-    name    NVARCHAR(60) NOT NULL,
+    role_id   SMALLINT     IDENTITY(1,1) NOT NULL,
+    code      NVARCHAR(30) NOT NULL,
+    name      NVARCHAR(60) NOT NULL,
     CONSTRAINT pk_role PRIMARY KEY (role_id),
     CONSTRAINT uq_role_code UNIQUE (code)
 );
@@ -156,11 +156,11 @@ CREATE TABLE [security].[role] (
 
 ```sql
 CREATE TABLE [security].[permission] (
-    permission_id SMALLINT     IDENTITY(1,1) NOT NULL,
-    code          NVARCHAR(60) NOT NULL,
-    name          NVARCHAR(80) NOT NULL,
-    resource      NVARCHAR(60) NOT NULL,
-    [action]      NVARCHAR(30) NOT NULL,
+    permission_id   SMALLINT     IDENTITY(1,1) NOT NULL,
+    code            NVARCHAR(60) NOT NULL,
+    name            NVARCHAR(80) NOT NULL,
+    resource        NVARCHAR(60) NOT NULL,
+    [action]        NVARCHAR(30) NOT NULL,
     CONSTRAINT pk_permission PRIMARY KEY (permission_id),
     CONSTRAINT uq_permission_code UNIQUE (code)
 );
@@ -184,13 +184,13 @@ CREATE TABLE [security].[permission] (
 
 ```sql
 CREATE TABLE [security].role_permission (
-    role_permission_id BIGINT   IDENTITY(1,1) NOT NULL,
-    role_id            SMALLINT NOT NULL,
-    permission_id      SMALLINT NOT NULL,
+    role_permission_id   BIGINT   IDENTITY(1,1) NOT NULL,
+    role_id              SMALLINT NOT NULL,
+    permission_id        SMALLINT NOT NULL,
     CONSTRAINT pk_role_permission PRIMARY KEY (role_permission_id),
     CONSTRAINT uq_role_permission UNIQUE (role_id, permission_id),
-    CONSTRAINT fk_role_permission_role FOREIGN KEY (role_id) REFERENCES [security].[role](role_id),
-    CONSTRAINT fk_role_permission_permission FOREIGN KEY (permission_id) REFERENCES [security].[permission](permission_id)
+    CONSTRAINT fk_role_permission_role FOREIGN KEY (role_id) REFERENCES [security].role(role_id),
+    CONSTRAINT fk_role_permission_permission FOREIGN KEY (permission_id) REFERENCES [security].permission(permission_id)
 );
 ```
 
@@ -215,13 +215,13 @@ CREATE TABLE [security].role_permission (
 
 ```sql
 CREATE TABLE [security].user_role (
-    user_role_id BIGINT   IDENTITY(1,1) NOT NULL,
-    user_id      BIGINT   NOT NULL,
-    role_id      SMALLINT NOT NULL,
+    user_role_id   BIGINT   IDENTITY(1,1) NOT NULL,
+    user_id        BIGINT   NOT NULL,
+    role_id        SMALLINT NOT NULL,
     CONSTRAINT pk_user_role PRIMARY KEY (user_role_id),
     CONSTRAINT uq_user_role UNIQUE (user_id, role_id),
     CONSTRAINT fk_user_role_user FOREIGN KEY (user_id) REFERENCES [security].app_user(user_id),
-    CONSTRAINT fk_user_role_role FOREIGN KEY (role_id) REFERENCES [security].[role](role_id)
+    CONSTRAINT fk_user_role_role FOREIGN KEY (role_id) REFERENCES [security].role(role_id)
 );
 ```
 
@@ -245,17 +245,18 @@ CREATE TABLE [security].user_role (
 
 ```sql
 CREATE TABLE [security].user_session (
-    user_session_id    BIGINT        IDENTITY(1,1) NOT NULL,
-    user_id            BIGINT        NOT NULL,
-    refresh_token_hash NVARCHAR(255) NULL,
-    started_at         DATETIME2(3)  NOT NULL CONSTRAINT df_session_started DEFAULT SYSUTCDATETIME(),
-    expires_at         DATETIME2(3)  NOT NULL,
-    revoked_at         DATETIME2(3)  NULL,
-    ip_address         NVARCHAR(45)  NULL,
-    user_agent         NVARCHAR(300) NULL,
+    user_session_id      BIGINT        IDENTITY(1,1) NOT NULL,
+    user_id              BIGINT        NOT NULL,
+    refresh_token_hash   NVARCHAR(255) NULL,
+    started_at           DATETIME2(3)  NOT NULL CONSTRAINT df_session_started DEFAULT SYSUTCDATETIME(),
+    expires_at           DATETIME2(3)  NOT NULL,
+    revoked_at           DATETIME2(3)  NULL,
+    ip_address           NVARCHAR(45)  NULL,
+    user_agent           NVARCHAR(300) NULL,
     CONSTRAINT pk_user_session PRIMARY KEY (user_session_id),
     CONSTRAINT fk_user_session_user FOREIGN KEY (user_id) REFERENCES [security].app_user(user_id)
 );
+CREATE NONCLUSTERED INDEX ix_user_session_user ON [security].user_session (user_id);
 ```
 
 **Indexes:**
@@ -289,18 +290,20 @@ CREATE TABLE [security].user_session (
 
 ```sql
 CREATE TABLE [security].password_reset_token (
-    password_reset_token_id BIGINT        IDENTITY(1,1) NOT NULL,
-    user_id                 BIGINT        NOT NULL,
-    token_hash              NVARCHAR(255) NOT NULL,
-    requested_at            DATETIME2(3)  NOT NULL CONSTRAINT df_prt_requested DEFAULT SYSUTCDATETIME(),
-    expires_at              DATETIME2(3)  NOT NULL,
-    used_at                 DATETIME2(3)  NULL,
-    ip_address              NVARCHAR(45)  NULL,
+    password_reset_token_id   BIGINT        IDENTITY(1,1) NOT NULL,
+    user_id                   BIGINT        NOT NULL,
+    token_hash                NVARCHAR(255) NOT NULL,
+    requested_at              DATETIME2(3)  NOT NULL CONSTRAINT df_prt_requested DEFAULT SYSUTCDATETIME(),
+    expires_at                DATETIME2(3)  NOT NULL,
+    used_at                   DATETIME2(3)  NULL,
+    ip_address                NVARCHAR(45)  NULL,
     CONSTRAINT pk_password_reset_token PRIMARY KEY (password_reset_token_id),
     CONSTRAINT uq_password_reset_token_hash UNIQUE (token_hash),
     CONSTRAINT fk_password_reset_token_user FOREIGN KEY (user_id) REFERENCES [security].app_user(user_id),
     CONSTRAINT ck_password_reset_token_range CHECK (expires_at > requested_at)
 );
+CREATE NONCLUSTERED INDEX ix_password_reset_token_user ON [security].password_reset_token (user_id);
+CREATE NONCLUSTERED INDEX ix_password_reset_token_expires ON [security].password_reset_token (expires_at);
 ```
 
 **Indexes:**
@@ -337,26 +340,27 @@ internal contact endpoint and applies them when sending (ADR-011 §12).
 
 ```sql
 CREATE TABLE [security].user_preference (
-    user_preference_id    BIGINT       IDENTITY(1,1) NOT NULL,
-    user_id               BIGINT       NOT NULL,   -- same schema since ADR-009: real FK
-    theme                 NVARCHAR(20) NOT NULL CONSTRAINT df_pref_theme DEFAULT N'green-light',
-    [language]            NVARCHAR(5)  NOT NULL CONSTRAINT df_pref_lang DEFAULT N'es',
-    notifications_enabled BIT          NOT NULL CONSTRAINT df_pref_notif DEFAULT 1,
-    email_reminders_enabled BIT        NOT NULL CONSTRAINT df_pref_email_reminders DEFAULT 1,  -- migration 030
-    promotions_enabled    BIT          NOT NULL CONSTRAINT df_pref_promotions DEFAULT 1,       -- migration 030
-    created_at            DATETIME2(3) NOT NULL CONSTRAINT df_pref_created DEFAULT SYSUTCDATETIME(),
-    created_by            BIGINT       NULL,
-    updated_at            DATETIME2(3) NULL,
-    updated_by            BIGINT       NULL,
-    deleted_at            DATETIME2(3) NULL,
-    deleted_by            BIGINT       NULL,
-    row_version           INT          NOT NULL CONSTRAINT df_pref_rv DEFAULT 1,
+    user_preference_id        BIGINT       IDENTITY(1,1) NOT NULL,
+    user_id                   BIGINT       NOT NULL,   -- same schema since ADR-009: real FK
+    theme                     NVARCHAR(20) NOT NULL CONSTRAINT df_pref_theme DEFAULT N'green-light',
+    [language]                NVARCHAR(5)  NOT NULL CONSTRAINT df_pref_lang DEFAULT N'es',
+    notifications_enabled     BIT          NOT NULL CONSTRAINT df_pref_notif DEFAULT 1,
+    created_at                DATETIME2(3) NOT NULL CONSTRAINT df_pref_created DEFAULT SYSUTCDATETIME(),
+    created_by                BIGINT       NULL,
+    updated_at                DATETIME2(3) NULL,
+    updated_by                BIGINT       NULL,
+    deleted_at                DATETIME2(3) NULL,
+    deleted_by                BIGINT       NULL,
+    row_version               INT          NOT NULL CONSTRAINT df_pref_rv DEFAULT 1,
+    email_reminders_enabled   BIT          NOT NULL CONSTRAINT df_pref_email_reminders DEFAULT 1,   -- migration 030
+    promotions_enabled        BIT          NOT NULL CONSTRAINT df_pref_promotions DEFAULT 1,   -- migration 030
     CONSTRAINT pk_user_preference PRIMARY KEY (user_preference_id),
     CONSTRAINT uq_user_preference_user UNIQUE (user_id),
     CONSTRAINT fk_user_preference_user FOREIGN KEY (user_id) REFERENCES [security].app_user(user_id),
-    CONSTRAINT ck_pref_theme CHECK (theme IN (N'green-light', N'green-dark', N'pink', N'pink-dark')),  -- migration 020
-    CONSTRAINT ck_pref_language CHECK ([language] IN (N'es', N'en', N'fr', N'pt'))
+    CONSTRAINT ck_pref_language CHECK ([language] IN (N'es', N'en', N'fr', N'pt')),
+    CONSTRAINT ck_pref_theme CHECK (theme IN (N'green-light', N'green-dark', N'pink', N'pink-dark'))
 );
+-- trigger tr_touch_user_preference (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Data dictionary:**
@@ -386,11 +390,11 @@ CREATE TABLE [security].user_preference (
 
 ```sql
 CREATE TABLE [security].login_lockout (
-    user_id         BIGINT       NOT NULL,
-    failed_count    INT          NOT NULL DEFAULT 0,
-    first_failed_at DATETIME2(3) NULL,
-    locked_until    DATETIME2(3) NULL,
-    updated_at      DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+    user_id           BIGINT       NOT NULL,
+    failed_count      INT          NOT NULL CONSTRAINT df_login_lockout_count DEFAULT 0,
+    first_failed_at   DATETIME2(3) NULL,
+    locked_until      DATETIME2(3) NULL,
+    updated_at        DATETIME2(3) NOT NULL CONSTRAINT df_login_lockout_updated DEFAULT SYSUTCDATETIME(),
     CONSTRAINT pk_login_lockout PRIMARY KEY (user_id),
     CONSTRAINT fk_login_lockout_user FOREIGN KEY (user_id) REFERENCES [security].app_user(user_id),
     CONSTRAINT ck_login_lockout_count CHECK (failed_count >= 0 AND failed_count < 5)
@@ -419,9 +423,9 @@ CREATE TABLE [security].login_lockout (
 
 ```sql
 CREATE TABLE [security].person_address (
-    person_id  BIGINT        NOT NULL,
-    address    NVARCHAR(200) NOT NULL,
-    updated_at DATETIME2(3)  NOT NULL DEFAULT SYSUTCDATETIME(),
+    person_id    BIGINT        NOT NULL,
+    [address]    NVARCHAR(200) NOT NULL,
+    updated_at   DATETIME2(3)  NOT NULL CONSTRAINT df_person_address_updated DEFAULT SYSUTCDATETIME(),
     CONSTRAINT pk_person_address PRIMARY KEY (person_id),
     CONSTRAINT fk_person_address_person FOREIGN KEY (person_id) REFERENCES [security].person(person_id),
     CONSTRAINT ck_person_address_not_blank CHECK (LEN(LTRIM(RTRIM(address))) > 0)
@@ -445,7 +449,7 @@ CREATE TABLE [security].person_address (
 
 ## 02. audit
 
-**Owning service:** `security-service` (planned to be written by database triggers; as of 2026-10-20 no trigger or service writes to it, so the table is empty)
+**Owning service:** `security-service` (planned to be written by database triggers; as of 2026-10-23 no trigger or service writes to it, so the table is empty)
 
 **DB Engine:** SQL Server 2016+
 
@@ -460,16 +464,18 @@ CREATE TABLE [security].person_address (
 
 ```sql
 CREATE TABLE [audit].audit_log (
-    audit_log_id  BIGINT         IDENTITY(1,1) NOT NULL,
-    entity        NVARCHAR(60)   NOT NULL,
-    entity_id     BIGINT         NOT NULL,
-    [action]      NVARCHAR(20)   NOT NULL,
-    previous_data NVARCHAR(MAX)  NULL,
-    new_data      NVARCHAR(MAX)  NULL,
-    changed_by    BIGINT         NULL,
-    changed_at    DATETIME2(3)   NOT NULL CONSTRAINT df_audit_log_changed_at DEFAULT SYSUTCDATETIME(),
+    audit_log_id    BIGINT        IDENTITY(1,1) NOT NULL,
+    entity          NVARCHAR(60)  NOT NULL,
+    entity_id       BIGINT        NOT NULL,
+    [action]        NVARCHAR(20)  NOT NULL,
+    previous_data   NVARCHAR(MAX) NULL,
+    new_data        NVARCHAR(MAX) NULL,
+    changed_by      BIGINT        NULL,
+    changed_at      DATETIME2(3)  NOT NULL CONSTRAINT df_audit_log_changed_at DEFAULT SYSUTCDATETIME(),
     CONSTRAINT pk_audit_log PRIMARY KEY (audit_log_id)
 );
+CREATE NONCLUSTERED INDEX ix_audit_log_entity ON [audit].audit_log (entity, entity_id);
+CREATE NONCLUSTERED INDEX ix_audit_log_date ON [audit].audit_log (changed_at);
 ```
 
 **Indexes:**
@@ -496,7 +502,7 @@ CREATE TABLE [audit].audit_log (
 
 1. One generic table instead of `booking_history`, `payment_history`, etc.: canceling a booking, approving a payment, and updating a price are all the same kind of event — *something changed* — so every history query starts from the same place.
 2. `previous_data`/`new_data` are `NVARCHAR(MAX)` JSON, not typed columns, because every entity has a different shape and one fixed schema can't fit all of them.
-3. **Status (2026-10-20):** the audit triggers and the `sp_set_session_context` call that would fill `changed_by` were never built (`05-architecture/cross-cutting.md` §1). Who changed a row and when is kept today by the audit block of each table.
+3. **Status (2026-10-23):** the audit triggers and the `sp_set_session_context` call that would fill `changed_by` were never built (`05-architecture/cross-cutting.md` §1). Who changed a row and when is kept today by the audit block of each table.
 
 ---
 
@@ -516,24 +522,24 @@ CREATE TABLE [audit].audit_log (
 
 ```sql
 CREATE TABLE [customer].vehicle_type (
-    vehicle_type_id SMALLINT     IDENTITY(1,1) NOT NULL,
-    code            NVARCHAR(30) NOT NULL,
-    name            NVARCHAR(60) NOT NULL,
-    size_factor     DECIMAL(4,2) NOT NULL,
-    display_order   SMALLINT     NOT NULL CONSTRAINT df_vtype_order DEFAULT 0,
-    is_active       BIT          NOT NULL CONSTRAINT df_vtype_active DEFAULT 1,
-    created_at      DATETIME2(3) NOT NULL CONSTRAINT df_vtype_created DEFAULT SYSUTCDATETIME(),
-    created_by      BIGINT       NULL,
-    updated_at      DATETIME2(3) NULL,
-    updated_by      BIGINT       NULL,
-    deleted_at      DATETIME2(3) NULL,
-    deleted_by      BIGINT       NULL,
-    row_version     INT          NOT NULL CONSTRAINT df_vtype_rv DEFAULT 1,
+    vehicle_type_id   SMALLINT     IDENTITY(1,1) NOT NULL,
+    code              NVARCHAR(30) NOT NULL,
+    name              NVARCHAR(60) NOT NULL,
+    size_factor       DECIMAL(4,2) NOT NULL,
+    display_order     SMALLINT     NOT NULL CONSTRAINT df_vtype_order DEFAULT 0,
+    is_active         BIT          NOT NULL CONSTRAINT df_vtype_active DEFAULT 1,
+    created_at        DATETIME2(3) NOT NULL CONSTRAINT df_vtype_created DEFAULT SYSUTCDATETIME(),
+    created_by        BIGINT       NULL,
+    updated_at        DATETIME2(3) NULL,
+    updated_by        BIGINT       NULL,
+    deleted_at        DATETIME2(3) NULL,
+    deleted_by        BIGINT       NULL,
+    row_version       INT          NOT NULL CONSTRAINT df_vtype_rv DEFAULT 1,
     CONSTRAINT pk_vehicle_type PRIMARY KEY (vehicle_type_id),
     CONSTRAINT uq_vehicle_type_code UNIQUE (code),
-    -- added (not in 06-data)
     CONSTRAINT ck_vehicle_type_size_factor CHECK (size_factor > 0)
 );
+-- trigger tr_touch_vehicle_type (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Data dictionary:**
@@ -561,22 +567,24 @@ CREATE TABLE [customer].vehicle_type (
 
 ```sql
 CREATE TABLE [customer].[customer] (
-    customer_id    BIGINT       IDENTITY(1,1) NOT NULL,
-    person_id      BIGINT       NOT NULL,   -- [security].person
-    user_id        BIGINT       NULL,       -- [security].app_user = JWT subject (changeset 014)
-    loyalty_points INT          NOT NULL CONSTRAINT df_customer_points DEFAULT 0,   -- display copy, truth = [payment].loyalty_transaction (ADR-009)
-    customer_since DATE         NOT NULL CONSTRAINT df_customer_since DEFAULT CAST(SYSUTCDATETIME() AS DATE),
-    created_at     DATETIME2(3) NOT NULL CONSTRAINT df_customer_created DEFAULT SYSUTCDATETIME(),
-    created_by     BIGINT       NULL,
-    updated_at     DATETIME2(3) NULL,
-    updated_by     BIGINT       NULL,
-    deleted_at     DATETIME2(3) NULL,
-    deleted_by     BIGINT       NULL,
-    row_version    INT          NOT NULL CONSTRAINT df_customer_rv DEFAULT 1,
+    customer_id      BIGINT       IDENTITY(1,1) NOT NULL,
+    person_id        BIGINT       NOT NULL,   -- [security].person
+    loyalty_points   INT          NOT NULL CONSTRAINT df_customer_points DEFAULT 0,   -- display copy, truth = [payment].loyalty_transaction (ADR-009)
+    customer_since   DATE         NOT NULL CONSTRAINT df_customer_since DEFAULT CAST(SYSUTCDATETIME() AS DATE),
+    created_at       DATETIME2(3) NOT NULL CONSTRAINT df_customer_created DEFAULT SYSUTCDATETIME(),
+    created_by       BIGINT       NULL,
+    updated_at       DATETIME2(3) NULL,
+    updated_by       BIGINT       NULL,
+    deleted_at       DATETIME2(3) NULL,
+    deleted_by       BIGINT       NULL,
+    row_version      INT          NOT NULL CONSTRAINT df_customer_rv DEFAULT 1,
+    user_id          BIGINT       NULL,   -- [security].app_user = JWT subject (changeset 014); migration 014
     CONSTRAINT pk_customer PRIMARY KEY (customer_id),
     CONSTRAINT uq_customer_person UNIQUE (person_id),
     CONSTRAINT ck_customer_points CHECK (loyalty_points >= 0)
 );
+CREATE UNIQUE NONCLUSTERED INDEX ux_customer_user ON [customer].customer (user_id) WHERE user_id IS NOT NULL AND deleted_at IS NULL;   -- migration 014
+-- trigger tr_touch_customer (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Indexes:**
@@ -611,24 +619,27 @@ CREATE TABLE [customer].[customer] (
 
 ```sql
 CREATE TABLE [customer].customer_vehicle (
-    customer_vehicle_id BIGINT       IDENTITY(1,1) NOT NULL,
-    customer_id         BIGINT       NOT NULL,
-    license_plate       NVARCHAR(10) NOT NULL,
-    vehicle_type_id     SMALLINT     NOT NULL,
-    brand               NVARCHAR(50) NULL,
-    model               NVARCHAR(50) NULL,   -- ADR-010 (changeset 015)
-    color               NVARCHAR(30) NULL,
-    created_at          DATETIME2(3) NOT NULL CONSTRAINT df_cveh_created DEFAULT SYSUTCDATETIME(),
-    created_by          BIGINT       NULL,
-    updated_at          DATETIME2(3) NULL,
-    updated_by          BIGINT       NULL,
-    deleted_at          DATETIME2(3) NULL,
-    deleted_by          BIGINT       NULL,
-    row_version         INT          NOT NULL CONSTRAINT df_cveh_rv DEFAULT 1,
+    customer_vehicle_id   BIGINT       IDENTITY(1,1) NOT NULL,
+    customer_id           BIGINT       NOT NULL,
+    license_plate         NVARCHAR(10) NOT NULL,
+    vehicle_type_id       SMALLINT     NOT NULL,
+    brand                 NVARCHAR(50) NULL,
+    color                 NVARCHAR(30) NULL,
+    created_at            DATETIME2(3) NOT NULL CONSTRAINT df_cveh_created DEFAULT SYSUTCDATETIME(),
+    created_by            BIGINT       NULL,
+    updated_at            DATETIME2(3) NULL,
+    updated_by            BIGINT       NULL,
+    deleted_at            DATETIME2(3) NULL,
+    deleted_by            BIGINT       NULL,
+    row_version           INT          NOT NULL CONSTRAINT df_cveh_rv DEFAULT 1,
+    model                 NVARCHAR(50) NULL,   -- ADR-010 (changeset 015); migration 015
     CONSTRAINT pk_customer_vehicle PRIMARY KEY (customer_vehicle_id),
-    CONSTRAINT fk_customer_vehicle_customer FOREIGN KEY (customer_id) REFERENCES [customer].[customer](customer_id),
+    CONSTRAINT fk_customer_vehicle_customer FOREIGN KEY (customer_id) REFERENCES [customer].customer(customer_id),
     CONSTRAINT fk_customer_vehicle_type FOREIGN KEY (vehicle_type_id) REFERENCES [customer].vehicle_type(vehicle_type_id)
 );
+CREATE UNIQUE NONCLUSTERED INDEX ux_customer_vehicle_plate_active ON [customer].customer_vehicle (license_plate) WHERE deleted_at IS NULL;
+CREATE NONCLUSTERED INDEX ix_customer_vehicle_customer ON [customer].customer_vehicle (customer_id);
+-- trigger tr_touch_customer_vehicle (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Indexes:**
@@ -674,19 +685,19 @@ CREATE TABLE [customer].customer_vehicle (
 
 ```sql
 CREATE TABLE [catalog].service_category (
-    service_category_id SMALLINT      IDENTITY(1,1) NOT NULL,
-    code          NVARCHAR(30)  NOT NULL,
-    name          NVARCHAR(60)  NOT NULL,
-    [description] NVARCHAR(200) NULL,
-    display_order SMALLINT      NOT NULL CONSTRAINT df_scat_order DEFAULT 0,
-    is_active     BIT           NOT NULL CONSTRAINT df_scat_active DEFAULT 1,
-    created_at    DATETIME2(3)  NOT NULL CONSTRAINT df_scat_created DEFAULT SYSUTCDATETIME(),
-    created_by    BIGINT        NULL,
-    updated_at    DATETIME2(3)  NULL,
-    updated_by    BIGINT        NULL,
-    deleted_at    DATETIME2(3)  NULL,
-    deleted_by    BIGINT        NULL,
-    row_version   INT           NOT NULL CONSTRAINT df_scat_rv DEFAULT 1,
+    service_category_id   SMALLINT      IDENTITY(1,1) NOT NULL,
+    code                  NVARCHAR(30)  NOT NULL,
+    name                  NVARCHAR(60)  NOT NULL,
+    [description]         NVARCHAR(200) NULL,
+    display_order         SMALLINT      NOT NULL CONSTRAINT df_scat_order DEFAULT 0,
+    is_active             BIT           NOT NULL CONSTRAINT df_scat_active DEFAULT 1,
+    created_at            DATETIME2(3)  NOT NULL CONSTRAINT df_scat_created DEFAULT SYSUTCDATETIME(),
+    created_by            BIGINT        NULL,
+    updated_at            DATETIME2(3)  NULL,
+    updated_by            BIGINT        NULL,
+    deleted_at            DATETIME2(3)  NULL,
+    deleted_by            BIGINT        NULL,
+    row_version           INT           NOT NULL CONSTRAINT df_scat_rv DEFAULT 1,
     CONSTRAINT pk_service_category PRIMARY KEY (service_category_id),
     CONSTRAINT uq_service_category_code UNIQUE (code)
 );
@@ -712,24 +723,25 @@ CREATE TABLE [catalog].service_category (
 
 ```sql
 CREATE TABLE [catalog].[service] (
-    service_id          INT            IDENTITY(1,1) NOT NULL,
-    code                NVARCHAR(30)   NOT NULL,
-    name                NVARCHAR(100)  NOT NULL,
-    [description]       NVARCHAR(MAX)  NULL,
-    service_category_id SMALLINT       NOT NULL,
-    is_active           BIT            NOT NULL CONSTRAINT df_service_active DEFAULT 1,
-    loyalty_points      INT            NOT NULL CONSTRAINT df_service_loyalty_points DEFAULT 0,   -- ADR-015, changeset 022
-    created_at          DATETIME2(3)   NOT NULL CONSTRAINT df_service_created DEFAULT SYSUTCDATETIME(),
-    created_by          BIGINT         NULL,
-    updated_at          DATETIME2(3)   NULL,
-    updated_by          BIGINT         NULL,
-    deleted_at          DATETIME2(3)   NULL,
-    deleted_by          BIGINT         NULL,
-    row_version         INT            NOT NULL CONSTRAINT df_service_rv DEFAULT 1,
+    service_id            INT           IDENTITY(1,1) NOT NULL,
+    code                  NVARCHAR(30)  NOT NULL,
+    name                  NVARCHAR(100) NOT NULL,
+    [description]         NVARCHAR(MAX) NULL,
+    service_category_id   SMALLINT      NOT NULL,
+    is_active             BIT           NOT NULL CONSTRAINT df_service_active DEFAULT 1,
+    created_at            DATETIME2(3)  NOT NULL CONSTRAINT df_service_created DEFAULT SYSUTCDATETIME(),
+    created_by            BIGINT        NULL,
+    updated_at            DATETIME2(3)  NULL,
+    updated_by            BIGINT        NULL,
+    deleted_at            DATETIME2(3)  NULL,
+    deleted_by            BIGINT        NULL,
+    row_version           INT           NOT NULL CONSTRAINT df_service_rv DEFAULT 1,
+    loyalty_points        INT           NOT NULL CONSTRAINT df_service_loyalty_points DEFAULT 0,   -- ADR-015, changeset 022; migration 022
     CONSTRAINT pk_service PRIMARY KEY (service_id),
     CONSTRAINT uq_service_code UNIQUE (code),
     CONSTRAINT fk_service_category FOREIGN KEY (service_category_id) REFERENCES [catalog].service_category(service_category_id)
 );
+-- trigger tr_touch_service (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Data dictionary:**
@@ -758,26 +770,30 @@ CREATE TABLE [catalog].[service] (
 
 ```sql
 CREATE TABLE [catalog].service_price (
-    service_price_id  BIGINT        IDENTITY(1,1) NOT NULL,
-    service_id        INT           NOT NULL,
-    vehicle_type_id   SMALLINT      NOT NULL,   -- [customer].vehicle_type
-    price             DECIMAL(12,2) NOT NULL,
-    estimated_minutes SMALLINT      NOT NULL,
-    valid_from        DATE          NOT NULL,
-    valid_to          DATE          NULL,
-    created_at        DATETIME2(3)  NOT NULL CONSTRAINT df_sprice_created DEFAULT SYSUTCDATETIME(),
-    created_by        BIGINT        NULL,
-    updated_at        DATETIME2(3)  NULL,
-    updated_by        BIGINT        NULL,
-    deleted_at        DATETIME2(3)  NULL,
-    deleted_by        BIGINT        NULL,
-    row_version       INT           NOT NULL CONSTRAINT df_sprice_rv DEFAULT 1,
+    service_price_id    BIGINT        IDENTITY(1,1) NOT NULL,
+    service_id          INT           NOT NULL,
+    vehicle_type_id     SMALLINT      NOT NULL,   -- [customer].vehicle_type
+    price               DECIMAL(12,2) NOT NULL,
+    estimated_minutes   SMALLINT      NOT NULL,
+    valid_from          DATE          NOT NULL,
+    valid_to            DATE          NULL,
+    created_at          DATETIME2(3)  NOT NULL CONSTRAINT df_sprice_created DEFAULT SYSUTCDATETIME(),
+    created_by          BIGINT        NULL,
+    updated_at          DATETIME2(3)  NULL,
+    updated_by          BIGINT        NULL,
+    deleted_at          DATETIME2(3)  NULL,
+    deleted_by          BIGINT        NULL,
+    row_version         INT           NOT NULL CONSTRAINT df_sprice_rv DEFAULT 1,
     CONSTRAINT pk_service_price PRIMARY KEY (service_price_id),
-    CONSTRAINT fk_service_price_service FOREIGN KEY (service_id) REFERENCES [catalog].[service](service_id),
+    CONSTRAINT fk_service_price_service FOREIGN KEY (service_id) REFERENCES [catalog].service(service_id),
     CONSTRAINT ck_service_price_price CHECK (price >= 0),
     CONSTRAINT ck_service_price_minutes CHECK (estimated_minutes > 0),
     CONSTRAINT ck_service_price_range CHECK (valid_to IS NULL OR valid_to > valid_from)
 );
+CREATE UNIQUE NONCLUSTERED INDEX ux_service_price_current ON [catalog].service_price (service_id, vehicle_type_id) WHERE valid_to IS NULL AND deleted_at IS NULL;
+CREATE NONCLUSTERED INDEX ix_service_price_vehicle_type ON [catalog].service_price (vehicle_type_id);
+-- trigger tr_service_price_immutable (AFTER UPDATE): Rejects (THROW 51001) any change to service_id, vehicle_type_id, price, estimated_minutes or valid_from: a price row can only be closed (valid_to) or soft-deleted.
+-- trigger tr_touch_service_price (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Indexes:**
@@ -824,41 +840,41 @@ CREATE TABLE [catalog].service_price (
 
 ```sql
 CREATE TABLE [booking].establishment (
-    establishment_id SMALLINT      IDENTITY(1,1) NOT NULL,
-    legal_name       NVARCHAR(150) NOT NULL,
-    trade_name       NVARCHAR(150) NOT NULL,
-    tax_id           NVARCHAR(30)  NOT NULL,
-    [address]        NVARCHAR(200) NOT NULL,
-    phone            NVARCHAR(20)  NULL,
-    email            NVARCHAR(120) NULL,
-    logo_url         NVARCHAR(500) NULL,
-    -- migration 032
-    business_type                 NVARCHAR(100) NULL,
-    founded_on                    DATE          NULL,
-    legal_representative          NVARCHAR(150) NULL,
-    legal_representative_document NVARCHAR(30)  NULL,
-    website                       NVARCHAR(200) NULL,
-    tax_regime                    NVARCHAR(150) NULL,
-    ciiu_activity                 NVARCHAR(150) NULL,
-    dian_resolution               NVARCHAR(60)  NULL,
-    invoice_prefix                NVARCHAR(10)  NULL,
-    invoice_range                 NVARCHAR(30)  NULL,
-    instagram                     NVARCHAR(100) NULL,
-    facebook                      NVARCHAR(150) NULL,
-    support_line                  NVARCHAR(30)  NULL,
-    service_hours_note            NVARCHAR(150) NULL,
-    singleton        BIT           NOT NULL CONSTRAINT df_establishment_singleton DEFAULT 1,
-    created_at       DATETIME2(3)  NOT NULL CONSTRAINT df_establishment_created DEFAULT SYSUTCDATETIME(),
-    created_by       BIGINT        NULL,
-    updated_at       DATETIME2(3)  NULL,
-    updated_by       BIGINT        NULL,
-    deleted_at       DATETIME2(3)  NULL,
-    deleted_by       BIGINT        NULL,
-    row_version      INT           NOT NULL CONSTRAINT df_establishment_rv DEFAULT 1,
+    establishment_id                SMALLINT      IDENTITY(1,1) NOT NULL,
+    legal_name                      NVARCHAR(150) NOT NULL,
+    trade_name                      NVARCHAR(150) NOT NULL,
+    tax_id                          NVARCHAR(30)  NOT NULL,
+    [address]                       NVARCHAR(200) NOT NULL,
+    phone                           NVARCHAR(20)  NULL,
+    email                           NVARCHAR(120) NULL,
+    logo_url                        NVARCHAR(500) NULL,
+    singleton                       BIT           NOT NULL CONSTRAINT df_establishment_singleton DEFAULT 1,
+    created_at                      DATETIME2(3)  NOT NULL CONSTRAINT df_establishment_created DEFAULT SYSUTCDATETIME(),
+    created_by                      BIGINT        NULL,
+    updated_at                      DATETIME2(3)  NULL,
+    updated_by                      BIGINT        NULL,
+    deleted_at                      DATETIME2(3)  NULL,
+    deleted_by                      BIGINT        NULL,
+    row_version                     INT           NOT NULL CONSTRAINT df_establishment_rv DEFAULT 1,
+    business_type                   NVARCHAR(100) NULL,   -- migration 032
+    founded_on                      DATE          NULL,   -- migration 032
+    legal_representative            NVARCHAR(150) NULL,   -- migration 032
+    legal_representative_document   NVARCHAR(30)  NULL,   -- migration 032
+    website                         NVARCHAR(200) NULL,   -- migration 032
+    tax_regime                      NVARCHAR(150) NULL,   -- migration 032
+    ciiu_activity                   NVARCHAR(150) NULL,   -- migration 032
+    dian_resolution                 NVARCHAR(60)  NULL,   -- migration 032
+    invoice_prefix                  NVARCHAR(10)  NULL,   -- migration 032
+    invoice_range                   NVARCHAR(30)  NULL,   -- migration 032
+    instagram                       NVARCHAR(100) NULL,   -- migration 032
+    facebook                        NVARCHAR(150) NULL,   -- migration 032
+    support_line                    NVARCHAR(30)  NULL,   -- migration 032
+    service_hours_note              NVARCHAR(150) NULL,   -- migration 032
     CONSTRAINT pk_establishment PRIMARY KEY (establishment_id),
     CONSTRAINT uq_establishment_singleton UNIQUE (singleton),
     CONSTRAINT ck_establishment_singleton CHECK (singleton = 1)
 );
+-- trigger tr_touch_establishment (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Data dictionary:**
@@ -898,33 +914,27 @@ CREATE TABLE [booking].establishment (
 
 ```sql
 CREATE TABLE [booking].business_hour (
-    business_hour_id SMALLINT     IDENTITY(1,1) NOT NULL,
-    day_of_week      SMALLINT     NOT NULL,
-    opens_at         TIME(0)      NOT NULL,
-    closes_at        TIME(0)      NOT NULL,
-    -- ADR-010: pausa de almuerzo, opcional y dentro de la jornada
-    break_starts_at  TIME(0)      NULL,
-    break_ends_at    TIME(0)      NULL,
-    is_active        BIT          NOT NULL CONSTRAINT df_bh_active DEFAULT 1,
-    break_starts_at  TIME(0)      NULL,   -- optional daily break (ADR-010)
-    break_ends_at    TIME(0)      NULL,
-    created_at       DATETIME2(3) NOT NULL CONSTRAINT df_bh_created DEFAULT SYSUTCDATETIME(),
-    created_by       BIGINT       NULL,
-    updated_at       DATETIME2(3) NULL,
-    updated_by       BIGINT       NULL,
-    deleted_at       DATETIME2(3) NULL,
-    deleted_by       BIGINT       NULL,
-    row_version      INT          NOT NULL CONSTRAINT df_bh_rv DEFAULT 1,
+    business_hour_id   SMALLINT     IDENTITY(1,1) NOT NULL,
+    day_of_week        SMALLINT     NOT NULL,
+    opens_at           TIME(0)      NOT NULL,
+    closes_at          TIME(0)      NOT NULL,
+    is_active          BIT          NOT NULL CONSTRAINT df_bh_active DEFAULT 1,
+    created_at         DATETIME2(3) NOT NULL CONSTRAINT df_bh_created DEFAULT SYSUTCDATETIME(),
+    created_by         BIGINT       NULL,
+    updated_at         DATETIME2(3) NULL,
+    updated_by         BIGINT       NULL,
+    deleted_at         DATETIME2(3) NULL,
+    deleted_by         BIGINT       NULL,
+    row_version        INT          NOT NULL CONSTRAINT df_bh_rv DEFAULT 1,
+    break_starts_at    TIME(0)      NULL,   -- optional daily break (ADR-010); migration 018
+    break_ends_at      TIME(0)      NULL,   -- migration 018
     CONSTRAINT pk_business_hour PRIMARY KEY (business_hour_id),
     CONSTRAINT uq_business_hour_day UNIQUE (day_of_week),
     CONSTRAINT ck_business_hour_day CHECK (day_of_week BETWEEN 1 AND 7),
     CONSTRAINT ck_business_hour_range CHECK (closes_at > opens_at),
-    CONSTRAINT ck_business_hour_break CHECK (
-        (break_starts_at IS NULL AND break_ends_at IS NULL) OR
-        (break_starts_at IS NOT NULL AND break_ends_at IS NOT NULL
-            AND break_starts_at > opens_at AND break_ends_at < closes_at AND break_ends_at > break_starts_at)
-    )
+    CONSTRAINT ck_business_hour_break CHECK ((break_starts_at IS NULL AND break_ends_at IS NULL) OR (break_starts_at IS NOT NULL AND break_ends_at IS NOT NULL AND break_starts_at > opens_at AND break_ends_at < closes_at AND break_ends_at > break_starts_at))
 );
+-- trigger tr_touch_business_hour (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Data dictionary:**
@@ -953,26 +963,24 @@ CREATE TABLE [booking].business_hour (
 
 ```sql
 CREATE TABLE [booking].business_hour_exception (
-    business_hour_exception_id INT           IDENTITY(1,1) NOT NULL,
-    exception_date             DATE          NOT NULL,
-    is_closed                  BIT           NOT NULL CONSTRAINT df_bhe_closed DEFAULT 1,
-    opens_at                   TIME(0)       NULL,
-    closes_at                  TIME(0)       NULL,
-    reason                     NVARCHAR(120) NOT NULL,
-    created_at                 DATETIME2(3)  NOT NULL CONSTRAINT df_bhe_created DEFAULT SYSUTCDATETIME(),
-    created_by                 BIGINT        NULL,
-    updated_at                 DATETIME2(3)  NULL,
-    updated_by                 BIGINT        NULL,
-    deleted_at                 DATETIME2(3)  NULL,
-    deleted_by                 BIGINT        NULL,
-    row_version                INT           NOT NULL CONSTRAINT df_bhe_rv DEFAULT 1,
+    business_hour_exception_id   INT           IDENTITY(1,1) NOT NULL,
+    exception_date               DATE          NOT NULL,
+    is_closed                    BIT           NOT NULL CONSTRAINT df_bhe_closed DEFAULT 1,
+    opens_at                     TIME(0)       NULL,
+    closes_at                    TIME(0)       NULL,
+    reason                       NVARCHAR(120) NOT NULL,
+    created_at                   DATETIME2(3)  NOT NULL CONSTRAINT df_bhe_created DEFAULT SYSUTCDATETIME(),
+    created_by                   BIGINT        NULL,
+    updated_at                   DATETIME2(3)  NULL,
+    updated_by                   BIGINT        NULL,
+    deleted_at                   DATETIME2(3)  NULL,
+    deleted_by                   BIGINT        NULL,
+    row_version                  INT           NOT NULL CONSTRAINT df_bhe_rv DEFAULT 1,
     CONSTRAINT pk_business_hour_exception PRIMARY KEY (business_hour_exception_id),
     CONSTRAINT uq_business_hour_exception_date UNIQUE (exception_date),
-    CONSTRAINT ck_bhe_hours CHECK (
-        (is_closed = 1 AND opens_at IS NULL AND closes_at IS NULL) OR
-        (is_closed = 0 AND opens_at IS NOT NULL AND closes_at IS NOT NULL AND closes_at > opens_at)
-    )
+    CONSTRAINT ck_bhe_hours CHECK ((is_closed = 1 AND opens_at IS NULL AND closes_at IS NULL) OR (is_closed = 0 AND opens_at IS NOT NULL AND closes_at IS NOT NULL AND closes_at > opens_at))
 );
+-- trigger tr_touch_business_hour_exception (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Data dictionary:**
@@ -1000,18 +1008,18 @@ CREATE TABLE [booking].business_hour_exception (
 
 ```sql
 CREATE TABLE [booking].bay_status (
-    bay_status_id    SMALLINT     IDENTITY(1,1) NOT NULL,
-    code             NVARCHAR(30) NOT NULL,
-    name             NVARCHAR(60) NOT NULL,
-    accepts_bookings BIT          NOT NULL CONSTRAINT df_baystatus_accepts DEFAULT 0,
-    display_order    SMALLINT     NOT NULL CONSTRAINT df_baystatus_order DEFAULT 0,
-    created_at       DATETIME2(3) NOT NULL CONSTRAINT df_baystatus_created DEFAULT SYSUTCDATETIME(),
-    created_by       BIGINT       NULL,
-    updated_at       DATETIME2(3) NULL,
-    updated_by       BIGINT       NULL,
-    deleted_at       DATETIME2(3) NULL,
-    deleted_by       BIGINT       NULL,
-    row_version      INT          NOT NULL CONSTRAINT df_baystatus_rv DEFAULT 1,
+    bay_status_id      SMALLINT     IDENTITY(1,1) NOT NULL,
+    code               NVARCHAR(30) NOT NULL,
+    name               NVARCHAR(60) NOT NULL,
+    accepts_bookings   BIT          NOT NULL CONSTRAINT df_baystatus_accepts DEFAULT 0,
+    display_order      SMALLINT     NOT NULL CONSTRAINT df_baystatus_order DEFAULT 0,
+    created_at         DATETIME2(3) NOT NULL CONSTRAINT df_baystatus_created DEFAULT SYSUTCDATETIME(),
+    created_by         BIGINT       NULL,
+    updated_at         DATETIME2(3) NULL,
+    updated_by         BIGINT       NULL,
+    deleted_at         DATETIME2(3) NULL,
+    deleted_by         BIGINT       NULL,
+    row_version        INT          NOT NULL CONSTRAINT df_baystatus_rv DEFAULT 1,
     CONSTRAINT pk_bay_status PRIMARY KEY (bay_status_id),
     CONSTRAINT uq_bay_status_code UNIQUE (code)
 );
@@ -1040,21 +1048,22 @@ CREATE TABLE [booking].bay_status (
 
 ```sql
 CREATE TABLE [booking].service_bay (
-    service_bay_id SMALLINT     IDENTITY(1,1) NOT NULL,
-    code           NVARCHAR(20) NOT NULL,
-    name           NVARCHAR(60) NOT NULL,
-    bay_status_id  SMALLINT     NOT NULL CONSTRAINT df_bay_status DEFAULT 1,   -- ADR-010: estado desde bay_status (1 = ACTIVE)
-    created_at     DATETIME2(3) NOT NULL CONSTRAINT df_bay_created DEFAULT SYSUTCDATETIME(),
-    created_by     BIGINT       NULL,
-    updated_at     DATETIME2(3) NULL,
-    updated_by     BIGINT       NULL,
-    deleted_at     DATETIME2(3) NULL,
-    deleted_by     BIGINT       NULL,
-    row_version    INT          NOT NULL CONSTRAINT df_bay_rv DEFAULT 1,
+    service_bay_id   SMALLINT     IDENTITY(1,1) NOT NULL,
+    code             NVARCHAR(20) NOT NULL,
+    name             NVARCHAR(60) NOT NULL,
+    created_at       DATETIME2(3) NOT NULL CONSTRAINT df_bay_created DEFAULT SYSUTCDATETIME(),
+    created_by       BIGINT       NULL,
+    updated_at       DATETIME2(3) NULL,
+    updated_by       BIGINT       NULL,
+    deleted_at       DATETIME2(3) NULL,
+    deleted_by       BIGINT       NULL,
+    row_version      INT          NOT NULL CONSTRAINT df_bay_rv DEFAULT 1,
+    bay_status_id    SMALLINT     NOT NULL CONSTRAINT df_bay_status DEFAULT 1,   -- ADR-010: estado desde bay_status (1 = ACTIVE); migration 018
     CONSTRAINT pk_service_bay PRIMARY KEY (service_bay_id),
     CONSTRAINT uq_service_bay_code UNIQUE (code),
     CONSTRAINT fk_service_bay_status FOREIGN KEY (bay_status_id) REFERENCES [booking].bay_status(bay_status_id)
 );
+-- trigger tr_touch_service_bay (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Data dictionary:**
@@ -1080,19 +1089,19 @@ CREATE TABLE [booking].service_bay (
 
 ```sql
 CREATE TABLE [booking].booking_status (
-    booking_status_id SMALLINT     IDENTITY(1,1) NOT NULL,
-    code          NVARCHAR(30) NOT NULL,
-    name          NVARCHAR(60) NOT NULL,
-    is_final      BIT          NOT NULL CONSTRAINT df_bstatus_final DEFAULT 0,
-    display_order SMALLINT     NOT NULL CONSTRAINT df_bstatus_order DEFAULT 0,
-    is_active     BIT          NOT NULL CONSTRAINT df_bstatus_active DEFAULT 1,
-    created_at    DATETIME2(3) NOT NULL CONSTRAINT df_bstatus_created DEFAULT SYSUTCDATETIME(),
-    created_by    BIGINT       NULL,
-    updated_at    DATETIME2(3) NULL,
-    updated_by    BIGINT       NULL,
-    deleted_at    DATETIME2(3) NULL,
-    deleted_by    BIGINT       NULL,
-    row_version   INT          NOT NULL CONSTRAINT df_bstatus_rv DEFAULT 1,
+    booking_status_id   SMALLINT     IDENTITY(1,1) NOT NULL,
+    code                NVARCHAR(30) NOT NULL,
+    name                NVARCHAR(60) NOT NULL,
+    is_final            BIT          NOT NULL CONSTRAINT df_bstatus_final DEFAULT 0,
+    display_order       SMALLINT     NOT NULL CONSTRAINT df_bstatus_order DEFAULT 0,
+    is_active           BIT          NOT NULL CONSTRAINT df_bstatus_active DEFAULT 1,
+    created_at          DATETIME2(3) NOT NULL CONSTRAINT df_bstatus_created DEFAULT SYSUTCDATETIME(),
+    created_by          BIGINT       NULL,
+    updated_at          DATETIME2(3) NULL,
+    updated_by          BIGINT       NULL,
+    deleted_at          DATETIME2(3) NULL,
+    deleted_by          BIGINT       NULL,
+    row_version         INT          NOT NULL CONSTRAINT df_bstatus_rv DEFAULT 1,
     CONSTRAINT pk_booking_status PRIMARY KEY (booking_status_id),
     CONSTRAINT uq_booking_status_code UNIQUE (code)
 );
@@ -1118,19 +1127,19 @@ CREATE TABLE [booking].booking_status (
 
 ```sql
 CREATE TABLE [booking].cancellation_reason (
-    cancellation_reason_id SMALLINT     IDENTITY(1,1) NOT NULL,
-    code              NVARCHAR(30) NOT NULL,
-    name              NVARCHAR(60) NOT NULL,
-    is_customer_fault BIT          NOT NULL CONSTRAINT df_creason_fault DEFAULT 0,
-    display_order     SMALLINT     NOT NULL CONSTRAINT df_creason_order DEFAULT 0,
-    is_active         BIT          NOT NULL CONSTRAINT df_creason_active DEFAULT 1,
-    created_at        DATETIME2(3) NOT NULL CONSTRAINT df_creason_created DEFAULT SYSUTCDATETIME(),
-    created_by        BIGINT       NULL,
-    updated_at        DATETIME2(3) NULL,
-    updated_by        BIGINT       NULL,
-    deleted_at        DATETIME2(3) NULL,
-    deleted_by        BIGINT       NULL,
-    row_version       INT          NOT NULL CONSTRAINT df_creason_rv DEFAULT 1,
+    cancellation_reason_id   SMALLINT     IDENTITY(1,1) NOT NULL,
+    code                     NVARCHAR(30) NOT NULL,
+    name                     NVARCHAR(60) NOT NULL,
+    is_customer_fault        BIT          NOT NULL CONSTRAINT df_creason_fault DEFAULT 0,
+    display_order            SMALLINT     NOT NULL CONSTRAINT df_creason_order DEFAULT 0,
+    is_active                BIT          NOT NULL CONSTRAINT df_creason_active DEFAULT 1,
+    created_at               DATETIME2(3) NOT NULL CONSTRAINT df_creason_created DEFAULT SYSUTCDATETIME(),
+    created_by               BIGINT       NULL,
+    updated_at               DATETIME2(3) NULL,
+    updated_by               BIGINT       NULL,
+    deleted_at               DATETIME2(3) NULL,
+    deleted_by               BIGINT       NULL,
+    row_version              INT          NOT NULL CONSTRAINT df_creason_rv DEFAULT 1,
     CONSTRAINT pk_cancellation_reason PRIMARY KEY (cancellation_reason_id),
     CONSTRAINT uq_cancellation_reason_code UNIQUE (code)
 );
@@ -1156,35 +1165,38 @@ CREATE TABLE [booking].cancellation_reason (
 
 ```sql
 CREATE TABLE [booking].booking (
-    booking_id             BIGINT        IDENTITY(1,1) NOT NULL,
-    customer_vehicle_id    BIGINT        NOT NULL,   -- [customer].customer_vehicle
-    service_bay_id         SMALLINT      NULL,
-    scheduled_start        DATETIME2(3)  NOT NULL,
-    scheduled_end          DATETIME2(3)  NOT NULL,
-    booking_status_id      SMALLINT      NOT NULL,
-    booked_by              BIGINT        NOT NULL,   -- [security].app_user
-    cancellation_reason_id SMALLINT      NULL,
-    points_redeemed        INT           NOT NULL CONSTRAINT df_booking_points DEFAULT 0,
-    points_discount_amount DECIMAL(12,2) NOT NULL CONSTRAINT df_booking_pdisc DEFAULT 0,
-    notes                  NVARCHAR(300) NULL,
-    created_at             DATETIME2(3)  NOT NULL CONSTRAINT df_booking_created DEFAULT SYSUTCDATETIME(),
-    created_by             BIGINT        NULL,
-    updated_at             DATETIME2(3)  NULL,
-    updated_by             BIGINT        NULL,
-    deleted_at             DATETIME2(3)  NULL,
-    deleted_by             BIGINT        NULL,
-    row_version            INT           NOT NULL CONSTRAINT df_booking_rv DEFAULT 1,
+    booking_id               BIGINT        IDENTITY(1,1) NOT NULL,
+    customer_vehicle_id      BIGINT        NOT NULL,   -- [customer].customer_vehicle
+    service_bay_id           SMALLINT      NULL,
+    scheduled_start          DATETIME2(3)  NOT NULL,
+    scheduled_end            DATETIME2(3)  NOT NULL,
+    booking_status_id        SMALLINT      NOT NULL,
+    booked_by                BIGINT        NOT NULL,   -- [security].app_user
+    cancellation_reason_id   SMALLINT      NULL,
+    points_redeemed          INT           NOT NULL CONSTRAINT df_booking_points DEFAULT 0,
+    points_discount_amount   DECIMAL(12,2) NOT NULL CONSTRAINT df_booking_pdisc DEFAULT 0,
+    notes                    NVARCHAR(300) NULL,
+    created_at               DATETIME2(3)  NOT NULL CONSTRAINT df_booking_created DEFAULT SYSUTCDATETIME(),
+    created_by               BIGINT        NULL,
+    updated_at               DATETIME2(3)  NULL,
+    updated_by               BIGINT        NULL,
+    deleted_at               DATETIME2(3)  NULL,
+    deleted_by               BIGINT        NULL,
+    row_version              INT           NOT NULL CONSTRAINT df_booking_rv DEFAULT 1,
     CONSTRAINT pk_booking PRIMARY KEY (booking_id),
     CONSTRAINT fk_booking_bay FOREIGN KEY (service_bay_id) REFERENCES [booking].service_bay(service_bay_id),
     CONSTRAINT fk_booking_status FOREIGN KEY (booking_status_id) REFERENCES [booking].booking_status(booking_status_id),
     CONSTRAINT fk_booking_cancellation FOREIGN KEY (cancellation_reason_id) REFERENCES [booking].cancellation_reason(cancellation_reason_id),
     CONSTRAINT ck_booking_range CHECK (scheduled_end > scheduled_start),
     CONSTRAINT ck_booking_cancel CHECK (cancellation_reason_id IS NULL OR booking_status_id = 5),
-    CONSTRAINT ck_booking_points CHECK (
-        (points_redeemed = 0 AND points_discount_amount = 0) OR
-        (points_redeemed > 0 AND points_discount_amount > 0)
-    )
+    CONSTRAINT ck_booking_points CHECK ((points_redeemed = 0 AND points_discount_amount = 0) OR (points_redeemed > 0 AND points_discount_amount > 0))
 );
+CREATE NONCLUSTERED INDEX ix_booking_start_status ON [booking].booking (scheduled_start, booking_status_id);
+CREATE NONCLUSTERED INDEX ix_booking_customer_vehicle ON [booking].booking (customer_vehicle_id);
+CREATE NONCLUSTERED INDEX ix_booking_bay_start ON [booking].booking (service_bay_id, scheduled_start);
+CREATE NONCLUSTERED INDEX ix_booking_booked_by ON [booking].booking (booked_by);
+-- trigger tr_booking_bay_overlap (AFTER INSERT, UPDATE): Rejects (THROW 51002) two active bookings (states 1–3, not deleted) that overlap on the same bay. Safety net of INV-BOOK-006; the code checks it first.
+-- trigger tr_touch_booking (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Indexes:**
@@ -1227,23 +1239,25 @@ CREATE TABLE [booking].booking (
 
 ```sql
 CREATE TABLE [booking].booking_service (
-    booking_service_id BIGINT       IDENTITY(1,1) NOT NULL,
-    booking_id         BIGINT       NOT NULL,
-    service_price_id   BIGINT       NOT NULL,   -- same service since ADR-009: real FK
-    quantity           SMALLINT     NOT NULL CONSTRAINT df_bsvc_qty DEFAULT 1,
-    created_at         DATETIME2(3) NOT NULL CONSTRAINT df_bsvc_created DEFAULT SYSUTCDATETIME(),
-    created_by         BIGINT       NULL,
-    updated_at         DATETIME2(3) NULL,
-    updated_by         BIGINT       NULL,
-    deleted_at         DATETIME2(3) NULL,
-    deleted_by         BIGINT       NULL,
-    row_version        INT          NOT NULL CONSTRAINT df_bsvc_rv DEFAULT 1,
+    booking_service_id   BIGINT       IDENTITY(1,1) NOT NULL,
+    booking_id           BIGINT       NOT NULL,
+    service_price_id     BIGINT       NOT NULL,   -- same service since ADR-009: real FK
+    quantity             SMALLINT     NOT NULL CONSTRAINT df_bsvc_qty DEFAULT 1,
+    created_at           DATETIME2(3) NOT NULL CONSTRAINT df_bsvc_created DEFAULT SYSUTCDATETIME(),
+    created_by           BIGINT       NULL,
+    updated_at           DATETIME2(3) NULL,
+    updated_by           BIGINT       NULL,
+    deleted_at           DATETIME2(3) NULL,
+    deleted_by           BIGINT       NULL,
+    row_version          INT          NOT NULL CONSTRAINT df_bsvc_rv DEFAULT 1,
+    loyalty_points       INT          NULL,   -- migration 043
     CONSTRAINT pk_booking_service PRIMARY KEY (booking_service_id),
     CONSTRAINT uq_booking_service UNIQUE (booking_id, service_price_id),
     CONSTRAINT fk_booking_service_booking FOREIGN KEY (booking_id) REFERENCES [booking].booking(booking_id),
     CONSTRAINT ck_booking_service_qty CHECK (quantity > 0),
     CONSTRAINT fk_booking_service_price FOREIGN KEY (service_price_id) REFERENCES [catalog].service_price(service_price_id)
 );
+CREATE NONCLUSTERED INDEX ix_booking_service_price ON [booking].booking_service (service_price_id);
 ```
 
 **Indexes:**
@@ -1260,6 +1274,7 @@ CREATE TABLE [booking].booking_service (
 | `booking_id` | BIGINT | No | Owning booking. | FK → `booking.booking.booking_id` |
 | `service_price_id` | BIGINT | No | The exact tariff row in force when this was booked. | FK → `catalog.service_price.service_price_id` |
 | `quantity` | SMALLINT | No | How many times this service was requested. | — |
+| `loyalty_points` | INT | Yes | Loyalty points the service was worth when it was booked (A-09, migration 043), frozen like the price. Lines older than 043 were backfilled with the points current at migration time; NULL only in a row the backfill did not reach. | — |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
 **Modeling decisions:**
@@ -1267,6 +1282,47 @@ CREATE TABLE [booking].booking_service (
 1. Resolves the many-to-many between booking and service: a booking can include exterior wash and polish; a service appears in many bookings.
 2. It never copies the price — it points at the exact `service_price` row in force at booking time. As long as `service_price` stays immutable, the tariff stays frozen without duplicating the number.
 3. **The price reference is a real foreign key since ADR-009.** `catalog` and `booking` are owned by the same service (`booking-service`), so this is the one foreign key in the model that crosses two schemas. It is also the reason the two contexts were grouped: a booking does not exist without a current price to freeze.
+
+---
+
+### Table: `schedule_history`
+
+**Purpose:** Insert-only log of the changes made in Schedule and bays: weekly hours (`WEEK`), exceptions (`EXCEPTION`) and bays (`BAY`). Booking migration 021.
+
+```sql
+CREATE TABLE [booking].schedule_history (
+    schedule_history_id   BIGINT        IDENTITY(1,1) NOT NULL,
+    entity_type           NVARCHAR(20)  NOT NULL,
+    title                 NVARCHAR(200) NOT NULL,
+    detail                NVARCHAR(300) NULL,
+    changed_at            DATETIME2(3)  NOT NULL CONSTRAINT df_schedhist_changed_at DEFAULT SYSUTCDATETIME(),
+    changed_by            BIGINT        NULL,
+    CONSTRAINT pk_schedule_history PRIMARY KEY (schedule_history_id),
+    CONSTRAINT ck_schedhist_entity_type CHECK (entity_type IN (N'WEEK', N'EXCEPTION', N'BAY'))
+);
+CREATE NONCLUSTERED INDEX ix_schedule_history_changed_at ON [booking].schedule_history (changed_at desc);
+```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_schedule_history_changed_at` | `changed_at DESC` | Non-unique | The screen lists the latest changes first. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `schedule_history_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `entity_type` | NVARCHAR(20) | No | What changed: `WEEK`, `EXCEPTION` or `BAY`. | CHECK `ck_schedhist_entity_type` |
+| `title` | NVARCHAR(200) | No | Short description shown in the list. | — |
+| `detail` | NVARCHAR(300) | Yes | Extra detail of the change. | — |
+| `changed_at` | DATETIME2(3) | No | When, UTC. | — |
+| `changed_by` | BIGINT | Yes | Administrator who made the change. | No FK — owned by `security.app_user` |
+
+**Modeling decisions:**
+
+1. A log, not an editable entity: no `row_version`, no soft delete and no touch trigger, because a row is never updated or deleted.
 
 ---
 
@@ -1286,19 +1342,19 @@ CREATE TABLE [booking].booking_service (
 
 ```sql
 CREATE TABLE [execution].execution_status (
-    execution_status_id SMALLINT     IDENTITY(1,1) NOT NULL,
-    code          NVARCHAR(30) NOT NULL,
-    name          NVARCHAR(60) NOT NULL,
-    is_final      BIT          NOT NULL CONSTRAINT df_estatus_final DEFAULT 0,
-    display_order SMALLINT     NOT NULL CONSTRAINT df_estatus_order DEFAULT 0,
-    is_active     BIT          NOT NULL CONSTRAINT df_estatus_active DEFAULT 1,
-    created_at    DATETIME2(3) NOT NULL CONSTRAINT df_estatus_created DEFAULT SYSUTCDATETIME(),
-    created_by    BIGINT       NULL,
-    updated_at    DATETIME2(3) NULL,
-    updated_by    BIGINT       NULL,
-    deleted_at    DATETIME2(3) NULL,
-    deleted_by    BIGINT       NULL,
-    row_version   INT          NOT NULL CONSTRAINT df_estatus_rv DEFAULT 1,
+    execution_status_id   SMALLINT     IDENTITY(1,1) NOT NULL,
+    code                  NVARCHAR(30) NOT NULL,
+    name                  NVARCHAR(60) NOT NULL,
+    is_final              BIT          NOT NULL CONSTRAINT df_estatus_final DEFAULT 0,
+    display_order         SMALLINT     NOT NULL CONSTRAINT df_estatus_order DEFAULT 0,
+    is_active             BIT          NOT NULL CONSTRAINT df_estatus_active DEFAULT 1,
+    created_at            DATETIME2(3) NOT NULL CONSTRAINT df_estatus_created DEFAULT SYSUTCDATETIME(),
+    created_by            BIGINT       NULL,
+    updated_at            DATETIME2(3) NULL,
+    updated_by            BIGINT       NULL,
+    deleted_at            DATETIME2(3) NULL,
+    deleted_by            BIGINT       NULL,
+    row_version           INT          NOT NULL CONSTRAINT df_estatus_rv DEFAULT 1,
     CONSTRAINT pk_execution_status PRIMARY KEY (execution_status_id),
     CONSTRAINT uq_execution_status_code UNIQUE (code)
 );
@@ -1328,20 +1384,21 @@ CREATE TABLE [execution].execution_status (
 
 ```sql
 CREATE TABLE [execution].operator (
-    operator_id INT          IDENTITY(1,1) NOT NULL,
-    user_id     BIGINT       NOT NULL,   -- [security].app_user
-    hired_on    DATE         NOT NULL,
-    is_active   BIT          NOT NULL CONSTRAINT df_operator_active DEFAULT 1,
-    created_at  DATETIME2(3) NOT NULL CONSTRAINT df_operator_created DEFAULT SYSUTCDATETIME(),
-    created_by  BIGINT       NULL,
-    updated_at  DATETIME2(3) NULL,
-    updated_by  BIGINT       NULL,
-    deleted_at  DATETIME2(3) NULL,
-    deleted_by  BIGINT       NULL,
-    row_version INT          NOT NULL CONSTRAINT df_operator_rv DEFAULT 1,
+    operator_id   INT          IDENTITY(1,1) NOT NULL,
+    user_id       BIGINT       NOT NULL,   -- [security].app_user
+    hired_on      DATE         NOT NULL,
+    is_active     BIT          NOT NULL CONSTRAINT df_operator_active DEFAULT 1,
+    created_at    DATETIME2(3) NOT NULL CONSTRAINT df_operator_created DEFAULT SYSUTCDATETIME(),
+    created_by    BIGINT       NULL,
+    updated_at    DATETIME2(3) NULL,
+    updated_by    BIGINT       NULL,
+    deleted_at    DATETIME2(3) NULL,
+    deleted_by    BIGINT       NULL,
+    row_version   INT          NOT NULL CONSTRAINT df_operator_rv DEFAULT 1,
     CONSTRAINT pk_operator PRIMARY KEY (operator_id),
     CONSTRAINT uq_operator_user UNIQUE (user_id)
 );
+-- trigger tr_touch_operator (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Data dictionary:**
@@ -1367,25 +1424,26 @@ CREATE TABLE [execution].operator (
 
 ```sql
 CREATE TABLE [execution].operator_availability (
-    operator_availability_id INT          IDENTITY(1,1) NOT NULL,
-    operator_id INT          NOT NULL,
-    day_of_week SMALLINT     NOT NULL,
-    starts_at   TIME(0)      NOT NULL,
-    ends_at     TIME(0)      NOT NULL,
-    is_active   BIT          NOT NULL CONSTRAINT df_oavail_active DEFAULT 1,
-    created_at  DATETIME2(3) NOT NULL CONSTRAINT df_oavail_created DEFAULT SYSUTCDATETIME(),
-    created_by  BIGINT       NULL,
-    updated_at  DATETIME2(3) NULL,
-    updated_by  BIGINT       NULL,
-    deleted_at  DATETIME2(3) NULL,
-    deleted_by  BIGINT       NULL,
-    row_version INT          NOT NULL CONSTRAINT df_oavail_rv DEFAULT 1,
+    operator_availability_id   INT          IDENTITY(1,1) NOT NULL,
+    operator_id                INT          NOT NULL,
+    day_of_week                SMALLINT     NOT NULL,
+    starts_at                  TIME(0)      NOT NULL,
+    ends_at                    TIME(0)      NOT NULL,
+    is_active                  BIT          NOT NULL CONSTRAINT df_oavail_active DEFAULT 1,
+    created_at                 DATETIME2(3) NOT NULL CONSTRAINT df_oavail_created DEFAULT SYSUTCDATETIME(),
+    created_by                 BIGINT       NULL,
+    updated_at                 DATETIME2(3) NULL,
+    updated_by                 BIGINT       NULL,
+    deleted_at                 DATETIME2(3) NULL,
+    deleted_by                 BIGINT       NULL,
+    row_version                INT          NOT NULL CONSTRAINT df_oavail_rv DEFAULT 1,
     CONSTRAINT pk_operator_availability PRIMARY KEY (operator_availability_id),
     CONSTRAINT uq_operator_availability UNIQUE (operator_id, day_of_week),
     CONSTRAINT fk_operator_availability_operator FOREIGN KEY (operator_id) REFERENCES [execution].operator(operator_id),
     CONSTRAINT ck_oavail_day CHECK (day_of_week BETWEEN 1 AND 7),
     CONSTRAINT ck_oavail_range CHECK (ends_at > starts_at)
 );
+-- trigger tr_touch_operator_availability (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Data dictionary:**
@@ -1412,22 +1470,25 @@ CREATE TABLE [execution].operator_availability (
 
 ```sql
 CREATE TABLE [execution].operator_absence (
-    operator_absence_id INT           IDENTITY(1,1) NOT NULL,
-    operator_id INT           NOT NULL,
-    starts_at   DATETIME2(3)  NOT NULL,
-    ends_at     DATETIME2(3)  NOT NULL,
-    reason      NVARCHAR(120) NOT NULL,
-    created_at  DATETIME2(3)  NOT NULL CONSTRAINT df_oabs_created DEFAULT SYSUTCDATETIME(),
-    created_by  BIGINT        NULL,
-    updated_at  DATETIME2(3)  NULL,
-    updated_by  BIGINT        NULL,
-    deleted_at  DATETIME2(3)  NULL,
-    deleted_by  BIGINT        NULL,
-    row_version INT           NOT NULL CONSTRAINT df_oabs_rv DEFAULT 1,
+    operator_absence_id   INT           IDENTITY(1,1) NOT NULL,
+    operator_id           INT           NOT NULL,
+    starts_at             DATETIME2(3)  NOT NULL,
+    ends_at               DATETIME2(3)  NOT NULL,
+    reason                NVARCHAR(120) NOT NULL,
+    created_at            DATETIME2(3)  NOT NULL CONSTRAINT df_oabs_created DEFAULT SYSUTCDATETIME(),
+    created_by            BIGINT        NULL,
+    updated_at            DATETIME2(3)  NULL,
+    updated_by            BIGINT        NULL,
+    deleted_at            DATETIME2(3)  NULL,
+    deleted_by            BIGINT        NULL,
+    row_version           INT           NOT NULL CONSTRAINT df_oabs_rv DEFAULT 1,
     CONSTRAINT pk_operator_absence PRIMARY KEY (operator_absence_id),
     CONSTRAINT fk_operator_absence_operator FOREIGN KEY (operator_id) REFERENCES [execution].operator(operator_id),
     CONSTRAINT ck_oabs_range CHECK (ends_at > starts_at)
 );
+CREATE NONCLUSTERED INDEX ix_operator_absence_operator ON [execution].operator_absence (operator_id, starts_at);
+-- trigger tr_operator_absence_overlap (AFTER INSERT, UPDATE): Rejects (THROW 50002) two absences of the same operator that overlap.
+-- trigger tr_touch_operator_absence (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Indexes:**
@@ -1459,24 +1520,25 @@ CREATE TABLE [execution].operator_absence (
 
 ```sql
 CREATE TABLE [execution].service_execution (
-    service_execution_id BIGINT        IDENTITY(1,1) NOT NULL,
-    booking_service_id   BIGINT        NOT NULL,   -- [booking].booking_service
-    operator_id          INT           NOT NULL,
-    execution_status_id  SMALLINT      NOT NULL,
-    started_at           DATETIME2(3)  NULL,
-    finished_at          DATETIME2(3)  NULL,
-    quality_rating       SMALLINT      NULL,
-    quality_comment      NVARCHAR(500) NULL,
-    rated_at             DATETIME2(3)  NULL,
-    is_comment_visible   BIT           NOT NULL CONSTRAINT df_sexec_visible DEFAULT 1,
-    follow_up_notice_at  DATETIME2(3)  NULL,                          -- migración 040
-    created_at           DATETIME2(3)  NOT NULL CONSTRAINT df_sexec_created DEFAULT SYSUTCDATETIME(),
-    created_by           BIGINT        NULL,
-    updated_at           DATETIME2(3)  NULL,
-    updated_by           BIGINT        NULL,
-    deleted_at           DATETIME2(3)  NULL,
-    deleted_by           BIGINT        NULL,
-    row_version          INT           NOT NULL CONSTRAINT df_sexec_rv DEFAULT 1,
+    service_execution_id   BIGINT        IDENTITY(1,1) NOT NULL,
+    booking_service_id     BIGINT        NOT NULL,   -- [booking].booking_service
+    operator_id            INT           NOT NULL,
+    execution_status_id    SMALLINT      NOT NULL,
+    started_at             DATETIME2(3)  NULL,
+    finished_at            DATETIME2(3)  NULL,
+    quality_rating         SMALLINT      NULL,
+    quality_comment        NVARCHAR(500) NULL,
+    rated_at               DATETIME2(3)  NULL,
+    is_comment_visible     BIT           NOT NULL CONSTRAINT df_sexec_visible DEFAULT 1,
+    created_at             DATETIME2(3)  NOT NULL CONSTRAINT df_sexec_created DEFAULT SYSUTCDATETIME(),
+    created_by             BIGINT        NULL,
+    updated_at             DATETIME2(3)  NULL,
+    updated_by             BIGINT        NULL,
+    deleted_at             DATETIME2(3)  NULL,
+    deleted_by             BIGINT        NULL,
+    row_version            INT           NOT NULL CONSTRAINT df_sexec_rv DEFAULT 1,
+    follow_up_notice_at    DATETIME2(3)  NULL,   -- migration 040
+    assignment_notes       NVARCHAR(300) NULL,   -- migration 042
     CONSTRAINT pk_service_execution PRIMARY KEY (service_execution_id),
     CONSTRAINT uq_service_execution_booking_service UNIQUE (booking_service_id),
     CONSTRAINT fk_service_execution_operator FOREIGN KEY (operator_id) REFERENCES [execution].operator(operator_id),
@@ -1484,11 +1546,10 @@ CREATE TABLE [execution].service_execution (
     CONSTRAINT ck_sexec_rating CHECK (quality_rating IS NULL OR quality_rating BETWEEN 1 AND 5),
     CONSTRAINT ck_sexec_range CHECK (finished_at IS NULL OR started_at IS NULL OR finished_at >= started_at),
     CONSTRAINT ck_sexec_comment CHECK (quality_comment IS NULL OR quality_rating IS NOT NULL),
-    CONSTRAINT ck_sexec_rated CHECK (
-        (quality_rating IS NULL AND rated_at IS NULL) OR
-        (quality_rating IS NOT NULL AND rated_at IS NOT NULL)
-    )
+    CONSTRAINT ck_sexec_rated CHECK ((quality_rating IS NULL AND rated_at IS NULL) OR (quality_rating IS NOT NULL AND rated_at IS NOT NULL))
 );
+CREATE NONCLUSTERED INDEX ix_service_execution_operator ON [execution].service_execution (operator_id, started_at);
+-- trigger tr_touch_service_execution (AFTER UPDATE): sets updated_at and row_version
 ```
 
 **Indexes:**
@@ -1512,6 +1573,7 @@ CREATE TABLE [execution].service_execution (
 | `rated_at` | DATETIME2(3) | Yes | When the rating was given; must be set together with `quality_rating`, never one without the other. | — |
 | `is_comment_visible` | BIT | No | Lets an admin hide an inappropriate comment without deleting it. | — |
 | `follow_up_notice_at` | DATETIME2(3) | Yes | When the operator and the admins were told the service ended and nobody registered it (so it is told once). Starting the service clears it. A line closed by the admin as attended is `COMPLETED` with `started_at` / `finished_at` empty. | — |
+| `assignment_notes` | NVARCHAR(300) | Yes | Optional indications of the administrator for the operator, written when assigning or reassigning (B-01, migration 042). Reassigning without notes clears them. | — |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
 **Modeling decisions:**
@@ -1530,45 +1592,113 @@ public link with a random token.
 
 ```sql
 CREATE TABLE [execution].inspection_report (
-    inspection_report_id BIGINT        IDENTITY(1,1) NOT NULL,
-    booking_id           BIGINT        NOT NULL,   -- booking.booking, no FK
-    booking_code         NVARCHAR(20)  NULL,
-    vehicle              NVARCHAR(120) NULL,
-    plate                NVARCHAR(15)  NULL,
-    services             NVARCHAR(300) NULL,
-    booking_date         DATE          NOT NULL,
-    booking_time         TIME(0)       NOT NULL,
-    duration_minutes     INT           NOT NULL,
-    public_token         NVARCHAR(64)  NOT NULL,
-    is_published         BIT           NOT NULL DEFAULT 0,
-    published_at         DATETIME2(3)  NULL,
-    created_at / created_by / updated_at / updated_by / row_version,
+    inspection_report_id   BIGINT        IDENTITY(1,1) NOT NULL,
+    booking_id             BIGINT        NOT NULL,   -- booking.booking, no FK
+    booking_code           NVARCHAR(20)  NULL,
+    vehicle                NVARCHAR(120) NULL,
+    plate                  NVARCHAR(15)  NULL,
+    services               NVARCHAR(300) NULL,
+    booking_date           DATE          NOT NULL,
+    booking_time           TIME(0)       NOT NULL,
+    duration_minutes       INT           NOT NULL,
+    public_token           NVARCHAR(64)  NOT NULL,
+    is_published           BIT           NOT NULL CONSTRAINT df_inspreport_published DEFAULT 0,
+    published_at           DATETIME2(3)  NULL,
+    created_at             DATETIME2(3)  NOT NULL CONSTRAINT df_inspreport_created DEFAULT SYSUTCDATETIME(),
+    created_by             BIGINT        NULL,
+    updated_at             DATETIME2(3)  NULL,
+    updated_by             BIGINT        NULL,
+    row_version            INT           NOT NULL CONSTRAINT df_inspreport_rv DEFAULT 1,
+    CONSTRAINT pk_inspection_report PRIMARY KEY (inspection_report_id),
     CONSTRAINT uq_inspection_report_booking UNIQUE (booking_id),
-    CONSTRAINT uq_inspection_report_token UNIQUE (public_token)
+    CONSTRAINT uq_inspection_report_token UNIQUE (public_token),
+    CONSTRAINT ck_inspreport_published CHECK ((is_published = 0 AND published_at IS NULL) OR (is_published = 1 AND published_at IS NOT NULL))
 );
-CREATE TABLE [execution].inspection_phase (      -- unique (inspection_report_id, phase)
-    inspection_phase_id, inspection_report_id, phase, [status], started_at, finished_at
+-- trigger tr_touch_inspection_report (AFTER UPDATE): sets updated_at and row_version
+
+CREATE TABLE [execution].inspection_phase (
+    inspection_phase_id    BIGINT       IDENTITY(1,1) NOT NULL,
+    inspection_report_id   BIGINT       NOT NULL,
+    phase                  NVARCHAR(20) NOT NULL,
+    [status]               NVARCHAR(20) NOT NULL CONSTRAINT df_inspphase_status DEFAULT N'PENDING',
+    started_at             DATETIME2(3) NULL,
+    finished_at            DATETIME2(3) NULL,
+    CONSTRAINT pk_inspection_phase PRIMARY KEY (inspection_phase_id),
+    CONSTRAINT uq_inspection_phase UNIQUE (inspection_report_id, phase),
+    CONSTRAINT fk_inspection_phase_report FOREIGN KEY (inspection_report_id) REFERENCES [execution].inspection_report(inspection_report_id),
+    CONSTRAINT ck_inspphase_phase CHECK (phase IN (N'RECEPTION', N'EXTERIOR', N'INTERIOR', N'ENGINE', N'DELIVERY')),
+    CONSTRAINT ck_inspphase_status CHECK ([status] IN (N'PENDING', N'IN_PROGRESS', N'DONE'))
 );
-CREATE TABLE [execution].inspection_finding (    -- soft delete (deleted_at)
-    inspection_finding_id, inspection_report_id, phase, area NVARCHAR(120), severity NVARCHAR(10),
-    note NVARCHAR(500), created_at, created_by, deleted_at, deleted_by
+
+CREATE TABLE [execution].inspection_finding (
+    inspection_finding_id   BIGINT        IDENTITY(1,1) NOT NULL,
+    inspection_report_id    BIGINT        NOT NULL,
+    phase                   NVARCHAR(20)  NOT NULL,
+    area                    NVARCHAR(120) NOT NULL,
+    severity                NVARCHAR(10)  NOT NULL,
+    note                    NVARCHAR(500) NULL,
+    created_at              DATETIME2(3)  NOT NULL CONSTRAINT df_inspfinding_created DEFAULT SYSUTCDATETIME(),
+    created_by              BIGINT        NULL,
+    deleted_at              DATETIME2(3)  NULL,
+    deleted_by              BIGINT        NULL,
+    CONSTRAINT pk_inspection_finding PRIMARY KEY (inspection_finding_id),
+    CONSTRAINT fk_inspection_finding_report FOREIGN KEY (inspection_report_id) REFERENCES [execution].inspection_report(inspection_report_id),
+    CONSTRAINT ck_inspfinding_phase CHECK (phase IN (N'RECEPTION', N'EXTERIOR', N'INTERIOR', N'ENGINE', N'DELIVERY')),
+    CONSTRAINT ck_inspfinding_severity CHECK (severity IN (N'INFO', N'MINOR', N'MAJOR'))
 );
+CREATE NONCLUSTERED INDEX ix_inspection_finding_report ON [execution].inspection_finding (inspection_report_id);
+
 CREATE TABLE [execution].inspection_photo (
-    inspection_photo_id, inspection_finding_id, content_type NVARCHAR(30), content VARBINARY(MAX),
-    size_bytes INT, created_at, created_by
+    inspection_photo_id     BIGINT         IDENTITY(1,1) NOT NULL,
+    inspection_finding_id   BIGINT         NOT NULL,
+    content_type            NVARCHAR(30)   NOT NULL,
+    content                 VARBINARY(MAX) NOT NULL,
+    size_bytes              INT            NOT NULL,
+    created_at              DATETIME2(3)   NOT NULL CONSTRAINT df_inspphoto_created DEFAULT SYSUTCDATETIME(),
+    created_by              BIGINT         NULL,
+    CONSTRAINT pk_inspection_photo PRIMARY KEY (inspection_photo_id),
+    CONSTRAINT fk_inspection_photo_finding FOREIGN KEY (inspection_finding_id) REFERENCES [execution].inspection_finding(inspection_finding_id),
+    CONSTRAINT ck_inspphoto_type CHECK (content_type IN (N'image/jpeg', N'image/png')),
+    CONSTRAINT ck_inspphoto_size CHECK (size_bytes > 0 AND size_bytes <= 2097152)
 );
+CREATE NONCLUSTERED INDEX ix_inspection_photo_finding ON [execution].inspection_photo (inspection_finding_id);
 ```
 
-**Data dictionary (main columns):**
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_inspection_finding_report` | `inspection_report_id` | Non-unique | Load the findings of one report. |
+| `ix_inspection_photo_finding` | `inspection_finding_id` | Non-unique | Load the photos of one finding, apart from the findings. |
+
+**Data dictionary:**
 
 | Column | Type | Nullable | Description | Constraints |
 |--------|------|----------|--------------|-------------|
+| `inspection_report.inspection_report_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
 | `inspection_report.booking_id` | BIGINT | No | The booking. | Unique; no FK — owned by `booking.booking` |
-| `inspection_report.booking_code` … `duration_minutes` | — | — | Copy of the booking taken when the report starts, so the public link never asks booking-service. | — |
+| `inspection_report.booking_code` | NVARCHAR(20) | Yes | Copy of the booking code taken when the report starts, so the public link never asks booking-service. | — |
+| `inspection_report.vehicle` | NVARCHAR(120) | Yes | Copy: vehicle label of the booking. | — |
+| `inspection_report.plate` | NVARCHAR(15) | Yes | Copy: plate. | — |
+| `inspection_report.services` | NVARCHAR(300) | Yes | Copy: names of the booked services. | — |
+| `inspection_report.booking_date` | DATE | No | Copy: booking date. | — |
+| `inspection_report.booking_time` | TIME(0) | No | Copy: booking start time. | — |
+| `inspection_report.duration_minutes` | INT | No | Copy: estimated duration; only long bookings get a report. | — |
 | `inspection_report.public_token` | NVARCHAR(64) | No | Random 32-byte token (base64url) of the public link; never the booking id or code. | Unique |
 | `inspection_report.is_published` / `published_at` | BIT / DATETIME2(3) | No / Yes | The public link answers only when published. | Set together (`ck_inspreport_published`) |
+| `inspection_phase.inspection_phase_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `inspection_phase.inspection_report_id` | BIGINT | No | The report. | FK → `execution.inspection_report`; unique with `phase` |
+| `inspection_phase.started_at` / `finished_at` | DATETIME2(3) | Yes | When the phase was started and finished, UTC. | — |
 | `inspection_phase.phase` / `status` | NVARCHAR(20) | No | `RECEPTION`, `EXTERIOR`, `INTERIOR`, `ENGINE`, `DELIVERY` / `PENDING`, `IN_PROGRESS`, `DONE`. | CHECK |
+| `inspection_finding.inspection_finding_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `inspection_finding.inspection_report_id` | BIGINT | No | The report. | FK → `execution.inspection_report` (`ix_inspection_finding_report`) |
+| `inspection_finding.phase` | NVARCHAR(20) | No | Phase where it was found (same values as `inspection_phase.phase`). | CHECK |
+| `inspection_finding.area` | NVARCHAR(120) | No | Part of the vehicle, e.g. "Rear bumper". | — |
 | `inspection_finding.severity` | NVARCHAR(10) | No | `INFO`, `MINOR`, `MAJOR`. | CHECK |
+| `inspection_finding.note` | NVARCHAR(500) | Yes | Free text. | — |
+| `inspection_photo.inspection_photo_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `inspection_photo.inspection_finding_id` | BIGINT | No | The finding. | FK → `execution.inspection_finding` (`ix_inspection_photo_finding`) |
+| `inspection_photo.content` | VARBINARY(MAX) | No | The image bytes. | — |
 | `inspection_photo.content_type` / `size_bytes` | NVARCHAR(30) / INT | No | `image/jpeg` or `image/png`, up to 2 MB. | CHECK |
 
 **Modeling decisions:**
@@ -1585,19 +1715,20 @@ CREATE TABLE [execution].inspection_photo (
 
 ```sql
 CREATE TABLE [execution].operator_profile (
-    operator_id INT          NOT NULL,
-    specialty   NVARCHAR(80) NULL,
-    updated_at  DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
-    updated_by  BIGINT       NULL,
+    operator_id   INT          NOT NULL,
+    specialty     NVARCHAR(80) NULL,
+    updated_at    DATETIME2(3) NOT NULL CONSTRAINT df_operator_profile_updated DEFAULT SYSUTCDATETIME(),
+    updated_by    BIGINT       NULL,
     CONSTRAINT pk_operator_profile PRIMARY KEY (operator_id),
     CONSTRAINT fk_operator_profile_operator FOREIGN KEY (operator_id) REFERENCES [execution].operator(operator_id)
 );
+
 CREATE TABLE [execution].operator_skill (
-    operator_skill_id INT          IDENTITY(1,1) NOT NULL,
-    operator_id       INT          NOT NULL,
-    name              NVARCHAR(60) NOT NULL,
-    skill_level       NVARCHAR(12) NOT NULL,
-    display_order     SMALLINT     NOT NULL,
+    operator_skill_id   INT          IDENTITY(1,1) NOT NULL,
+    operator_id         INT          NOT NULL,
+    name                NVARCHAR(60) NOT NULL,
+    skill_level         NVARCHAR(12) NOT NULL,
+    display_order       SMALLINT     NOT NULL,
     CONSTRAINT pk_operator_skill PRIMARY KEY (operator_skill_id),
     CONSTRAINT fk_operator_skill_operator FOREIGN KEY (operator_id) REFERENCES [execution].operator(operator_id),
     CONSTRAINT uq_operator_skill_name UNIQUE (operator_id, name),
@@ -1612,6 +1743,8 @@ CREATE TABLE [execution].operator_skill (
 | `operator_profile.operator_id` | INT | No | The operator. | PK, FK → `execution.operator` |
 | `operator_profile.specialty` | NVARCHAR(80) | Yes | Specialty, e.g. "Detailing". | — |
 | `operator_profile.updated_by` | BIGINT | Yes | Administrator who saved it. | No FK — `security.app_user` |
+| `operator_skill.operator_skill_id` | INT | No | Surrogate primary key (IDENTITY). | PK |
+| `operator_skill.operator_id` | INT | No | The operator. | FK → `execution.operator` |
 | `operator_skill.name` | NVARCHAR(60) | No | Skill name. | Unique per operator |
 | `operator_skill.skill_level` | NVARCHAR(12) | No | `CERTIFIED`, `EXPERT` or `ADVANCED`. | CHECK |
 | `operator_skill.display_order` | SMALLINT | No | Order in the card. | — |
@@ -1639,18 +1772,18 @@ CREATE TABLE [execution].operator_skill (
 
 ```sql
 CREATE TABLE [promotion].discount_type (
-    discount_type_id SMALLINT     IDENTITY(1,1) NOT NULL,
-    code          NVARCHAR(30) NOT NULL,
-    name          NVARCHAR(60) NOT NULL,
-    display_order SMALLINT     NOT NULL CONSTRAINT df_dtype_order DEFAULT 0,
-    is_active     BIT          NOT NULL CONSTRAINT df_dtype_active DEFAULT 1,
-    created_at    DATETIME2(3) NOT NULL CONSTRAINT df_dtype_created DEFAULT SYSUTCDATETIME(),
-    created_by    BIGINT       NULL,
-    updated_at    DATETIME2(3) NULL,
-    updated_by    BIGINT       NULL,
-    deleted_at    DATETIME2(3) NULL,
-    deleted_by    BIGINT       NULL,
-    row_version   INT          NOT NULL CONSTRAINT df_dtype_rv DEFAULT 1,
+    discount_type_id   SMALLINT     IDENTITY(1,1) NOT NULL,
+    code               NVARCHAR(30) NOT NULL,
+    name               NVARCHAR(60) NOT NULL,
+    display_order      SMALLINT     NOT NULL CONSTRAINT df_dtype_order DEFAULT 0,
+    is_active          BIT          NOT NULL CONSTRAINT df_dtype_active DEFAULT 1,
+    created_at         DATETIME2(3) NOT NULL CONSTRAINT df_dtype_created DEFAULT SYSUTCDATETIME(),
+    created_by         BIGINT       NULL,
+    updated_at         DATETIME2(3) NULL,
+    updated_by         BIGINT       NULL,
+    deleted_at         DATETIME2(3) NULL,
+    deleted_by         BIGINT       NULL,
+    row_version        INT          NOT NULL CONSTRAINT df_dtype_rv DEFAULT 1,
     CONSTRAINT pk_discount_type PRIMARY KEY (discount_type_id),
     CONSTRAINT uq_discount_type_code UNIQUE (code)
 );
@@ -1675,50 +1808,43 @@ CREATE TABLE [promotion].discount_type (
 
 ```sql
 CREATE TABLE [promotion].promotion (
-    promotion_id                 INT            IDENTITY(1,1) NOT NULL,
-    code                         NVARCHAR(30)   NOT NULL,
-    name                         NVARCHAR(100)  NOT NULL,
-    [description]                NVARCHAR(300)  NULL,
-    discount_type_id             SMALLINT       NOT NULL,
-    discount_value               DECIMAL(12,2)  NOT NULL,
-    max_discount_amount          DECIMAL(12,2)  NULL,
-    min_purchase_amount          DECIMAL(12,2)  NOT NULL CONSTRAINT df_promo_minpurchase DEFAULT 0,
-    is_public                    BIT            NOT NULL CONSTRAINT df_promo_public DEFAULT 1,
-    min_completed_booking        INT            NOT NULL CONSTRAINT df_promo_minbooking DEFAULT 0,
-    valid_from                   DATE           NOT NULL,
-    valid_to                     DATE           NOT NULL,
-    max_redemptions              INT            NULL,
-    max_redemptions_per_customer INT            NULL,
-    is_active                    BIT            NOT NULL CONSTRAINT df_promo_active DEFAULT 1,
-    -- package display (ADR-010 amended, ADR-015 — changeset 017): marketing copy for the card,
-    -- no effect on the discount actually applied
-    price                         DECIMAL(12,2)  NULL,
-    duration_minutes              INT            NULL,
-    icon                          NVARCHAR(40)   NULL,
-    featured                      BIT            NOT NULL CONSTRAINT df_promo_featured DEFAULT 0,
-    benefits                      NVARCHAR(600)  NULL,
-    -- loyalty gate (ADR-015 — changeset 018, payment-service numbering)
-    required_points               INT            NOT NULL CONSTRAINT df_promo_required_points DEFAULT 0,
-    created_at                   DATETIME2(3)   NOT NULL CONSTRAINT df_promo_created DEFAULT SYSUTCDATETIME(),
-    created_by                   BIGINT         NULL,
-    updated_at                   DATETIME2(3)   NULL,
-    updated_by                   BIGINT         NULL,
-    deleted_at                   DATETIME2(3)   NULL,
-    deleted_by                   BIGINT         NULL,
-    row_version                  INT            NOT NULL CONSTRAINT df_promo_rv DEFAULT 1,
+    promotion_id                   INT           IDENTITY(1,1) NOT NULL,
+    code                           NVARCHAR(30)  NOT NULL,
+    name                           NVARCHAR(100) NOT NULL,
+    [description]                  NVARCHAR(300) NULL,
+    discount_type_id               SMALLINT      NOT NULL,
+    discount_value                 DECIMAL(12,2) NOT NULL,
+    max_discount_amount            DECIMAL(12,2) NULL,
+    min_purchase_amount            DECIMAL(12,2) NOT NULL CONSTRAINT df_promo_minpurchase DEFAULT 0,
+    is_public                      BIT           NOT NULL CONSTRAINT df_promo_public DEFAULT 1,
+    min_completed_booking          INT           NOT NULL CONSTRAINT df_promo_minbooking DEFAULT 0,
+    valid_from                     DATE          NOT NULL,
+    valid_to                       DATE          NOT NULL,
+    max_redemptions                INT           NULL,
+    max_redemptions_per_customer   INT           NULL,
+    is_active                      BIT           NOT NULL CONSTRAINT df_promo_active DEFAULT 1,
+    created_at                     DATETIME2(3)  NOT NULL CONSTRAINT df_promo_created DEFAULT SYSUTCDATETIME(),
+    created_by                     BIGINT        NULL,
+    updated_at                     DATETIME2(3)  NULL,
+    updated_by                     BIGINT        NULL,
+    deleted_at                     DATETIME2(3)  NULL,
+    deleted_by                     BIGINT        NULL,
+    row_version                    INT           NOT NULL CONSTRAINT df_promo_rv DEFAULT 1,
+    price                          DECIMAL(12,2) NULL,   -- migration 017
+    duration_minutes               INT           NULL,   -- migration 017
+    icon                           NVARCHAR(40)  NULL,   -- migration 017
+    featured                       BIT           NOT NULL CONSTRAINT df_promo_featured DEFAULT 0,   -- migration 017
+    benefits                       NVARCHAR(600) NULL,   -- migration 017
+    required_points                INT           NOT NULL CONSTRAINT df_promo_required_points DEFAULT 0,   -- migration 018
     CONSTRAINT pk_promotion PRIMARY KEY (promotion_id),
     CONSTRAINT uq_promotion_code UNIQUE (code),
     CONSTRAINT fk_promotion_discount_type FOREIGN KEY (discount_type_id) REFERENCES [promotion].discount_type(discount_type_id),
     CONSTRAINT ck_promo_value CHECK (discount_value > 0),
     CONSTRAINT ck_promo_range CHECK (valid_to >= valid_from),
     CONSTRAINT ck_promo_minbooking CHECK (min_completed_booking >= 0),
-    -- added (not in 06-data)
     CONSTRAINT ck_promo_max_discount CHECK (max_discount_amount IS NULL OR max_discount_amount > 0),
-    -- added (not in 06-data)
     CONSTRAINT ck_promo_max_redemptions CHECK (max_redemptions IS NULL OR max_redemptions > 0),
-    -- added (not in 06-data)
     CONSTRAINT ck_promo_max_per_customer CHECK (max_redemptions_per_customer IS NULL OR max_redemptions_per_customer > 0),
-    -- added (not in 06-data)
     CONSTRAINT ck_promo_per_customer_le_total CHECK (max_redemptions IS NULL OR max_redemptions_per_customer IS NULL OR max_redemptions_per_customer <= max_redemptions),
     CONSTRAINT ck_promo_required_points CHECK (required_points >= 0)
 );
@@ -1767,20 +1893,21 @@ CREATE TABLE [promotion].promotion (
 
 ```sql
 CREATE TABLE [promotion].promotion_service (
-    promotion_service_id INT          IDENTITY(1,1) NOT NULL,
-    promotion_id INT          NOT NULL,
-    service_id   INT          NOT NULL,   -- [catalog].service
-    created_at   DATETIME2(3) NOT NULL CONSTRAINT df_psvc_created DEFAULT SYSUTCDATETIME(),
-    created_by   BIGINT       NULL,
-    updated_at   DATETIME2(3) NULL,
-    updated_by   BIGINT       NULL,
-    deleted_at   DATETIME2(3) NULL,
-    deleted_by   BIGINT       NULL,
-    row_version  INT          NOT NULL CONSTRAINT df_psvc_rv DEFAULT 1,
+    promotion_service_id   INT          IDENTITY(1,1) NOT NULL,
+    promotion_id           INT          NOT NULL,
+    service_id             INT          NOT NULL,   -- [catalog].service
+    created_at             DATETIME2(3) NOT NULL CONSTRAINT df_psvc_created DEFAULT SYSUTCDATETIME(),
+    created_by             BIGINT       NULL,
+    updated_at             DATETIME2(3) NULL,
+    updated_by             BIGINT       NULL,
+    deleted_at             DATETIME2(3) NULL,
+    deleted_by             BIGINT       NULL,
+    row_version            INT          NOT NULL CONSTRAINT df_psvc_rv DEFAULT 1,
     CONSTRAINT pk_promotion_service PRIMARY KEY (promotion_service_id),
     CONSTRAINT uq_promotion_service UNIQUE (promotion_id, service_id),
     CONSTRAINT fk_promotion_service_promotion FOREIGN KEY (promotion_id) REFERENCES [promotion].promotion(promotion_id)
 );
+CREATE NONCLUSTERED INDEX ix_promotion_service_service ON [promotion].promotion_service (service_id);
 ```
 
 **Indexes:**
@@ -1810,22 +1937,24 @@ CREATE TABLE [promotion].promotion_service (
 
 ```sql
 CREATE TABLE [promotion].promotion_customer (
-    promotion_customer_id BIGINT       IDENTITY(1,1) NOT NULL,
-    promotion_id INT          NOT NULL,
-    customer_id  BIGINT       NOT NULL,   -- [customer].customer
-    assigned_at  DATETIME2(3) NOT NULL CONSTRAINT df_pcust_assigned DEFAULT SYSUTCDATETIME(),
-    assigned_by  BIGINT       NULL,       -- [security].app_user
-    created_at   DATETIME2(3) NOT NULL CONSTRAINT df_pcust_created DEFAULT SYSUTCDATETIME(),
-    created_by   BIGINT       NULL,
-    updated_at   DATETIME2(3) NULL,
-    updated_by   BIGINT       NULL,
-    deleted_at   DATETIME2(3) NULL,
-    deleted_by   BIGINT       NULL,
-    row_version  INT          NOT NULL CONSTRAINT df_pcust_rv DEFAULT 1,
+    promotion_customer_id   BIGINT       IDENTITY(1,1) NOT NULL,
+    promotion_id            INT          NOT NULL,
+    customer_id             BIGINT       NOT NULL,   -- [customer].customer
+    assigned_at             DATETIME2(3) NOT NULL CONSTRAINT df_pcust_assigned DEFAULT SYSUTCDATETIME(),
+    assigned_by             BIGINT       NULL,   -- [security].app_user
+    created_at              DATETIME2(3) NOT NULL CONSTRAINT df_pcust_created DEFAULT SYSUTCDATETIME(),
+    created_by              BIGINT       NULL,
+    updated_at              DATETIME2(3) NULL,
+    updated_by              BIGINT       NULL,
+    deleted_at              DATETIME2(3) NULL,
+    deleted_by              BIGINT       NULL,
+    row_version             INT          NOT NULL CONSTRAINT df_pcust_rv DEFAULT 1,
     CONSTRAINT pk_promotion_customer PRIMARY KEY (promotion_customer_id),
     CONSTRAINT uq_promotion_customer UNIQUE (promotion_id, customer_id),
     CONSTRAINT fk_promotion_customer_promotion FOREIGN KEY (promotion_id) REFERENCES [promotion].promotion(promotion_id)
 );
+CREATE NONCLUSTERED INDEX ix_promotion_customer_customer ON [promotion].promotion_customer (customer_id);
+CREATE NONCLUSTERED INDEX ix_promotion_customer_assigned_by ON [promotion].promotion_customer (assigned_by);
 ```
 
 **Indexes:**
@@ -1858,22 +1987,24 @@ CREATE TABLE [promotion].promotion_customer (
 
 ```sql
 CREATE TABLE [promotion].booking_promotion (
-    booking_promotion_id BIGINT        IDENTITY(1,1) NOT NULL,
-    booking_id     BIGINT        NOT NULL,   -- [booking].booking
-    promotion_id   INT           NOT NULL,
-    applied_amount DECIMAL(12,2) NOT NULL,
-    created_at     DATETIME2(3)  NOT NULL CONSTRAINT df_bpromo_created DEFAULT SYSUTCDATETIME(),
-    created_by     BIGINT        NULL,
-    updated_at     DATETIME2(3)  NULL,
-    updated_by     BIGINT        NULL,
-    deleted_at     DATETIME2(3)  NULL,
-    deleted_by     BIGINT        NULL,
-    row_version    INT           NOT NULL CONSTRAINT df_bpromo_rv DEFAULT 1,
+    booking_promotion_id   BIGINT        IDENTITY(1,1) NOT NULL,
+    booking_id             BIGINT        NOT NULL,   -- [booking].booking
+    promotion_id           INT           NOT NULL,
+    applied_amount         DECIMAL(12,2) NOT NULL,
+    created_at             DATETIME2(3)  NOT NULL CONSTRAINT df_bpromo_created DEFAULT SYSUTCDATETIME(),
+    created_by             BIGINT        NULL,
+    updated_at             DATETIME2(3)  NULL,
+    updated_by             BIGINT        NULL,
+    deleted_at             DATETIME2(3)  NULL,
+    deleted_by             BIGINT        NULL,
+    row_version            INT           NOT NULL CONSTRAINT df_bpromo_rv DEFAULT 1,
     CONSTRAINT pk_booking_promotion PRIMARY KEY (booking_promotion_id),
     CONSTRAINT uq_booking_promotion UNIQUE (booking_id, promotion_id),
     CONSTRAINT fk_booking_promotion_promotion FOREIGN KEY (promotion_id) REFERENCES [promotion].promotion(promotion_id),
     CONSTRAINT ck_bpromo_amount CHECK (applied_amount > 0)
 );
+CREATE NONCLUSTERED INDEX ix_booking_promotion_booking ON [promotion].booking_promotion (booking_id);
+CREATE UNIQUE NONCLUSTERED INDEX ux_booking_promotion_one_per_booking ON [promotion].booking_promotion (booking_id);   -- migration 021
 ```
 
 **Indexes:**
@@ -1881,6 +2012,7 @@ CREATE TABLE [promotion].booking_promotion (
 | Name | Fields | Type | Justification |
 |------|--------|------|----------------|
 | `ix_booking_promotion_booking` | `booking_id` | Non-unique | Find the promotions applied to one booking. |
+| `ux_booking_promotion_one_per_booking` | `booking_id` | Unique (not filtered) | E-09, payment migration 021: at most one coupon per booking, also under two simultaneous redemptions. Created only if no booking already has two (`onFail:CONTINUE`). |
 
 **Data dictionary:**
 
@@ -1895,6 +2027,7 @@ CREATE TABLE [promotion].booking_promotion (
 **Modeling decisions:**
 
 1. `applied_amount` is stored because a promotion can change or expire later — what a booking was actually discounted that day is a historical fact, not something that should be recomputed if the promotion's terms change tomorrow.
+2. One coupon per booking (E-09): the service answers 409 `PROMOTION_ONE_PER_BOOKING` and `ux_booking_promotion_one_per_booking` backs it. The unique index is not filtered by `deleted_at`: removing a coupon (`DELETE /api/v1/loyalty/redemptions/{bookingId}/{promotionId}`, only while the payment is not in review or approved) deletes the row physically, so the client can redeem another one.
 
 ---
 
@@ -1915,20 +2048,20 @@ CREATE TABLE [promotion].booking_promotion (
 
 ```sql
 CREATE TABLE [payment].payment_method_type (
-    payment_method_type_id SMALLINT     IDENTITY(1,1) NOT NULL,
-    code             NVARCHAR(30) NOT NULL,
-    name             NVARCHAR(60) NOT NULL,
-    requires_account BIT          NOT NULL CONSTRAINT df_pmt_account DEFAULT 1,
-    requires_receipt BIT          NOT NULL CONSTRAINT df_pmt_receipt DEFAULT 1,
-    display_order    SMALLINT     NOT NULL CONSTRAINT df_pmt_order DEFAULT 0,
-    is_active        BIT          NOT NULL CONSTRAINT df_pmt_active DEFAULT 1,
-    created_at       DATETIME2(3) NOT NULL CONSTRAINT df_pmt_created DEFAULT SYSUTCDATETIME(),
-    created_by       BIGINT       NULL,
-    updated_at       DATETIME2(3) NULL,
-    updated_by       BIGINT       NULL,
-    deleted_at       DATETIME2(3) NULL,
-    deleted_by       BIGINT       NULL,
-    row_version      INT          NOT NULL CONSTRAINT df_pmt_rv DEFAULT 1,
+    payment_method_type_id   SMALLINT     IDENTITY(1,1) NOT NULL,
+    code                     NVARCHAR(30) NOT NULL,
+    name                     NVARCHAR(60) NOT NULL,
+    requires_account         BIT          NOT NULL CONSTRAINT df_pmt_account DEFAULT 1,
+    requires_receipt         BIT          NOT NULL CONSTRAINT df_pmt_receipt DEFAULT 1,
+    display_order            SMALLINT     NOT NULL CONSTRAINT df_pmt_order DEFAULT 0,
+    is_active                BIT          NOT NULL CONSTRAINT df_pmt_active DEFAULT 1,
+    created_at               DATETIME2(3) NOT NULL CONSTRAINT df_pmt_created DEFAULT SYSUTCDATETIME(),
+    created_by               BIGINT       NULL,
+    updated_at               DATETIME2(3) NULL,
+    updated_by               BIGINT       NULL,
+    deleted_at               DATETIME2(3) NULL,
+    deleted_by               BIGINT       NULL,
+    row_version              INT          NOT NULL CONSTRAINT df_pmt_rv DEFAULT 1,
     CONSTRAINT pk_payment_method_type PRIMARY KEY (payment_method_type_id),
     CONSTRAINT uq_payment_method_type_code UNIQUE (code)
 );
@@ -1955,20 +2088,20 @@ CREATE TABLE [payment].payment_method_type (
 
 ```sql
 CREATE TABLE [payment].payment_account (
-    payment_account_id     SMALLINT      IDENTITY(1,1) NOT NULL,
-    payment_method_type_id SMALLINT      NOT NULL,
-    account_holder         NVARCHAR(120) NOT NULL,
-    account_number         NVARCHAR(50)  NULL,
-    qr_image_url           NVARCHAR(500) NULL,
-    instructions           NVARCHAR(300) NULL,
-    is_active              BIT           NOT NULL CONSTRAINT df_pacct_active DEFAULT 1,
-    created_at             DATETIME2(3)  NOT NULL CONSTRAINT df_pacct_created DEFAULT SYSUTCDATETIME(),
-    created_by             BIGINT        NULL,
-    updated_at             DATETIME2(3)  NULL,
-    updated_by             BIGINT        NULL,
-    deleted_at             DATETIME2(3)  NULL,
-    deleted_by             BIGINT        NULL,
-    row_version            INT           NOT NULL CONSTRAINT df_pacct_rv DEFAULT 1,
+    payment_account_id       SMALLINT      IDENTITY(1,1) NOT NULL,
+    payment_method_type_id   SMALLINT      NOT NULL,
+    account_holder           NVARCHAR(120) NOT NULL,
+    account_number           NVARCHAR(50)  NULL,
+    qr_image_url             NVARCHAR(MAX) NULL,   -- type changed in 016
+    instructions             NVARCHAR(300) NULL,
+    is_active                BIT           NOT NULL CONSTRAINT df_pacct_active DEFAULT 1,
+    created_at               DATETIME2(3)  NOT NULL CONSTRAINT df_pacct_created DEFAULT SYSUTCDATETIME(),
+    created_by               BIGINT        NULL,
+    updated_at               DATETIME2(3)  NULL,
+    updated_by               BIGINT        NULL,
+    deleted_at               DATETIME2(3)  NULL,
+    deleted_by               BIGINT        NULL,
+    row_version              INT           NOT NULL CONSTRAINT df_pacct_rv DEFAULT 1,
     CONSTRAINT pk_payment_account PRIMARY KEY (payment_account_id),
     CONSTRAINT fk_payment_account_method FOREIGN KEY (payment_method_type_id) REFERENCES [payment].payment_method_type(payment_method_type_id)
 );
@@ -1999,19 +2132,19 @@ CREATE TABLE [payment].payment_account (
 
 ```sql
 CREATE TABLE [payment].payment_status (
-    payment_status_id SMALLINT     IDENTITY(1,1) NOT NULL,
-    code          NVARCHAR(30) NOT NULL,
-    name          NVARCHAR(60) NOT NULL,
-    is_final      BIT          NOT NULL CONSTRAINT df_pstatus_final DEFAULT 0,
-    display_order SMALLINT     NOT NULL CONSTRAINT df_pstatus_order DEFAULT 0,
-    is_active     BIT          NOT NULL CONSTRAINT df_pstatus_active DEFAULT 1,
-    created_at    DATETIME2(3) NOT NULL CONSTRAINT df_pstatus_created DEFAULT SYSUTCDATETIME(),
-    created_by    BIGINT       NULL,
-    updated_at    DATETIME2(3) NULL,
-    updated_by    BIGINT       NULL,
-    deleted_at    DATETIME2(3) NULL,
-    deleted_by    BIGINT       NULL,
-    row_version   INT          NOT NULL CONSTRAINT df_pstatus_rv DEFAULT 1,
+    payment_status_id   SMALLINT     IDENTITY(1,1) NOT NULL,
+    code                NVARCHAR(30) NOT NULL,
+    name                NVARCHAR(60) NOT NULL,
+    is_final            BIT          NOT NULL CONSTRAINT df_pstatus_final DEFAULT 0,
+    display_order       SMALLINT     NOT NULL CONSTRAINT df_pstatus_order DEFAULT 0,
+    is_active           BIT          NOT NULL CONSTRAINT df_pstatus_active DEFAULT 1,
+    created_at          DATETIME2(3) NOT NULL CONSTRAINT df_pstatus_created DEFAULT SYSUTCDATETIME(),
+    created_by          BIGINT       NULL,
+    updated_at          DATETIME2(3) NULL,
+    updated_by          BIGINT       NULL,
+    deleted_at          DATETIME2(3) NULL,
+    deleted_by          BIGINT       NULL,
+    row_version         INT          NOT NULL CONSTRAINT df_pstatus_rv DEFAULT 1,
     CONSTRAINT pk_payment_status PRIMARY KEY (payment_status_id),
     CONSTRAINT uq_payment_status_code UNIQUE (code)
 );
@@ -2037,26 +2170,30 @@ CREATE TABLE [payment].payment_status (
 
 ```sql
 CREATE TABLE [payment].payment (
-    payment_id         BIGINT        IDENTITY(1,1) NOT NULL,
-    booking_id         BIGINT        NOT NULL,   -- [booking].booking
-    payment_account_id SMALLINT      NOT NULL,
-    payment_status_id  SMALLINT      NOT NULL,
-    amount             DECIMAL(12,2) NOT NULL,
-    processed_at       DATETIME2(3)  NULL,
-    approved_by        BIGINT        NULL,       -- [security].app_user
-    rejection_reason   NVARCHAR(200) NULL,
-    created_at         DATETIME2(3)  NOT NULL CONSTRAINT df_payment_created DEFAULT SYSUTCDATETIME(),
-    created_by         BIGINT        NULL,
-    updated_at         DATETIME2(3)  NULL,
-    updated_by         BIGINT        NULL,
-    deleted_at         DATETIME2(3)  NULL,
-    deleted_by         BIGINT        NULL,
-    row_version        INT           NOT NULL CONSTRAINT df_payment_rv DEFAULT 1,
+    payment_id           BIGINT        IDENTITY(1,1) NOT NULL,
+    booking_id           BIGINT        NOT NULL,   -- [booking].booking
+    payment_account_id   SMALLINT      NOT NULL,
+    payment_status_id    SMALLINT      NOT NULL,
+    amount               DECIMAL(12,2) NOT NULL,
+    processed_at         DATETIME2(3)  NULL,
+    approved_by          BIGINT        NULL,   -- [security].app_user
+    rejection_reason     NVARCHAR(200) NULL,
+    created_at           DATETIME2(3)  NOT NULL CONSTRAINT df_payment_created DEFAULT SYSUTCDATETIME(),
+    created_by           BIGINT        NULL,
+    updated_at           DATETIME2(3)  NULL,
+    updated_by           BIGINT        NULL,
+    deleted_at           DATETIME2(3)  NULL,
+    deleted_by           BIGINT        NULL,
+    row_version          INT           NOT NULL CONSTRAINT df_payment_rv DEFAULT 1,
     CONSTRAINT pk_payment PRIMARY KEY (payment_id),
     CONSTRAINT fk_payment_account FOREIGN KEY (payment_account_id) REFERENCES [payment].payment_account(payment_account_id),
     CONSTRAINT fk_payment_status FOREIGN KEY (payment_status_id) REFERENCES [payment].payment_status(payment_status_id),
     CONSTRAINT ck_payment_amount CHECK (amount > 0)
 );
+CREATE NONCLUSTERED INDEX ix_payment_booking ON [payment].payment (booking_id);
+CREATE NONCLUSTERED INDEX ix_payment_status ON [payment].payment (payment_status_id);
+CREATE NONCLUSTERED INDEX ix_payment_approved_by ON [payment].payment (approved_by);
+CREATE UNIQUE NONCLUSTERED INDEX ux_payment_one_approved_per_booking ON [payment].payment (booking_id) WHERE payment_status_id = 3 AND deleted_at IS NULL;
 ```
 
 **Indexes:**
@@ -2095,31 +2232,32 @@ CREATE TABLE [payment].payment (
 
 ```sql
 CREATE TABLE [payment].payment_receipt (
-    payment_receipt_id    BIGINT        IDENTITY(1,1) NOT NULL,
-    payment_id            BIGINT        NOT NULL,
-    file_url              NVARCHAR(500) NOT NULL,
-    transaction_reference NVARCHAR(100) NULL,
-    reported_amount       DECIMAL(12,2) NULL,
-    uploaded_at           DATETIME2(3)  NOT NULL CONSTRAINT df_preceipt_uploaded DEFAULT SYSUTCDATETIME(),
-    uploaded_by           BIGINT        NOT NULL,   -- [security].app_user
-    reviewed_at           DATETIME2(3)  NULL,
-    reviewed_by           BIGINT        NULL,       -- [security].app_user
-    review_comment        NVARCHAR(300) NULL,
-    created_at            DATETIME2(3)  NOT NULL CONSTRAINT df_preceipt_created DEFAULT SYSUTCDATETIME(),
-    created_by            BIGINT        NULL,
-    updated_at            DATETIME2(3)  NULL,
-    updated_by            BIGINT        NULL,
-    deleted_at            DATETIME2(3)  NULL,
-    deleted_by            BIGINT        NULL,
-    row_version           INT           NOT NULL CONSTRAINT df_preceipt_rv DEFAULT 1,
+    payment_receipt_id      BIGINT        IDENTITY(1,1) NOT NULL,
+    payment_id              BIGINT        NOT NULL,
+    file_url                NVARCHAR(MAX) NOT NULL,   -- type changed in 016
+    transaction_reference   NVARCHAR(100) NULL,
+    reported_amount         DECIMAL(12,2) NULL,
+    uploaded_at             DATETIME2(3)  NOT NULL CONSTRAINT df_preceipt_uploaded DEFAULT SYSUTCDATETIME(),
+    uploaded_by             BIGINT        NOT NULL,   -- [security].app_user
+    reviewed_at             DATETIME2(3)  NULL,
+    reviewed_by             BIGINT        NULL,   -- [security].app_user
+    review_comment          NVARCHAR(300) NULL,
+    created_at              DATETIME2(3)  NOT NULL CONSTRAINT df_preceipt_created DEFAULT SYSUTCDATETIME(),
+    created_by              BIGINT        NULL,
+    updated_at              DATETIME2(3)  NULL,
+    updated_by              BIGINT        NULL,
+    deleted_at              DATETIME2(3)  NULL,
+    deleted_by              BIGINT        NULL,
+    row_version             INT           NOT NULL CONSTRAINT df_preceipt_rv DEFAULT 1,
     CONSTRAINT pk_payment_receipt PRIMARY KEY (payment_receipt_id),
     CONSTRAINT fk_payment_receipt_payment FOREIGN KEY (payment_id) REFERENCES [payment].payment(payment_id),
     CONSTRAINT ck_preceipt_amount CHECK (reported_amount IS NULL OR reported_amount > 0),
-    CONSTRAINT ck_preceipt_review CHECK (
-        (reviewed_at IS NULL AND reviewed_by IS NULL) OR
-        (reviewed_at IS NOT NULL AND reviewed_by IS NOT NULL)
-    )
+    CONSTRAINT ck_preceipt_review CHECK ((reviewed_at IS NULL AND reviewed_by IS NULL) OR (reviewed_at IS NOT NULL AND reviewed_by IS NOT NULL))
 );
+CREATE NONCLUSTERED INDEX ix_payment_receipt_payment ON [payment].payment_receipt (payment_id);
+CREATE NONCLUSTERED INDEX ix_payment_receipt_reference ON [payment].payment_receipt (transaction_reference);
+CREATE NONCLUSTERED INDEX ix_payment_receipt_reviewed_by ON [payment].payment_receipt (reviewed_by);
+CREATE NONCLUSTERED INDEX ix_payment_receipt_uploaded_by ON [payment].payment_receipt (uploaded_by);
 ```
 
 **Indexes:**
@@ -2160,19 +2298,19 @@ CREATE TABLE [payment].payment_receipt (
 
 ```sql
 CREATE TABLE [payment].loyalty_movement_type (
-    loyalty_movement_type_id SMALLINT     IDENTITY(1,1) NOT NULL,
-    code          NVARCHAR(30) NOT NULL,
-    name          NVARCHAR(60) NOT NULL,
-    sign          SMALLINT     NOT NULL,
-    display_order SMALLINT     NOT NULL CONSTRAINT df_lmt_order DEFAULT 0,
-    is_active     BIT          NOT NULL CONSTRAINT df_lmt_active DEFAULT 1,
-    created_at    DATETIME2(3) NOT NULL CONSTRAINT df_lmt_created DEFAULT SYSUTCDATETIME(),
-    created_by    BIGINT       NULL,
-    updated_at    DATETIME2(3) NULL,
-    updated_by    BIGINT       NULL,
-    deleted_at    DATETIME2(3) NULL,
-    deleted_by    BIGINT       NULL,
-    row_version   INT          NOT NULL CONSTRAINT df_lmt_rv DEFAULT 1,
+    loyalty_movement_type_id   SMALLINT     IDENTITY(1,1) NOT NULL,
+    code                       NVARCHAR(30) NOT NULL,
+    name                       NVARCHAR(60) NOT NULL,
+    sign                       SMALLINT     NOT NULL,
+    display_order              SMALLINT     NOT NULL CONSTRAINT df_lmt_order DEFAULT 0,
+    is_active                  BIT          NOT NULL CONSTRAINT df_lmt_active DEFAULT 1,
+    created_at                 DATETIME2(3) NOT NULL CONSTRAINT df_lmt_created DEFAULT SYSUTCDATETIME(),
+    created_by                 BIGINT       NULL,
+    updated_at                 DATETIME2(3) NULL,
+    updated_by                 BIGINT       NULL,
+    deleted_at                 DATETIME2(3) NULL,
+    deleted_by                 BIGINT       NULL,
+    row_version                INT          NOT NULL CONSTRAINT df_lmt_rv DEFAULT 1,
     CONSTRAINT pk_loyalty_movement_type PRIMARY KEY (loyalty_movement_type_id),
     CONSTRAINT uq_loyalty_movement_type_code UNIQUE (code),
     CONSTRAINT ck_loyalty_movement_sign CHECK (sign IN (-1, 1))
@@ -2203,26 +2341,30 @@ CREATE TABLE [payment].loyalty_movement_type (
 
 ```sql
 CREATE TABLE [payment].loyalty_transaction (
-    loyalty_transaction_id   BIGINT        IDENTITY(1,1) NOT NULL,
-    customer_id              BIGINT        NOT NULL,   -- security.app_user.user_id, not customer.customer_id — see note below (ADR-015)
-    loyalty_movement_type_id SMALLINT      NOT NULL,
-    booking_id               BIGINT        NULL,   -- [booking].booking
-    points                   INT           NOT NULL,
-    balance_after            INT           NOT NULL,   -- source of truth for the balance (ADR-009)
-    expires_on               DATE          NULL,
-    [description]            NVARCHAR(200) NULL,
-    created_at               DATETIME2(3)  NOT NULL CONSTRAINT df_ltx_created DEFAULT SYSUTCDATETIME(),
-    created_by               BIGINT        NULL,
-    updated_at               DATETIME2(3)  NULL,
-    updated_by               BIGINT        NULL,
-    deleted_at               DATETIME2(3)  NULL,
-    deleted_by               BIGINT        NULL,
-    row_version              INT           NOT NULL CONSTRAINT df_ltx_rv DEFAULT 1,
+    loyalty_transaction_id     BIGINT        IDENTITY(1,1) NOT NULL,
+    customer_id                BIGINT        NOT NULL,   -- security.app_user.user_id, not customer.customer_id — see note below (ADR-015)
+    loyalty_movement_type_id   SMALLINT      NOT NULL,
+    booking_id                 BIGINT        NULL,   -- [booking].booking
+    points                     INT           NOT NULL,
+    balance_after              INT           NOT NULL,   -- source of truth for the balance (ADR-009)
+    expires_on                 DATE          NULL,
+    [description]              NVARCHAR(200) NULL,
+    created_at                 DATETIME2(3)  NOT NULL CONSTRAINT df_ltx_created DEFAULT SYSUTCDATETIME(),
+    created_by                 BIGINT        NULL,
+    updated_at                 DATETIME2(3)  NULL,
+    updated_by                 BIGINT        NULL,
+    deleted_at                 DATETIME2(3)  NULL,
+    deleted_by                 BIGINT        NULL,
+    row_version                INT           NOT NULL CONSTRAINT df_ltx_rv DEFAULT 1,
+    sequence_no                INT           NOT NULL,   -- migration 020; type changed in 020
     CONSTRAINT pk_loyalty_transaction PRIMARY KEY (loyalty_transaction_id),
     CONSTRAINT fk_loyalty_transaction_type FOREIGN KEY (loyalty_movement_type_id) REFERENCES [payment].loyalty_movement_type(loyalty_movement_type_id),
     CONSTRAINT ck_loyalty_points CHECK (points <> 0),
     CONSTRAINT ck_loyalty_balance CHECK (balance_after >= 0)
 );
+CREATE NONCLUSTERED INDEX ix_loyalty_transaction_customer ON [payment].loyalty_transaction (customer_id, created_at);
+CREATE NONCLUSTERED INDEX ix_loyalty_transaction_booking ON [payment].loyalty_transaction (booking_id);
+CREATE UNIQUE NONCLUSTERED INDEX ux_loyalty_transaction_customer_sequence ON [payment].loyalty_transaction (customer_id, sequence_no);   -- migration 020
 ```
 
 **Indexes:**
@@ -2231,6 +2373,7 @@ CREATE TABLE [payment].loyalty_transaction (
 |------|--------|------|----------------|
 | `ix_loyalty_transaction_customer` | `customer_id, created_at` | Non-unique | Build a customer's points history in order. |
 | `ix_loyalty_transaction_booking` | `booking_id` | Non-unique | Find the ledger entries a booking generated. |
+| `ux_loyalty_transaction_customer_sequence` | `customer_id, sequence_no` | Unique | Payment migration 020: two movements calculated at the same time on the same balance cannot both be saved (the second answers 409). |
 
 **Data dictionary:**
 
@@ -2238,19 +2381,20 @@ CREATE TABLE [payment].loyalty_transaction (
 |--------|------|----------|--------------|-------------|
 | `loyalty_transaction_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
 | `customer_id` | BIGINT | No | Owning customer. **As implemented (ADR-015), this holds `security.app_user.user_id`** (the same id booking-service already exposes as `ownerUserId`), not `customer.customer_id` — see Modeling decision 4 below. | No FK — cross-service. |
-| `loyalty_movement_type_id` | SMALLINT | No | What kind of movement this was. | FK → `customer.loyalty_movement_type.loyalty_movement_type_id` |
+| `loyalty_movement_type_id` | SMALLINT | No | What kind of movement this was. | FK → `payment.loyalty_movement_type.loyalty_movement_type_id` |
 | `booking_id` | BIGINT | Yes | The booking that generated it, when there is one. | No FK — owned by `booking.booking`; NULL for manual adjustments and expirations, see the cross-service contract below. |
 | `points` | INT | No | Signed amount of this single movement. | — |
 | `balance_after` | INT | No | Running balance right after this movement — lets any past balance be reconstructed without replaying the whole ledger. | — |
 | `expires_on` | DATE | Yes | Expiry date for earned points, if any. | — |
 | `description` | NVARCHAR(200) | Yes | Free-text note. | — |
+| `sequence_no` | INT | No | Position of the movement in its customer's ledger (1, 2, 3…). Payment migration 020 backfilled it in id order and then made it NOT NULL. | Unique with `customer_id` |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
 **Modeling decisions:**
 
 1. Without this table, `customer.loyalty_points` would be a number with no origin — if a customer disputes their balance, there is nothing to point to. `balance_after` turns the ledger into an audit trail, not just a sum.
 2. **Moved from `customer` to `payment` (ADR-009), and it is the source of truth for every loyalty balance.** Only `payment-service` writes it. The current balance of a customer is the `balance_after` of their latest row.
-3. `customer_id` lost its foreign key in the move: `customer.customer` now belongs to another service. It keeps its index, like every other cross-service reference.
+3. `customer_id` lost its foreign key in the move: `customer.customer` now belongs to another service. It keeps its index (`ix_loyalty_transaction_customer`).
 4. **`customer_id` holds `user_id`, not `customer.customer_id` (ADR-015, 2026-10-07).** Every other cross-service contract a customer appears in (`booking.booking.customer_vehicle_id` → vehicle → owner, exposed as `ownerUserId`; the whole `customer-service` vehicle API, keyed by `userId` from the JWT) already identifies the customer by their security `user_id`, and no endpoint anywhere exposes `customer.customer_id` to another service. Requiring the "correct" id here would need a new customer-service lookup endpoint for an id nothing else needs; `payment-service` uses the id it can already get from `booking-service`'s `BookingResponse.ownerUserId` instead. `customer.customer.user_id` (added by changeset `014`) is the column that would back that lookup if it is ever built.
 
 ---
@@ -2271,18 +2415,18 @@ CREATE TABLE [payment].loyalty_transaction (
 
 ```sql
 CREATE TABLE [notification].notification_type (
-    notification_type_id SMALLINT     IDENTITY(1,1) NOT NULL,
-    code          NVARCHAR(40) NOT NULL,
-    name          NVARCHAR(80) NOT NULL,
-    display_order SMALLINT     NOT NULL CONSTRAINT df_ntype_order DEFAULT 0,
-    is_active     BIT          NOT NULL CONSTRAINT df_ntype_active DEFAULT 1,
-    created_at    DATETIME2(3) NOT NULL CONSTRAINT df_ntype_created DEFAULT SYSUTCDATETIME(),
-    created_by    BIGINT       NULL,
-    updated_at    DATETIME2(3) NULL,
-    updated_by    BIGINT       NULL,
-    deleted_at    DATETIME2(3) NULL,
-    deleted_by    BIGINT       NULL,
-    row_version   INT          NOT NULL CONSTRAINT df_ntype_rv DEFAULT 1,
+    notification_type_id   SMALLINT     IDENTITY(1,1) NOT NULL,
+    code                   NVARCHAR(40) NOT NULL,
+    name                   NVARCHAR(80) NOT NULL,
+    display_order          SMALLINT     NOT NULL CONSTRAINT df_ntype_order DEFAULT 0,
+    is_active              BIT          NOT NULL CONSTRAINT df_ntype_active DEFAULT 1,
+    created_at             DATETIME2(3) NOT NULL CONSTRAINT df_ntype_created DEFAULT SYSUTCDATETIME(),
+    created_by             BIGINT       NULL,
+    updated_at             DATETIME2(3) NULL,
+    updated_by             BIGINT       NULL,
+    deleted_at             DATETIME2(3) NULL,
+    deleted_by             BIGINT       NULL,
+    row_version            INT          NOT NULL CONSTRAINT df_ntype_rv DEFAULT 1,
     CONSTRAINT pk_notification_type PRIMARY KEY (notification_type_id),
     CONSTRAINT uq_notification_type_code UNIQUE (code)
 );
@@ -2307,30 +2451,29 @@ CREATE TABLE [notification].notification_type (
 
 ```sql
 CREATE TABLE [notification].notification (
-    notification_id      BIGINT        IDENTITY(1,1) NOT NULL,
-    user_id              BIGINT        NOT NULL,   -- [security].app_user
-    notification_type_id SMALLINT      NOT NULL,
-    title                NVARCHAR(120) NOT NULL,
-    [message]            NVARCHAR(500) NOT NULL,
-    reference_entity     NVARCHAR(40)  NULL,
-    reference_id         BIGINT        NULL,
-    is_read              BIT           NOT NULL CONSTRAINT df_notif_read DEFAULT 0,
-    read_at              DATETIME2(3)  NULL,
-    sent_at              DATETIME2(3)  NOT NULL CONSTRAINT df_notif_sent DEFAULT SYSUTCDATETIME(),
-    created_at           DATETIME2(3)  NOT NULL CONSTRAINT df_notif_created DEFAULT SYSUTCDATETIME(),
-    created_by           BIGINT        NULL,
-    updated_at           DATETIME2(3)  NULL,
-    updated_by           BIGINT        NULL,
-    deleted_at           DATETIME2(3)  NULL,
-    deleted_by           BIGINT        NULL,
-    row_version          INT           NOT NULL CONSTRAINT df_notif_rv DEFAULT 1,
+    notification_id        BIGINT        IDENTITY(1,1) NOT NULL,
+    user_id                BIGINT        NOT NULL,   -- [security].app_user
+    notification_type_id   SMALLINT      NOT NULL,
+    title                  NVARCHAR(120) NOT NULL,
+    [message]              NVARCHAR(500) NOT NULL,
+    reference_entity       NVARCHAR(40)  NULL,
+    reference_id           BIGINT        NULL,
+    is_read                BIT           NOT NULL CONSTRAINT df_notif_read DEFAULT 0,
+    read_at                DATETIME2(3)  NULL,
+    sent_at                DATETIME2(3)  NOT NULL CONSTRAINT df_notif_sent DEFAULT SYSUTCDATETIME(),
+    created_at             DATETIME2(3)  NOT NULL CONSTRAINT df_notif_created DEFAULT SYSUTCDATETIME(),
+    created_by             BIGINT        NULL,
+    updated_at             DATETIME2(3)  NULL,
+    updated_by             BIGINT        NULL,
+    deleted_at             DATETIME2(3)  NULL,
+    deleted_by             BIGINT        NULL,
+    row_version            INT           NOT NULL CONSTRAINT df_notif_rv DEFAULT 1,
     CONSTRAINT pk_notification PRIMARY KEY (notification_id),
     CONSTRAINT fk_notification_type FOREIGN KEY (notification_type_id) REFERENCES [notification].notification_type(notification_type_id),
-    CONSTRAINT ck_notification_read CHECK (
-        (is_read = 0 AND read_at IS NULL) OR
-        (is_read = 1 AND read_at IS NOT NULL)
-    )
+    CONSTRAINT ck_notification_read CHECK ((is_read = 0 AND read_at IS NULL) OR (is_read = 1 AND read_at IS NOT NULL))
 );
+CREATE NONCLUSTERED INDEX ix_notification_user_unread ON [notification].notification (user_id, is_read);
+CREATE NONCLUSTERED INDEX ix_notification_user_date ON [notification].notification (user_id, sent_at);
 ```
 
 **Indexes:**
@@ -2368,24 +2511,44 @@ CREATE TABLE [notification].notification (
 
 ```sql
 CREATE TABLE [notification].device_token (
-    device_token_id BIGINT        IDENTITY(1,1) NOT NULL,
-    user_id         BIGINT        NOT NULL,   -- [security].app_user
-    token           NVARCHAR(200) NOT NULL,
-    platform        NVARCHAR(10)  NOT NULL,
-    is_active       BIT           NOT NULL CONSTRAINT df_dtoken_active DEFAULT 1,
-    last_seen_at    DATETIME2(3)  NOT NULL CONSTRAINT df_dtoken_seen DEFAULT SYSUTCDATETIME(),
-    created_at      DATETIME2(3)  NOT NULL CONSTRAINT df_dtoken_created DEFAULT SYSUTCDATETIME(),
-    created_by      BIGINT        NULL,
-    updated_at      DATETIME2(3)  NULL,
-    updated_by      BIGINT        NULL,
-    deleted_at      DATETIME2(3)  NULL,
-    deleted_by      BIGINT        NULL,
-    row_version     INT           NOT NULL CONSTRAINT df_dtoken_rv DEFAULT 1,
+    device_token_id   BIGINT        IDENTITY(1,1) NOT NULL,
+    user_id           BIGINT        NOT NULL,   -- [security].app_user
+    token             NVARCHAR(200) NOT NULL,
+    platform          NVARCHAR(10)  NOT NULL,
+    is_active         BIT           NOT NULL CONSTRAINT df_dtoken_active DEFAULT 1,
+    last_seen_at      DATETIME2(3)  NOT NULL CONSTRAINT df_dtoken_seen DEFAULT SYSUTCDATETIME(),
+    created_at        DATETIME2(3)  NOT NULL CONSTRAINT df_dtoken_created DEFAULT SYSUTCDATETIME(),
+    created_by        BIGINT        NULL,
+    updated_at        DATETIME2(3)  NULL,
+    updated_by        BIGINT        NULL,
+    deleted_at        DATETIME2(3)  NULL,
+    deleted_by        BIGINT        NULL,
+    row_version       INT           NOT NULL CONSTRAINT df_dtoken_rv DEFAULT 1,
     CONSTRAINT pk_device_token PRIMARY KEY (device_token_id),
     CONSTRAINT uq_device_token_token UNIQUE (token),
     CONSTRAINT ck_device_token_platform CHECK (platform IN (N'ANDROID', N'IOS'))
 );
+CREATE NONCLUSTERED INDEX ix_device_token_user_active ON [notification].device_token (user_id, is_active);
 ```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `uq_device_token_token` | `token` | Unique (constraint) | A phone has one owner at a time: another account logging in takes the row over. |
+| `ix_device_token_user_active` | `user_id, is_active` | Non-unique | Find the active phones of a user when sending a push. |
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `device_token_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `user_id` | BIGINT | No | Owner of the phone. | No FK — owned by `security.app_user` |
+| `token` | NVARCHAR(200) | No | Expo push token. | Unique |
+| `platform` | NVARCHAR(10) | No | `ANDROID` or `IOS`. | CHECK `ck_device_token_platform` |
+| `is_active` | BIT | No | `0` when Expo reports the token as invalid or the user logs out. | — |
+| `last_seen_at` | DATETIME2(3) | No | Last time the app registered the token, UTC. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
 **Modeling decisions:**
 
@@ -2399,21 +2562,31 @@ CREATE TABLE [notification].device_token (
 
 ```sql
 CREATE TABLE [notification].processed_event (
-    processed_event_id BIGINT       IDENTITY(1,1) NOT NULL,
-    event_id           NVARCHAR(64) NOT NULL,
-    event_type         NVARCHAR(60) NOT NULL,
-    processed_at       DATETIME2(3) NOT NULL CONSTRAINT df_pevent_processed DEFAULT SYSUTCDATETIME(),
-    created_at         DATETIME2(3) NOT NULL CONSTRAINT df_pevent_created DEFAULT SYSUTCDATETIME(),
-    created_by         BIGINT       NULL,
-    updated_at         DATETIME2(3) NULL,
-    updated_by         BIGINT       NULL,
-    deleted_at         DATETIME2(3) NULL,
-    deleted_by         BIGINT       NULL,
-    row_version        INT          NOT NULL CONSTRAINT df_pevent_rv DEFAULT 1,
+    processed_event_id   BIGINT       IDENTITY(1,1) NOT NULL,
+    event_id             NVARCHAR(64) NOT NULL,
+    event_type           NVARCHAR(60) NOT NULL,
+    processed_at         DATETIME2(3) NOT NULL CONSTRAINT df_pevent_processed DEFAULT SYSUTCDATETIME(),
+    created_at           DATETIME2(3) NOT NULL CONSTRAINT df_pevent_created DEFAULT SYSUTCDATETIME(),
+    created_by           BIGINT       NULL,
+    updated_at           DATETIME2(3) NULL,
+    updated_by           BIGINT       NULL,
+    deleted_at           DATETIME2(3) NULL,
+    deleted_by           BIGINT       NULL,
+    row_version          INT          NOT NULL CONSTRAINT df_pevent_rv DEFAULT 1,
     CONSTRAINT pk_processed_event PRIMARY KEY (processed_event_id),
     CONSTRAINT uq_processed_event_event UNIQUE (event_id)
 );
 ```
+
+**Data dictionary:**
+
+| Column | Type | Nullable | Description | Constraints |
+|--------|------|----------|--------------|-------------|
+| `processed_event_id` | BIGINT | No | Surrogate primary key (IDENTITY). | PK |
+| `event_id` | NVARCHAR(64) | No | `eventId` of the envelope. | Unique `uq_processed_event_event` |
+| `event_type` | NVARCHAR(60) | No | Event name, e.g. `BookingConfirmed`. | — |
+| `processed_at` | DATETIME2(3) | No | When it was consumed, UTC. | — |
+| `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
 **Modeling decisions:**
 
@@ -2427,26 +2600,33 @@ CREATE TABLE [notification].processed_event (
 
 ```sql
 CREATE TABLE [notification].booking_reminder (
-    booking_reminder_id BIGINT       IDENTITY(1,1) NOT NULL,
-    booking_id          BIGINT       NOT NULL,   -- [booking].booking
-    user_id             BIGINT       NOT NULL,   -- [security].app_user (the client)
-    booking_code        NVARCHAR(20) NULL,
-    scheduled_start     DATETIME2(3) NOT NULL,
-    lead_minutes        INT          NOT NULL,
-    remind_at           DATETIME2(3) NOT NULL,
-    sent_at             DATETIME2(3) NULL,
-    created_at          DATETIME2(3) NOT NULL CONSTRAINT df_breminder_created DEFAULT SYSUTCDATETIME(),
-    created_by          BIGINT       NULL,
-    updated_at          DATETIME2(3) NULL,
-    updated_by          BIGINT       NULL,
-    deleted_at          DATETIME2(3) NULL,
-    deleted_by          BIGINT       NULL,
-    row_version         INT          NOT NULL CONSTRAINT df_breminder_rv DEFAULT 1,
+    booking_reminder_id   BIGINT       IDENTITY(1,1) NOT NULL,
+    booking_id            BIGINT       NOT NULL,   -- [booking].booking
+    user_id               BIGINT       NOT NULL,   -- [security].app_user (the client)
+    booking_code          NVARCHAR(20) NULL,
+    scheduled_start       DATETIME2(3) NOT NULL,
+    lead_minutes          INT          NOT NULL,
+    remind_at             DATETIME2(3) NOT NULL,
+    sent_at               DATETIME2(3) NULL,
+    created_at            DATETIME2(3) NOT NULL CONSTRAINT df_breminder_created DEFAULT SYSUTCDATETIME(),
+    created_by            BIGINT       NULL,
+    updated_at            DATETIME2(3) NULL,
+    updated_by            BIGINT       NULL,
+    deleted_at            DATETIME2(3) NULL,
+    deleted_by            BIGINT       NULL,
+    row_version           INT          NOT NULL CONSTRAINT df_breminder_rv DEFAULT 1,
     CONSTRAINT pk_booking_reminder PRIMARY KEY (booking_reminder_id),
     CONSTRAINT uq_booking_reminder_lead UNIQUE (booking_id, lead_minutes),
     CONSTRAINT ck_booking_reminder_lead CHECK (lead_minutes > 0)
 );
+CREATE NONCLUSTERED INDEX ix_booking_reminder_due ON [notification].booking_reminder (remind_at) WHERE sent_at IS NULL AND deleted_at IS NULL;
 ```
+
+**Indexes:**
+
+| Name | Fields | Type | Justification |
+|------|--------|------|----------------|
+| `ix_booking_reminder_due` | `remind_at` WHERE `sent_at IS NULL AND deleted_at IS NULL` | Non-unique, filtered | The scheduled task reads only the reminders still pending. |
 
 **Data dictionary:**
 
@@ -2475,14 +2655,14 @@ CREATE TABLE [notification].booking_reminder (
 
 ```sql
 CREATE TABLE [notification].booking_tracking (
-    booking_id          BIGINT       NOT NULL,   -- [booking].booking
-    booking_code        NVARCHAR(20) NULL,
-    customer_user_id    BIGINT       NULL,       -- [security].app_user (the client)
-    operator_user_id    BIGINT       NULL,       -- [security].app_user (the assigned operator)
-    scheduled_start     DATETIME2(3) NULL,
-    is_cancelled        BIT          NOT NULL CONSTRAINT df_btracking_cancelled DEFAULT 0,
-    updated_at          DATETIME2(3) NOT NULL CONSTRAINT df_btracking_updated DEFAULT SYSUTCDATETIME(),
-    unassigned_alert_at DATETIME2(3) NULL,       -- migration 031
+    booking_id            BIGINT       NOT NULL,   -- [booking].booking
+    booking_code          NVARCHAR(20) NULL,
+    customer_user_id      BIGINT       NULL,   -- [security].app_user (the client)
+    operator_user_id      BIGINT       NULL,   -- [security].app_user (the assigned operator)
+    scheduled_start       DATETIME2(3) NULL,
+    is_cancelled          BIT          NOT NULL CONSTRAINT df_btracking_cancelled DEFAULT 0,
+    updated_at            DATETIME2(3) NOT NULL CONSTRAINT df_btracking_updated DEFAULT SYSUTCDATETIME(),
+    unassigned_alert_at   DATETIME2(3) NULL,   -- migration 031
     CONSTRAINT pk_booking_tracking PRIMARY KEY (booking_id)
 );
 ```
@@ -2504,18 +2684,21 @@ CREATE TABLE [notification].booking_tracking (
 
 1. A read model fed only by events (`BookingConfirmed`, `BookingCancelled`, `OperatorAssigned`). Comparing a new `BookingConfirmed` with the stored `scheduled_start` tells a new booking from a rescheduled one, and `operator_user_id` says which operator to notify. Migration 027.
 2. No standard audit block: the row is overwritten by each event and carries no business history — the notifications it produced are the history.
-3. `unassigned_alert_at` keeps the scheduled task from repeating the alert on every run. Migration 031 (next global number: 032).
+3. `unassigned_alert_at` keeps the scheduled task from repeating the alert on every run. Migration 031.
 
 ---
 
 ## Cross-service contract (no FK, by design)
 
 28 columns point at a table in another schema, and **26 of them point at a table owned by a
-different service** (seven added after ADR-009: `customer.user_id`, and the `user_id` / `booking_id`
-references of the new notification tables, `booking_tracking` included). That is one more than before ADR-009: `loyalty_transaction.customer_id`
-used to stay inside `customer` and now crosses from `payment` to `customer-service`. None of them has a foreign key — integrity across the boundary is the
-application's job, validated before it writes (ADR-004). Every one of them is indexed so
-joins done in application code, or in reporting queries, stay fast.
+different service**. The audit columns (`created_by`, `updated_by`, `deleted_by`) and other `*_by`
+columns such as `operator_profile.updated_by` also hold a `security.app_user` id without FK and are
+not repeated here. `loyalty_transaction.customer_id` used to stay inside `customer` before ADR-009;
+it now holds the client's `security.app_user` id (ADR-015). None of them has a foreign key —
+integrity across the boundary is the application's job, validated before it writes (ADR-004).
+22 of the 26 are the first column of the primary key, a unique constraint or an index; four are
+**not indexed**: `booking.schedule_history.changed_by`, `notification.booking_reminder.user_id`,
+`notification.booking_tracking.customer_user_id` and `notification.booking_tracking.operator_user_id`.
 
 | Column | Points at | Owned by |
 |--------|-----------|----------|
@@ -2577,7 +2760,7 @@ See `migration-strategy.md`.
 
 ## Relationship diagrams
 
-One entity-relationship diagram per service, generated from the database on 2026-10-19, lives in
+One entity-relationship diagram per service, generated from the Liquibase changelogs on 2026-10-23, lives in
 `08-uml/diagrams/source/erd-*.md` (`08-uml/diagram-index.md`, ER-01 to ER-06). Cross-service references
 are listed in a table under each diagram, not drawn, for the same reason they have no FK here.
 
