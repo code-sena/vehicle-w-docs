@@ -18,6 +18,12 @@ curl http://localhost:3003/actuator/health      # {"status":"UP"}
 | No "booking confirmed" notification | `MESSAGING_ENABLED=false`, RabbitMQ down or notification-service down | Check the three; the booking itself is saved |
 | Times shifted by 5 hours | Old build without the UTC fix | Rebuild/restart the service |
 | 409 `BAY_HAS_BOOKINGS` when deleting a bay | The bay has upcoming bookings | Move or cancel them first |
+| 401 on `/api/v1/operator/bookings/**` | Called without `X-Internal-Key` (E-01: only operations-service may call it) or with a different key | Same `INTERNAL_API_KEY` in booking and operations |
+| 401 on `/internal/**` | `INTERNAL_API_KEY` empty (routes closed) or different | Same key in every service |
+
+## Tests
+
+`./mvnw verify`: 60 tests in the CI run of 2026-10-23 (no database needed).
 
 ## Useful queries
 

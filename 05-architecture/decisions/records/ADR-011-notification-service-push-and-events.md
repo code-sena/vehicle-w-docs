@@ -1,7 +1,7 @@
 # ADR-011 — Notification Service: Push Delivery and Event Contract
 
 - **ID:** ADR-011
-- **Date:** 2026-09-30 (updated 2026-10-09: sections 9 to 14)
+- **Date:** 2026-09-30 (updated 2026-10-09: sections 9 to 14; 2026-10-23: section 17, the contract as built)
 - **Status:** Accepted
 - **Authors:** Development team
 
@@ -75,6 +75,12 @@ the token's `sub`).
 
 `scheduledStart` is ISO-8601 UTC. An event without its recipient id produces no notification.
 
+> **Current contract (checked against `origin/develop` on 2026-10-23): section 17.** This table is the
+> original agreement. Since then `BookingCreated` was never published, `BookingConfirmed` never
+> carries `operatorUserId` (the consumer still reads it if it comes), payment events also carry
+> `bookingId`, and `BookingStatusChanged`, `ServiceNotStarted`, `ServiceNotFinished` and
+> `InspectionShared` were added.
+
 ### 4. Notification text and types
 
 The title and message are stored already rendered (`06-data` decision), in Spanish, the system's
@@ -96,10 +102,12 @@ reminders).
 
 ### 6. Messaging can be switched off
 
-`MESSAGING_ENABLED` (default `false`) turns RabbitMQ on for `security-service` (publisher) and
-`notification-service` (consumer). Queue `notification-service.events` is bound to the routing
-keys above on `carwash.events`; failed messages are retried three times and then dead-lettered to
-`notification-service.events.dlq`.
+`MESSAGING_ENABLED` (default `false`) turns RabbitMQ on. When this ADR was written only
+`security-service` (publisher) and `notification-service` (consumer) used it; today the flag is read
+by the six services: **four publish** (security, booking, operations, payment) and **three consume**
+(customer, operations, notification), see section 17. Queue `notification-service.events` is bound
+to its routing keys on `carwash.events`; failed messages are retried three times and then
+dead-lettered to `notification-service.events.dlq`.
 
 ### 7. Booking reminders (added 2026-10-02)
 
@@ -186,7 +194,7 @@ lists the promotions available today whose `required_points` that credit has jus
 | `LOYALTY_POINTS_EARNED` (new, category `PROMOTION`) | "Ganaste N puntos": the booking code and the new balance | Inbox and push only |
 | `PROMOTION_AVAILABLE` (one per unlocked coupon) | "¡Tienes un cupón canjeable!": the promotion's name, its discount and the code to use when paying | Inbox, push and email |
 
-The vehicle inspection report (RF-027) is not a backend aggregate yet: the web keeps it locally. The
+The vehicle inspection report (today RF-036) is not a backend aggregate yet: the web keeps it locally. The
 administrator announces it from the inspection screen through `POST /api/v1/admin/notifications`
 with type `INSPECTION_REPORT` (new, category `MESSAGE`). The message carries the summary (phases,
 number of findings and their areas) instead of the public link, which only opens in the
@@ -198,6 +206,12 @@ applies the same email rule as events (`EmailRecipients`): `INSPECTION_REPORT` i
 approved") would reach the customer's inbox and email as if it were real.
 
 Both new types are seeded by migration `029`.
+
+*Update 2026-10-23:* the inspection report is now an aggregate of operations-service (ADR-014 §9):
+when the administrator shares a published report, operations publishes
+`execution.inspection_shared` with the public token, and notification sends `INSPECTION_REPORT`
+with the link `WEB_URL/report/{token}`. The manual `POST /api/v1/admin/notifications` with that type
+is still accepted.
 
 ### 12. The user's notification switches are stored in security and applied here (added 2026-10-08)
 
@@ -324,6 +338,55 @@ editing it and one failing channel could stop the next.
 mobile commands with test doubles; live run against a local fake Expo endpoint (message with channel,
 priority and data; a `DeviceNotRegistered` token deactivated; unregister on sign-out); the app in web mode
 signs in, opens the inbox and signs out with the new code.
+
+### 17. The event contract as built (checked against `origin/develop` on 2026-10-23)
+
+Exchange `carwash.events` (topic, durable). Envelope
+`{eventId, eventType, aggregateId, occurredAt, version: 1, payload}`; `occurredAt` belongs to the
+envelope, not to the payload. Every publisher sends after its transaction commits and, if RabbitMQ
+fails, only logs the error (no Outbox, accepted risk H-11). Four services publish; customer and
+notification publish nothing.
+
+| Producer | Routing key | `eventType` | Payload | Consumers (queue) |
+|---|---|---|---|---|
+| security | `security.user_registered` | `UserRegistered` | `userId`, `personId`, `email`, `firstName`, `roles`, `createdByAdmin` | customer (`customer-service.events`), notification (`notification-service.events`) |
+| booking | `booking.confirmed` | `BookingConfirmed` | `bookingId`, `bookingCode`, `customerUserId`, `customerVehicleId`, `scheduledStart`, `serviceBayId`, `preferredOperatorId` (only on creation, if chosen) | operations (`operations-service.events`), notification |
+| booking | `booking.cancelled` | `BookingCancelled` | same base fields + `reason` (display name of the reason, in Spanish); `customerUserId` is `null` when the system expires a booking | notification |
+| booking | `booking.status_changed` | `BookingStatusChanged` | same base fields + `status` (`IN_PROGRESS`, `COMPLETED` or `NO_SHOW`) — A-11, 2026-10-23 | notification |
+| operations | `execution.operator_assigned` | `OperatorAssigned` | `bookingId`, `bookingCode`, `customerUserId`, `operatorUserId`, `scheduledStart` | notification |
+| operations | `execution.service_started` | `ServiceStarted` | same | notification |
+| operations | `execution.service_completed` | `ServiceCompleted` | same | notification |
+| operations | `execution.service_not_started` | `ServiceNotStarted` | same | notification |
+| operations | `execution.service_not_finished` | `ServiceNotFinished` | same | notification |
+| operations | `execution.inspection_shared` | `InspectionShared` | `bookingId`, `bookingCode`, `customerUserId`, `plate`, `publicToken`, `phasesDone`, `phasesTotal`, `findings`, `majorFindings`, `areas` | notification |
+| payment | `payment.confirmed` | `PaymentConfirmed` | `paymentId`, `bookingId`, `customerUserId`, `amount` | notification |
+| payment | `payment.rejected` | `PaymentRejected` | same + `reason` | notification |
+| payment | `payment.refunded` | `PaymentRefunded` | same as confirmed | notification |
+| payment | `payment.promotion_redeemed` | `PromotionRedeemed` | `customerUserId`, `bookingId`, `bookingCode`, `promotionCode`, `promotionName`, `discountAmount` | notification |
+| payment | `payment.loyalty_points_earned` | `LoyaltyPointsEarned` | `customerUserId`, `bookingId`, `bookingCode`, `points`, `balance`, `unlockedPromotions[]` (`code`, `name`, `discountPercent`, `requiredPoints`) | notification |
+| — | `booking.created` | `BookingCreated` | no producer: notification still binds and handles it | notification |
+
+Queues: `customer-service.events` and `notification-service.events` dead-letter to
+`customer-service.events.dlq` / `notification-service.events.dlq` through the direct exchange
+`carwash.events.dlx` after three attempts. `operations-service.events` has no DLQ: its listener is
+idempotent and logs a failure instead of requeueing (ADR-014 §10).
+
+Notes:
+
+- `BookingStatusChanged` (A-11): when the administrator moves a booking to in progress, completed or
+  no-show from the panel, the client gets `SERVICE_STARTED`, `SERVICE_COMPLETED` or a
+  `BOOKING_CANCELLED` worded as no-show. **Open gap:** the consumer cancels pending reminders only
+  for `BookingCancelled`, `ServiceStarted` and `ServiceCompleted`, so a status set by the admin does
+  not stop the reminders yet (`15-project-control/risks.md`). Moving a booking back to `CONFIRMED`
+  republishes `BookingConfirmed`.
+- `ServiceNotStarted` / `ServiceNotFinished`: operations' follow-up job publishes one per booking that
+  ended with an operator and nobody registered (ADR-014 §8); notification sends
+  `OPERATOR_SERVICE_NOT_REGISTERED` to the operator and `ADMIN_SERVICE_NOT_REGISTERED` to every active
+  administrator.
+- Raised but only logged (no consumer): security `EmailChanged`, `PasswordChanged`,
+  `AccountDeactivated`; customer `CustomerProvisioned`, `VehicleRegistered`, `VehicleUpdated`,
+  `VehicleRemoved`, `LoyaltyPointsChanged`.
+- notification-service knows 26 notification types (`NotificationTypeCode`), all seeded.
 
 ---
 

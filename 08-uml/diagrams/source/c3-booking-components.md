@@ -9,7 +9,7 @@ flowchart LR
     subgraph IN["Adapters in (web)"]
         BC[BookingController<br/>/api/v1/bookings]
         ABC[AdminBookingController<br/>/api/v1/admin/bookings]
-        OBC[OperatorBookingController<br/>/api/v1/operator/bookings]
+        OBC[OperatorBookingController<br/>/api/v1/operator/bookings<br/>JWT + X-Internal-Key]
         IBC[InternalBookingController<br/>/internal/v1/bookings]
         CC[CatalogController]
         SC[ScheduleController]

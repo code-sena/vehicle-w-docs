@@ -18,7 +18,16 @@ curl http://localhost:3005/health               # {"status":"ok"}
 | 409 `PAYMENT_ALREADY_REPORTED` / `PAYMENT_ALREADY_APPROVED` | The booking already has an open or approved payment | Expected |
 | 400 `INVALID_PAYMENT_ACCOUNT` | Account inactive or missing | Check Admin > Payment accounts |
 | 503 `BOOKING_SERVICE_UNAVAILABLE` | booking-service down or unreachable | Start it; check `BOOKING_SERVICE_URL` |
-| 413 when reporting a payment | Receipt image larger than 8 MB | Compress the image |
+| 413 when reporting a payment | Request body larger than 8 MB (Kestrel limit) | Compress the image |
+| 400 `RECEIPT_TOO_LARGE` | The receipt image itself exceeds the domain limit | Compress the image |
+| 409 `PROMOTION_ONE_PER_BOOKING` | The booking already has a coupon (one per booking since 2026-10-23, E-09) | Remove it first (`DELETE /api/v1/loyalty/redemptions/{bookingId}/{promotionId}`) |
+| 404 `PROMOTION_REDEMPTION_NOT_FOUND` | Removing a coupon that is not on that booking | Expected |
+| 400 `INVALID_PROMOTION_DISCOUNT` | Percentage outside 1–99 %, or a fixed discount of zero or less (E-07). A coupon never leaves a booking at 0: the discount is capped so a minimum amount is always due | Fix the promotion |
+
+## Tests
+
+`dotnet test PaymentService.sln`: 151 tests (119 domain + 32 application) in the CI run of
+2026-10-23; the 7 integration tests skip themselves without SQL Server.
 
 ## Useful queries
 

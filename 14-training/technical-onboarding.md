@@ -19,7 +19,9 @@
    **in private** (`DB_PASSWORD`, `JWT_SECRET`, `INTERNAL_API_KEY`, mail). Never commit `.env`.
 3. `docker compose up -d` → wait until `lavarapido-sqlserver` is healthy.
 4. Each Java service: `./mvnw spring-boot:run` (security 3001, customer 3002, booking 3003,
-   operations 3004, notification 3006, gateway 8080). Liquibase creates the tables on first start.
+   operations 3004, notification 3006, gateway 8080); security-service has no default profile, so start
+   it with `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` (E-05). Liquibase creates the
+   tables on first start. Without `INTERNAL_API_KEY` the operator cannot start or finish services (503).
    payment (.NET 8, port 3005): `dotnet run --project src/PaymentService.Api`; its tables are
    created by the `payment-migrate` container of step 3.
 5. Web: `npm install`, then `npm start` (port 4200). Mobile app (optional): `npm install`, copy
@@ -28,8 +30,10 @@
    ```bash
    for p in 3001 3002 3003 3004 3005 3006 8080; do echo "$p $(curl -s localhost:$p/actuator/health)"; done
    ```
-7. Sign in with a demo account seeded by the `dev` profile (`admin@gmail.com`,
-   `operador@gmail.com`, `cliente@gmail.com`; ask for the password) and book a wash.
+7. Sign in with a demo account of the `dev` profile (`admin@gmail.com`, `operador@gmail.com`,
+   `cliente@gmail.com`): each one exists only if you set its `DEMO_ADMIN_PASSWORD`,
+   `DEMO_OPERATOR_PASSWORD` or `DEMO_CLIENT_PASSWORD` in `.env` (no password is in the code). Then
+   book a wash. New accounts must use an allowed email domain (`ALLOWED_EMAIL_DOMAINS`, `gmail.com`).
 
 ### Read (in this order)
 

@@ -38,7 +38,7 @@ Events may include booking confirmation/cancellation, operator assignment, servi
 - Consumers must tolerate duplicate delivery.
 - Acknowledgement occurs after successful processing.
 - Retry/dead-letter handling is required for the running broker configuration.
-- An Outbox table/process is **not adopted yet**.
+- An Outbox table/process is **not adopted**: accepted risk for version 1 (H-11, ADR-020). If the broker is down at publish time the event is logged and lost; scheduled jobs (reminders, unassigned alerts, the follow-up of bookings nobody closed) rebuild what matters from the database.
 
 ## Consequences
 

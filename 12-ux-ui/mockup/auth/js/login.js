@@ -53,18 +53,13 @@ document.addEventListener('DOMContentLoaded', () => {
     return true;
   }
 
-  // Igual que onSubmit() en login.ts: valida contra un usuario "demo"
-  // (simulación de backend temporal que ya tenías en el proyecto)
-  const usuarioDemo = { correo: 'admin@gmail.com', contrasena: 'Admin123!' };
+  // Maqueta sin backend: no guarda ni compara credenciales. Cualquier correo válido con una
+  // contraseña no vacía simula el inicio de sesión (el real lo hace security-service).
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     if (submitBtn.disabled) return;
 
-    if (correo.value === usuarioDemo.correo && contrasena.value === usuarioDemo.contrasena) {
-      alert('Inicio de sesión correcto (demo). Aquí navegarías a /client.');
-    } else {
-      alert('Correo o contraseña incorrectos');
-    }
+    alert('Inicio de sesión simulado (maqueta). En la aplicación real se validaría en el servidor.');
   });
 });

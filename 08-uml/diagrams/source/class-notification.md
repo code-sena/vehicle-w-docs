@@ -27,7 +27,7 @@ classDiagram
     }
     class NotificationTypeCode {
         <<enumeration>>
-        24 types
+        26 types
         USER_WELCOME
         BOOKING_CREATED / CONFIRMED / CANCELLED / REMINDER
         OPERATOR_ASSIGNED, SERVICE_STARTED, SERVICE_COMPLETED
@@ -36,6 +36,7 @@ classDiagram
         INSPECTION_REPORT, SYSTEM_MESSAGE, APP_UPDATE_AVAILABLE
         OPERATOR_SERVICE_CANCELLED / RESCHEDULED / UNASSIGNED
         ADMIN_BOOKING_CREATED / RESCHEDULED / CANCELLED / UNASSIGNED
+        OPERATOR_SERVICE_NOT_REGISTERED, ADMIN_SERVICE_NOT_REGISTERED
         +category() NotificationCategory
     }
     class NotificationCategory {

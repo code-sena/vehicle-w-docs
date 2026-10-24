@@ -4,7 +4,10 @@
 > `08-uml/diagrams/source/`, so GitHub renders them directly. Every diagram also has a PNG with the
 > same name in [`diagrams/exports/`](./diagrams/exports/) for documents outside GitHub. Every diagram
 > here was checked against the code on 2026-10-19 (the ER diagrams were generated from the production
-> database that day); update the source and its image in the same PR that changes the behavior.
+> database that day); the containers, booking components, operations/booking/notification classes,
+> production deployment, assignment sequence and booking states were checked again against
+> `origin/develop` on 2026-10-23 (their PNGs are pending re-export, see `README.md`). Update the
+> source and its image in the same PR that changes the behavior.
 
 ---
 

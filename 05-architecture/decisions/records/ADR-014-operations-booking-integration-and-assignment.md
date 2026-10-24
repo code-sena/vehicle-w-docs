@@ -1,8 +1,8 @@
 # ADR-014 — Operations: Booking Integration by REST, Operator Provisioning and Manual Assignment
 
 - **ID:** ADR-014
-- **Date:** 2026-10-06 (updated 2026-10-09: sections 6 to 8)
-- **Status:** Proposed — in use: operations-service is built this way
+- **Date:** 2026-10-06 (updated 2026-10-09: sections 6 to 8; 2026-10-14: sections 9 and 10; 2026-10-23: section 11)
+- **Status:** Accepted (2026-10-23) — operations-service is built this way and released in `v1.0.0`
 - **Authors:** Development team
 
 ---
@@ -49,6 +49,10 @@ booking-service exposes `/api/v1/operator/bookings/**` for this (roles `OPERATOR
 Operations never stores a copy of the booking. If booking does not answer:
 503 `BOOKING_SERVICE_UNAVAILABLE`.
 
+*Update 2026-10-23 (E-01):* those operator routes also require `X-Internal-Key`, and the gateway no
+longer routes them, so only operations-service — which checks the assignment and the start window —
+can move a booking forward. Without `INTERNAL_API_KEY` the operator cannot start or finish (503).
+
 ### 2. Operator rows are provisioned from security-service
 
 The admin creates the account with role `OPERATOR` in security-service. operations lists those
@@ -69,7 +73,8 @@ calls the service. Names and contact are always read from security, never stored
 - Each assignment (and reassignment) publishes `OperatorAssigned`.
 
 **Automatic assignment (RF-008) is deferred.** When it is built, it will consume
-`booking.confirmed` and reuse `AssignmentPolicy` to pick the first candidate.
+`booking.confirmed` and reuse `AssignmentPolicy` to pick the first candidate. *(Built on 2026-10-14,
+section 10.)*
 
 ### 4. Execution and rating
 
@@ -129,7 +134,8 @@ could still assign it, and the operator received "new service assigned for 02/10
 **Decision:** `PUT /admin/assignments/{bookingId}` answers 409 `BOOKING_IN_PAST` when the booking's
 end time has already passed (`scheduledEnd <= now`). A booking that is running right now can still be
 assigned. The screens translate the code and tell the admin to mark it as no-show or cancel it.
-Closing old bookings automatically (no-show) is a pending improvement.
+Closing old bookings automatically (no-show) is a pending improvement. *(Built on 2026-10-21,
+section 11.)*
 
 ### 9. The vehicle inspection report lives in operations-service (added 2026-10-14)
 
@@ -187,6 +193,44 @@ token of the user calling it — a `booking.confirmed` event has no user behind 
 **Consequences:** most bookings get an operator without the admin; the listener never retries
 forever (it logs and leaves the booking unassigned); without `INTERNAL_API_KEY` there is no automatic
 assignment nor list of free operators.
+
+### 11. Bookings nobody closed, assignment notes and account checks (added 2026-10-23)
+
+**Problem:** a booking can end without anybody registering it: nobody was assigned, or the operator
+worked and forgot "Iniciar"/"Terminar". It stayed `CONFIRMED` or `IN_PROGRESS` for ever and the
+reminders and dashboards were wrong.
+
+**Decision (follow-up job, `FollowUpService`, every `FOLLOW_UP_INTERVAL` = 5 min):**
+
+- It reviews the bookings of the last `FOLLOW_UP_LOOK_BACK_DAYS` (28) days. `FollowUpPolicy` gives one
+  of three reasons: `NO_OPERATOR` (confirmed, no operator, end + `BOOKING_EXPIRY_GRACE_MINUTES` (60)
+  passed), `NOT_STARTED` (with operator, never started, its end time passed) or `NOT_FINISHED` (started,
+  never finished, end + margin passed).
+- `NO_OPERATOR`: nobody could attend it, so operations closes it as no-show through booking's
+  `POST /internal/v1/bookings/{id}/no-show` (`X-Internal-Key`).
+- With an operator it is **never** closed alone: the operator may have washed the car. Operations
+  publishes `ServiceNotStarted` or `ServiceNotFinished` once per booking (`follow_up_notice_at`,
+  migration 040) and notification warns the operator and every administrator.
+- The administrator sees them in `GET /api/v1/admin/assignments/to-close` ("Por cerrar") and closes one
+  as attended with `POST /api/v1/admin/assignments/{bookingId}/attended`, which moves booking to
+  `COMPLETED` step by step without `ServiceCompleted` (the client would get "pick it up" hours later);
+  anything else answers 409 `BOOKING_NOT_TO_CLOSE`. Or the admin marks it no-show from the bookings
+  screen.
+- 28 days because the VM can stay off for weeks; the web loads 30 days and the mobile 29, so the
+  card always shows them.
+
+**Other rules added on 2026-10-23:**
+
+| Change | Rule |
+|---|---|
+| Assignment notes (B-01) | `PUT /admin/assignments/{bookingId}` accepts optional `notes` (≤ 300 characters, else 400 `INVALID_ASSIGNMENT_NOTES`), stored in `service_execution.assignment_notes` (migration 042). Reassigning without notes clears them. The operator's list (`OperatorServiceResponse`) does not return them yet |
+| Disabled account (A-13) | A manual assignment to an operator whose security account is disabled answers 409 `OPERATOR_ACCOUNT_DISABLED`, and the candidates list shows that reason. If security does not answer, the account is taken as active |
+| Reschedule (E-12) | The automatic assignment keeps the previous operator only if they still fit the new time (shift, absences, overlaps, active account); otherwise it picks a free one. With nobody free the booking keeps the previous operator |
+| Concurrency | Manual and automatic assignment take `sp_getapplock`; if another assignment holds it, 409 `ASSIGNMENT_BUSY` ("try again") |
+
+**Known gaps (2026-10-23):** `finish` and `start` call booking before saving their own row, so a
+failure between both leaves booking `COMPLETED` and the line `IN_PROGRESS` (OPS-01); start, finish and
+rating do not take the assignment lock (OPS-03). Both are in `15-project-control/risks.md`.
 ---
 
 ## Evaluated alternatives
@@ -212,7 +256,8 @@ assignment nor list of free operators.
 **Negative / Trade-offs:**
 - Every assignment reads the whole day of bookings from booking-service (fine for one shop).
 - If booking-service is down, the operator cannot start or finish a service.
-- RF-008 (automatic) and RF-010 (client chooses the operator) are not covered yet.
+- ~~RF-008 (automatic) and RF-010 (client chooses the operator) are not covered yet.~~ Covered since
+  2026-10-14 (section 10).
 - The port variable is `OPERATIONS_PORT`, not `PORT` like the other Java services.
 
 **Impact on the system:**

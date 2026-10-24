@@ -13,7 +13,7 @@
 | [`local-setup.md`](./local-setup.md) | Start the whole system on a new computer: prerequisites, `.env`, order, ports, demo accounts, common issues |
 | [`environments.md`](./environments.md) | Which environments exist, how they differ, every configuration variable |
 | [`production.md`](./production.md) | The public server: topology, `.env.production`, first administrator, APK publishing, security headers, status |
-| [`ci-cd.md`](./ci-cd.md) | GitHub Actions: CI in every repository and the Azure deploy button |
+| [`ci-cd.md`](./ci-cd.md) | GitHub Actions: CI in every repository with the real test counts, how the server is updated today and the continuous deployment that is prepared |
 
 ---
 
@@ -24,7 +24,8 @@
 | Orchestration | `lavarapido-infra/docker-compose.yml`: SQL Server, RabbitMQ, Mailpit, the 6 services, payment migrations, api-gateway; `docker-compose.prod.yml` adds the web and Caddy |
 | Configuration | One `lavarapido-infra/.env` (template: `.env.example`), read by compose and by each service run with `./mvnw` |
 | Database migrations | Liquibase, run by each service at startup |
-| CI/CD | GitHub Actions: `ci.yml` in the 10 repositories and `deploy.yml` in `lavarapido-infra` |
+| CI/CD | GitHub Actions: `ci.yml` in the 10 repositories (838 tests green on `develop`, 2026-10-23) and `deploy.yml` in `lavarapido-infra`. The server is updated by hand from `develop`; continuous deployment from `main` is prepared in local branches, not pushed nor tested |
+| Backups | `backup-db.sh` + `verify-backup.sh` by cron (daily and 5 min after boot) and before each update; `restore-db.sh` by hand (`13-operations/README.md`) |
 | Remote environments | Academic demo server ("production") on an Azure VM, turned on on demand (`production.md`); no staging |
 
 ---

@@ -2,8 +2,10 @@
 
 ## Consumed
 
-Queue `notification-service.events` bound to `carwash.events` (DLQ `notification-service.events.dlq`;
-3 retries, then dead-lettered). Each publisher sends the recipient's `user_id` (ADR-011 §3).
+Queue `notification-service.events` bound to `carwash.events` with the 16 routing keys below (DLQ
+`notification-service.events.dlq` through `carwash.events.dlx`; 3 attempts, then dead-lettered).
+Each publisher sends the recipient's `user_id` (ADR-011 §3). Checked against `origin/develop` on
+2026-10-23; full payloads in ADR-011 §17.
 
 | Routing key | Event | Notification | Email |
 |---|---|---|---|
@@ -11,6 +13,7 @@ Queue `notification-service.events` bound to `carwash.events` (DLQ `notification
 | `booking.created` | `BookingCreated` | `BOOKING_CREATED` (bound and handled, but no service publishes it today: a booking is confirmed when it is created) | yes |
 | `booking.confirmed` | `BookingConfirmed` | `BOOKING_CONFIRMED` + schedules reminders | yes |
 | `booking.cancelled` | `BookingCancelled` | `BOOKING_CANCELLED` + cancels reminders | yes |
+| `booking.status_changed` | `BookingStatusChanged` | By `status`: `IN_PROGRESS` → `SERVICE_STARTED`, `COMPLETED` → `SERVICE_COMPLETED`, `NO_SHOW` → `BOOKING_CANCELLED` worded as no-show (A-11, 2026-10-23). It does **not** cancel the pending reminders yet | yes for `BOOKING_CANCELLED`, no for the other two |
 | `execution.operator_assigned` | `OperatorAssigned` | `OPERATOR_ASSIGNED` | no |
 | `execution.service_started` | `ServiceStarted` | `SERVICE_STARTED` (and cancels the pending reminders, ADR-011 §13) | no |
 | `execution.service_completed` | `ServiceCompleted` | `SERVICE_COMPLETED` (and cancels the pending reminders) | no |

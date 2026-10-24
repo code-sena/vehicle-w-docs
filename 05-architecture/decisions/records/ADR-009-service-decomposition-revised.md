@@ -4,7 +4,7 @@
 |---|---|
 | **ID** | ADR-009 |
 | **Date** | 2026-09-22 |
-| **Status** | Proposed |
+| **Status** | Accepted (2026-10-23; proposed on 2026-09-22) — the six built services follow it |
 | **Authors** | Development team |
 | **Reviewers** | Development team |
 

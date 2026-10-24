@@ -16,6 +16,10 @@ curl http://localhost:3002/actuator/health      # {"status":"UP"}
 | Profile not created at registration | `MESSAGING_ENABLED=false` or RabbitMQ down | Optional: it is created on first use anyway |
 | Startup fails on `localhost:1433` | SQL Server not healthy yet | Wait for `lavarapido-sqlserver` (healthy) and retry |
 
+## Tests
+
+`./mvnw verify`: 71 tests in the CI run of 2026-10-23 (no database needed).
+
 ## Useful queries
 
 ```sql

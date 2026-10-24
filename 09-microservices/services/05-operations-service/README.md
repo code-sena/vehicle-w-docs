@@ -14,7 +14,7 @@
 | Repository | `lavarapido-operation-service` |
 | Stack | Spring Boot 4 · Java 21 · Maven · hexagonal (ADR-007) |
 | DB engine | SQL Server — schema `execution` (Liquibase, changelog table `DATABASECHANGELOG_OPERATIONS`) |
-| Communicates with | booking-service (REST, with the caller's token), security-service (REST: admin token for operators, internal key for first names in ratings), RabbitMQ (publishes execution events) |
+| Communicates with | booking-service (REST, with the caller's token; the operator routes also with `X-Internal-Key`, E-01), security-service (REST: admin token for operators, internal key for first names and account status), RabbitMQ (consumes `booking.confirmed`, publishes execution events) |
 | Consumed by | Web, mobile, notification-service (through events) |
 
 ---
@@ -33,19 +33,30 @@
   and dated absences (`operator_absence`) that cannot overlap and cannot start before today (400
   `ABSENCE_IN_PAST`).
 - **Assignment (RF-008/009):** the admin assigns or changes the operator of a booking while it is
-  `SCHEDULED` or `CONFIRMED` and its time has not passed (409 `BOOKING_IN_PAST`, ADR-014 §8). `AssignmentPolicy` checks: operator active, on shift for the whole
-  booking, not absent, and not busy with another booking at the same time. The candidates endpoint
-  returns every operator with the reason that blocks them, if any. Manual and automatic assignment
-  take the same lock (`sp_getapplock` on `operations-assignment`) before checking who is free, so two
-  assignments at the same moment cannot give one operator two services at the same time.
+  `SCHEDULED` or `CONFIRMED` (409 `BOOKING_NOT_ASSIGNABLE` otherwise) and its time has not passed (409
+  `BOOKING_IN_PAST`, ADR-014 §8). `AssignmentPolicy` checks: operator active, on shift for the whole
+  booking, not absent, and not busy with another booking at the same time (409 `OPERATOR_INACTIVE`,
+  `OPERATOR_NOT_ON_SHIFT`, `OPERATOR_ABSENT`, `OPERATOR_BUSY`). Since 2026-10-23 (A-13) an operator whose
+  security account is disabled is rejected with 409 `OPERATOR_ACCOUNT_DISABLED`, also shown as the
+  reason in the candidates list (if security does not answer, the account is taken as active). The
+  candidates endpoint returns every operator with the reason that blocks them, if any. Manual and
+  automatic assignment take the same lock (`sp_getapplock` on `operations-assignment`) before checking
+  who is free, so two assignments at the same moment cannot give one operator two services at the same
+  time; if the lock is busy the call answers 409 `ASSIGNMENT_BUSY` ("try again").
+- **Assignment notes (B-01, 2026-10-23):** `PUT /admin/assignments/{bookingId}` accepts an optional
+  `notes` (up to 300 characters, else 400 `INVALID_ASSIGNMENT_NOTES`), stored in
+  `service_execution.assignment_notes` (migration 042) and returned to the admin. Reassigning without
+  notes clears the previous ones. The operator's list does not include them yet (open).
 - **Unassigned bookings:** `GET /api/v1/admin/assignments/unassigned?from=&to=` answers
   `{count, bookingIds}` with the bookings that still need an operator: `SCHEDULED` or `CONFIRMED`,
   not finished yet and without any execution line. The admin home and the bookings screen use this one
   number, so both show the same count.
 - **Execution (RF-010/011):** the operator starts the service only from 15 minutes before the
   booking time (`StartPolicy`, 409 `SERVICE_TOO_EARLY`; each service carries `startableAt` for the
-  screens) and finishes it; the service moves the booking to `IN_PROGRESS` / `COMPLETED` in booking-service. An operator
-  cannot run two services at once. Each service the operator sees carries `clientName`, the client's
+  screens) and finishes it; the service moves the booking to `IN_PROGRESS` / `COMPLETED` in booking-service
+  through `/api/v1/operator/bookings/{id}/status` with the operator's token and `X-Internal-Key` (E-01:
+  booking accepts it only from operations; without the key the operator gets 503). An operator
+  cannot run two services at once (409 `OPERATOR_BUSY`). Each service the operator sees carries `clientName`, the client's
   first name (security-service internal contact, like the ratings), so the screens no longer put the
   plate in the client column.
 - **Ratings (RF-012):** the client rates a completed booking once (1 to 5 stars, comment up to 500
@@ -61,9 +72,11 @@
 - **Automatic assignment (RF-008, ADR-014 §10):** on `booking.confirmed` the booking gets the operator
   the client chose (RF-010) if still free, otherwise the free one with the fewest bookings that day.
   Reads the booking through booking-service's internal routes (`INTERNAL_API_KEY`); skips accounts
-  disabled in security. `AUTO_ASSIGN_ENABLED=false` leaves it to the admin.
-- **Bookings that ended and nobody closed (`FollowUpPolicy`, `FollowUpJob` every 5 minutes):** the
-  system only decides by itself when it is sure.
+  disabled in security. On a reschedule it keeps the operator only if they still fit the new time
+  (shift, absences, overlaps, active account; E-12), otherwise it picks a free one; with nobody free it
+  keeps the previous one. `AUTO_ASSIGN_ENABLED=false` leaves it to the admin.
+- **Bookings that ended and nobody closed (`FollowUpPolicy`, `FollowUpJob` every 5 minutes, looking
+  back `FOLLOW_UP_LOOK_BACK_DAYS` = 28 days):** the system only decides by itself when it is sure.
   - Never had an operator and still `CONFIRMED` one hour after its end: nobody could attend it, so it
     asks booking-service to make it `NO_SHOW` (`POST /internal/v1/bookings/{id}/no-show`).
   - Had an operator and nobody pressed Start once its time ended (`NOT_STARTED`), or was started and
@@ -91,7 +104,8 @@
   active ones, available today (active, on shift today and with no absence touching the day), absent
   today, bookings finished this week with the change against the previous week, and the weighted average
   rating. The screens only show it.
-- Publish `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` and `InspectionShared` after commit.
+- Publish `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted`, `ServiceNotStarted`,
+  `ServiceNotFinished` and `InspectionShared` after commit (`events.md`).
 
 ## Out of scope (what it does NOT do)
 
@@ -116,8 +130,8 @@
 | DELETE | `/api/v1/admin/operators/{id}/absences/{absenceId}` | ADMIN |
 | GET | `/api/v1/admin/assignments` (`?from=&to=`, default today) | ADMIN |
 | GET | `/api/v1/admin/assignments/unassigned` (`?from=&to=`): `{count, bookingIds}` of the bookings that still need an operator | ADMIN |
-| PUT | `/api/v1/admin/assignments/{bookingId}` | ADMIN |
-| GET | `/api/v1/admin/assignments/to-close` (`?from=&to=`, default the last 7 days): bookings with an operator that ended and nobody registered, with the reason `NOT_STARTED` or `NOT_FINISHED` | ADMIN |
+| PUT | `/api/v1/admin/assignments/{bookingId}` (`operatorId`, optional `notes` ≤ 300) | ADMIN |
+| GET | `/api/v1/admin/assignments/to-close` (`?from=&to=`, default the last 28 days, `FOLLOW_UP_LOOK_BACK_DAYS`): bookings with an operator that ended and nobody registered, with the reason `NOT_STARTED` or `NOT_FINISHED` | ADMIN |
 | POST | `/api/v1/admin/assignments/{bookingId}/attended`: the admin confirms it was attended (204; 409 `BOOKING_NOT_TO_CLOSE` if it is not in the list) | ADMIN |
 | GET | `/api/v1/admin/assignments/{bookingId}/candidates` | ADMIN |
 | GET · POST | `/api/v1/admin/inspections/{bookingId}` (state · start) | ADMIN |
@@ -145,6 +159,7 @@ Full contract: [`07-api/contracts/openapi/operations-service.yaml`](../../../07-
 ```bash
 cd lavarapido-operation-service
 ./mvnw spring-boot:run           # http://localhost:3004 — Swagger: /swagger-ui.html (dev profile)
+./mvnw verify                    # 72 tests (CI run of 2026-10-23), no database needed
 ```
 
 | Variable | Default | Purpose |
@@ -155,11 +170,13 @@ cd lavarapido-operation-service
 | `BOOKING_SERVICE_URL` | `http://localhost:3003/api/v1` | Read bookings and move their status |
 | `SECURITY_SERVICE_URL` | `http://localhost:3001/api/v1` | Operator names (`/admin/users?role=OPERATOR`) |
 | `SECURITY_INTERNAL_URL` | `http://localhost:3001` | Internal contact for first names in ratings (not routed by the gateway) |
-| `INTERNAL_API_KEY` | empty | Shared key for `/internal/**`; empty = ratings without names |
+| `INTERNAL_API_KEY` | empty | Shared key for `/internal/**` and for booking's operator routes. Empty = the operator cannot start or finish (503), no automatic assignment, no follow-up job, ratings without names |
 | `BOOKING_SERVICE_TIMEOUT`, `SECURITY_SERVICE_TIMEOUT` | `3s` | REST timeouts |
 | `BOOKING_ZONE` | `America/Bogota` | Shifts, absences and dates are read in this zone |
 | `MESSAGING_ENABLED`, `RABBITMQ_*` | `false` | Publish execution events |
 | `FOLLOW_UP_ENABLED`, `FOLLOW_UP_INTERVAL` | `true`, `PT5M` | The job that closes bookings without operator and notifies the ones to close (needs `INTERNAL_API_KEY`) |
+| `FOLLOW_UP_LOOK_BACK_DAYS` | `28` | How many days back the job and the "To close" list look (the VM can stay off for weeks; the web loads 30 days and the mobile 29) |
+| `AUTO_ASSIGN_ENABLED` | `true` | Automatic assignment on `booking.confirmed` |
 | `BOOKING_EXPIRY_GRACE_MINUTES` | `60` | Margin after the end before a booking without operator becomes no-show, or a started one counts as not finished (same variable as booking-service) |
 
 ---
@@ -167,4 +184,5 @@ cd lavarapido-operation-service
 ## Related documents
 
 - [data-model.md](./data-model.md) · [events.md](./events.md) · [decisions.md](./decisions.md) · [runbook.md](./runbook.md)
-- ADR-014 (booking integration, operator provisioning, manual assignment), ADR-004 (communication), ADR-009 (decomposition)
+- ADR-014 (booking integration, operator provisioning, assignment, follow-up job §11), ADR-004 (communication), ADR-009 (decomposition)
+- Open findings of 2026-10-23 (OPS-01 `finish` not atomic with booking, OPS-03 no optimistic lock): `15-project-control/risks.md`

@@ -26,7 +26,7 @@
 ### Deployment
 - [ ] Code is mergeable to `develop` (no conflicts)
 - [ ] CI/CD green on the branch
-- [ ] Runs locally via Docker Compose, following `05-architecture/deployment.md`; the only shared environment is the academic Azure server, updated with `deploy/update-server.sh` or the manual deploy workflow (`10-devops/production.md`)
+- [ ] Runs locally via Docker Compose, following `05-architecture/deployment.md`; the only shared environment is the academic Azure server, updated by hand with `deploy/update-server.sh` (the manual deploy workflow and the continuous deployment from `main` still need their secrets, `10-devops/ci-cd.md`)
 - [ ] Basic smoke test passing locally
 
 ### Documentation

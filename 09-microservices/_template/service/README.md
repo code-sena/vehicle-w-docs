@@ -53,4 +53,4 @@ curl http://localhost:[port]/health
 - [events.md](./events.md) — Events it publishes and consumes
 - [decisions.md](./decisions.md) — Internal design decisions
 - [runbook.md](./runbook.md) — Operation in production
-- [API Contract](../../../07-api/contracts/openapi/[service-name].yaml)
+- API contract: `07-api/contracts/openapi/<service-name>.yaml` (replace with the service name)

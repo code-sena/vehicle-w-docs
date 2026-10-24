@@ -50,6 +50,12 @@ always the `.md` file; the images in `diagrams/exports/` are a copy for Word, PD
   its declarations (same content) and keeps the first one with no crossings.
 - The 41 images were exported on 2026-10-20 with Mermaid 11.17.2 and ELK and checked one by one: no
   syntax errors, no curved lines, no crossings and no overlaps.
+- **Pending re-export (2026-10-23):** these sources were updated to the code of `origin/develop` and
+  their PNGs still show the previous version: `c2-containers` (events, session check, E-01),
+  `c3-booking-components`, `class-booking`, `class-operations`, `class-notification`,
+  `deployment-production` (backups), `seq-assignment-execution` (internal key, new codes) and
+  `state-booking`. Run the exporter above before copying them to Word, PDF or slides; the Markdown
+  sources are the up-to-date version.
 
 ---
 

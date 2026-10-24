@@ -4,7 +4,7 @@
 
 ## 1. Architectural style
 
-Express car wash uses a **microservice architecture with logical data ownership**. The backend is divided into six domain services. The services share one physical SQL Server database in the current academic environment, but each schema has one owning service and cross-service foreign keys are not used.
+LavaRápido uses a **microservice architecture with logical data ownership**. The backend is divided into six domain services. The services share one physical SQL Server database in the current academic environment, but each schema has one owning service and cross-service foreign keys are not used.
 
 The current decomposition is:
 
@@ -72,7 +72,7 @@ flowchart TB
     customer(["Customer<br/>books, pays by QR or transfer,<br/>uploads receipts, rates"]):::person
     operator(["Operator<br/>availability and<br/>assigned services"]):::person
     admin(["Administrator<br/>shop operation, assignment,<br/>payments and reports"]):::person
-    carwash["Express car wash<br/>[software system]<br/>web and Android platform for one shop"]:::system
+    carwash["LavaRápido<br/>[software system]<br/>web and Android platform for one shop"]:::system
     subgraph ext[External systems]
         direction LR
         smtp["SMTP service<br/>Gmail SMTP, Mailpit locally"]:::ext
@@ -96,7 +96,7 @@ The payment flow has no external gateway. The customer pays from their own banki
 ```mermaid
 flowchart TB
     people(["Customer · Operator · Administrator"]):::person
-    subgraph system[Express car wash]
+    subgraph system[LavaRápido]
         web["Web application<br/>Angular"]
         mobile["Android application<br/>React Native / Expo"]
         gateway["API Gateway<br/>Spring Cloud Gateway (webmvc)<br/>routing and CORS"]

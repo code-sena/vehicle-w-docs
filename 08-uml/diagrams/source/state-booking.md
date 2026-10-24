@@ -2,7 +2,7 @@
 
 Source: `booking-service` `Booking.moveTo`, `Booking.cancel`, `Booking.reschedule`, `Booking.expire`,
 `Booking.markUnattended`, `BookingStatus`, `ExpiredBookingsJob`; `operations-service` `FollowUpPolicy`,
-`FollowUpService`. Checked on 2026-10-21.
+`FollowUpService`. Checked on 2026-10-21; events and the look-back window checked against `origin/develop` on 2026-10-23.
 
 ```mermaid
 stateDiagram-v2
@@ -31,5 +31,7 @@ stateDiagram-v2
 | `expired`: a `SCHEDULED` booking still open one hour after its end is cancelled by booking-service with the system reason `EXPIRED`, which the admin cannot pick by hand | `ExpiredBookingsJob`, `BookingService.closeExpired`, `Booking.expire` |
 | `ended without operator`: a `CONFIRMED` booking that never had an operator and is still open one hour after its end becomes `NO_SHOW` by itself: nobody could have attended it. operations-service decides (it knows the assignments) and booking checks the margin again | `FollowUpService.followUp`, `Booking.markUnattended` (`POST /internal/v1/bookings/{id}/no-show`) |
 | A `CONFIRMED` booking **with** an operator is never closed by itself: the operator may have attended and forgotten to press Start. Once its time ends it goes to the admin's **To close** list (also an `IN_PROGRESS` one nobody finished, one hour after its end), and the operator and the admins get a notice. The admin picks **Attended** (`COMPLETED`, through `IN_PROGRESS`) or **No-show** | `FollowUpPolicy`, `POST /api/v1/admin/assignments/{id}/attended`, `PATCH /api/v1/admin/bookings/{id}/status` |
+| The follow-up job and the **To close** list look back `FOLLOW_UP_LOOK_BACK_DAYS` (28) days | `FollowUpService` |
+| Every change publishes an event: create, reschedule or back to confirmed → `booking.confirmed`; cancel or expired → `booking.cancelled`; the admin's start, complete or no-show → `booking.status_changed` (A-11); the operator's start and finish are announced by operations (`execution.*`) | `BookingService`, `BookingEvent` |
 | Any other move → 409 `INVALID_STATUS_TRANSITION` | `Booking.moveTo` |
 | `SCHEDULED` exists in the model (status id 1) but the current flow never creates it | `Booking.confirmNew` |
