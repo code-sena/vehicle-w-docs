@@ -116,7 +116,7 @@ The current design does not define message-level encryption or a separate servic
 | JWT secret shared by services is leaked | High | Environment variables; reconsider asymmetric signing before real deployment |
 | Event published after DB commit but service crashes before publish | Medium/High | Accepted for version 1 (H-11, ADR-020); scheduled jobs rebuild reminders, alerts and the "Por cerrar" list |
 | JWT kept in the browser's `localStorage` | Medium | Accepted for version 1 (H-18, ADR-020); one-hour expiry, session check, strict `script-src` in Caddy's CSP |
-| Closed-session token sent as `bearer` (SEC-01) | High | Closed on 2026-10-24 (gateway `c8b607a`) |
+| Closed-session token sent as `bearer` (SEC-01) | High | Closed on 2026-10-24 (gateway `2e20204`) |
 | Receipts and inspection photos stored inside the database | Medium | Images only (no SVG, no external links), inspection photos up to 2 MB; a file storage is a future option |
 | SMTP credentials (Gmail app password) in `.env` | Medium | `.env` is git-ignored; never logged; rotate if shared |
 | Internal API key leaked | Medium | Grants read of a user's contact data and of the admins list, read of bookings and the app-update notice; separate from `JWT_SECRET`; rotate in `.env` |
