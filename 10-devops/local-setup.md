@@ -82,7 +82,9 @@ Every service reads `../lavarapido-infra/.env` automatically. Required values:
 |---|---|
 | `DB_PASSWORD` | SQL Server `sa` password |
 | `JWT_SECRET` | ≥ 32 bytes, **same for all services** |
-| `INTERNAL_API_KEY` | Shared key for `/internal/**` between security, booking, operations and notification (booking emails, reminders and automatic operator assignment) |
+| `INTERNAL_API_KEY` | Shared key for `/internal/**` between security, booking, operations and notification (booking emails, reminders, automatic operator assignment). **Needed for the operator to start and finish services** (E-01): without it that flow answers 503 |
+| `DEMO_ADMIN_PASSWORD`, `DEMO_OPERATOR_PASSWORD`, `DEMO_CLIENT_PASSWORD` | Optional: each one set creates that demo account in the `dev` profile (E-05); empty means no demo account |
+| `ALLOWED_EMAIL_DOMAINS` | Defaults to `gmail.com`: sign-up, account creation and email change only accept these domains |
 | `MAIL_*` | Gmail app password, or leave Mailpit defaults |
 | `MESSAGING_ENABLED=true` | Turn on RabbitMQ events (welcome email, booking notifications, reminders) |
 
@@ -103,7 +105,7 @@ One terminal per service, **after** SQL Server is healthy. Migrations (Liquibase
 run automatically at startup.
 
 ```bash
-cd Backend/lavarapido-security-service     && ./mvnw spring-boot:run
+cd Backend/lavarapido-security-service     && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev   # no default profile (E-05)
 cd Backend/lavarapido-customer-service     && ./mvnw spring-boot:run
 cd Backend/lavarapido-booking-service      && ./mvnw spring-boot:run
 cd Backend/lavarapido-operation-service    && ./mvnw spring-boot:run
@@ -134,8 +136,10 @@ curl http://localhost:3001/actuator/health   # {"status":"UP"} — same for 3002
 
 Swagger UI (dev profile): `http://localhost:300N/swagger-ui.html`; payment-service:
 `http://localhost:3005/swagger` (only in the Development environment, the default of `dotnet run`).
-Demo accounts (seeded by security-service in dev): `admin@gmail.com`, `operador@gmail.com`,
-`cliente@gmail.com`.
+Demo accounts (created by security-service only with the `dev` profile and only for the
+`DEMO_*_PASSWORD` values set in `.env`): `admin@gmail.com`, `operador@gmail.com`, `cliente@gmail.com`.
+Without those values there is no demo account: register a client from the web or set
+`ADMIN_EMAIL`/`ADMIN_PASSWORD` to get a first administrator.
 
 ---
 
@@ -165,6 +169,8 @@ At the end: stop the services (Ctrl+C) and, if you want, `docker compose stop`.
 | Web shows `ECONNREFUSED` in the `ng serve` console | The target service is not running |
 | No welcome email / booking notifications | `MESSAGING_ENABLED=false` or RabbitMQ down |
 | Booking emails/reminders only in the inbox | `INTERNAL_API_KEY` empty or different between security and notification |
+| The operator gets 503 when starting or finishing a service | `INTERNAL_API_KEY` empty or different between operations and booking (E-01) |
+| security-service starts without Swagger and without demo accounts | It has no default profile since 2026-10-23: start it with `-Dspring-boot.run.profiles=dev` |
 | `./mvnw: cannot read distributionUrl` | `.mvn/wrapper/maven-wrapper.properties` lost its final newline: add it |
 | Start over (deletes all data) | `docker compose down -v` then `docker compose up -d` |
 

@@ -41,7 +41,9 @@ transmitted.
 | Environment | Purpose |
 |-------------|---------|
 | Local | Development and testing on each team member's machine, with Docker for the database and services |
-| Academic demo server | An Azure virtual machine with Docker Compose and Caddy (HTTPS), turned on on demand for reviews and demonstrations; it runs the `develop` branch (`10-devops/production.md`) |
+| Academic demo server | An Azure virtual machine with Docker Compose and Caddy (HTTPS), turned on on demand for reviews and demonstrations. On 2026-10-23 it runs the `develop` branch and is updated by hand (`update-server.sh`); continuous deployment from `main` (merge → CI → "Pedir despliegue" → `deploy.yml`) is prepared but not pushed nor tested (`10-devops/ci-cd.md`, `10-devops/production.md`) |
+| CI | GitHub Actions `ci.yml` in the 10 repositories on every push and pull request to `develop` and `main` (838 tests green on `develop`, 2026-10-23) |
+
 ---
 
 ## Out of Scope

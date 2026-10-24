@@ -1,6 +1,6 @@
 # Deployment
 
-**Last updated:** 2026-10-20
+**Last updated:** 2026-10-23
 
 The project runs on the team's machines (local development and integration testing) and on one
 Azure virtual machine (production, used for the demos). There is no staging environment.
@@ -11,7 +11,7 @@ Azure virtual machine (production, used for the demos). There is no staging envi
 |---|---|---|
 | Local | In use | Development, integration testing and demos with Docker Compose |
 | Staging | Out of scope | Not built in this academic version |
-| Production | In use | Azure VM with `docker-compose.yml` + `docker-compose.prod.yml` behind Caddy (HTTPS); diagram `08-uml/diagrams/source/deployment-production.md`, details `10-devops/production.md` |
+| Production | In use | Azure VM with `docker-compose.yml` + `docker-compose.prod.yml` behind Caddy (HTTPS), running `develop`; diagram `08-uml/diagrams/source/deployment-production.md`, details `10-devops/production.md`, decision ADR-016 |
 
 ## 2. Runtime components
 
@@ -41,8 +41,9 @@ Defined in `lavarapido-infra/docker-compose.yml`:
 
 `payment-service` is in the `app` profile too: it waits for `payment-migrate` and the gateway reaches
 it with `ROUTE_PAYMENT_URL: http://payment-service:3005`. In production the same compose file runs
-with `docker-compose.prod.yml` on top: no host ports except Caddy's 80/443, and Mailpit is not
-started.
+with `docker-compose.prod.yml` on top: it adds `web` (nginx with the Angular build) and `caddy`
+(the only container with host ports, 80/443), sets the `prod` profile, health checks, 512 MB per
+Java service and log rotation, and Mailpit is not started.
 
 ## 3. Logical topology
 
@@ -94,8 +95,10 @@ reminder leads. Full list → `10-devops/environments.md`.
 
 ## 7. Storage and backups
 
-SQL Server and RabbitMQ use named volumes (`sqlserver-data`, `rabbitmq-data`). Backup and restore
-commands → `13-operations/README.md`. There is no file storage yet: payment receipts and account
+SQL Server and RabbitMQ use named volumes (`sqlserver-data`, `rabbitmq-data`). On the server,
+`deploy/backup-db.sh` and `deploy/verify-backup.sh` run by cron (daily at 23:00 UTC and 5 minutes
+after each boot) and before every update; `deploy/restore-db.sh` restores by hand. Procedure →
+`13-operations/README.md`. There is no file storage yet: payment receipts and account
 QR codes are stored as images (data URLs) in the `payment` schema.
 
 ## 8. Health and verification
@@ -106,7 +109,10 @@ before a demo → `13-operations/README.md`.
 
 ## 9. CI/CD boundary
 
-CI runs on GitHub Actions in every repository, and `lavarapido-infra` has a manual workflow that updates the Azure server; details in `10-devops/ci-cd.md`.
+CI runs on GitHub Actions in every repository. The Azure server is updated by hand from `develop`
+(`update-server.sh`, or the manual `deploy.yml` workflow once its secret exists). Continuous
+deployment from `main` is prepared in local branches and not tested yet (ADR-017); details in
+`10-devops/ci-cd.md`.
 
 ## References
 
