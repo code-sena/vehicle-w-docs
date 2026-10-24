@@ -4,7 +4,7 @@ Manual assignment by the admin. The automatic assignment on `booking.confirmed` 
 `seq-auto-assignment.md`.
 
 Source: `operations-service` `OperationsService.candidates / assign / start / finish / rate`,
-`AssignmentPolicy`, `BookingServiceDirectory` (ADR-014).
+`AssignmentPolicy`, `BookingServiceDirectory` (ADR-014). Checked against `origin/develop` on 2026-10-23.
 
 ```mermaid
 sequenceDiagram
@@ -27,24 +27,25 @@ sequenceDiagram
     OP->>DB: shifts, absences, executions of the day
     OP-->>W: every operator + blocking reason (available first)
     A->>W: Chooses an operator
-    W->>OP: PUT /api/v1/admin/assignments/{bookingId}
-    alt booking SCHEDULED/CONFIRMED and AssignmentPolicy finds no reason
-        OP->>DB: one service_execution PENDING per booking line
+    W->>OP: PUT /api/v1/admin/assignments/{bookingId} {operatorId, notes?}
+    OP->>S: GET /internal/v1/users/{id}/contact (X-Internal-Key): account active?
+    alt booking SCHEDULED/CONFIRMED, not past, account active and AssignmentPolicy finds no reason
+        OP->>DB: sp_getapplock, then one service_execution PENDING per booking line (+ assignment_notes)
         OP-->>W: 200 assignment
         OP-)MQ: OperatorAssigned (execution.operator_assigned), after commit
         MQ-)N: notifies operator and client
-    else inactive / not on shift / absent / busy
-        OP-->>W: 409 OPERATOR_INACTIVE | OPERATOR_NOT_ON_SHIFT | OPERATOR_ABSENT | OPERATOR_BUSY
+    else past / disabled account / inactive / not on shift / absent / busy / lock taken
+        OP-->>W: 409 BOOKING_IN_PAST | OPERATOR_ACCOUNT_DISABLED | OPERATOR_INACTIVE | OPERATOR_NOT_ON_SHIFT | OPERATOR_ABSENT | OPERATOR_BUSY | ASSIGNMENT_BUSY
     end
 
     O->>W: assigned services → Start Service<br/>(from 15 min before the booked time)
     W->>OP: POST /api/v1/operator/services/{bookingId}/start
-    OP->>B: PATCH /operator/bookings/{id}/status IN_PROGRESS (operator JWT)
+    OP->>B: PATCH /operator/bookings/{id}/status IN_PROGRESS (operator JWT + X-Internal-Key, E-01)
     OP->>DB: lines → IN_PROGRESS, started_at
     OP-)MQ: ServiceStarted (execution.service_started)
     O->>W: Finish Service
     W->>OP: POST /api/v1/operator/services/{bookingId}/finish
-    OP->>B: PATCH /operator/bookings/{id}/status COMPLETED
+    OP->>B: PATCH /operator/bookings/{id}/status COMPLETED (operator JWT + X-Internal-Key)
     OP->>DB: lines → COMPLETED, finished_at
     OP-)MQ: ServiceCompleted (execution.service_completed)
     MQ-)N: tells the client the wash is done
@@ -57,5 +58,8 @@ sequenceDiagram
 ```
 
 Errors not drawn: 409 `SERVICE_TOO_EARLY`, `EXECUTION_ALREADY_STARTED`, `ALREADY_RATED`,
-`SERVICE_NOT_COMPLETED`; 503 `BOOKING_SERVICE_UNAVAILABLE`. Paths and bodies:
-`07-api/contracts/openapi/operations-service.yaml`.
+`SERVICE_NOT_COMPLETED`; 400 `INVALID_ASSIGNMENT_NOTES`; 503 `BOOKING_SERVICE_UNAVAILABLE` (also when
+`INTERNAL_API_KEY` is missing). booking only accepts `/operator/bookings/**` from operations with the
+internal key; the gateway no longer routes it (E-01). Booking moves before operations saves its lines:
+a failure in between is the open risk OPS-01. Bookings nobody started or finished go to the admin's
+"Por cerrar" list (ADR-014 §11). Paths and bodies: `07-api/contracts/openapi/operations-service.yaml`.

@@ -51,8 +51,12 @@ classDiagram
         -String comment
         -Instant ratedAt
         -boolean commentVisible
-        +assign(long bookingServiceId, int operatorId)$ ServiceExecution
-        +reassign(int newOperatorId)
+        -String assignmentNotes
+        -Instant followUpNoticeAt
+        +assign(long bookingServiceId, int operatorId, String notes)$ ServiceExecution
+        +reassign(int newOperatorId, String notes)
+        +closeAsAttended()
+        +followUpNoticeSent(Instant)
         +start(Instant)
         +finish(Instant)
         +rate(int stars, String text, Instant)
@@ -195,5 +199,7 @@ Rules kept by these classes:
   still shown (`availableFor`), and once published the customer opens it with `publicToken` (plate
   masked).
 - Events published: `execution.operator_assigned`, `execution.service_started`,
-  `execution.service_completed` (`ExecutionEvent`) and `execution.inspection_shared`
-  (`InspectionSharedEvent`).
+  `execution.service_completed`, `execution.service_not_started`, `execution.service_not_finished`
+  (`ExecutionEvent`) and `execution.inspection_shared` (`InspectionSharedEvent`), checked on
+  2026-10-23. `assignmentNotes` (≤ 300, migration 042) and `followUpNoticeAt` (migration 040) were
+  added on 2026-10-21/23 (ADR-014 §11).

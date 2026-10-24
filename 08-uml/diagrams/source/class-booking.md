@@ -211,5 +211,7 @@ Rules kept by these classes:
   maintenance (`ServiceBay.requireInitialStatus`).
 - Each line points to the `ServicePrice` valid for the vehicle type. A price row is never edited: a
   change closes it (`validTo`) and inserts a new one, so past bookings keep the price they had.
-- Event published: `BookingEvent` with two types, `booking.confirmed` (on create and on reschedule,
-  with `preferredOperatorId` when the customer chose one) and `booking.cancelled` (with the reason).
+- Event published: `BookingEvent` with three types, `booking.confirmed` (on create, on reschedule and
+  when the admin moves a booking back to confirmed, with `preferredOperatorId` when the customer chose
+  one), `booking.cancelled` (with the reason) and, since 2026-10-23, `booking.status_changed` (with
+  `status`, when the admin sets in progress, completed or no-show, A-11).
