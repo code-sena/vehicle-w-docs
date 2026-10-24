@@ -101,6 +101,11 @@ chore(deps): upgrade Spring Boot to 3.2.0
 
 Follow [SemVer](https://semver.org/): `MAJOR.MINOR.PATCH`
 
+State on 2026-10-23: `v1.0.0` is tagged on `main` in 8 code repositories (api-gateway, security,
+customer, booking, operations, notification, infra and web), released through a reviewed pull request
+`develop` → `main`. payment-service and the mobile app are still without it. The fixes merged into
+`develop` after the release go out as `v1.1.0`.
+
 ```bash
 # When releasing to production
 git tag -a v1.2.0 -m "Release v1.2.0: add reports module"
