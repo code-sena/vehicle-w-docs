@@ -23,9 +23,9 @@ This is a deliberate trade-off against the assignment's constraints (one grading
 one instructor-provided core), not an oversight, and it keeps the part of "database per
 service" that actually matters:
 
-- No table has a foreign key into a schema owned by **another service**. Every one of the 17
-  places a service needs another service's data is a plain indexed column, validated by the
-  application — see the contract table at the end of `models.md`. The only foreign key that
+- No table has a foreign key into a schema owned by **another service**. Every one of the 26
+  places a service needs another service's data is a plain column (22 of them indexed), validated by
+  the application — see the contract table at the end of `models.md`. The only foreign key that
   crosses two schemas, `booking.booking_service → catalog.service_price`, stays inside
   `booking-service`.
 - Each schema can be backed up, scripted, or migrated on its own.
@@ -54,8 +54,8 @@ Reasons:
 
 ## The standard audit block
 
-Every **domain** table (i.e., everything except the `security` core and
-`security.password_reset_token`) ends with the same seven columns:
+Most **domain** tables end with the same seven columns (the exceptions are listed below the block,
+and the exact columns of every table are in the "Audit columns" table of each ER diagram):
 
 ```sql
 created_at   DATETIME2(3)  NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -67,9 +67,15 @@ deleted_by   BIGINT        NULL,
 row_version  INT           NOT NULL DEFAULT 1,
 ```
 
+- Tables with only part of the block, or none: `security.app_user` (`created_at`),
+  `login_lockout` and `person_address` (`updated_at`), `audit.audit_log` and the rest of the security
+  core (none), `booking.schedule_history` (none, insert-only log), `execution.inspection_report` (no
+  `deleted_*`), `inspection_phase` (none), `inspection_finding` (`created_*`, `deleted_*`),
+  `inspection_photo` (`created_*`), `operator_profile` (`updated_*`), `operator_skill` (none) and
+  `notification.booking_tracking` (`updated_at`).
 - `updated_at` and `row_version` are bumped on every `UPDATE` by a `tr_touch_<table>` trigger, which
   each changeset writes explicitly for its table (`migration-strategy.md`, "Triggers"). As built
-  (checked 2026-10-20), there are 16 of them, on the tables that are edited after creation:
+  (checked 2026-10-23), there are 16 of them, on the tables that are edited after creation:
   `security.user_preference`, the three `customer` tables, `catalog.service` and `service_price`,
   `booking.booking`, `business_hour`, `business_hour_exception`, `establishment` and `service_bay`,
   and `execution.operator`, `operator_availability`, `operator_absence`, `service_execution` and
@@ -89,10 +95,13 @@ artifacts (`user_session`, `password_reset_token`) that get created and consumed
 than edited by an administrator — auditing who last "edited" a session token isn't a
 meaningful question.
 
-## Soft delete, always
+## Soft delete, by default
 
-No table is ever hit with a physical `DELETE`. `deleted_at IS NULL` means active;
-`deleted_at IS NOT NULL` means deleted. Two consequences worth knowing:
+Rows are not physically deleted: `deleted_at IS NULL` means active; `deleted_at IS NOT NULL` means
+deleted. The exceptions are rows that carry no history of their own: `security.login_lockout`,
+`person_address` and `role_permission`, `execution.operator_skill` (the list is replaced),
+`promotion.booking_promotion` (a removed coupon) and a soft-deleted `business_hour_exception` that
+blocks reusing its date. Two consequences worth knowing:
 
 - Uniqueness constraints that matter to the business, not just to storage, need a **filtered
   index** instead of a plain `UNIQUE`: `customer_vehicle.license_plate` and
@@ -133,10 +142,11 @@ note in `security`'s section of `models.md`).
 
 ## Catalog / lookup tables
 
-Eleven tables — `role`, `vehicle_type`, `loyalty_movement_type`, `service_category`,
-`booking_status`, `cancellation_reason`, `execution_status`, `discount_type`,
-`payment_method_type`, `payment_status`, `notification_type` — share one shape:
-`code`, `name`, `display_order`, `is_active` (plus the audit block, where they have one).
+Twelve tables — `role`, `vehicle_type`, `loyalty_movement_type`, `service_category`,
+`booking_status`, `bay_status`, `cancellation_reason`, `execution_status`, `discount_type`,
+`payment_method_type`, `payment_status`, `notification_type` — share one shape: `code` (unique),
+`name`, `display_order`, `is_active` and the audit block. `role` has only `code` and `name`;
+`bay_status` has `accepts_bookings` instead of `is_active`.
 
 They're kept as separate tables rather than one generic `status` table on purpose: a FK from
 `booking.booking_status_id` to a dedicated `booking_status` table guarantees a booking can
@@ -144,6 +154,6 @@ only ever hold a booking status. A single shared "statuses" table would let a bo
 in `REFUNDED`, which is a payment concept — the type system (via the FK target) is what
 prevents that, not application code remembering to filter.
 
-`code` is what the application matches on (`CANCELLED`); `name` is what a user sees
-(`CANCELLED`). Keeping them separate means the Spanish label can change without touching any
+`code` is what the application matches on (`CANCELLED`); `name` is the Spanish label
+(`Cancelada`). Keeping them separate means the Spanish label can change without touching any
 code path that checks the status.
