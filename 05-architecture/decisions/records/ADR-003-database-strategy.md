@@ -46,6 +46,10 @@ For example, `booking.booking_service.service_price_id → catalog.service_price
 
 The project accepts weaker physical isolation and shared database resource contention. These are acceptable for the current academic scale.
 
+All services also connect with the same `sa` login (`DB_USERNAME`), so ownership is enforced by the
+code and by review, not by database grants. One login per schema is an accepted risk for version 1
+(H-10, ADR-020).
+
 ## Consequences
 
 - Transactions must stay inside one service ownership boundary.

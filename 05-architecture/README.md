@@ -43,8 +43,9 @@ All six services use the same physical SQL Server database in the current academ
 - REST is used for synchronous validation and RabbitMQ for asynchronous consequences.
 - Authentication uses JWT issued by `security-service`; each service performs its own authorization and ownership checks.
 - Services use hexagonal architecture (ports and adapters, ADR-007): `domain` (model, ports) → `application` (use cases) → `infrastructure` (web, persistence, messaging adapters). Five are Java 21 / Spring Boot; payment-service is .NET 8 with the same layers as projects (ADR-013).
-- The JWT is validated by every service; the gateway only routes and answers CORS.
-- Service-to-service calls without a user (notification → security, operations → booking and security during the automatic assignment, the APK script → notification) use `X-Internal-Key` on `/internal/**` routes, which the gateway never exposes.
+- The JWT is validated by every service; the gateway routes, answers CORS and cuts tokens of closed sessions by asking security-service (ADR-005, ADR-006).
+- Service-to-service calls without a user (notification → security, operations → booking and security during the automatic assignment and the follow-up job, the APK script → notification) use `X-Internal-Key` on `/internal/**` routes, which the gateway never exposes. Since 2026-10-23 operations also sends it, with the operator's token, on booking's `/api/v1/operator/bookings/**`, which the gateway no longer routes (E-01).
+- The clients follow a feature-based MVVM structure (web zoneless with signals; mobile in layers, ADR-019). Deployment, CI/CD and mobile updates: ADR-016, ADR-017, ADR-018. Gaps accepted for version 1: ADR-020.
 
 ## Sources of truth
 
