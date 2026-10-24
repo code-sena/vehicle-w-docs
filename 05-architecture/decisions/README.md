@@ -10,8 +10,8 @@ This folder contains the decisions that define the architecture of LavaRápido.
 | ADR-002 | Original architectural style and service decomposition | Superseded by ADR-009 |
 | ADR-003 | Shared SQL Server database and schema ownership | Accepted |
 | ADR-004 | REST and RabbitMQ communication | Accepted |
-| ADR-005 | API Gateway (cuts closed-session tokens since 2026-10-21) | Accepted |
-| ADR-006 | JWT authentication, sessions, `X-Internal-Key` and service authorization | Accepted |
+| ADR-005 | API Gateway (cuts closed-session tokens with any scheme, rate limit on `/auth`, client IP, timeouts — 2026-10-24) | Accepted |
+| ADR-006 | JWT authentication, sessions, attempt caps, consent, `X-Internal-Key` and service authorization | Accepted |
 | ADR-007 | Internal hexagonal architecture | Accepted |
 | ADR-008 | Manual QR/receipt payment verification | Accepted |
 | ADR-009 | Revised six-service decomposition | Accepted |
@@ -19,11 +19,11 @@ This folder contains the decisions that define the architecture of LavaRápido.
 | ADR-011 | Notification service: push, events, reminders and booking emails; event contract as built (§17) | Accepted |
 | ADR-012 | Booking: vehicle resolution by REST to customer-service | Accepted |
 | ADR-013 | Payment service: .NET stack and layered (Clean) architecture | Accepted |
-| ADR-014 | Operations: booking integration by REST, operator provisioning, assignment and the follow-up of bookings nobody closed | Accepted |
+| ADR-014 | Operations: booking integration by REST, operator provisioning, assignment, the follow-up of bookings nobody closed, locks, retries and the start window (§12) | Accepted |
 | ADR-015 | Loyalty points, promotions, fixed-role permissions and per-booking bays (amends ADR-010) | Accepted |
 | ADR-016 | Deployment: one Azure VM with Docker Compose and Caddy | Accepted |
-| ADR-017 | CI/CD with GitHub Actions and continuous deployment from `main` | CI accepted; continuous deployment proposed (not pushed, not tested) |
-| ADR-018 | Mobile app updates: EAS Update by fingerprint and a mandatory APK | Accepted |
+| ADR-017 | CI/CD with GitHub Actions and continuous deployment from `main` | Accepted (2026-10-24; the continuous deployment is merged but has not run: no secrets yet) |
+| ADR-018 | Mobile app updates: EAS Update by fingerprint, automatic OTA with `cd.yml` and a mandatory APK | Accepted |
 | ADR-019 | Frontend architecture: feature-based MVVM (web, zoneless) and a layered mobile app | Accepted |
 | ADR-020 | Risks accepted for version 1 (no Outbox, shared `sa`, JWT in `localStorage`, reports in the browser) | Accepted |
 

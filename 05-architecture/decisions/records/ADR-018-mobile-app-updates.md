@@ -1,7 +1,7 @@
 # ADR-018 — Mobile App Updates: EAS Update by Fingerprint and a Mandatory APK
 
 - **ID:** ADR-018
-- **Date:** 2026-10-23 (records the mechanism built between 2026-10-16 and 2026-10-21)
+- **Date:** 2026-10-23 (records the mechanism built between 2026-10-16 and 2026-10-21; updated 2026-10-24: automatic OTA with `cd.yml`)
 - **Status:** Accepted
 - **Authors:** Development team
 
@@ -36,8 +36,22 @@ installed APK does not have crashes the app.
 - **Mandatory APK:** at start, `AppUpdatesCheck` reads `/app/version.json`; if its `versionCode` is
   greater than the installed one, the app shows a full-screen modal that cannot be dismissed and only
   offers the download. While a newer APK exists, OTA updates are not offered (they would not match).
+  Since 2026-10-24 the check also runs when the app returns to the foreground (MOV-14), and
+  `deploy/publish-apk.sh` escapes the release notes so `version.json` is always valid JSON.
 - Builds: profile `preview` (APK, `autoIncrement`, `EXPO_PUBLIC_API_URL` pointing to the Azure
-  server); `appVersionSource: remote`.
+  server); `appVersionSource: remote`. Since MOV-08 the `production` profile has the same HTTPS URL
+  and channel, and `config.ts` refuses an `http` or local URL outside `__DEV__`.
+- **Automatic OTA (`.github/workflows/cd.yml`, merged to `develop` on 2026-10-24, not run yet):** on a
+  push to `main` (not for `.md`/`docs/` only) or by hand, it publishes only from `main`. Job `check`
+  repeats `tsc` and jest. Job `publish` needs the `EXPO_TOKEN` secret (fails clearly without it), reads
+  the channel and URL from `eas.json` (`build.preview`, URL must be https), resolves the fingerprint
+  with `expo-updates runtimeversion:resolve` and compares it with the runtime of the EAS build whose
+  `versionCode` is in `/app/version.json` (if the VM is off, with the last finished build of the
+  channel, and warns). Same fingerprint → `eas update --channel preview --environment preview
+  --non-interactive`; different → it shows `eas fingerprint:compare` and fails asking for a new APK,
+  which is still built and published by hand. The checkout uses `core.autocrlf true`, because the
+  fingerprint hashes `eas.json`, `google-services.json` and `.gitignore` byte by byte and the APKs
+  are built on Windows (CRLF).
 
 **Justification:** most changes are JavaScript and arrive in seconds without a reinstall; the
 fingerprint makes the incompatible case impossible instead of relying on people bumping a version
@@ -65,8 +79,11 @@ number; the mandatory APK guarantees native fixes are not skipped.
 
 **Negative / Trade-offs:**
 - If the server is off, `version.json` cannot be read and the APK check is skipped silently.
-- The `production` profile in `eas.json` has no `EXPO_PUBLIC_API_URL` (H-14); only `preview` is used.
 - `app.json` still sets `usesCleartextTraffic: true` for local development over HTTP (H-14).
+- MOV-08 changed `eas.json`, so the fingerprint changed: the first release to `main` will fail its CD
+  until a new APK is built and published. An APK built on Linux or macOS would make the CD fail too
+  (safe failure). MOV-11 (`app.config.js`) is left out on purpose: it would change the fingerprint and
+  cut OTA updates to the installed APK 1.1.0 before the exposition.
 
 **Impact on the system:**
 - Affected: `LavadoVehicular-Movil`, `lavarapido-infra/deploy/publish-apk.sh`, notification-service
@@ -87,6 +104,6 @@ number; the mandatory APK guarantees native fixes are not skipped.
 ## References
 
 - `LavadoVehicular-Movil/app.json`, `eas.json`, `fingerprint.config.js`, `src/app/providers/AppUpdatesCheck.tsx`
-- `lavarapido-infra/deploy/publish-apk.sh`
+- `lavarapido-infra/deploy/publish-apk.sh`; `LavadoVehicular-Movil/.github/workflows/cd.yml`
 - Expo: runtime versions and fingerprint policy — https://docs.expo.dev/eas-update/runtime-versions/
-- Related to: ADR-011 (notifications), ADR-016 (deployment)
+- Related to: ADR-011 (notifications), ADR-016 (deployment), ADR-017 (CI/CD)

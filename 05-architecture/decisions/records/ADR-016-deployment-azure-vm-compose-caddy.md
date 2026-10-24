@@ -2,7 +2,7 @@
 
 - **ID:** ADR-016
 - **Date:** 2026-10-23 (records the deployment in use since 2026-10-15, when `docker-compose.prod.yml` and the `Caddyfile` were added)
-- **Status:** Accepted
+- **Status:** Accepted (updated 2026-10-24: web on port 8080 without root, `:prev` images, rollback, clean-up)
 - **Authors:** Development team
 
 ---
@@ -33,13 +33,13 @@ update it several times a week.
 
 | Piece | Production setting |
 |---|---|
-| Entry | Caddy: automatic HTTPS for the domain; `/api/*` → `api-gateway:8080`; `/app/*` → APK and `version.json` from `deploy/downloads`; everything else → `web` (nginx with the Angular build). `/actuator` never reaches the gateway because it does not start with `/api` |
+| Entry | Caddy: automatic HTTPS for the domain; `/api/*` → `api-gateway:8080`; `/app/*` → APK and `version.json` from `deploy/downloads`; everything else → `web:8080` (unprivileged nginx with the Angular build, no root since 2026-10-24, H-19). `/actuator` never reaches the gateway because it does not start with `/api` |
 | Security headers | Caddy sets HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, removes `Server`, and a CSP for the web (`script-src 'self'` plus the hash of Angular's inline `onload`) |
 | Services | `SPRING_PROFILES_ACTIVE=prod` (no Swagger, no demo accounts), `mem_limit` 512 MB per Java service (384 MB payment, 64 MB web and Caddy), health checks, `restart: unless-stopped`, logs capped at 3 × 10 MB |
 | Data | SQL Server Express in the `sqlserver-data` volume; RabbitMQ and Caddy certificates in volumes; nothing but Caddy reachable from outside |
 | Secrets | `.env.production` on the server (git-ignored); `INTERNAL_API_KEY`, `JWT_SECRET` and the RabbitMQ user are mandatory (`${VAR:?…}`) |
-| Backups | `deploy/backup-db.sh` + `verify-backup.sh` by cron (daily 23:00 UTC and 5 minutes after boot) and before every update; `restore-db.sh` by hand |
-| Updates | `deploy/update-server.sh` pulls the repositories and runs `up -d --build` on the server; today it follows `develop` (ADR-017 for the move to `main`) |
+| Backups | `deploy/backup-db.sh` + `verify-backup.sh` by cron (daily 23:00 UTC and 5 minutes after boot) and before every update (`pre-update`, the last 10 kept apart from the 14 regular ones); `restore-db.sh` by hand, with the deploy lock and a typed confirmation |
+| Updates | `deploy/update-server.sh` pulls the repositories (never downgrading), tags the running images `:prev`, runs `up -d --build`, waits for health and prunes old images; today it follows `develop` by hand (`BRANCH=develop`; ADR-017 for the move to `main`). `deploy/rollback.sh` goes back to `:prev` without compiling |
 
 **Justification:** it is the smallest setup that gives a real public URL with HTTPS for the web
 and the app, reuses the local Compose files unchanged, and fits the free credit. Caddy obtains and
@@ -86,8 +86,8 @@ renews the certificate by itself and its configuration is one short file.
 | Risk | Probability | Impact | Mitigation |
 |------|------------|--------|-----------|
 | The VM is off during a review | Medium | High | Turn it on before; external uptime check and a recorded video as a fallback (`15-project-control/risks.md`) |
-| A migration breaks a service after an update | Low | High | Backup before every update; `restore-db.sh`; with ADR-017 the update fails when a container is not healthy |
-| The disk fills with old images and backups | Medium | Medium | Keep 14 backups; `docker image prune` pending |
+| A migration breaks a service after an update | Low | High | Backup before every update; the update fails when a container is not healthy; `rollback.sh` (images) and `restore-db.sh` (data) |
+| The disk fills with old images and backups | Medium | Medium | Keep 14 regular and 10 pre-update backups; image and build-cache prune after each healthy update (CD-10) |
 
 ---
 
