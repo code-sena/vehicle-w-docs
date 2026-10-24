@@ -168,6 +168,28 @@ Examples include a permitted change of:
 
 ---
 
+## BookingStatusChanged
+
+**Origin:** Booking
+
+**Meaning:** An administrator moved a booking to another lifecycle state by hand: in progress,
+completed or no-show (added 2026-10-23, A-11). A move back to confirmed is announced as
+`BookingConfirmed`, and a cancellation as `BookingCancelled`.
+
+**Important information:**
+
+- booking identifier and code;
+- customer;
+- new state;
+- scheduled start.
+
+**Typical reactions:**
+
+- tell the customer that the service started, finished or was marked as no-show;
+- stop the reminders that no longer make sense (not done yet by the consumer, see section 5).
+
+---
+
 ## OperatorAssigned
 
 **Origin:** Operations & Assignment
@@ -246,6 +268,63 @@ Automatic reassignment does not change the booking itself; it changes who is res
 - update the booking lifecycle when all required service work is complete;
 - make rating available for the completed service line;
 - notify the customer.
+
+---
+
+## ServiceNotStarted
+
+**Origin:** Operations & Assignment
+
+**Meaning:** A booking with an assigned operator reached its end time plus the margin and nobody
+started it. The system does not decide whether it was attended: the operator may have washed the
+car and forgotten to register it, so the booking waits for the administrator ("Por cerrar").
+
+**Important information:**
+
+- booking identifier and code;
+- customer;
+- assigned operator;
+- scheduled start.
+
+**Typical reactions:**
+
+- ask the operator whether the service was attended;
+- warn the administrators that the booking must be closed (attended or no-show).
+
+It is raised once per booking.
+
+---
+
+## ServiceNotFinished
+
+**Origin:** Operations & Assignment
+
+**Meaning:** A service that was started was never finished, and its end time plus the margin has
+passed. Same handling as `ServiceNotStarted`.
+
+**Important information:** same as `ServiceNotStarted`.
+
+**Typical reactions:** same as `ServiceNotStarted`, worded for a service that was left in progress.
+
+---
+
+## InspectionShared
+
+**Origin:** Operations & Assignment (vehicle inspection, RF-036)
+
+**Meaning:** The administrator shared a published inspection report with the customer.
+
+**Important information:**
+
+- booking identifier and code;
+- customer;
+- vehicle plate;
+- summary: phases done of the total, number of findings, major findings and their areas;
+- the public token that opens the report.
+
+**Typical reactions:**
+
+- send the customer the summary and the link to the report.
 
 ---
 
@@ -429,6 +508,11 @@ Booking
                       Rating available
 ```
 
+If the end time plus the margin passes and nobody registered the service, Operations raises
+`ServiceNotStarted` or `ServiceNotFinished` and the administrator closes the booking (attended or
+no-show). A booking that never had an operator is closed as no-show by the system. When the
+administrator moves the state by hand, Booking raises `BookingStatusChanged`.
+
 A booking can contain multiple service lines, so the execution/rating part of the flow is evaluated per service line.
 
 ---
@@ -525,7 +609,7 @@ This mapping is included for consistency with the current architecture. The doma
 
 ---
 
-## Implementation status (checked against the code on 2026-10-20)
+## Implementation status (checked against `origin/develop` on 2026-10-23)
 
 Which domain events are emitted by the built services. Transport details (routing keys, queues,
 payload fields) are in `09-microservices/services/<NN-service>/events.md`.
@@ -538,10 +622,12 @@ payload fields) are in `09-microservices/services/<NN-service>/events.md`.
 | `BookingCreated` | Covered by `BookingConfirmed` | A booking is confirmed in the same transaction it is created (RF-006), so only `BookingConfirmed` is published |
 | `BookingConfirmed` | Published | Also published when a booking is rescheduled |
 | `BookingModified` | Covered by `BookingConfirmed` | A reschedule republishes `BookingConfirmed` with the new start time; consumers treat it as "the booking is now at this time" |
-| `BookingCancelled` | Published | Includes the cancellation reason |
+| `BookingCancelled` | Published | Includes the cancellation reason (its display name). Raised by the client, the admin or the system when a scheduled booking expires (then without `customerUserId`) |
+| `BookingStatusChanged` | Published (since 2026-10-23) | `booking.status_changed`, with `status` = `IN_PROGRESS`, `COMPLETED` or `NO_SHOW`, when the admin moves the booking by hand; consumed by notification. The consumer does not stop the reminders for it yet |
 | `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` | Published | By `operations-service` (`execution.*`); consumed by notification. A reassignment republishes `OperatorAssigned`; `OperatorReassigned` and `RatingSubmitted` are not emitted |
+| `ServiceNotStarted`, `ServiceNotFinished` | Published | `execution.service_not_started` and `execution.service_not_finished` by the follow-up job of `operations-service`, once per booking; consumed by notification (operator and administrators) |
 | `PaymentInitiated` | Not emitted | A reported payment is saved in `IN_REVIEW` and waits for the admin; nobody else needs to know about it |
-| `PaymentApproved`, `PaymentRejected`, `PaymentRefunded` | Published | By `payment-service` as `payment.confirmed`, `payment.rejected`, `payment.refunded`; consumed by notification |
+| `PaymentApproved`, `PaymentRejected`, `PaymentRefunded` | Published | By `payment-service` as `payment.confirmed`, `payment.rejected`, `payment.refunded` (payload with `paymentId`, `bookingId`, `customerUserId`, `amount`); consumed by notification |
 | `PromotionRedeemed`, loyalty points earned | Published | `payment.promotion_redeemed` and `payment.loyalty_points_earned` (with the coupons the new balance unlocked); consumed by notification |
 | `InspectionShared` | Published | `execution.inspection_shared` by `operations-service` when the admin shares the inspection report; notification sends the link to the client |
 | `LoyaltyPointsRedeemed` | Not emitted | Points are not spent: `RequiredPoints` is the balance that unlocks a coupon, and the ledger only writes `EARNED` and `REVERSED` movements today |
@@ -644,6 +730,8 @@ When a breaking change is required, the architecture/API documentation must defi
 | `BookingConfirmed` | RF-005 to RF-007 |
 | `OperatorAssigned` / `OperatorReassigned` | RF-008 to RF-010 |
 | `ServiceStarted` / `ServiceCompleted` | RF-011 to RF-012b |
+| `ServiceNotStarted` / `ServiceNotFinished` / `BookingStatusChanged` | RF-012b, RF-018 |
+| `InspectionShared` | RF-036, RF-018 |
 | `RatingSubmitted` | RF-012 |
 | `PaymentInitiated` | RF-013 / RF-013b |
 | `PaymentConfirmed` / `PaymentRejected` | RF-014 |

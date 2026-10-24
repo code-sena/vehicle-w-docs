@@ -30,4 +30,5 @@ None.
 | notification-service | `GET /internal/v1/users/{id}/contact` with `X-Internal-Key` | Current email/name, language and switches for emails and reminders (ADR-011 §8) |
 | notification-service | `GET /internal/v1/users/admins` with `X-Internal-Key` | Active admins for the staff notifications |
 | operations-service | `GET /api/v1/admin/users?role=OPERATOR` with the admin's token | Operator accounts and names |
-| operations-service | `GET /internal/v1/users/{id}/contact` with `X-Internal-Key` | First names in ratings and skipping disabled accounts in the automatic assignment |
+| operations-service | `GET /internal/v1/users/{id}/contact` with `X-Internal-Key` | First names in ratings and skipping disabled accounts in the automatic and the manual assignment (A-13) |
+| api-gateway | `GET /api/v1/auth/session` with the caller's `Authorization` | Whether the token's session is still open (ADR-005); cached 30 s |

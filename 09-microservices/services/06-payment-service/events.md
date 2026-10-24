@@ -3,15 +3,22 @@
 ## Published
 
 On `carwash.events` (ADR-004) with the common envelope, after the unit of work commits and only
-with `MESSAGING_ENABLED=true`. notification-service consumes all of them (ADR-011).
+with `MESSAGING_ENABLED=true`. notification-service consumes all of them (ADR-011). If RabbitMQ
+fails the error is logged and the event is lost (no Outbox, ADR-020). `occurredAt` (envelope) is
+formatted with .NET's round-trip `"O"` format (`+00:00`). Checked against `origin/develop` on
+2026-10-23.
 
 | Event | Routing key | When | Payload |
 |---|---|---|---|
-| `PaymentConfirmed` | `payment.confirmed` | The admin approves a payment or registers an in-person one | `customerUserId`, `paymentId`, `amount` |
-| `PaymentRejected` | `payment.rejected` | The admin rejects a payment | `customerUserId`, `paymentId`, `amount`, `reason` |
-| `PaymentRefunded` | `payment.refunded` | The admin refunds an approved payment | `customerUserId`, `paymentId`, `amount` |
-| `PromotionRedeemed` | `payment.promotion_redeemed` | The customer redeems a coupon on a booking | `customerUserId`, `bookingId`, `bookingCode`, `promotionName`, `discountAmount` |
+| `PaymentConfirmed` | `payment.confirmed` | The admin approves a payment or registers an in-person one | `paymentId`, `bookingId`, `customerUserId`, `amount` |
+| `PaymentRejected` | `payment.rejected` | The admin rejects a payment | `paymentId`, `bookingId`, `customerUserId`, `amount`, `reason` |
+| `PaymentRefunded` | `payment.refunded` | The admin refunds an approved payment | `paymentId`, `bookingId`, `customerUserId`, `amount` |
+| `PromotionRedeemed` | `payment.promotion_redeemed` | The customer redeems a coupon on a booking | `customerUserId`, `bookingId`, `bookingCode`, `promotionCode`, `promotionName`, `discountAmount` |
 | `LoyaltyPointsEarned` | `payment.loyalty_points_earned` | Right after `payment.confirmed`, when that payment credits loyalty points | `customerUserId`, `bookingId`, `bookingCode`, `points`, `balance`, `unlockedPromotions[]` (`code`, `name`, `discountPercent`, `requiredPoints`) |
+
+`aggregateId` is the payment id for the three payment events and the booking id for the coupon and
+points events. Removing a coupon (`DELETE /api/v1/loyalty/redemptions/{bookingId}/{promotionId}`,
+2026-10-23) publishes no event.
 
 `unlockedPromotions` holds the promotions available today whose `requiredPoints` this credit has
 just reached (`Promotion.IsUnlockedBy`); it is empty when no coupon unlocks. A booking whose

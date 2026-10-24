@@ -194,7 +194,7 @@ lists the promotions available today whose `required_points` that credit has jus
 | `LOYALTY_POINTS_EARNED` (new, category `PROMOTION`) | "Ganaste N puntos": the booking code and the new balance | Inbox and push only |
 | `PROMOTION_AVAILABLE` (one per unlocked coupon) | "¡Tienes un cupón canjeable!": the promotion's name, its discount and the code to use when paying | Inbox, push and email |
 
-The vehicle inspection report (RF-027) is not a backend aggregate yet: the web keeps it locally. The
+The vehicle inspection report (today RF-036) is not a backend aggregate yet: the web keeps it locally. The
 administrator announces it from the inspection screen through `POST /api/v1/admin/notifications`
 with type `INSPECTION_REPORT` (new, category `MESSAGE`). The message carries the summary (phases,
 number of findings and their areas) instead of the public link, which only opens in the

@@ -79,7 +79,7 @@ Each use case opens one local transaction. The transaction may write multiple sc
 
 A booking and a payment are not one database transaction because they belong to different services. Their consistency is achieved through application validation and events, not a cross-service transaction.
 
-Events are published after commit. The Outbox pattern is not adopted in the current version.
+Events are published after commit. The Outbox pattern is not adopted in the current version (accepted risk H-11, ADR-020).
 
 ## 7. Messaging
 
@@ -96,16 +96,20 @@ schema prefix matches `06-data`/`ADR-003` ownership directly, so the same name
 tells you both the queue to bind and which service's database the fact came
 from.
 
-Routing keys built today (checked 2026-10-20):
+Routing keys built today (checked against `origin/develop` on 2026-10-23 with a script that extracts
+the publishers and the bindings from the code; payloads in ADR-011 §17):
 
-| Event (`02-domain/domain-events.md`) | Routing key | Publishing service | Consumers |
+| Event (`02-domain/domain-events.md`) | Routing key | Publishing service | Consumers (queue) |
 |---|---|---|---|
-| `UserRegistered` | `security.user_registered` | `security-service` | customer, notification |
-| `BookingConfirmed` (also on reschedule) | `booking.confirmed` | `booking-service` | operations, notification |
+| `UserRegistered` | `security.user_registered` | `security-service` | customer (`customer-service.events`), notification (`notification-service.events`) |
+| `BookingConfirmed` (also on reschedule and when the admin moves a booking back to confirmed) | `booking.confirmed` | `booking-service` | operations (`operations-service.events`), notification |
 | `BookingCancelled` | `booking.cancelled` | `booking-service` | notification |
+| `BookingStatusChanged` (admin sets in progress, completed or no-show) | `booking.status_changed` | `booking-service` | notification |
 | `OperatorAssigned` (also on reassignment) | `execution.operator_assigned` | `operations-service` | notification |
 | `ServiceStarted` | `execution.service_started` | `operations-service` | notification |
 | `ServiceCompleted` | `execution.service_completed` | `operations-service` | notification |
+| `ServiceNotStarted` | `execution.service_not_started` | `operations-service` | notification |
+| `ServiceNotFinished` | `execution.service_not_finished` | `operations-service` | notification |
 | `InspectionShared` | `execution.inspection_shared` | `operations-service` | notification |
 | `PaymentConfirmed` | `payment.confirmed` | `payment-service` | notification |
 | `PaymentRejected` | `payment.rejected` | `payment-service` | notification |
@@ -113,9 +117,11 @@ Routing keys built today (checked 2026-10-20):
 | `PromotionRedeemed` | `payment.promotion_redeemed` | `payment-service` | notification |
 | `LoyaltyPointsEarned` | `payment.loyalty_points_earned` | `payment-service` | notification |
 
-notification-service also binds `booking.created`, which no service publishes today (a booking is
-confirmed when it is created). Events of the domain catalog that are not emitted (`UserAuthenticated`,
-`BookingModified`, `OperatorReassigned`, `RatingSubmitted`, `PaymentInitiated`,
+15 routing keys are published by four services (security, booking, operations, payment);
+customer-service and notification-service publish nothing. notification-service also binds
+`booking.created`, which no service publishes (a booking is confirmed when it is created), so it has
+16 bindings; operations and customer have one each. Events of the domain catalog that are not emitted
+(`UserAuthenticated`, `BookingModified`, `OperatorReassigned`, `RatingSubmitted`, `PaymentInitiated`,
 `LoyaltyPointsRedeemed`, `NotificationCreated`) have no routing key. The security events
 `security.user.email-changed`, `security.user.password-changed` and `security.user.deactivated` and the
 customer events are raised but only written to the log.
@@ -134,7 +140,7 @@ information" list already given for that event in `domain-events.md`.
   "eventId": "uuid — the idempotency key for consumers",
   "eventType": "PascalCase event name, e.g. BookingConfirmed",
   "aggregateId": "id of the aggregate that produced it, as text (user, booking or payment id)",
-  "occurredAt": "ISO 8601 timestamp",
+  "occurredAt": "ISO 8601 timestamp (Java: Instant.toString(); payment: DateTimeOffset 'O', e.g. +00:00)",
   "version": 1,
   "payload": { "...": "event-specific fields" }
 }
@@ -145,9 +151,9 @@ information" list already given for that event in `domain-events.md`.
 | Delivery | At least once should be assumed by consumers |
 | Acknowledgement | After successful processing |
 | Retry | customer-service and notification-service retry a failed message 3 times (first wait 1 s) |
-| Dead letter | Then the message goes to `customer-service.events.dlq` or `notification-service.events.dlq`; the operations-service queue has no dead-letter queue yet |
+| Dead letter | Then the message goes, through the direct exchange `carwash.events.dlx`, to `customer-service.events.dlq` or `notification-service.events.dlq`; the operations-service queue has no dead-letter queue (its listener logs the failure and does not requeue) |
 | Idempotency | A consumer checks `eventId` against its own processed-events record before acting, in the same transaction as the work it does (implemented in notification-service, `processed_event`; customer-service checks whether the profile exists) |
-| Outbox | Not adopted in this version |
+| Outbox | Not adopted in this version (H-11, ADR-020): a publish that fails is only logged |
 
 A new event should have a documented consumer and a reason to exist.
 
