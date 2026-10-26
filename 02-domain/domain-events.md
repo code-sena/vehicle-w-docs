@@ -368,6 +368,28 @@ For digital methods, the receipt/review workflow can continue after this event.
 
 ---
 
+## PaymentReported
+
+**Origin:** Payment
+
+**Meaning:** The customer reported a digital payment with its receipt for a booking (also when reporting
+again after a rejection). The payment now waits for the administrator's review. A cash payment the
+administrator registers in person does not raise it: it is approved at once (`PaymentConfirmed`).
+
+**Important information:**
+
+- payment identifier;
+- booking identifier;
+- customer;
+- reported amount.
+
+**Typical reactions:**
+
+- Booking records that the payment of the booking was reported, so a DIGITAL booking no longer
+  expires when its payment deadline passes (INV-BOOK-012, ADR-021).
+
+---
+
 ## PaymentConfirmed
 
 **Origin:** Payment
@@ -385,7 +407,8 @@ For digital methods, the receipt/review workflow can continue after this event.
 **Typical reactions:**
 
 - notify the customer;
-- apply loyalty effects when the final loyalty rules require them.
+- apply loyalty effects when the final loyalty rules require them;
+- Booking records that the payment of the booking was reported (same reaction as `PaymentReported`).
 
 ---
 
@@ -551,7 +574,7 @@ Customer
    ▼
 Payment
    │
-   └── PaymentInitiated
+   └── PaymentReported (receipt) ──► Booking: payment reported, the booking no longer expires
            │
            ▼
       Administrator review
@@ -565,6 +588,10 @@ PaymentConfirmed  PaymentRejected
 ```
 
 Cash follows the same payment lifecycle conceptually, but it does not require a digital receipt.
+
+Since 2026-10-26 the customer chooses DIGITAL or CASH when booking. A DIGITAL booking without a
+reported payment when its deadline passes is cancelled by the system with the reason `PAYMENT_TIMEOUT`
+(`BookingCancelled`); see INV-BOOK-010 to INV-BOOK-012 in `entities-and-rules.md` and ADR-021.
 
 ---
 
@@ -634,7 +661,7 @@ This mapping is included for consistency with the current architecture. The doma
 
 ---
 
-## Implementation status (checked against `origin/develop` on 2026-10-24)
+## Implementation status (checked against `origin/develop` on 2026-10-26)
 
 Which domain events are emitted by the built services. Transport details (routing keys, queues,
 payload fields) are in `09-microservices/services/<NN-service>/events.md`.
@@ -647,13 +674,13 @@ payload fields) are in `09-microservices/services/<NN-service>/events.md`.
 | `BookingCreated` | Covered by `BookingConfirmed` | A booking is confirmed in the same transaction it is created (RF-006), so only `BookingConfirmed` is published |
 | `BookingConfirmed` | Published | Also published when a booking is rescheduled |
 | `BookingModified` | Covered by `BookingConfirmed` | A reschedule republishes `BookingConfirmed` with the new start time; consumers treat it as "the booking is now at this time" |
-| `BookingCancelled` | Published | Includes the cancellation reason (display name `reason` and stable code `reasonCode`). Raised by the client or the admin; the system no longer cancels expired bookings (job removed, B-07) |
+| `BookingCancelled` | Published | Includes the cancellation reason (display name `reason` and stable code `reasonCode`). Raised by the client or the admin; the system no longer cancels expired bookings (job removed, B-07), but since 2026-10-26 it cancels a DIGITAL booking whose payment deadline passed without a reported payment (`reasonCode` = `PAYMENT_TIMEOUT`, `PaymentDeadlineJob`, ADR-021) |
 | `BookingStatusChanged` | Published (since 2026-10-23) | `booking.status_changed`, with `status` = `IN_PROGRESS`, `COMPLETED` or `NO_SHOW`, when the admin moves the booking by hand; consumed by notification, which sends `SERVICE_STARTED`, `SERVICE_COMPLETED` or `BOOKING_NO_SHOW` and cancels the pending reminders. The automatic no-show (a booking that never had an operator) raises nothing |
 | `OperatorAssigned`, `ServiceStarted`, `ServiceCompleted` | Published | By `operations-service` (`execution.*`); consumed by notification. A reassignment republishes `OperatorAssigned`; `OperatorReassigned` and `RatingSubmitted` are not emitted |
 | `OperatorUnassigned` | Published (since 2026-10-24) | `execution.operator_unassigned` by `operations-service` when a rescheduled booking nobody can take is left without operator (E-12); notification warns that operator and the administrators |
 | `ServiceNotStarted`, `ServiceNotFinished` | Published | `execution.service_not_started` and `execution.service_not_finished` by the follow-up job of `operations-service`, once per booking; consumed by notification (operator and administrators) |
-| `PaymentInitiated` | Not emitted | A reported payment is saved in `IN_REVIEW` and waits for the admin; nobody else needs to know about it |
-| `PaymentApproved`, `PaymentRejected`, `PaymentRefunded` | Published | By `payment-service` as `payment.confirmed`, `payment.rejected`, `payment.refunded` (payload with `paymentId`, `bookingId`, `customerUserId`, `amount`); consumed by notification |
+| `PaymentInitiated` | Emitted as `PaymentReported` (since 2026-10-26) | A payment reported by the client is saved in `IN_REVIEW` and `payment-service` publishes `payment.reported` (`paymentId`, `bookingId`, `customerUserId`, `amount`); consumed by booking, which stops the payment deadline of the booking (ADR-021). Not consumed by notification |
+| `PaymentApproved`, `PaymentRejected`, `PaymentRefunded` | Published | By `payment-service` as `payment.confirmed`, `payment.rejected`, `payment.refunded` (payload with `paymentId`, `bookingId`, `customerUserId`, `amount`); consumed by notification, and `payment.confirmed` also by booking (the payment of the booking counts as reported) |
 | `PromotionRedeemed`, loyalty points earned | Published | `payment.promotion_redeemed` and `payment.loyalty_points_earned` (with the coupons the new balance unlocked); consumed by notification |
 | `InspectionShared` | Published | `execution.inspection_shared` by `operations-service` when the admin shares the inspection report; notification sends the link to the client |
 | `LoyaltyPointsRedeemed` | Not emitted | Points are not spent: `RequiredPoints` is the balance that unlocks a coupon, and the ledger only writes `EARNED` and `REVERSED` movements today |
@@ -759,7 +786,7 @@ When a breaking change is required, the architecture/API documentation must defi
 | `ServiceNotStarted` / `ServiceNotFinished` / `BookingStatusChanged` | RF-012b, RF-018 |
 | `InspectionShared` | RF-036, RF-018 |
 | `RatingSubmitted` | RF-012 |
-| `PaymentInitiated` | RF-013 / RF-013b |
+| `PaymentInitiated` / `PaymentReported` | RF-013 / RF-013b |
 | `PaymentConfirmed` / `PaymentRejected` | RF-014 |
 | Payment history | RF-015 |
 | Card/receipt rules | RF-016 |

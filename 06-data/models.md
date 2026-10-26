@@ -1,6 +1,6 @@
 # Data Models per Service
 
-**Last updated:** 2026-10-24 — every `CREATE TABLE` block below is the final state after all the Liquibase changesets on `origin/develop` (up to 048 in the Java services and 023 in payment-service), and was checked against them by script (`migration-strategy.md`, "How the docs are checked"). Later columns and constraints carry a `-- migration NNN` comment. 2026-10-24: `pending_delivery` (047; `channel` and `language` NVARCHAR in 048), the current-price check (044), `tr_touch_booking` and the booking optimistic lock (045), the coupon percentage (payment 022), one open payment per booking and the live-reference view (payment 023). Earlier: 2026-10-15 ADR-010 and ADR-011 changes, login lockout, registration date, inspection report.
+**Last updated:** 2026-10-26 — every `CREATE TABLE` block below is the final state after all the Liquibase changesets on `origin/develop` (up to 049 in the Java services and 023 in payment-service), and was checked against them by script (`migration-strategy.md`, "How the docs are checked"). Later columns and constraints carry a `-- migration NNN` comment. 2026-10-26: the payment contract of the booking (`payment_mode`, `payment_deadline`, `payment_reported_at` and `ix_booking_payment_pending`, 049; reason `PAYMENT_TIMEOUT`, seed 117). 2026-10-24: `pending_delivery` (047; `channel` and `language` NVARCHAR in 048), the current-price check (044), `tr_touch_booking` and the booking optimistic lock (045), the coupon percentage (payment 022), one open payment per booking and the live-reference view (payment 023). Earlier: 2026-10-15 ADR-010 and ADR-011 changes, login lockout, registration date, inspection report.
 
 The system is split into **six microservices over nine schemas**, all inside a single SQL
 Server 2016+ instance. Every schema has exactly one owning service; a service may own more
@@ -1152,7 +1152,7 @@ CREATE TABLE [booking].cancellation_reason (
 | Column | Type | Nullable | Description | Constraints |
 |--------|------|----------|--------------|-------------|
 | `cancellation_reason_id` | SMALLINT | No | Surrogate primary key (IDENTITY). | PK |
-| `code` | NVARCHAR(30) | No | `CUSTOMER_REQUEST`, `SCHEDULE_CONFLICT`, `VEHICLE_ISSUE`, `SHOP_ISSUE`, `LATE_ARRIVAL` (customer fault), `OTHER` (seed `104`); `EXPIRED` (seed `112`), used only by the system when it closes a booking nobody confirmed, never offered to the admin. | Unique |
+| `code` | NVARCHAR(30) | No | `CUSTOMER_REQUEST`, `SCHEDULE_CONFLICT`, `VEHICLE_ISSUE`, `SHOP_ISSUE`, `LATE_ARRIVAL` (customer fault), `OTHER` (seed `104`); `EXPIRED` (seed `112`), used only by the system when it closes a booking nobody confirmed, never offered to the admin; `PAYMENT_TIMEOUT` (seed `117`, "No se subió el comprobante de pago a tiempo"), used only by the system when a DIGITAL booking passes its `payment_deadline` without a payment report, chosen by neither the customer nor the admin. | Unique |
 | `name` | NVARCHAR(60) | No | Label. | — |
 | `is_customer_fault` | BIT | No | Distinguishes reasons attributable to the customer, used for reporting and penalty decisions. | — |
 | `display_order` | SMALLINT | No | Sort order. | — |
@@ -1178,6 +1178,9 @@ CREATE TABLE [booking].booking (
     points_redeemed          INT           NOT NULL CONSTRAINT df_booking_points DEFAULT 0,
     points_discount_amount   DECIMAL(12,2) NOT NULL CONSTRAINT df_booking_pdisc DEFAULT 0,
     notes                    NVARCHAR(300) NULL,
+    payment_mode             NVARCHAR(10)  NULL,       -- migration 049
+    payment_deadline         DATETIME2(3)  NULL,       -- migration 049
+    payment_reported_at      DATETIME2(3)  NULL,       -- migration 049
     created_at               DATETIME2(3)  NOT NULL CONSTRAINT df_booking_created DEFAULT SYSUTCDATETIME(),
     created_by               BIGINT        NULL,
     updated_at               DATETIME2(3)  NULL,
@@ -1191,12 +1194,14 @@ CREATE TABLE [booking].booking (
     CONSTRAINT fk_booking_cancellation FOREIGN KEY (cancellation_reason_id) REFERENCES [booking].cancellation_reason(cancellation_reason_id),
     CONSTRAINT ck_booking_range CHECK (scheduled_end > scheduled_start),
     CONSTRAINT ck_booking_cancel CHECK (cancellation_reason_id IS NULL OR booking_status_id = 5),
-    CONSTRAINT ck_booking_points CHECK ((points_redeemed = 0 AND points_discount_amount = 0) OR (points_redeemed > 0 AND points_discount_amount > 0))
+    CONSTRAINT ck_booking_points CHECK ((points_redeemed = 0 AND points_discount_amount = 0) OR (points_redeemed > 0 AND points_discount_amount > 0)),
+    CONSTRAINT ck_booking_payment_mode CHECK (payment_mode IN (N'DIGITAL', N'CASH'))   -- migration 049
 );
 CREATE NONCLUSTERED INDEX ix_booking_start_status ON [booking].booking (scheduled_start, booking_status_id);
 CREATE NONCLUSTERED INDEX ix_booking_customer_vehicle ON [booking].booking (customer_vehicle_id);
 CREATE NONCLUSTERED INDEX ix_booking_bay_start ON [booking].booking (service_bay_id, scheduled_start);
 CREATE NONCLUSTERED INDEX ix_booking_booked_by ON [booking].booking (booked_by);
+CREATE NONCLUSTERED INDEX ix_booking_payment_pending ON [booking].booking (payment_deadline) INCLUDE (booking_status_id, deleted_at) WHERE payment_mode = N'DIGITAL' AND payment_reported_at IS NULL;   -- migration 049
 -- trigger tr_booking_bay_overlap (AFTER INSERT, UPDATE): Rejects (THROW 51002) two active bookings (states 1–3, not deleted) that overlap on the same bay. Safety net of INV-BOOK-006; the code checks it first.
 -- trigger tr_touch_booking (AFTER UPDATE): sets updated_at; bumps row_version only if the UPDATE did not (045)
 ```
@@ -1209,6 +1214,7 @@ CREATE NONCLUSTERED INDEX ix_booking_booked_by ON [booking].booking (booked_by);
 | `ix_booking_customer_vehicle` | `customer_vehicle_id` | Non-unique | Cross-service lookup support for `booking.booking.customer_vehicle_id`. |
 | `ix_booking_bay_start` | `service_bay_id, scheduled_start` | Non-unique | Overlap check used by `tr_booking_bay_overlap`. |
 | `ix_booking_booked_by` | `booked_by` | Non-unique | Cross-service lookup support for `booking.booking.booked_by`. |
+| `ix_booking_payment_pending` | `payment_deadline` (includes `booking_status_id, deleted_at`) | Non-unique, filtered: `payment_mode = N'DIGITAL' AND payment_reported_at IS NULL` | Migration 049. Only the DIGITAL bookings still without a payment report, the ones `PaymentDeadlineJob` checks every minute. |
 
 **Data dictionary:**
 
@@ -1225,6 +1231,9 @@ CREATE NONCLUSTERED INDEX ix_booking_booked_by ON [booking].booking (booked_by);
 | `points_redeemed` | INT | No | Loyalty points redeemed against this booking. | — |
 | `points_discount_amount` | DECIMAL(12,2) | No | The peso amount those points are worth. Both this and `points_redeemed` must be zero, or both greater than zero. | — |
 | `notes` | NVARCHAR(300) | Yes | Free-text note. | — |
+| `payment_mode` | NVARCHAR(10) | Yes | How the customer will pay (migration 049): `DIGITAL` (QR and receipt) or `CASH` (cash at the car wash). Required when the CLIENT books; `NULL` in bookings older than the change and in bookings the admin creates without a mode. Rescheduling does not change it. NVARCHAR and not VARCHAR because Hibernate reads text as national characters (lesson of 048). | `ck_booking_payment_mode` (`DIGITAL`, `CASH`) |
+| `payment_deadline` | DATETIME2(3) | Yes | Until when a DIGITAL booking may report its payment, UTC: `min(created + BOOKING_PAYMENT_WINDOW (30 min), scheduled_start)` (migration 049). When it passes without a report, `PaymentDeadlineJob` cancels the booking with `PAYMENT_TIMEOUT`. `NULL` for CASH, admin and older bookings. Rescheduling does not change it. | Indexed by `ix_booking_payment_pending` |
+| `payment_reported_at` | DATETIME2(3) | Yes | When booking-service learned that the payment was reported (event `payment.reported` or `payment.confirmed`, or the check against payment-service before cancelling), UTC (migration 049). Set once; the API shows it as `paymentReported`. | — |
 | `created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / row_version` | — | — | Standard audit block — see `modeling-conventions.md`. | — |
 
 **Modeling decisions:**

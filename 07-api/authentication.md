@@ -125,6 +125,7 @@ Everything else under `/api/v1/**` needs a token; `/api/v1/admin/**` needs `ADMI
 | customer → booking `/internal/v1/bookings/active-count` (BIZ-08, before retiring a vehicle) | `X-Internal-Key`; without `INTERNAL_API_KEY`, or if booking does not answer, customer answers 503 `BOOKING_SERVICE_UNAVAILABLE` |
 | notification and operations → security `/internal/v1/users/{id}/contact`, notification → `/internal/v1/users/admins` | `X-Internal-Key` |
 | `deploy/publish-apk.sh` → notification `/internal/v1/notifications/app-update` | `X-Internal-Key`, from inside the Docker network |
+| booking → payment `/internal/v1/payments/bookings/{bookingId}/reported` (`PaymentDeadlineJob`, 2026-10-26, ADR-021) | `X-Internal-Key`; payment checks it with `InternalApiKeyAuthenticationHandler` (until then payment validated no internal key). Without an answer booking does not cancel the booking (`PAYMENT_SERVICE_UNAVAILABLE` in the log) |
 
 `X-Internal-Key` is `INTERNAL_API_KEY` (`app.internal.api-key`), compared in constant time. The
 `/internal/**` routes have their own filter chain that accepts only the key (never a user token) and

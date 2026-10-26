@@ -14,7 +14,7 @@
 | Repository | `lavarapido-booking-service` |
 | Stack | Spring Boot 4 · Java 21 · Maven · hexagonal (ADR-007) |
 | DB engine | SQL Server — schemas `catalog`, `booking` (Liquibase, changelog table `DATABASECHANGELOG_BOOKING`) |
-| Communicates with | customer-service (REST, with the caller's token), RabbitMQ (publishes booking events) |
+| Communicates with | customer-service (REST, with the caller's token), payment-service (REST, `X-Internal-Key`, only `PaymentDeadlineJob`), RabbitMQ (publishes booking events; consumes `payment.reported` and `payment.confirmed` since 2026-10-26) |
 | Consumed by | Web, mobile, notification-service (through events) |
 
 ---
@@ -48,6 +48,28 @@
   customer keeps its code and a database outage answers 503 `BOOKING_SERVICE_UNAVAILABLE` (BIZ-13);
   `/api/v1/bookings/**` is for `CLIENT` only, except `availability` and `cancellation-reasons`, also open
   to ADMIN (BIZ-12); seed 113 clears the sample "Express Car Wash" data (E-19).
+- **Payment at booking (2026-10-26, ADR-021):** the client must choose `paymentMode` = `DIGITAL` or `CASH`
+  in `POST /api/v1/bookings` (missing or unknown → 400 `INVALID_PAYMENT_MODE`); for the admin it is optional
+  and their bookings have neither a limit nor a deadline. Bookings older than the change keep `NULL` and
+  follow no rule; rescheduling changes neither the mode nor the deadline. Rules (`PaymentPolicy`, domain):
+  - **Cash with a limit (INV-BOOK-011):** at most `BOOKING_CASH_ACTIVE_LIMIT` (1) active cash bookings
+    (`SCHEDULED`, `CONFIRMED`, `IN_PROGRESS`) made by the client (`booked_by`), counted with the schedule
+    locked (`lockSchedule`); otherwise 409 `CASH_BOOKING_LIMIT`. Cash is free again when that booking stops
+    being active, not when the admin registers the payment.
+  - **Digital payment deadline (INV-BOOK-012):** `paymentDeadline = min(creation + BOOKING_PAYMENT_WINDOW
+    (30 min), scheduledStart)`. `PaymentDeadlineJob` runs every `BOOKING_PAYMENT_EXPIRY_INTERVAL` (60 s;
+    off with `BOOKING_PAYMENT_EXPIRY_ENABLED=false`), reads the overdue DIGITAL bookings without report
+    (`ix_booking_payment_pending`) and, **before cancelling**, asks payment-service through the out port
+    `PaymentStatusDirectory` (adapter `PaymentServiceDirectory`, `GET /internal/v1/payments/bookings/{id}/reported`,
+    `X-Internal-Key`, 3 s): `reported=true` → marks the booking and keeps it; `reported=false` → cancels it
+    the usual way with `PAYMENT_TIMEOUT` (publishes `BookingCancelled`); no answer or an error → not
+    cancelled this round, retried in the next one. Result: `PaymentTimeoutOutcome` (`CANCELLED`,
+    `PAYMENT_REPORTED`, `NOT_OVERDUE`).
+  - **Consumer:** `PaymentEventsListener` + `RabbitConsumerConfig`, queue `booking.payment-events` (DLQ
+    `booking.payment-events.dlq`, DLX `carwash.events.dlx`) bound to `payment.reported` and `payment.confirmed`;
+    reads `payload.bookingId` and sets `payment_reported_at` once (`Booking.markPaymentReported`, idempotent).
+  - The booking views (client and admin, list and detail) carry `paymentMode`, `paymentDeadline` and
+    `paymentReported`.
 - **Expired bookings:** booking's own expiry job (`ExpiredBookingsJob`, `closeExpired`) was removed on
   2026-10-24 (B-07). A booking is never closed by booking itself: operations-service knows whether it had an operator and, only when it never had
   one, asks `POST /internal/v1/bookings/{id}/no-show`; booking checks the margin again (409
@@ -79,7 +101,7 @@
 | GET | `/api/v1/catalog/categories` · `/catalog/services?vehicleTypeId=` | public |
 | GET | `/api/v1/schedule/business-hours` · `/schedule/exceptions` · `/establishment` | public |
 | GET | `/api/v1/bookings/availability?date=&vehicleTypeId=&serviceIds=` | CLIENT, ADMIN (BIZ-12: OPERATOR gets 403) |
-| POST | `/api/v1/bookings` | CLIENT only (403 for ADMIN and OPERATOR since BIZ-12) |
+| POST | `/api/v1/bookings` (`paymentMode` required since 2026-10-26) | CLIENT only (403 for ADMIN and OPERATOR since BIZ-12) |
 | GET | `/api/v1/bookings/me` · `/bookings/{id}` | CLIENT only |
 | GET | `/api/v1/bookings/cancellation-reasons` | CLIENT, ADMIN (the admin booking form uses it) |
 | PUT · POST | `/api/v1/bookings/{id}` (reschedule, not used by the web or the app) · `/bookings/{id}/cancel` (no body needed, reason `CUSTOMER_REQUEST`) | client |
@@ -109,7 +131,7 @@ carry the UTC instants.
 ```bash
 cd lavarapido-booking-service
 ./mvnw spring-boot:run           # http://localhost:3003 — Swagger: /swagger-ui.html (dev profile)
-./mvnw verify                    # 95 tests (CI run of 2026-10-24), no database needed
+./mvnw verify                    # 133 tests (2026-10-26, payment at booking), no database needed
 ```
 
 | Variable | Default | Purpose |
@@ -117,15 +139,21 @@ cd lavarapido-booking-service
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | — | SQL Server |
 | `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE` | — | Verify tokens |
 | `CUSTOMER_SERVICE_URL` | `http://localhost:3002/api/v1` | Vehicle ownership |
+| `PAYMENT_SERVICE_URL` | `http://localhost:3005` (compose: `http://payment-service:3005`) | `PaymentDeadlineJob` asks whether a booking has its payment reported (timeout 3 s) |
+| `INTERNAL_API_KEY` | empty | Key of the `/internal/**` routes and of the call to payment-service (`X-Internal-Key`) |
+| `BOOKING_CASH_ACTIVE_LIMIT` | `1` | Active cash bookings a client may hold (409 `CASH_BOOKING_LIMIT`) |
+| `BOOKING_PAYMENT_WINDOW` | `30m` | Time to report the payment of a DIGITAL booking (or until its start, if sooner) |
+| `BOOKING_PAYMENT_EXPIRY_ENABLED` | `true` | Turns `PaymentDeadlineJob` on or off |
+| `BOOKING_PAYMENT_EXPIRY_INTERVAL` | `60s` | How often `PaymentDeadlineJob` runs |
 | `BOOKING_ZONE` | `America/Bogota` | Shop time zone |
 | `BOOKING_SLOT_MINUTES` | `30` | Availability grid |
 | `BOOKING_MAX_DAYS_AHEAD` | `60` | How far ahead clients can book |
 | `BOOKING_EXPIRY_GRACE_MINUTES` | `60` | How long after its end a booking without operator can become no-show (operations-service reads the same variable). `BOOKING_EXPIRY_CHECK_ENABLED` and `BOOKING_EXPIRY_CHECK_INTERVAL` no longer exist (B-07) |
-| `MESSAGING_ENABLED`, `RABBITMQ_*` | `false` | Publish booking events |
+| `MESSAGING_ENABLED`, `RABBITMQ_*` | `false` | Publish booking events and consume the payment notices (`booking.payment-events`) |
 
 ---
 
 ## Related documents
 
 - [data-model.md](./data-model.md) · [events.md](./events.md) · [decisions.md](./decisions.md) · [runbook.md](./runbook.md)
-- ADR-009 (decomposition), ADR-010 (bay status, break, English status codes)
+- ADR-009 (decomposition), ADR-010 (bay status, break, English status codes), ADR-021 (digital payment deadline: event plus synchronous check before cancelling)

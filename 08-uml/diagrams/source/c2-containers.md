@@ -1,4 +1,4 @@
-# C4 Level 2 — Containers (as built, checked against `origin/develop` on 2026-10-23)
+# C4 Level 2 — Containers (as built, checked against `origin/develop` on 2026-10-23; payment at booking 2026-10-26)
 
 > Source of truth: `lavarapido-infra/docker-compose.yml`, each service's `application.yml` and
 > REST clients. The view is split in three diagrams so each one can be read on its own: who enters
@@ -76,6 +76,7 @@ flowchart LR
     operations -- "/internal/v1/bookings, no-show<br/>(X-Internal-Key)" --> booking
     operations -- "operator accounts, names<br/>(admin JWT, X-Internal-Key)" --> security
     payment -- "booking status, total, owner, points<br/>(user JWT + X-Correlation-Id)" --> booking
+    booking -- "/internal/v1/payments/bookings/{id}/reported<br/>(X-Internal-Key, 3 s)" --> payment
     notification -- "/internal/v1/users/{id}/contact, /admins<br/>(X-Internal-Key)" --> security
     apk -- "/internal/v1/notifications/app-update<br/>(X-Internal-Key)" --> notification
 
@@ -92,16 +93,18 @@ flowchart LR
     payment[payment-service]
     rabbit[[RabbitMQ<br/>carwash.events]]
     customer2[customer-service]
+    booking2[booking-service]
     operations2[operations-service]
     notification[notification-service]
 
     security -- "security.user_registered" --> rabbit
     booking -- "booking.confirmed<br/>booking.cancelled<br/>booking.status_changed" --> rabbit
     operations -- "execution.operator_assigned<br/>execution.service_started<br/>execution.service_completed<br/>execution.service_not_started<br/>execution.service_not_finished<br/>execution.operator_unassigned<br/>execution.inspection_shared" --> rabbit
-    payment -- "payment.confirmed / rejected / refunded<br/>payment.promotion_redeemed<br/>payment.loyalty_points_earned" --> rabbit
+    payment -- "payment.reported<br/>payment.confirmed / rejected / refunded<br/>payment.promotion_redeemed<br/>payment.loyalty_points_earned" --> rabbit
     rabbit -- "security.user_registered<br/>queue customer-service.events (DLQ)" --> customer2
     rabbit -- "booking.confirmed<br/>queue operations-service.booking-confirmed (DLQ)" --> operations2
-    rabbit -- "the 16 keys above<br/>queue notification-service.events (DLQ)" --> notification
+    rabbit -- "payment.reported, payment.confirmed<br/>queue booking.payment-events (DLQ)" --> booking2
+    rabbit -- "16 keys (all but payment.reported)<br/>queue notification-service.events (DLQ)" --> notification
 ```
 
 In development the web reaches the services through the gateway: `Web/proxy.conf.json` sends `/api`
@@ -111,7 +114,8 @@ published by the gateway; they need the `X-Internal-Key` header. Since 2026-10-2
 publish `/api/v1/operator/bookings/**` either: only operations-service calls it, with the operator's
 token and the key (E-01).
 
-Four services publish 16 routing keys and notification binds all of them (checked on 2026-10-24; the
+Four services publish 17 routing keys; notification binds 16 of them (all but `payment.reported`) and,
+since 2026-10-26, booking binds `payment.reported` and `payment.confirmed` (checked on 2026-10-24; the
 old `booking.created` binding without producer was removed, and operations moved to the queue
 `operations-service.booking-confirmed` with its DLQ, OPS-04/OPS-10).
 Payloads and the full contract: ADR-011 §17 and `05-architecture/cross-cutting.md` §7.

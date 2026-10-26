@@ -1,6 +1,6 @@
 # ER — Schemas catalog and booking (booking-service, 13 tables)
 
-Source: the Liquibase changelogs of `lavarapido-booking-service` on `origin/develop` (`5dd6794`, 2026-10-24), every changeset applied (last structural file: `045-booking-row-version-optimistic-lock.sql`). Each entity lists all its columns except the standard audit block, which is in the table under the diagram. Types are the SQL Server base type; lengths, precision and defaults are in `09-microservices/services/04-booking-service/data-model.md`. `PK`, `FK` and `UK` (unique, alone or filtered) are the database keys; "nullable" marks columns that accept NULL. One relationship per foreign key, labelled with its column.
+Source: the Liquibase changelogs of `lavarapido-booking-service` on `origin/develop` (`db156cb`, 2026-10-26), every changeset applied (last structural file: `049-booking-payment-mode-deadline.sql`). Each entity lists all its columns except the standard audit block, which is in the table under the diagram. Types are the SQL Server base type; lengths, precision and defaults are in `09-microservices/services/04-booking-service/data-model.md`. `PK`, `FK` and `UK` (unique, alone or filtered) are the database keys; "nullable" marks columns that accept NULL. One relationship per foreign key, labelled with its column.
 
 ```mermaid
 erDiagram
@@ -106,6 +106,9 @@ erDiagram
         int points_redeemed
         decimal points_discount_amount
         nvarchar notes "nullable"
+        nvarchar payment_mode "nullable"
+        datetime2 payment_deadline "nullable"
+        datetime2 payment_reported_at "nullable"
     }
     booking_service {
         bigint booking_service_id PK

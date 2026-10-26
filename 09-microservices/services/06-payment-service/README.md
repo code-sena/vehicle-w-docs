@@ -16,7 +16,7 @@
 | Stack | **.NET 8 · ASP.NET Core · EF Core** · layers Domain / Application / Infrastructure / Api (same hexagonal idea as ADR-007) |
 | DB engine | SQL Server — schemas `payment`, `promotion` (Liquibase run by Docker, changelog table `DATABASECHANGELOG_PAYMENT`) |
 | Communicates with | booking-service (REST, with the caller's token), RabbitMQ (publishes payment, coupon and loyalty events) |
-| Consumed by | Web, mobile |
+| Consumed by | Web, mobile; booking-service (internal `/internal/v1/payments/bookings/{bookingId}/reported` with `X-Internal-Key`, and the events `payment.reported` / `payment.confirmed`, since 2026-10-26) |
 
 This is the only service that is not Spring Boot. It keeps the same contract as the others: JWT
 HS256 from security-service, RFC 9457 errors with a stable `code`, `/actuator/health`, and it
@@ -55,16 +55,30 @@ reads `lavarapido-infra/.env`.
 - **Loyalty points:** an approved payment credits the points of the booking's services to the ledger
   (`EARNED`), a refund reverses them (`REVERSED`); points are never spent. The client reads the
   balance with `GET /api/v1/loyalty/balance`.
-- Publish `payment.confirmed`, `payment.rejected`, `payment.refunded`, `payment.promotion_redeemed`
-  and `payment.loyalty_points_earned` after commit ([events.md](./events.md)).
+- Publish `payment.reported` (since 2026-10-26), `payment.confirmed`, `payment.rejected`, `payment.refunded`,
+  `payment.promotion_redeemed` and `payment.loyalty_points_earned` after commit ([events.md](./events.md)).
+- **Payment at booking (2026-10-26, ADR-021):** when the client reports a payment with a receipt
+  (`POST /payments` → `Payment.ReportWithReceipt`, also when reporting again after a rejection) it publishes
+  the integration event `PaymentReported` (`payment.reported`; usual envelope `{eventId, eventType,
+  aggregateId, occurredAt, version, payload}`, payload `paymentId`, `bookingId`, `customerUserId`, `amount`).
+  A payment the admin registers in person does not publish it. booking-service consumes it so the
+  DIGITAL booking no longer expires.
+- **Internal route (2026-10-26):** `GET /internal/v1/payments/bookings/{bookingId}/reported` → 200
+  `{"bookingId":123,"reported":true}`; `reported` is true when the booking has a payment `IN_REVIEW` or
+  `APPROVED`. Only with `X-Internal-Key` = `INTERNAL_API_KEY` (`InternalApiKeyAuthenticationHandler`,
+  constant-time comparison): without the key or with a wrong one → 401; a user JWT is not accepted.
+  The gateway does not route it. Until then payment validated no internal key. booking-service
+  (`PaymentDeadlineJob`) asks it before cancelling a booking with `PAYMENT_TIMEOUT`.
 - Only bookings `CONFIRMED`, `IN_PROGRESS` or `COMPLETED` can be paid, and a booking has at most
-  one approved payment (unique index).
+  one approved payment (unique index). Reporting or approving the payment of a cancelled booking
+  (for example, one cancelled with `PAYMENT_TIMEOUT`) answers 409 `BOOKING_NOT_PAYABLE`
+  (`BookingPaymentGuard.EnsureBookingIsPayable`).
 
 ## Out of scope (what it does NOT do)
 
 - Does not compute prices: the total comes from booking-service.
 - Does not use `promotion.promotion_service` or `promotion.promotion_customer` yet (the tables exist).
-- Does not consume events.
+- Does not consume events (booking-service consumes `payment.reported` and `payment.confirmed`).
 - No file storage: QR and receipt are stored as images (data URL) in the database.
 
 ---
@@ -95,6 +109,7 @@ token, like the Java services (`cross-cutting.md` §4).
 | POST | `/api/v1/loyalty/redeem` (`{bookingId, code}`) | CLIENT |
 | GET | `/api/v1/loyalty/redemptions/{bookingId}` (amount due `amountDue` and the applied coupon, BIZ-02; another client's booking → 404 `BOOKING_NOT_FOUND`) | CLIENT |
 | DELETE | `/api/v1/loyalty/redemptions/{bookingId}/{promotionId}` (remove the coupon, E-08) | CLIENT |
+| GET | `/internal/v1/payments/bookings/{bookingId}/reported` (booking has a payment in review or approved; for `PaymentDeadlineJob`) | internal key (booking-service), not routed by the gateway |
 | GET | `/health`, `/actuator/health` | public — check SQL Server and answer 503 `DOWN` within 3 s when it does not respond |
 
 Through the gateway these paths are routed to `:3005` (`ROUTE_PAYMENT_URL`).
@@ -121,6 +136,7 @@ dotnet run --project src/PaymentService.Api      # http://localhost:3005 — Swa
 | `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE` | —, `lavarapido-security-service`, `lavarapido-api` | Verify tokens (the service does not start without `JWT_SECRET`) |
 | `BOOKING_SERVICE_URL` | `http://localhost:3003/api/v1` | Booking total, status and owner |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:4200` | CORS |
+| `INTERNAL_API_KEY` | empty | Key of `/internal/**` (`X-Internal-Key`); empty → those routes answer 401. Required in `docker-compose.prod.yml` |
 | `MESSAGING_ENABLED`, `RABBITMQ_*` | `false` | Publish events (otherwise a null publisher drops them) |
 
 The repository also has its own `docker-compose.yml` (SQL Server on `1434`, database
@@ -132,4 +148,4 @@ database on `1433`.
 ## Related documents
 
 - [data-model.md](./data-model.md) · [events.md](./events.md) · [decisions.md](./decisions.md) · [runbook.md](./runbook.md)
-- ADR-013 (.NET stack and architecture), ADR-008 (payment verification), ADR-003 (database), ADR-009 (decomposition)
+- ADR-013 (.NET stack and architecture), ADR-008 (payment verification), ADR-003 (database), ADR-009 (decomposition), ADR-021 (digital payment deadline)

@@ -1,13 +1,13 @@
-# Contract of payment-service, rebuilt on 2026-10-24 from the code on origin/develop (see 07-api/README.md).
+# Contract of payment-service, rebuilt on 2026-10-24 (internal route of the payment at booking added on 2026-10-26) from the code on origin/develop (see 07-api/README.md).
 # Regenerate it from the code instead of editing by hand, so it never drifts.
 openapi: 3.0.3
 info:
   title: LavaRápido payment-service API
   version: v1
   description: |-
-    Contract of payment-service (.NET 8, ADR-013), rebuilt from the controllers and minimal endpoints of `lavarapido-payment-service` on `origin/develop` (`3b8730e`, 2026-10-24) and checked against them (`07-api/README.md`). JSON is camelCase (System.Text.Json defaults); the error codes of each action were traced from the controller through the use cases, domain and adapters.
+    Contract of payment-service (.NET 8, ADR-013), rebuilt from the controllers and minimal endpoints of `lavarapido-payment-service` on `origin/develop` (`d94cde5`, 2026-10-26) and checked against them (`07-api/README.md`). JSON is camelCase (System.Text.Json defaults); the error codes of each action were traced from the controller through the use cases, domain and adapters.
 
-    **Security.** `[Authorize]` = any valid bearer token; `x-roles` = `[Authorize(Roles = …)]`. The roles come from the JWT `roles` claim. `security: []` = public.
+    **Security.** `[Authorize]` = any valid bearer token; `x-roles` = `[Authorize(Roles = …)]`. The roles come from the JWT `roles` claim. `security: []` = public. Since 2026-10-26 the `/internal/**` routes use the scheme `internalKey` (`InternalApiKeyAuthenticationHandler`): header `X-Internal-Key` equal to `INTERNAL_API_KEY`, compared in constant time; a missing or wrong key, or an unset `INTERNAL_API_KEY`, answers 401, and a user JWT is never accepted there. The gateway does not route them.
 
     **Errors.** Errors raised by the code are `ProblemDetail` with `code` (`GlobalExceptionHandler`): `DomainException` and `InvalidRequestException` 400, `NotFoundException` 404, `ConflictException` 409, `ServiceUnavailableException` 503. The automatic `[ApiController]` validation answers 400 `ValidationProblemDetails` with `errors` and `code` `VALIDATION_ERROR` (BIZ-13), and the JWT middleware answers 401/403 with an empty body. Catalogue (`ErrorCodes` and `DomainErrorCodes`):
 
@@ -87,6 +87,7 @@ tags:
   - name: Loyalty
   - name: Payments
   - name: Promotions
+  - name: Internal Payments
   - name: Health
 paths:
   /actuator/health:
@@ -1331,6 +1332,8 @@ paths:
       description: |-
         A-16: one open payment (`PENDING` or `IN_REVIEW`) per booking and one live payment per transaction reference; the database backs both (`ux_payment_one_open_per_booking`, view `v_live_transaction_reference`) and two simultaneous requests get 409 `PAYMENT_ALREADY_REPORTED` or `TRANSACTION_REFERENCE_REUSED`.
 
+        Publishes `PaymentReported` (`payment.reported`, 2026-10-26) after the commit; booking-service consumes it to stop the payment deadline of a DIGITAL booking (ADR-021).
+
         XML doc: Reporta un pago con su comprobante; queda en revisión.
       x-access: roles
       x-roles:
@@ -1552,6 +1555,39 @@ paths:
                 $ref: "#/components/schemas/ProblemDetail"
           x-codes:
             - BOOKING_SERVICE_UNAVAILABLE
+  /internal/v1/payments/bookings/{bookingId}/reported:
+    get:
+      tags:
+        - Internal Payments
+      operationId: internalBookingReported
+      description: |-
+        Whether the booking already has a payment `IN_REVIEW` or `APPROVED` (`reported: true`); `false` otherwise, also for a booking with no payment at all. booking-service (`PaymentDeadlineJob`, adapter `PaymentServiceDirectory`, timeout 3 s) asks it before cancelling an overdue DIGITAL booking with `PAYMENT_TIMEOUT`, in case the event `payment.reported` was lost (no Outbox, ADR-021).
+
+        XML doc: Si la reserva ya tiene un pago en revisión o aprobado. PaymentDeadlineJob de booking-service lo pregunta antes de cancelar por falta de pago, por si se perdió el evento payment.reported.
+      security:
+        - internalKey: []
+      x-internal: true
+      x-access: internal
+      x-source: src/PaymentService.Api/Controllers/InternalPaymentsController.cs
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingReportedDto"
+              example:
+                bookingId: 123
+                reported: true
+        "401":
+          description: "Unauthorized. Missing or wrong `X-Internal-Key` (or `INTERNAL_API_KEY` not set): empty body. A user JWT is not accepted."
   /health:
     get:
       tags:
@@ -1582,6 +1618,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Access token from `POST /api/v1/auth/login` (security-service, HS256, claims `sub`, `roles`, `sid`). Every service validates it itself (ADR-006); the gateway forwards it unchanged.
+    internalKey:
+      type: apiKey
+      in: header
+      name: X-Internal-Key
+      description: Shared key between services (`INTERNAL_API_KEY`, `InternalApiKeyAuthenticationHandler`, 2026-10-26). Only for `/internal/**`; these routes are not published by the API gateway.
   schemas:
     ProblemDetail:
       type: object
@@ -1652,6 +1693,19 @@ components:
         - discountAmount
       description: El cupón aplicado a una reserva y cuánto descuenta.
       x-dotnet: src/PaymentService.Application/Promotions/CustomerPromotionContracts.cs:47
+    BookingReportedDto:
+      type: object
+      description: Internal answer for booking-service (`BookingReportedDto`).
+      required:
+        - bookingId
+        - reported
+      properties:
+        bookingId:
+          type: integer
+          format: int64
+        reported:
+          type: boolean
+          description: true when the booking has a payment `IN_REVIEW` or `APPROVED`.
     BookingPaymentStateDto:
       type: object
       properties:

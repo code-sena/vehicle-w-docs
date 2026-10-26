@@ -96,7 +96,7 @@ schema prefix matches `06-data`/`ADR-003` ownership directly, so the same name
 tells you both the queue to bind and which service's database the fact came
 from.
 
-Routing keys built today (checked against `origin/develop` on 2026-10-24 with a script that extracts
+Routing keys built today (checked against `origin/develop` on 2026-10-26 with a script that extracts
 the publishers and the bindings from the code; payloads in ADR-011 §17):
 
 | Event (`02-domain/domain-events.md`) | Routing key | Publishing service | Consumers (queue) |
@@ -112,16 +112,19 @@ the publishers and the bindings from the code; payloads in ADR-011 §17):
 | `ServiceNotFinished` | `execution.service_not_finished` | `operations-service` | notification |
 | `OperatorUnassigned` (rescheduled booking nobody can take, E-12) | `execution.operator_unassigned` | `operations-service` | notification |
 | `InspectionShared` | `execution.inspection_shared` | `operations-service` | notification |
-| `PaymentConfirmed` | `payment.confirmed` | `payment-service` | notification |
+| `PaymentReported` (the client reported a payment with a receipt; 2026-10-26, ADR-021) | `payment.reported` | `payment-service` | booking (`booking.payment-events`) |
+| `PaymentConfirmed` | `payment.confirmed` | `payment-service` | booking (`booking.payment-events`), notification |
 | `PaymentRejected` | `payment.rejected` | `payment-service` | notification |
 | `PaymentRefunded` | `payment.refunded` | `payment-service` | notification |
 | `PromotionRedeemed` | `payment.promotion_redeemed` | `payment-service` | notification |
 | `LoyaltyPointsEarned` | `payment.loyalty_points_earned` | `payment-service` | notification |
 
-16 routing keys are published by four services (security, booking, operations, payment);
-customer-service and notification-service publish nothing. notification-service binds all 16
-(the `booking.created` binding, which
-nobody published, was removed on 2026-10-24, OPS-10); operations and customer have one each. Events of the domain catalog that are not emitted
+17 routing keys are published by four services (security, booking, operations, payment);
+customer-service and notification-service publish nothing. notification-service binds 16 of them, all but
+`payment.reported` (the `booking.created` binding, which
+nobody published, was removed on 2026-10-24, OPS-10); operations and customer have one each, and
+booking-service two (`payment.reported` and `payment.confirmed`, since 2026-10-26: a DIGITAL booking with
+its payment reported no longer expires, ADR-021). Events of the domain catalog that are not emitted
 (`UserAuthenticated`, `BookingModified`, `OperatorReassigned`, `RatingSubmitted`, `PaymentInitiated`,
 `LoyaltyPointsRedeemed`, `NotificationCreated`) have no routing key. The security events
 `security.user.email-changed`, `security.user.password-changed` and `security.user.deactivated` and the
@@ -151,9 +154,9 @@ information" list already given for that event in `domain-events.md`.
 |---|---|
 | Delivery | At least once should be assumed by consumers |
 | Acknowledgement | After successful processing |
-| Retry | customer-service and notification-service retry a failed message 3 times (first wait 1 s); operations-service 3 times too (2 s, then 4 s) and rethrows the transient failures (booking, security or the database not answering) so they are retried (OPS-04) |
-| Dead letter | Then the message goes, through the direct exchange `carwash.events.dlx`, to `customer-service.events.dlq`, `notification-service.events.dlq` or `operations-service.booking-confirmed.dlq`. The old operations queue `operations-service.events` (no DLX) is drained into the new one and deleted when operations starts |
-| Idempotency | A consumer checks `eventId` against its own processed-events record before acting, in the same transaction as the work it does (implemented in notification-service, `processed_event`; customer-service checks whether the profile exists) |
+| Retry | customer-service, booking-service and notification-service retry a failed message 3 times (first wait 1 s); operations-service 3 times too (2 s, then 4 s) and rethrows the transient failures (booking, security or the database not answering) so they are retried (OPS-04) |
+| Dead letter | Then the message goes, through the direct exchange `carwash.events.dlx`, to `customer-service.events.dlq`, `notification-service.events.dlq`, `operations-service.booking-confirmed.dlq` or `booking.payment-events.dlq`. The old operations queue `operations-service.events` (no DLX) is drained into the new one and deleted when operations starts |
+| Idempotency | A consumer checks `eventId` against its own processed-events record before acting, in the same transaction as the work it does (implemented in notification-service, `processed_event`; customer-service checks whether the profile exists; booking-service sets `payment_reported_at` only once, so a repeated payment notice changes nothing) |
 | Publisher confirms | operations-service only (OPS-04): `correlated` confirms and mandatory publishing; a nack or an unroutable event goes to the log. Sharing an inspection waits for the confirm (503 `NOTIFICATION_NOT_SENT` otherwise) |
 | Outbox | Not adopted in this version (H-11, ADR-020): a publish that fails is only logged. notification-service has its own outbox for delivery only: `pending_delivery` (migration 047) retries push and email up to 5 times (OPS-05) |
 
