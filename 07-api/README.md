@@ -1,7 +1,7 @@
 # 07 — API Contracts
 
 > How LavaRápido's services expose their HTTP APIs: conventions, authentication and the OpenAPI
-> contract of each service. **Last updated: 2026-10-24**, against `origin/develop` of every service.
+> contract of each service. **Last updated: 2026-10-26** (payment at booking: booking and payment), against `origin/develop` of every service.
 
 ---
 
@@ -15,12 +15,12 @@
 | `contracts/openapi/customer-service.yaml` | 7 operations: vehicle types, client vehicles (role `CLIENT`; retiring one asks booking-service for active bookings), admin vehicle lookup |
 | `contracts/openapi/booking-service.yaml` | 41 operations: catalog, schedule and exceptions, establishment, bays, availability, bookings (client only, admin, operator via operations-service), cancellation reasons, day summary, internal routes (including the active bookings of a vehicle) |
 | `contracts/openapi/operations-service.yaml` | 34 operations: operators and profiles, shifts, absences, metrics, assignment (with notes) and candidates, free operators, to-close list, operator services, ratings, inspection report (admin and public link) |
-| `contracts/openapi/payment-service.yaml` | 29 operations: payment accounts and methods, payments with receipt, admin review (optionally paged), manual payments, refunds, promotions, loyalty balance, coupon redemption, amount due and removal, health |
+| `contracts/openapi/payment-service.yaml` | 30 operations: payment accounts and methods, payments with receipt, admin review (optionally paged), manual payments, refunds, promotions, loyalty balance, coupon redemption, amount due and removal, health, internal "payment reported" check for booking-service |
 | `contracts/openapi/notification-service.yaml` | 10 operations: inbox, unread count, read/unread/delete, push tokens, admin notifications, internal app-update notice |
 | `contracts/openapi/api-gateway.yaml` | The 6 gateway routes and their `Path` predicates, what is not published, session check, rate limit on `/api/v1/auth/**`, client IP, timeouts, gateway health |
 | `contracts/openapi/_shared.yaml`, `_template-service.yaml` | Reference templates for a new contract, not contracts |
 
-144 operations in the six services (142 controller actions plus the two health endpoints of
+145 operations in the six services (143 controller actions plus the two health endpoints of
 payment-service), checked one by one against the code.
 
 ---
@@ -29,15 +29,15 @@ payment-service), checked one by one against the code.
 
 They are **rebuilt from the source code** of `origin/develop`, not exported from running services
 (the earlier springdoc/Swashbuckle exports had no error responses, no roles and, in payment, no
-security scheme). The code read on 2026-10-24:
+security scheme). The code read on 2026-10-24 (booking and payment on 2026-10-26):
 
 | Repository | Commit |
 |---|---|
 | `security-service` | `b5fe56e` |
 | `lavarapido-customer-service` | `3181cae` |
-| `lavarapido-booking-service` | `5dd6794` |
+| `lavarapido-booking-service` | `db156cb` |
 | `lavarapido-operations-service` | `37e32ff` |
-| `lavarapido-payment-service` | `3b8730e` |
+| `lavarapido-payment-service` | `d94cde5` |
 | `lavarapido-notification-service` | `c5429ad` |
 | `lavarapido-api-gateway` | `c8b607a` |
 
@@ -75,9 +75,9 @@ generator, compared the contracts with `origin/develop`:
 | Check | Result |
 |---|---|
 | Every file is valid YAML and OpenAPI 3.x | 9 of 9 |
-| Every `$ref` resolves | 766 of 766 |
+| Every `$ref` resolves | 767 of 767 |
 | `operationId` unique in each contract; every operation has `responses` | 0 problems |
-| `{method + path}` of each contract = the controllers' | 144 = 144 (0 more, 0 fewer) |
+| `{method + path}` of each contract = the controllers' | 145 = 145 (0 more, 0 fewer) |
 | 201 / 202 / 204 of each operation = the code's | 0 differences |
 | `/internal/**` declares only `X-Internal-Key`; schemes declared where used | 0 problems |
 | Gateway `x-routes` = `application.yml`; every public path routed to its own service; nothing internal published | 6 routes, 132 public operations routed, 0 internal published |

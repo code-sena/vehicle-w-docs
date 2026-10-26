@@ -1,11 +1,11 @@
-# Contract of booking-service, rebuilt on 2026-10-24 from the code on origin/develop (see 07-api/README.md).
+# Contract of booking-service, rebuilt on 2026-10-24 (payment at booking added on 2026-10-26) from the code on origin/develop (see 07-api/README.md).
 # Regenerate it from the code instead of editing by hand, so it never drifts.
 openapi: 3.0.3
 info:
   title: LavaRápido booking-service API
   version: v1
   description: |-
-    Contract of booking-service, rebuilt from the controllers of `lavarapido-booking-service` on `origin/develop` (`5dd6794`, 2026-10-24) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
+    Contract of booking-service, rebuilt from the controllers of `lavarapido-booking-service` on `origin/develop` (`db156cb`, 2026-10-26) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
 
     **Security.** Operations without `security` use the bearer JWT (`bearerAuth`). `security: []` = public. `x-roles` = roles the service accepts on that path (from its `SecurityConfig`); `x-access` = `public`, `authenticated` (any role), `roles`, `internal` (only `X-Internal-Key`, not published by the gateway) or `roles + internal key`. Ownership checks (a client only sees its own data) answer 404, not 403.
 
@@ -33,6 +33,7 @@ info:
     | `INVALID_HOURS` | 400 | `InvalidValueException` — 11 operations (see `x-codes` of each response) |
     | `INVALID_LOYALTY_POINTS` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
     | `INVALID_NOTES` | 400 | `InvalidValueException` — 4 operations (see `x-codes` of each response) |
+    | `INVALID_PAYMENT_MODE` | 400 | `InvalidValueException` (`PaymentMode.of`) — `POST /api/v1/bookings` (missing or unknown `paymentMode`), `POST /api/v1/admin/bookings` (unknown value) |
     | `INVALID_PRICE` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
     | `INVALID_QUANTITY` | 400 | `InvalidValueException` — 4 operations (see `x-codes` of each response) |
     | `INVALID_RANGE` | 400 | `InvalidValueException` — 7 operations (see `x-codes` of each response) |
@@ -64,6 +65,7 @@ info:
     | `BOOKING_NOT_CHANGEABLE` | 409 | `ConflictException` — 4 operations (see `x-codes` of each response) |
     | `BOOKING_NOT_EXPIRED` | 409 | `ConflictException` — `POST /internal/v1/bookings/{id}/no-show` |
     | `BOOKING_SERVICES_LOCKED` | 409 | `ConflictException` — `PUT /api/v1/admin/bookings/{id}`, `PUT /api/v1/bookings/{id}` |
+    | `CASH_BOOKING_LIMIT` | 409 | `ConflictException` (`PaymentPolicy.requireCashAllowed`) — `POST /api/v1/bookings`: the client already has `BOOKING_CASH_ACTIVE_LIMIT` (1) active cash bookings |
     | `CONFLICT` | 409 | The database rejected the change (unique index, trigger or check) after the code's own checks. In booking-service also when another request changed the booking first (`row_version`, `@Version`, BIZ-09) |
     | `EXCEPTION_DATE_TAKEN` | 409 | `ConflictException` — `POST /api/v1/admin/schedule/exceptions`, `PUT /api/v1/admin/schedule/exceptions/{id}` |
     | `INVALID_STATUS_TRANSITION` | 409 | `ConflictException` — `PATCH /api/v1/admin/bookings/{id}/status`, `POST /internal/v1/bookings/{id}/no-show`, `PATCH /api/v1/operator/bookings/{id}/status` |
@@ -402,7 +404,10 @@ paths:
       tags:
         - Admin Booking
       operationId: create
-      description: "Javadoc: El admin reserva a nombre de un cliente: vehicleId es de ese cliente (lo busca por placa en customer)."
+      description: |-
+        `paymentMode` is optional for the administrator (`DIGITAL`, `CASH` or absent → `null`); an unknown value is 400 `INVALID_PAYMENT_MODE`. The administrator's bookings have no payment deadline and no cash limit (ADR-021).
+
+        Javadoc: El admin reserva a nombre de un cliente: vehicleId es de ese cliente (lo busca por placa en customer).
       x-access: roles
       x-roles:
         - ADMIN
@@ -426,7 +431,7 @@ paths:
               schema:
                 type: string
         "400":
-          description: "Bad Request. `code`: `BAD_REQUEST`, `DATE_REQUIRED`, `DUPLICATED_SERVICE`, `INVALID_BREAK`, `INVALID_DATE`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_NOTES`, `INVALID_QUANTITY`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `INVALID_VEHICLE`, `SERVICES_REQUIRED`, `TIME_REQUIRED`, `VALIDATION_ERROR`, `VEHICLE_REQUIRED`."
+          description: "Bad Request. `code`: `BAD_REQUEST`, `DATE_REQUIRED`, `DUPLICATED_SERVICE`, `INVALID_BREAK`, `INVALID_DATE`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_NOTES`, `INVALID_PAYMENT_MODE`, `INVALID_QUANTITY`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `INVALID_VEHICLE`, `SERVICES_REQUIRED`, `TIME_REQUIRED`, `VALIDATION_ERROR`, `VEHICLE_REQUIRED`."
           x-codes:
             - BAD_REQUEST
             - DATE_REQUIRED
@@ -436,6 +441,7 @@ paths:
             - INVALID_DAY
             - INVALID_HOURS
             - INVALID_NOTES
+            - INVALID_PAYMENT_MODE
             - INVALID_QUANTITY
             - INVALID_RANGE
             - INVALID_REASON
@@ -1512,6 +1518,8 @@ paths:
       description: |-
         BIZ-12 / A-10: only `CLIENT`; an administrator books through `POST /api/v1/admin/bookings`.
 
+        Payment at booking (2026-10-26, ADR-021): `paymentMode` is required (`DIGITAL` or `CASH`; missing or unknown → 400 `INVALID_PAYMENT_MODE`). `CASH`: at most `BOOKING_CASH_ACTIVE_LIMIT` (1) active cash bookings (`SCHEDULED`, `CONFIRMED`, `IN_PROGRESS`) made by the client, otherwise 409 `CASH_BOOKING_LIMIT`. `DIGITAL`: the response carries `paymentDeadline` = min(creation + `BOOKING_PAYMENT_WINDOW` (30 min), start); without a reported payment by then the booking is cancelled with `PAYMENT_TIMEOUT`.
+
         Javadoc: 201 con la reserva ya confirmada y su bahia. Si la hora esta ocupada: 409 SLOT_UNAVAILABLE con hasta 5 horas alternativas del mismo dia (no se guarda nada).
       x-access: roles
       x-roles:
@@ -1536,7 +1544,7 @@ paths:
               schema:
                 type: string
         "400":
-          description: "Bad Request. `code`: `BAD_REQUEST`, `DATE_REQUIRED`, `DUPLICATED_SERVICE`, `INVALID_BREAK`, `INVALID_DATE`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_NOTES`, `INVALID_QUANTITY`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `INVALID_VEHICLE`, `SERVICES_REQUIRED`, `TIME_REQUIRED`, `VALIDATION_ERROR`, `VEHICLE_REQUIRED`."
+          description: "Bad Request. `code`: `BAD_REQUEST`, `DATE_REQUIRED`, `DUPLICATED_SERVICE`, `INVALID_BREAK`, `INVALID_DATE`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_NOTES`, `INVALID_PAYMENT_MODE`, `INVALID_QUANTITY`, `INVALID_RANGE`, `INVALID_REASON`, `INVALID_TOKEN`, `INVALID_VEHICLE`, `SERVICES_REQUIRED`, `TIME_REQUIRED`, `VALIDATION_ERROR`, `VEHICLE_REQUIRED`."
           x-codes:
             - BAD_REQUEST
             - DATE_REQUIRED
@@ -1546,6 +1554,7 @@ paths:
             - INVALID_DAY
             - INVALID_HOURS
             - INVALID_NOTES
+            - INVALID_PAYMENT_MODE
             - INVALID_QUANTITY
             - INVALID_RANGE
             - INVALID_REASON
@@ -1585,8 +1594,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
         "409":
-          description: "Conflict. `code`: `SCHEDULE_BUSY`, `SERVICE_NOT_AVAILABLE_FOR_VEHICLE`, `SLOT_UNAVAILABLE`, `VEHICLE_ALREADY_BOOKED`."
+          description: "Conflict. `code`: `CASH_BOOKING_LIMIT`, `SCHEDULE_BUSY`, `SERVICE_NOT_AVAILABLE_FOR_VEHICLE`, `SLOT_UNAVAILABLE`, `VEHICLE_ALREADY_BOOKED`."
           x-codes:
+            - CASH_BOOKING_LIMIT
             - SCHEDULE_BUSY
             - SERVICE_NOT_AVAILABLE_FOR_VEHICLE
             - SLOT_UNAVAILABLE
@@ -2808,8 +2818,24 @@ components:
         createdAt:
           type: string
           format: date-time
-      description: La reserva lista para pintar. changeable dice si quien la ve todavia la puede cambiar o cancelar (lo decide el backend con RF-007). ownerUserId solo llega en las rutas del admin.
-      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:115
+        paymentMode:
+          type: string
+          nullable: true
+          enum:
+            - DIGITAL
+            - CASH
+            - null
+          description: "`DIGITAL`, `CASH` or `null` (bookings older than 2026-10-26, or made by the administrator without a mode)."
+        paymentDeadline:
+          type: string
+          format: date-time
+          nullable: true
+          description: Until when the payment of a DIGITAL booking can be reported (ISO-8601, UTC); `null` when the booking has no deadline.
+        paymentReported:
+          type: boolean
+          description: Whether booking-service already knows the payment was reported (`payment.reported` / `payment.confirmed`, or checked with payment-service).
+      description: La reserva lista para pintar. changeable dice si quien la ve todavia la puede cambiar o cancelar (lo decide el backend con RF-007). ownerUserId solo llega en las rutas del admin. paymentMode es DIGITAL, CASH o null (reservas de antes o del admin sin modo); paymentDeadline, hasta cuando el cliente puede subir el comprobante (null si no tiene plazo); paymentReported, si ya lo subio.
+      x-java: com/lavarapido/booking/infrastructure/adapter/in/web/dto/BookingDtos.java:120
     BusinessDataDto:
       type: object
       properties:
@@ -2962,6 +2988,12 @@ components:
           format: int32
           minimum: 0
           exclusiveMinimum: true
+        paymentMode:
+          type: string
+          enum:
+            - DIGITAL
+            - CASH
+          description: How the booking will be paid. Required for the client (400 `INVALID_PAYMENT_MODE` if missing or unknown, checked by the domain, not by Bean Validation); optional for the administrator. Ignored when rescheduling.
       required:
         - vehicleId
         - serviceIds
@@ -3274,6 +3306,7 @@ x-error-codes:
   BOOKING_NOT_FOUND: 404
   BOOKING_SERVICES_LOCKED: 409
   BOOKING_SERVICE_UNAVAILABLE: 503
+  CASH_BOOKING_LIMIT: 409
   CONFLICT: 409
   CUSTOMER_SERVICE_UNAVAILABLE: 503
   DATE_REQUIRED: 400
@@ -3299,6 +3332,7 @@ x-error-codes:
   INVALID_HOURS: 400
   INVALID_LOYALTY_POINTS: 400
   INVALID_NOTES: 400
+  INVALID_PAYMENT_MODE: 400
   INVALID_PRICE: 400
   INVALID_QUANTITY: 400
   INVALID_RANGE: 400
