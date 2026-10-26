@@ -2,14 +2,14 @@
 
 Exchange `carwash.events` (topic), ADR-004. Published **after commit**; if RabbitMQ is down the
 booking is still saved and the error is logged (the Outbox pattern is not adopted yet). Checked
-against `origin/develop` on 2026-10-24.
+against `origin/develop` on 2026-10-26.
 
 ## Published
 
 | Event | Routing key | When | Payload |
 |---|---|---|---|
 | `BookingConfirmed` | `booking.confirmed` | A booking is created, rescheduled, or moved back to `CONFIRMED` by the admin | `bookingId`, `bookingCode`, `customerUserId`, `customerVehicleId`, `scheduledStart` (UTC), `serviceBayId`, and `preferredOperatorId` when the client chose one (RF-010, only on creation) |
-| `BookingCancelled` | `booking.cancelled` | Cancelled by the client or the admin with the chosen reason (A-20; without one, `CUSTOMER_REQUEST`). The expiry job that cancelled `SCHEDULED` bookings was removed (B-07, 2026-10-24) | same + `reason` (the reason's display name, in Spanish) + `reasonCode` (its stable code, A-20/OPS-10) |
+| `BookingCancelled` | `booking.cancelled` | Cancelled by the client or the admin with the chosen reason (A-20; without one, `CUSTOMER_REQUEST`), or by `PaymentDeadlineJob` with `PAYMENT_TIMEOUT` when a DIGITAL booking passes its payment deadline and payment-service confirms there is no payment (2026-10-26, ADR-021; `customerUserId` is then `booked_by`). The expiry job that cancelled `SCHEDULED` bookings was removed (B-07, 2026-10-24) | same + `reason` (the reason's display name, in Spanish) + `reasonCode` (its stable code, A-20/OPS-10) |
 | `BookingStatusChanged` | `booking.status_changed` | The admin moves the booking to `IN_PROGRESS`, `COMPLETED` or `NO_SHOW` from the panel (A-11, 2026-10-23) | same + `status` (no `reasonCode`) |
 
 `eventType` is the event name (`BookingConfirmed`…); `occurredAt` travels in the envelope, not in
@@ -25,7 +25,19 @@ assignment, ADR-014 §10).
 
 ## Consumed
 
-None.
+Since 2026-10-26 (payment at booking, ADR-021). Queue `booking.payment-events`, bound to
+`carwash.events`; DLQ `booking.payment-events.dlq` through the direct exchange `carwash.events.dlx`
+(`RabbitConsumerConfig`, only with `MESSAGING_ENABLED=true`). Consumer: `PaymentEventsListener`.
+
+| Routing key | Event | What booking does |
+|---|---|---|
+| `payment.reported` | `PaymentReported` | Reads `payload.bookingId` and sets `payment_reported_at` (once; a repeated message changes nothing): the DIGITAL booking no longer expires |
+| `payment.confirmed` | `PaymentConfirmed` | The same (for example, cash registered by the admin, or the approval of a report whose notice was lost) |
+
+A booking that does not exist or is already cancelled is ignored and logged. A message that is not
+JSON goes straight to the DLQ; a database error is rethrown, retried 3 times (1 s, then 2 s) and then
+dead-lettered. The write is done with the schedule locked, so it never crosses `PaymentDeadlineJob`
+cancelling the same booking.
 
 ## Synchronous calls
 
@@ -33,6 +45,7 @@ None.
 |---|---|
 | customer-service `GET /vehicles/{id}`, `GET /vehicles` (caller's token) | The vehicle belongs to the client (INV-BOOK-002) and its type sets the price |
 | customer-service `GET /admin/vehicles?ids=` (admin's token) | Vehicles and owners in the admin list |
+| payment-service `GET /internal/v1/payments/bookings/{bookingId}/reported` (`X-Internal-Key`, timeout 3 s) | `PaymentDeadlineJob` asks before cancelling an overdue DIGITAL booking (port `PaymentStatusDirectory`, adapter `PaymentServiceDirectory`, `PAYMENT_SERVICE_URL`). `reported=true`: marks the booking and keeps it; `reported=false`: cancels it; no answer or an error: `PAYMENT_SERVICE_UNAVAILABLE`, not cancelled this round, retried in the next one |
 
 Received from operations-service: `/internal/v1/bookings`, `/internal/v1/bookings/{id}`,
 `POST /internal/v1/bookings/{id}/no-show` (`X-Internal-Key`; publishes no event — low, open) and, with

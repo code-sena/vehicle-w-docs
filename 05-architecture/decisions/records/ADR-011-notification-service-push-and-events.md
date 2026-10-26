@@ -1,7 +1,7 @@
 # ADR-011 — Notification Service: Push Delivery and Event Contract
 
 - **ID:** ADR-011
-- **Date:** 2026-09-30 (updated 2026-10-09: sections 9 to 14; 2026-10-23: section 17, the contract as built; 2026-10-24: section 17 rechecked after the fleet merge — new operations queue with DLQ, `OperatorUnassigned`, `reasonCode`, `BOOKING_NO_SHOW`, publisher confirms, `pending_delivery`)
+- **Date:** 2026-09-30 (updated 2026-10-09: sections 9 to 14; 2026-10-23: section 17, the contract as built; 2026-10-24: section 17 rechecked after the fleet merge — new operations queue with DLQ, `OperatorUnassigned`, `reasonCode`, `BOOKING_NO_SHOW`, publisher confirms, `pending_delivery`; 2026-10-26: `PaymentReported` and the booking queue `booking.payment-events`, payment at booking, ADR-021)
 - **Status:** Accepted
 - **Authors:** Development team
 
@@ -339,7 +339,7 @@ mobile commands with test doubles; live run against a local fake Expo endpoint (
 priority and data; a `DeviceNotRegistered` token deactivated; unregister on sign-out); the app in web mode
 signs in, opens the inbox and signs out with the new code.
 
-### 17. The event contract as built (checked against `origin/develop` on 2026-10-24)
+### 17. The event contract as built (checked against `origin/develop` on 2026-10-26)
 
 Exchange `carwash.events` (topic, durable). Envelope
 `{eventId, eventType, aggregateId, occurredAt, version: 1, payload}`; `occurredAt` belongs to the
@@ -348,7 +348,8 @@ fails, only logs the error (no Outbox, accepted risk H-11). Since OPS-04 (2026-1
 publishes with publisher confirms (`publisher-confirm-type: correlated`, `publisher-returns`, mandatory):
 a nack or an unroutable event is written to the log, still without retry; sharing an inspection waits
 for the confirm and answers 503 `NOTIFICATION_NOT_SENT` when it does not arrive (OPS-08). Four services
-publish; customer and notification publish nothing.
+publish; customer and notification publish nothing. Four services consume: customer, booking (since
+2026-10-26, the payment notices), operations and notification.
 
 | Producer | Routing key | `eventType` | Payload | Consumers (queue) |
 |---|---|---|---|---|
@@ -363,16 +364,20 @@ publish; customer and notification publish nothing.
 | operations | `execution.service_not_finished` | `ServiceNotFinished` | same | notification |
 | operations | `execution.operator_unassigned` | `OperatorUnassigned` | same (`operatorUserId` is the operator who lost the booking) — E-12, 2026-10-24 | notification |
 | operations | `execution.inspection_shared` | `InspectionShared` | `bookingId`, `bookingCode`, `customerUserId`, `plate`, `publicToken`, `phasesDone`, `phasesTotal`, `findings`, `majorFindings`, `areas` | notification |
-| payment | `payment.confirmed` | `PaymentConfirmed` | `paymentId`, `bookingId`, `customerUserId`, `amount` | notification |
+| payment | `payment.reported` | `PaymentReported` | `paymentId`, `bookingId`, `customerUserId`, `amount` — the client reported a payment with a receipt, also when reporting again after a rejection; 2026-10-26, ADR-021 | booking (`booking.payment-events`) |
+| payment | `payment.confirmed` | `PaymentConfirmed` | `paymentId`, `bookingId`, `customerUserId`, `amount` | booking (`booking.payment-events`), notification |
 | payment | `payment.rejected` | `PaymentRejected` | same + `reason` | notification |
 | payment | `payment.refunded` | `PaymentRefunded` | same as confirmed | notification |
 | payment | `payment.promotion_redeemed` | `PromotionRedeemed` | `customerUserId`, `bookingId`, `bookingCode`, `promotionCode`, `promotionName`, `discountAmount` | notification |
 | payment | `payment.loyalty_points_earned` | `LoyaltyPointsEarned` | `customerUserId`, `bookingId`, `bookingCode`, `points`, `balance`, `unlockedPromotions[]` (`code`, `name`, `discountPercent`, `requiredPoints`) | notification |
 
-Queues: `customer-service.events`, `notification-service.events` and
-`operations-service.booking-confirmed` dead-letter to `customer-service.events.dlq`,
-`notification-service.events.dlq` and `operations-service.booking-confirmed.dlq` through the direct
-exchange `carwash.events.dlx` after three attempts (operations waits 2 s and then 4 s; OPS-04). The old
+Queues: `customer-service.events`, `notification-service.events`,
+`operations-service.booking-confirmed` and `booking.payment-events` dead-letter to `customer-service.events.dlq`,
+`notification-service.events.dlq`, `operations-service.booking-confirmed.dlq` and `booking.payment-events.dlq`
+through the direct exchange `carwash.events.dlx` after three attempts (operations waits 2 s and then 4 s;
+OPS-04; booking waits 1 s and then 2 s). `booking.payment-events` (2026-10-26) is bound to
+`payment.reported` and `payment.confirmed`: booking-service sets `payment_reported_at` so the DIGITAL booking no
+longer expires (ADR-021). The old
 `operations-service.events` had no DLX and RabbitMQ cannot add one to an existing queue, so on start
 operations declares the new queue, moves whatever was left in the old one (`LegacyQueueMigration`) and
 deletes it. The `booking.created` binding was removed from notification (OPS-10): nobody publishes it.

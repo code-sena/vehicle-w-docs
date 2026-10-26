@@ -86,6 +86,8 @@ container instead of on startup.
 | customer | security | HTTP/REST `GET /users/me` (caller's token) | Synchronous | Read `personId` to create a missing client profile |
 | booking | customer | HTTP/REST `GET /vehicles/{id}`, `/admin/vehicles` (caller's token) | Synchronous | Vehicle ownership and type (INV-BOOK-002) |
 | booking | RabbitMQ | Events `booking.confirmed`, `booking.cancelled`, `booking.status_changed` | Asynchronous | Booking lifecycle (status changed by the admin since 2026-10-23; `reasonCode` on cancellations since 2026-10-24) |
+| booking | payment | HTTP/REST `GET /internal/v1/payments/bookings/{bookingId}/reported` (`X-Internal-Key`, 3 s) | Synchronous | Before `PaymentDeadlineJob` cancels a DIGITAL booking with `PAYMENT_TIMEOUT` (2026-10-26, ADR-021) |
+| booking | RabbitMQ | consumes `payment.reported`, `payment.confirmed` (queue `booking.payment-events`, DLQ) | Asynchronous | Mark the payment of the booking as reported, so a DIGITAL booking no longer expires (2026-10-26) |
 | customer | booking | HTTP/REST `GET /internal/v1/bookings/active-count?customerVehicleId=` (`X-Internal-Key`) | Synchronous | A vehicle with active bookings cannot be removed (BIZ-08) |
 | customer | RabbitMQ | consumes `security.user_registered` | Asynchronous | Create the client profile |
 | operations | booking | HTTP/REST `/admin/bookings`, `/bookings/{id}` (caller's token); `/operator/bookings`, `PATCH /operator/bookings/{id}/status` (operator's token + `X-Internal-Key`, E-01) | Synchronous | Bookings to assign; move them to `IN_PROGRESS` / `COMPLETED`; the client's booking before rating |
@@ -93,9 +95,9 @@ container instead of on startup.
 | operations | booking | HTTP/REST `GET /internal/v1/bookings/{id}`, `/internal/v1/bookings?from=&to=`, `POST /internal/v1/bookings/{id}/no-show` (`X-Internal-Key`) | Synchronous | Booking data for the automatic assignment and the follow-up job; close a booking that never had an operator (no user) |
 | operations | RabbitMQ | consumes `booking.confirmed` (queue `operations-service.booking-confirmed`, DLQ) | Asynchronous | Automatic operator assignment |
 | operations | RabbitMQ | Events `execution.operator_assigned`, `execution.service_started`, `execution.service_completed`, `execution.service_not_started`, `execution.service_not_finished`, `execution.operator_unassigned`, `execution.inspection_shared` | Asynchronous | Execution lifecycle, bookings nobody closed, bookings left without operator (E-12) and inspection report |
-| payment | RabbitMQ | Events `payment.confirmed`, `payment.rejected`, `payment.refunded`, `payment.promotion_redeemed`, `payment.loyalty_points_earned` | Asynchronous | Payment, coupon and loyalty facts |
+| payment | RabbitMQ | Events `payment.reported` (since 2026-10-26), `payment.confirmed`, `payment.rejected`, `payment.refunded`, `payment.promotion_redeemed`, `payment.loyalty_points_earned` | Asynchronous | Payment, coupon and loyalty facts |
 | payment | booking | HTTP/REST `GET /bookings/{id}`, `/bookings/me`, `/admin/bookings/{id}` (caller's token) | Synchronous | Booking total, status and owner (the browser never sends the amount) |
-| notification | RabbitMQ | consumes the 16 published routing keys: user, booking, execution and payment events | Asynchronous | Inbox, push, email, reminders |
+| notification | RabbitMQ | consumes 16 of the 17 published routing keys (all but `payment.reported`): user, booking, execution and payment events | Asynchronous | Inbox, push, email, reminders |
 | notification | security | HTTP/REST `GET /internal/v1/users/{id}/contact`, `/internal/v1/users/admins` (`X-Internal-Key`) | Synchronous | Current email, language and switches for emails and reminders; the active admins for staff alerts (ADR-011 §8) |
 | `deploy/publish-apk.sh` | notification | HTTP/REST `POST /internal/v1/notifications/app-update` (`X-Internal-Key`) | Synchronous | Tell the app users a new APK is published |
 
