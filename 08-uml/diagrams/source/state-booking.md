@@ -3,7 +3,7 @@
 Source: `booking-service` `Booking.moveTo`, `Booking.cancel`, `Booking.reschedule`,
 `Booking.markUnattended`, `BookingStatus`; `operations-service` `FollowUpPolicy`, `FollowUpService`.
 Checked on 2026-10-21; events and the look-back window checked against `origin/develop` on 2026-10-23;
-the expiry job removed and the client reschedule rule checked on 2026-10-24.
+the expiry job removed and the client reschedule rule checked on 2026-10-24; payment timeout added on 2026-10-26.
 
 ```mermaid
 stateDiagram-v2
@@ -13,7 +13,7 @@ stateDiagram-v2
     SCHEDULED --> CANCELLED : cancel
     CONFIRMED --> CONFIRMED : reschedule (admin)
     CONFIRMED --> IN_PROGRESS : start
-    CONFIRMED --> CANCELLED : cancel
+    CONFIRMED --> CANCELLED : cancel, or payment timeout (system)
     CONFIRMED --> NO_SHOW : no show, or ended without operator
     IN_PROGRESS --> COMPLETED : complete
     COMPLETED --> [*]
@@ -33,6 +33,7 @@ stateDiagram-v2
 | A `CONFIRMED` booking **with** an operator is never closed by itself: the operator may have attended and forgotten to press Start. Once its time ends it goes to the admin's **To close** list (also an `IN_PROGRESS` one nobody finished, one hour after its end), and the operator and the admins get a notice. The admin picks **Attended** (`COMPLETED`, through `IN_PROGRESS`) or **No-show** | `FollowUpPolicy`, `POST /api/v1/admin/assignments/{id}/attended`, `PATCH /api/v1/admin/bookings/{id}/status` |
 | The follow-up job and the **To close** list look back `FOLLOW_UP_LOOK_BACK_DAYS` (28) days | `FollowUpService` |
 | Every change publishes an event: create, reschedule or back to confirmed → `booking.confirmed`; cancel → `booking.cancelled` (with `reasonCode`); the admin's start, complete or no-show → `booking.status_changed` (A-11); the operator's start and finish are announced by operations (`execution.*`) | `BookingService`, `BookingEvent` |
+| `payment timeout`: a client's DIGITAL booking (`SCHEDULED` or `CONFIRMED`) whose `payment_deadline` passed without a reported payment is cancelled by the system with `PAYMENT_TIMEOUT`, only after payment-service says there is no payment in review or approved; if payment-service does not answer it waits for the next round (ADR-021, INV-BOOK-012) | `PaymentDeadlineJob`, `BookingService.cancelForPaymentTimeout`, `Booking.paymentOverdue` |
 | Any other move → 409 `INVALID_STATUS_TRANSITION` | `Booking.moveTo` |
 | booking's own expiry job (`ExpiredBookingsJob`, `closeExpired`, `Booking.expire`) was removed on 2026-10-24 (B-07): the current flow never creates `SCHEDULED`, and operations closes the no-shows | booking `c9860e4` |
 | `SCHEDULED` exists in the model (status id 1) but the current flow never creates it | `Booking.confirmNew` |

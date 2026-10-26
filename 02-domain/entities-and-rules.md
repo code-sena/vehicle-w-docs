@@ -161,7 +161,9 @@ A booking identifies:
 - the selected service lines;
 - the booking lifecycle;
 - the service bay when confirmed;
-- booking-level promotion/loyalty information when applicable.
+- booking-level promotion/loyalty information when applicable;
+- since 2026-10-26, how the customer will pay (`DIGITAL` or `CASH`), the deadline to report a digital
+  payment and whether that payment was already reported.
 
 A booking can contain **one or more `BookingService` lines**.
 
@@ -177,6 +179,7 @@ SCHEDULED ── confirm (needs a bay) ──▶ CONFIRMED
 CONFIRMED ── start ──▶ IN_PROGRESS ── complete ──▶ COMPLETED
 CONFIRMED ── no-show ──▶ NO_SHOW
 SCHEDULED / CONFIRMED ── cancel (reason stored) ──▶ CANCELLED
+SCHEDULED / CONFIRMED ── DIGITAL, payment deadline passed, payment-service has no payment (system) ──▶ CANCELLED (PAYMENT_TIMEOUT)
 CONFIRMED ── never had an operator, still open 1 h after its end (system) ──▶ NO_SHOW
 CONFIRMED / IN_PROGRESS ── had an operator and nobody registered it ──▶ "To close": the admin decides
 SCHEDULED / CONFIRMED ── reschedule (admin) ──▶ same state, new time and bay (prices kept)
@@ -228,6 +231,18 @@ The price used for each booking service line comes from the applicable service-p
 **INV-BOOK-009 — Points redemption must be represented consistently**
 
 If loyalty points are redeemed, both the redeemed-point amount and its monetary discount must represent the same redemption. A booking cannot have one without the other.
+
+**INV-BOOK-010 — The customer chooses how the booking will be paid**
+
+When the customer books, they must choose the payment mode: `DIGITAL` (Nequi, Daviplata or transfer, with a receipt the administrator checks) or `CASH` (paid at the car wash and registered by the administrator). Without a valid mode the booking is refused (400 `INVALID_PAYMENT_MODE`). The administrator is not required to give one, and the administrator's bookings have neither the cash limit nor a payment deadline. Bookings created before 2026-10-26 have no mode and follow none of these rules. Rescheduling changes neither the mode nor the deadline.
+
+**INV-BOOK-011 — Cash bookings are limited**
+
+A customer can hold at most `BOOKING_CASH_ACTIVE_LIMIT` (1) active cash bookings (`SCHEDULED`, `CONFIRMED` or `IN_PROGRESS`) at a time. Only the bookings the customer made themselves count (`booked_by`). Reaching the limit refuses the booking (409 `CASH_BOOKING_LIMIT`). Cash becomes available again when the cash booking stops being active (`COMPLETED`, `CANCELLED` or `NO_SHOW`), not when the administrator registers its payment (team decision). The count is taken while the schedule is locked, so two simultaneous cash bookings cannot both pass.
+
+**INV-BOOK-012 — A digital payment must be reported in time**
+
+A customer's `DIGITAL` booking has a payment deadline: `min(creation + BOOKING_PAYMENT_WINDOW (30 min), scheduled start)`. If the deadline passes and the payment was not reported, the system cancels the booking with the reason `PAYMENT_TIMEOUT` ("No se subió el comprobante de pago a tiempo"), which neither the customer nor the administrator can choose, and the time slot is released. Before cancelling, booking-service asks payment-service whether the booking has a payment in review or approved: if it does, the booking is marked as reported and kept; if payment-service does not answer, nothing is cancelled in that round (ADR-021).
 
 ---
 
@@ -603,7 +618,8 @@ Conceptually contains:
 - customer vehicle reference;
 - selected `BookingService` lines;
 - booking-level promotion/loyalty information;
-- service-bay assignment.
+- service-bay assignment;
+- payment mode, payment deadline and payment report (`PaymentPolicy`, `Booking.paymentOverdue`, `Booking.markPaymentReported`, idempotent).
 
 The aggregate protects rules that must remain consistent inside the booking, such as having service lines and keeping booking-level values coherent.
 
@@ -716,6 +732,9 @@ booking yet, minimum purchase, total limit and limit per customer.
 | INV-BOOK-007 | Booking changes are restricted by lifecycle. |
 | INV-BOOK-008 | Historical booking service prices remain stable. |
 | INV-BOOK-009 | Points redeemed and points discount amount must be consistent. |
+| INV-BOOK-010 | The customer chooses `DIGITAL` or `CASH` when booking (400 `INVALID_PAYMENT_MODE`); the administrator may omit it. |
+| INV-BOOK-011 | At most `BOOKING_CASH_ACTIVE_LIMIT` (1) active cash bookings made by the customer (409 `CASH_BOOKING_LIMIT`). |
+| INV-BOOK-012 | A DIGITAL booking without a reported payment at its deadline is cancelled by the system with `PAYMENT_TIMEOUT`. |
 | INV-EXEC-001 | Each booking service line has at most one execution. |
 | INV-EXEC-002 | Each execution has one responsible operator. |
 | INV-EXEC-003 | Operator execution intervals cannot overlap. |
@@ -755,7 +774,7 @@ The domain concepts intentionally map to the current data model without making t
 | Exceptions | `booking.business_hour_exception` |
 | Service bay | `booking.service_bay` |
 | Booking status | `booking.booking_status` |
-| Booking | `booking.booking` |
+| Booking | `booking.booking` (payment mode and deadline: `payment_mode`, `payment_deadline`, `payment_reported_at`, migration 049) |
 | Booking service | `booking.booking_service` |
 | Operator | `execution.operator` |
 | Operator availability | `execution.operator_availability` |
@@ -780,7 +799,7 @@ Only items that are genuinely not settled by the current requirements are kept h
 
 | Topic | Current state |
 |---|---|
-| Payment-before-service policy | Settled in the code: a booking can be paid while it is `CONFIRMED`, `IN_PROGRESS` or `COMPLETED` (`PaymentPolicy`); paying first is not required. |
+| Payment-before-service policy | Settled in the code: a booking can be paid while it is `CONFIRMED`, `IN_PROGRESS` or `COMPLETED` (`PaymentPolicy` of payment-service). Since 2026-10-26 a customer's DIGITAL booking must report its payment before its deadline or it is cancelled (INV-BOOK-012); a CASH booking is paid at the car wash, limited by INV-BOOK-011. Still open: a lateness tolerance for cash bookings (cancel a CASH booking that did not start N minutes after its time), see the technical backlog. |
 | Promotion formulas | Settled in the code: percentage or fixed amount, capped as described in the Promotion entity. |
 | Loyalty earning formula | Settled in the code: each catalog service has its points, and an approved payment credits the sum of the booking lines. |
 | Notification delivery channels | Settled in the code: inbox, push (Expo) and email, according to the user's preferences. |
