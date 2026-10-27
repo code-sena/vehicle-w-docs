@@ -1,44 +1,22 @@
 # Class diagram — payment-service domain (payments, promotions and loyalty)
 
-Source: `lavarapido-payment-service/src/PaymentService.Domain` (.NET 8) as of 2026-10-19. Length
+Source: `lavarapido-payment-service/src/PaymentService.Domain` (.NET 8) as of 2026-10-19; `PaymentReported`
+added on 2026-10-27 (`main`, `42dac3d`). Length
 constants, `Guard` and error codes are left out.
 
 ```mermaid
 classDiagram
-    class LoyaltyBalance {
-        <<value object>>
-        +Points int
-        +Sequence int
-    }
-    class PaymentApproved {
-        <<domain event>>
-        long BookingId
-        decimal Amount
-    }
     direction LR
-    class PercentageDiscountStrategy
-    class FixedAmountDiscountStrategy
-    class PaymentPolicy {
-        <<static domain service>>
-        +IsBookingPayable(string bookingStatus)$ bool
-        +CanReportPayment(string bookingStatus, IEnumerable~PaymentStatus~)$ bool
-        +AmountDue(decimal bookingTotal, decimal appliedDiscounts)$ decimal
-    }
-    class RedemptionRequest {
-        <<value object>>
-        long BookingId
-        string BookingCode
-        long CustomerUserId
-        int CustomerPoints
-        decimal Subtotal
-        bool AlreadyRedeemedOnBooking
-        int TotalRedemptions
-        int CustomerRedemptions
-    }
-    class IDiscountStrategy {
-        <<interface>>
-        +Calculate(decimal subtotal, decimal value) decimal
-        +Validate(decimal value)
+    class PaymentReceipt {
+        <<entity>>
+        +FileUrl string
+        +TransactionReference string?
+        +ReportedAmount decimal?
+        +UploadedBy long
+        +UploadedAtUtc DateTime
+        +ReviewedBy long?
+        +ReviewedAtUtc DateTime?
+        +ReviewComment string?
     }
     class Promotion {
         <<aggregate root>>
@@ -64,47 +42,6 @@ classDiagram
         +CalculateDiscount(decimal subtotal) decimal
         +Redeem(RedemptionRequest) PromotionRedemption
     }
-    class AggregateRoot~TId~ {
-        <<abstract>>
-        +DomainEvents IReadOnlyCollection~IDomainEvent~
-        #AddDomainEvent(IDomainEvent)
-        +ClearDomainEvents()
-    }
-    class PromotionRedemption {
-        <<entity>>
-        +BookingId long
-        +PromotionId int
-        +AppliedAmount decimal
-        +RedeemedBy long?
-        +RedeemedAtUtc DateTime
-    }
-    class PromotionRedeemed {
-        <<domain event>>
-        int PromotionId
-        long BookingId
-        long CustomerUserId
-        decimal DiscountAmount
-    }
-    class DiscountStrategyFactory {
-        +For(DiscountType)$ IDiscountStrategy
-    }
-    class LoyaltyTransaction {
-        <<entity>>
-        +CustomerId long
-        +MovementType LoyaltyMovementType
-        +Sequence int
-        +BookingId long?
-        +Points int
-        +BalanceAfter int
-        +ExpiresOn DateOnly?
-        +Earn(long customerId, long bookingId, int points, LoyaltyBalance, long?, DateTime)$ LoyaltyTransaction
-        +ReverseEarned(long customerId, long bookingId, int earned, LoyaltyBalance, ...)$ LoyaltyTransaction?
-    }
-    class PaymentRefunded {
-        <<domain event>>
-        long BookingId
-        decimal Amount
-    }
     class PaymentMethodType {
         <<entity>>
         +Code string
@@ -114,48 +51,15 @@ classDiagram
         +DisplayOrder short
         +IsActive bool
     }
-    class PaymentStatus {
-        <<enumeration>>
-        Pending
-        InReview
-        Approved
-        Rejected
-        Refunded
-    }
     class Entity~TId~ {
         <<abstract>>
         +Id TId
     }
-    class PaymentReceipt {
-        <<entity>>
-        +FileUrl string
-        +TransactionReference string?
-        +ReportedAmount decimal?
-        +UploadedBy long
-        +UploadedAtUtc DateTime
-        +ReviewedBy long?
-        +ReviewedAtUtc DateTime?
-        +ReviewComment string?
-    }
-    class DiscountType {
-        <<enumeration>>
-        Percentage
-        FixedAmount
-        Package
-    }
-    class LoyaltyMovementType {
-        <<enumeration>>
-        Earned
-        Redeemed
-        Expired
-        Adjusted
-        Reversed
-    }
-    class PaymentRejected {
-        <<domain event>>
-        long BookingId
-        decimal Amount
-        string Reason
+    class PercentageDiscountStrategy
+    class IDiscountStrategy {
+        <<interface>>
+        +Calculate(decimal subtotal, decimal value) decimal
+        +Validate(decimal value)
     }
     class Payment {
         <<aggregate root>>
@@ -175,6 +79,67 @@ classDiagram
         +Reject(long rejectedBy, string reason, DateTime)
         +Refund(DateTime)
     }
+    class PaymentPolicy {
+        <<static domain service>>
+        +IsBookingPayable(string bookingStatus)$ bool
+        +CanReportPayment(string bookingStatus, IEnumerable~PaymentStatus~)$ bool
+        +AmountDue(decimal bookingTotal, decimal appliedDiscounts)$ decimal
+    }
+    class DiscountStrategyFactory {
+        +For(DiscountType)$ IDiscountStrategy
+    }
+    class AggregateRoot~TId~ {
+        <<abstract>>
+        +DomainEvents IReadOnlyCollection~IDomainEvent~
+        #AddDomainEvent(IDomainEvent)
+        +ClearDomainEvents()
+    }
+    class PaymentRefunded {
+        <<domain event>>
+        long BookingId
+        decimal Amount
+    }
+    class DiscountType {
+        <<enumeration>>
+        Percentage
+        FixedAmount
+        Package
+    }
+    class LoyaltyTransaction {
+        <<entity>>
+        +CustomerId long
+        +MovementType LoyaltyMovementType
+        +Sequence int
+        +BookingId long?
+        +Points int
+        +BalanceAfter int
+        +ExpiresOn DateOnly?
+        +Earn(long customerId, long bookingId, int points, LoyaltyBalance, long?, DateTime)$ LoyaltyTransaction
+        +ReverseEarned(long customerId, long bookingId, int earned, LoyaltyBalance, ...)$ LoyaltyTransaction?
+    }
+    class LoyaltyBalance {
+        <<value object>>
+        +Points int
+        +Sequence int
+    }
+    class PaymentStatus {
+        <<enumeration>>
+        Pending
+        InReview
+        Approved
+        Rejected
+        Refunded
+    }
+    class PaymentApproved {
+        <<domain event>>
+        long BookingId
+        decimal Amount
+    }
+    class PaymentReported {
+        <<domain event>>
+        long BookingId
+        decimal Amount
+    }
     class PaymentAccount {
         <<entity>>
         +PaymentMethodTypeId short
@@ -186,27 +151,69 @@ classDiagram
         +Create(PaymentMethodType, string holder, string? number, ...)$ PaymentAccount
         +Update(PaymentMethodType, string holder, string? number, string? qr, ...)
     }
-    PercentageDiscountStrategy ..|> IDiscountStrategy
-    AggregateRoot~TId~ --|> Entity~TId~
-    LoyaltyTransaction --|> Entity~TId~
-    Payment ..> PaymentAccount : PaymentAccountId
-    Payment ..> PaymentApproved : raises
+    class PromotionRedemption {
+        <<entity>>
+        +BookingId long
+        +PromotionId int
+        +AppliedAmount decimal
+        +RedeemedBy long?
+        +RedeemedAtUtc DateTime
+    }
+    class LoyaltyMovementType {
+        <<enumeration>>
+        Earned
+        Redeemed
+        Expired
+        Adjusted
+        Reversed
+    }
+    class FixedAmountDiscountStrategy
+    class PromotionRedeemed {
+        <<domain event>>
+        int PromotionId
+        long BookingId
+        long CustomerUserId
+        decimal DiscountAmount
+    }
+    class RedemptionRequest {
+        <<value object>>
+        long BookingId
+        string BookingCode
+        long CustomerUserId
+        int CustomerPoints
+        decimal Subtotal
+        bool AlreadyRedeemedOnBooking
+        int TotalRedemptions
+        int CustomerRedemptions
+    }
+    class PaymentRejected {
+        <<domain event>>
+        long BookingId
+        decimal Amount
+        string Reason
+    }
+    Promotion ..> PromotionRedemption : creates
     PaymentAccount --> PaymentMethodType
     Payment --|> AggregateRoot~TId~
-    LoyaltyTransaction --> LoyaltyMovementType
-    Promotion ..> PromotionRedemption : creates
-    Promotion --> DiscountType
     FixedAmountDiscountStrategy ..|> IDiscountStrategy
-    Payment "1" *-- "0..*" PaymentReceipt : receipts
-    Promotion ..> PromotionRedeemed : raises
-    Payment --> PaymentStatus
-    DiscountStrategyFactory ..> IDiscountStrategy
-    PaymentAccount --|> Entity~TId~
-    Promotion --|> AggregateRoot~TId~
-    Promotion ..> DiscountStrategyFactory
+    LoyaltyTransaction --> LoyaltyMovementType
     Promotion ..> RedemptionRequest
-    Payment ..> PaymentRejected : raises
+    Promotion --> DiscountType
     Payment ..> PaymentRefunded : raises
+    Promotion ..> DiscountStrategyFactory
+    Payment ..> PaymentAccount : PaymentAccountId
+    Payment ..> PaymentApproved : raises
+    Payment --> PaymentStatus
+    Promotion --|> AggregateRoot~TId~
+    PaymentAccount --|> Entity~TId~
+    DiscountStrategyFactory ..> IDiscountStrategy
+    Payment ..> PaymentReported : raises
+    LoyaltyTransaction --|> Entity~TId~
+    Payment "1" *-- "0..*" PaymentReceipt : receipts
+    Payment ..> PaymentRejected : raises
+    PercentageDiscountStrategy ..|> IDiscountStrategy
+    Promotion ..> PromotionRedeemed : raises
+    AggregateRoot~TId~ --|> Entity~TId~
     LoyaltyTransaction ..> LoyaltyBalance
 ```
 
@@ -224,5 +231,7 @@ Rules kept by these classes:
 - Loyalty: when a payment is approved, `LoyaltyRewardService` (application layer) credits the points of
   the booking lines with `LoyaltyTransaction.Earn`; a refund reverses them with `ReverseEarned`. Both
   are idempotent per booking. `CustomerId` holds the customer's user id.
-- Events published to `carwash.events`: `payment.confirmed`, `payment.rejected`, `payment.refunded`,
+- `ReportWithReceipt` (the client's path) raises `PaymentReported`; the in-person payment does not,
+  because it is approved at once. booking-service consumes it to stop the payment deadline (ADR-021).
+- Events published to `carwash.events`: `payment.reported`, `payment.confirmed`, `payment.rejected`, `payment.refunded`,
   `payment.promotion_redeemed` and `payment.loyalty_points_earned`.
