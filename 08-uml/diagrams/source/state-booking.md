@@ -3,14 +3,14 @@
 Source: `booking-service` `Booking.moveTo`, `Booking.cancel`, `Booking.reschedule`,
 `Booking.markUnattended`, `BookingStatus`; `operations-service` `FollowUpPolicy`, `FollowUpService`.
 Checked on 2026-10-21; events and the look-back window checked against `origin/develop` on 2026-10-23;
-the expiry job removed and the client reschedule rule checked on 2026-10-24; payment timeout added on 2026-10-26.
+the expiry job removed and the client reschedule rule checked on 2026-10-24; payment timeout added on 2026-10-26 (also from `SCHEDULED`, 2026-10-27).
 
 ```mermaid
 stateDiagram-v2
     direction LR
     [*] --> CONFIRMED : create
     SCHEDULED --> CONFIRMED : confirm
-    SCHEDULED --> CANCELLED : cancel
+    SCHEDULED --> CANCELLED : cancel, or payment timeout (system)
     CONFIRMED --> CONFIRMED : reschedule (admin)
     CONFIRMED --> IN_PROGRESS : start
     CONFIRMED --> CANCELLED : cancel, or payment timeout (system)

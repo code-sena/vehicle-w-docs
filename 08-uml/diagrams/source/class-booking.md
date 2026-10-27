@@ -1,6 +1,7 @@
 # Class diagram — booking-service domain (catalog and booking)
 
-Source: `lavarapido-booking-service/src/main/java/com/lavarapido/booking/domain` as of 2026-10-20.
+Source: `lavarapido-booking-service/src/main/java/com/lavarapido/booking/domain` as of 2026-10-20; payment at
+booking (`PaymentMode`, `PaymentPolicy`) and `AvailabilityPolicy.withoutBusyTimes` added on 2026-10-27 (`main`, `506feca`).
 Getters, `restore(...)` factories and the 21 legal fields of `Establishment` are left out.
 
 ```mermaid
@@ -19,11 +20,16 @@ classDiagram
         -BigDecimal pointsDiscountAmount
         -String notes
         -Instant createdAt
-        +confirmNew(long vehicleId, List~BookingLine~, Instant, Instant, ...)$ Booking
+        -PaymentMode paymentMode
+        -Instant paymentDeadline
+        -Instant paymentReportedAt
+        +confirmNew(long vehicleId, List~BookingLine~, Instant, Instant, ..., PaymentMode, Instant deadline)$ Booking
         +reschedule(List~BookingLine~, Instant, Instant, short bayId, String)
         +cancel(CancellationReason)
         +moveTo(BookingStatus)
         +changeableByCustomer(Instant) boolean
+        +markPaymentReported(Instant) boolean
+        +paymentOverdue(Instant) boolean
         +subtotal() BigDecimal
         +total() BigDecimal
         +durationMinutes() int
@@ -61,6 +67,19 @@ classDiagram
         String code
         String name
         boolean customerFault
+        +selectableBy(boolean admin) boolean
+    }
+    class PaymentMode {
+        <<enumeration>>
+        DIGITAL
+        CASH
+        +of(String)$ PaymentMode
+        +ofOptional(String)$ PaymentMode
+    }
+    class PaymentPolicy {
+        <<domain service>>
+        +deadlineFor(PaymentMode, Instant created, Instant start, Duration window)$ Instant
+        +requireCashAllowed(long activeCash, int limit)$
     }
     class CatalogItem {
         <<aggregate root>>
@@ -162,6 +181,7 @@ classDiagram
         +slots(LocalDate, Optional~DayWindow~, List~Short~ bays, ...) List~Slot~
         +freeBay(LocalDateTime, LocalDateTime, List~Short~, ...) Optional~Short~
         +alternatives(List~Slot~, LocalTime, int max) List~LocalTime~
+        +withoutBusyTimes(List~Slot~, LocalDate, int minutes, List~Occupancy~)$ List~Slot~
         +whyUnavailable(List~Slot~, Optional~DayWindow~, ...) UnavailableReason
     }
     class UnavailableReason {
@@ -184,6 +204,7 @@ classDiagram
     Booking "1" *-- "1..*" BookingLine : lines
     Booking --> BookingStatus
     Booking --> "0..1" CancellationReason
+    Booking --> "0..1" PaymentMode
     Booking ..> ServiceBay : serviceBayId
     Booking ..> VehicleSnapshot : customerVehicleId (customer-service)
     BookingLine ..> ServicePrice : servicePriceId
@@ -203,6 +224,13 @@ Rules kept by these classes:
 - A booking only takes a time with a free bay inside the day window (`AvailabilityPolicy`); when it is
   not possible, the API answers 409 with the `reason` from `UnavailableReason` and the nearest
   `alternatives` (5 by default, `app.booking.alternatives`).
+- Payment at booking (ADR-021): `PaymentMode.of` makes the client choose `DIGITAL` or `CASH` (400
+  `INVALID_PAYMENT_MODE`); `PaymentPolicy.requireCashAllowed` refuses a second active cash booking (409
+  `CASH_BOOKING_LIMIT`); `PaymentPolicy.deadlineFor` gives a `DIGITAL` booking `min(creation + 30 min, start)`.
+  `paymentOverdue` is true for a `DIGITAL` booking still `SCHEDULED` or `CONFIRMED`, past its deadline and
+  without `paymentReportedAt`; `markPaymentReported` records the first report (event or check). The reasons
+  `EXPIRED` and `PAYMENT_TIMEOUT` are not selectable by anyone (`CancellationReason.selectableBy`).
+- The alternatives skip the times when the same vehicle has another booking (`withoutBusyTimes`, 2026-10-27).
 - `changeableByCustomer` allows a client change only while the booking is `SCHEDULED` or `CONFIRMED`
   and its start time has not passed; the admin only needs the status (`BookingService.requireChangeableBy`).
   In practice the client only cancels (reason `CUSTOMER_REQUEST`, nothing asked); rescheduling is done
