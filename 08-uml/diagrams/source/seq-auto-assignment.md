@@ -24,12 +24,12 @@ sequenceDiagram
     B-->>W: 201 booking CONFIRMED with its bay
     B-)MQ: BookingConfirmed (booking.confirmed) with preferredOperatorId, after commit
     MQ-)N: booking confirmation to the client
-    MQ-)OP: BookingConfirmed (queue operations-service.booking-confirmed; 3 attempts, then its DLQ)
+    MQ-)OP: BookingConfirmed (queue operations-service.booking-confirmed, 3 attempts, then its DLQ)
     OP->>B: GET /internal/v1/bookings/{id} and /internal/v1/bookings?from=&to= (X-Internal-Key)
     alt booking is no longer assignable
         OP-->>OP: nothing to do
     else reschedule: booking already has executions
-        OP-->>OP: keeps the operator if they still fit; else tries another free operator
+        OP-->>OP: keeps the operator if they still fit, else tries another free operator
         opt nobody fits (E-12)
             OP->>DB: delete the PENDING executions
             OP-)MQ: OperatorUnassigned (execution.operator_unassigned)
@@ -37,7 +37,7 @@ sequenceDiagram
         end
     else
         OP->>DB: shifts, absences, executions of that day
-        OP->>S: GET /internal/v1/users/{id}/contact (account still active; fails closed with 503 → retried, A-13)
+        OP->>S: GET /internal/v1/users/{id}/contact (account still active, fails closed with 503 → retried, A-13)
         OP-->>OP: AutoAssignmentPolicy: chosen operator if free, else fewest bookings that day, then lowest id
         alt somebody is free
             OP->>DB: one service_execution PENDING per booking line (actor: system)
