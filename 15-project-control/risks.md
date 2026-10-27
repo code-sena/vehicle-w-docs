@@ -1,9 +1,9 @@
 # Risk Register
 
 > Risks that can stop LavaRápido from being delivered or demonstrated. Reviewed at each
-> retrospective and whenever a service is merged. Last review: **2026-10-24** (against `origin/develop`
-> after the 128 branches merged that day and the cross review of section 4 of
-> `auditoria-lavarapido-2026-10-24.md`; merged but not deployed yet).
+> retrospective and whenever a service is merged. Last review: **2026-10-27** (against `main` of the 10
+> repositories after the releases of that day; the server runs `main` through the continuous deployment.
+> Findings of the cross review of section 4 of `auditoria-lavarapido-2026-10-24.md` kept below).
 
 Level = probability × impact (Low / Medium / High → Low, Medium, High, Critical).
 Owner is a role; the team assigns the person in the sprint board.
@@ -21,9 +21,7 @@ Owner is a role; the team assigns the person in the sprint board.
 | R-008 | Data loss on a developer machine (`docker compose down -v`, broken volume) before a demo | Technical | Low | High | Medium | Mitigate | Whoever runs the demo |
 | R-009 | Gmail SMTP stops (app password revoked, daily sending limit) | External | Medium | Low | Low | Accept | notification-service owner |
 | R-010 | Documentation drifts from the code again | Team | Medium | Medium | Medium | Mitigate | Author of each PR |
-| R-011 | The public server on Azure is off when it is needed (it is turned on on demand by one person), in particular at the final exposition (~2026-10-27); there is no uptime monitor (H-15) | Operations | Medium | High | High | Mitigate | DevOps (project lead) |
-| R-012 | The continuous deployment fails the first time it is used: it is merged in the 10 repositories since 2026-10-24 but never ran, the secrets (`AZURE_SSH_KEY`, `DEPLOY_DISPATCH_TOKEN`, `EXPO_TOKEN`) do not exist, the first run with the old scripts leaves the web at 502 until Caddy restarts, and infra must reach `main` last (CD-01) | Operations | High | Medium | High | Mitigate | DevOps (project lead) |
-| R-016 | The first deployment of the 128 merged branches breaks something only visible live: migrations 044, 045, 047, 022, 023 and seeds 113, 116, the new queue of operations, `sp_getapplock` of SEC-05, the real client IP behind Caddy | Technical | Medium | High | High | Mitigate | DevOps and each service owner |
+| R-011 | The public server on Azure is off when it is needed (it is turned on on demand by one person), in particular at the final exposition (~2026-10-27); there is no uptime monitor (H-15). What reaches `main` while it is off is deployed when it starts (`boot-update.sh`) | Operations | Medium | High | High | Mitigate | DevOps (project lead) |
 | R-017 | The web admin payments queue (unpaged, with images, every 45 s) exhausts payment's memory with real data (E-10 web) | Technical | Medium | High | High | Mitigate | web owner |
 | R-015 | A merge to `main` during the exposition recreates containers for 1–2 minutes (CD-15) | Operations | Medium | Medium | Medium | Avoid | Team lead |
 
@@ -84,28 +82,11 @@ Owner is a role; the team assigns the person in the sprint board.
 ### R-011 — Public server off
 
 - **Mitigation:** the server is described in `10-devops/production.md`; whoever needs it for a review
-  asks the DevOps owner to turn it on in advance and runs `BRANCH=develop deploy/update-server.sh` after the last push.
+  asks the DevOps owner to turn it on in advance. It runs `main` and the continuous deployment updates it on
+  every merge; if it was off, `boot-update.sh` deploys at start what reached `main` meanwhile (ADR-017).
   Before the exposition: VM on the day before, an external uptime check of `PUBLIC_URL` and a recorded
   video of the main flows.
 - **Contingency:** run the demo locally with Docker (`lavarapido-infra`, profile `app`) or show the video.
-
-### R-012 — First continuous deployment
-
-- **Trigger:** the release `v1.1.0` reaches `main` (the CD is already in `develop` of the 10 repositories).
-- **Mitigation:** create the secrets and the restricted key on the VM first; release `lavarapido-infra`
-  **last** with `DEVELOP_ONLY=""` (the other repos' dispatch answers 422 meanwhile, harmless);
-  `setup-server.sh` refuses to downgrade a repository; restart Caddy after the first run; check
-  `crontab -l | grep boot-update` and the branch of every repository on the server (`10-devops/ci-cd.md`).
-- **Contingency:** keep updating by hand with `BRANCH=develop update-server.sh`, as today; go back with
-  `rollback.sh` (`13-operations/README.md`).
-
-### R-016 — First deployment of the fleet round
-
-- **Mitigation:** deploy outside a review, with the `pre-update` backup; follow the live checks of the
-  fleet reports (Liquibase logs, `operations-service.events` gone, 429 with the public IP, 409 of two
-  concurrent writes, `pending_delivery` rows); before the release count the duplicated open payments and
-  the `COMPLETED` bookings with open lines (operational items 3 and 4 below).
-- **Contingency:** `rollback.sh` for the images and `restore-db.sh` with the `pre-update` backup.
 
 ### R-017 — Unpaged payments queue in the web
 
@@ -140,17 +121,27 @@ review of 2026-10-23 is closed below, with its merge commit.
 | Low (backend) | Low | notification `markDelivered` inside the send `try` (a database error after sending repeats it); payment 022 fills old redemptions with today's promotion (check the IN_REVIEW payments first) and 023's view also blocks the same reference on an in-person payment of the same booking; operations answers 500 to a trigger `THROW` (was 409) and `LegacyQueueMigration` uses auto-ack; security answers 500 when `sp_getapplock` times out; BIZ-10 checks every future booking when the week changes | `REVIEW-BACKEND.md` items 4–11 | each owner |
 | Low (front) | Low | Web `amountDueFailed` not reset after a coupon change; a silent refresh can overwrite a coupon just applied (web and mobile); `deploy.yml` may lose the SSH session in a long `compose up` | `REVIEW-FRONT-INFRA.md` B1–B3 | web, mobile, DevOps |
 
-**Operational pending (before and during the release):**
+**Operational items of the release (state on 2026-10-27):**
 
-| # | Item | Who |
-|---|------|-----|
-| 1 | Create the secrets: `AZURE_SSH_KEY` and `DEPLOY_DISPATCH_TOKEN` in the project lead's 6 repositories; `DEPLOY_DISPATCH_TOKEN` and `EXPO_TOKEN` in Camilo's and Merari's (needs their action or the Admin role). Until then the continuous deployment, merged on 2026-10-24, cannot run (CD-01) | project lead, Camilo, Merari |
-| 2 | Merge the documentation: `lavarapido-docs` to `main` and `vehicle-w-docs` to `docs` (needs approval) | project lead |
-| 3 | Deploy `develop` on Azure with `BRANCH=develop`. The first run uses the old scripts: restart Caddy afterwards (port 8080) or run the second update at once | DevOps |
-| 4 | Before the release, in the production database: look for duplicated open payments (migration 023) and count the `COMPLETED` bookings with open lines | DevOps, payment and operations owners |
-| 5 | Release `v1.1.0` (`develop` → `main`) with Camilo's approval, **infra last**; payment `v1.0.0` and mobile `v1.1.0` by Merari; then remove payment from `DEVELOP_ONLY` | whole team |
-| 6 | End-to-end tests against Azure with `e2e.yml` and the test accounts the team creates | project lead |
-| 7 | Regenerate the PDF and Word deliverables with the team's APA 7 generator | documentation owner |
+| # | Item | Who | State |
+|---|------|-----|-------|
+| 1 | Create the secrets: `AZURE_SSH_KEY` and `DEPLOY_DISPATCH_TOKEN` in the project lead's 6 repositories; `DEPLOY_DISPATCH_TOKEN` and `EXPO_TOKEN` in Camilo's and Merari's (CD-01) | project lead, Camilo, Merari | ✅ Done: the continuous deployment runs since 2026-10-26 |
+| 2 | Merge the documentation: `lavarapido-docs` to `main` and `vehicle-w-docs` to `docs` | project lead | `vehicle-w-docs` is integrated in `docs` as it changes; `lavarapido-docs` is kept by its owner |
+| 3 | Deploy on Azure; the first run with the old scripts needed a Caddy restart | DevOps | ✅ Done: the server runs `main`, deployed by the continuous deployment (2026-10-26 and 2026-10-27, web and API 200) |
+| 4 | Before the release, in the production database: look for duplicated open payments (migration 023) and count the `COMPLETED` bookings with open lines | DevOps, payment and operations owners | Not recorded here. Migration 023 is deployed (its first changeset already rejects the older duplicated open payment) |
+| 5 | Releases to `main` with infra last; payment and mobile by Merari; then remove payment from `DEVELOP_ONLY` | whole team | ✅ Done: the 10 repositories have their release on `main` (payment `v1.1.2`, mobile `v1.1.2`) and `DEVELOP_ONLY` is empty |
+| 6 | End-to-end tests against Azure with `e2e.yml` and the test accounts the team creates | project lead | Open: `e2e.yml` has not run (no `E2E_*` secrets); the local suite passed 19/19 on 2026-10-27 |
+| 7 | Regenerate the PDF and Word deliverables with the team's APA 7 generator | documentation owner | Kept by the owner of `lavarapido-docs` |
+
+**Open items found on 2026-10-27:**
+
+| ID | Severity | Item | Where | Owner |
+|----|----------|------|-------|-------|
+| H-09 | Medium | The Firebase API key of the mobile `google-services.json` is not restricted to the package `com.vehiclecarwash.app` in the Google Cloud console (TD-052) | mobile, Google Cloud console | mobile owner |
+| H-15 | Medium | No uptime monitor (UptimeRobot or similar) for `PUBLIC_URL` (R-011) | infra | DevOps |
+| Legal data | Medium | The legal texts (terms and data policy, web and mobile) still carry sample contact data: `datos@expresscarwash.co`, `+57 300 123 4567`, NIT and address of "Express Car Wash S.A.S." (TD-053) | web `src/assets/i18n/*.json`, mobile `src/app/config/locales/*.json` | web and mobile owners, with the real business data |
+| H-23 | Low | No OpenAPI export from the running services: the contracts of `07-api` are rebuilt and edited by hand from the code (TD-054) | all services, `07-api` | backend lead |
+| Pagination | Low | The booking lists (`/api/v1/bookings/me`, `/api/v1/admin/bookings`) return every booking (all of the client's, or all of the admin's date range) without paging (TD-055) | booking-service, web, mobile | booking owner |
 
 ## Accepted risks for version 1 (ADR-020)
 
@@ -162,11 +153,12 @@ review of 2026-10-23 is closed below, with its merge commit.
 | H-16 | Admin reports are computed in the browser | Backend reporting is new work in three services; academic data volume |
 | D-02, E-21, SEC-15 | Session answer cached 30 s in the gateway; `refresh_token_hash` never written; sign-up with a walk-in person's document links that person | Documented in the gateway and security READMEs on 2026-10-24; small impact for an academic deployment |
 
-## Closed on 2026-10-24 (merged into `develop`, CI green, not deployed yet)
+## Closed on 2026-10-24 (merged into `develop`, CI green; released on `main` and deployed since 2026-10-26)
 
 The fleet round merged 128 branches with `--no-ff` in the 10 repositories (`auditoria-lavarapido-2026-10-24.md`).
-Each commit below is the **merge commit in `develop`** of that repository. "Live check" items still have
-to be confirmed on Azure after the next deployment (migrations, locks, Caddy).
+Each commit below is the **merge commit in `develop`** of that repository. They reached the server with
+the releases of 2026-10-26 and 2026-10-27 through the continuous deployment (migrations applied, web and
+API 200; C-010 below).
 
 | ID | What was fixed | Commits in `develop` |
 |----|----------------|----------------------|
@@ -259,6 +251,8 @@ to be confirmed on Azure after the next deployment (migrations, locks, Caddy).
 | C-006 | Review finding known requirement gaps (old R-007) | Closed 2026-10-16: per-account preferences, account lockout and the 404 page are built | Keep the gap list visible and close it before the review, not during it |
 | C-007 | Money shown and money approved disagree (old R-013, BIZ-01/BIZ-02) | Closed 2026-10-24: `AMOUNT_CHANGED`, client reschedule only of date and time, amount due from the server (payment `a898a98`, `fb90b0c`; booking `2983d76`) | Agree the contract of an amount once, in the server, and make every client read it |
 | C-008 | A closed session kept working through `bearer` (old R-014, SEC-01) | Closed 2026-10-24: gateway `2e20204` | Test the header in every case and variant, not only the one the clients send |
+| C-009 | The continuous deployment fails the first time it is used (old R-012: no secrets, server on `develop`, 502 until Caddy restarts, infra reaching `main` last) | Closed 2026-10-27: the secrets exist, `DEVELOP_ONLY` is empty, the server runs `main` and the automatic deploys of 2026-10-26 and 2026-10-27 succeeded (web and API 200). The first mobile `cd.yml` run failed for the missing `EXPO_TOKEN`; the next ones published the OTA | Create the secrets and the guard against downgrades before the first merge to `main`, and release the repository that deploys last |
+| C-010 | The first deployment of the 128 branches of 2026-10-24 breaks something only visible live (old R-016: migrations 044, 045, 047, 022, 023, seeds 113, 116, the new queue of operations, `sp_getapplock`, the client IP behind Caddy) | Closed 2026-10-27: deployed through the continuous deployment with the `pre-update` backup, migrations up to 049 and payment 023 applied, web and API 200; payment's integration tests now run those migrations against SQL Server in CI | Deploy big rounds outside a review with a backup first, and test migrations against a real database in CI |
 
 ---
 
