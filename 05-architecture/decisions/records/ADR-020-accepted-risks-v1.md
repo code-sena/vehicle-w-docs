@@ -56,8 +56,8 @@ continues to a real deployment.
 
 **Positive:**
 - The team spent the remaining days on the open defects that affect users: SEC-01, BIZ-01, BIZ-02 and
-  OPS-01 were closed on 2026-10-24 and the continuous deployment was merged (CD-01 now only waits for
-  the secrets and the first run).
+  OPS-01 were closed on 2026-10-24 and the continuous deployment was merged (it runs from `main` since
+  2026-10-26, ADR-017).
 - Reviewers find each accepted gap with its reason in one place.
 
 **Negative / Trade-offs:**
