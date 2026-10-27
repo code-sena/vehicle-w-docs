@@ -1,7 +1,8 @@
 # User Manual (web and mobile)
 
 > How to use LavaRápido in the browser and in the Android app (both have the same features).
-> Covers what is connected to the backend on 2026-10-20; what still uses sample or local data is
+> Covers what is connected to the backend on 2026-10-20, with the payment at booking added on
+> 2026-10-27 (reviewed against the web and the app on `main`); what still uses sample or local data is
 > marked. Screens: `12-ux-ui/navigation-map.md`.
 
 ---
@@ -37,9 +38,18 @@ and a plate cannot be registered twice. You can edit or remove your vehicles.
 4. Optionally choose an **operator** among the ones free at that time (first name and rating). With
    **No preference** the shop assigns one; if the one you chose is no longer free when we confirm,
    another free operator is assigned.
-5. Confirm. The booking is **confirmed immediately** with a free bay, and you get a notification
+5. **How will you pay?** Choose one:
+   - **Digital payment now** (Nequi, Daviplata or bank transfer): after booking you have **30 minutes**
+     (or until the start time, if it is sooner) to pay and upload the receipt. The booking shows
+     "Pay before …". If the receipt is not uploaded in time, the booking is cancelled by the system
+     ("The payment receipt was not uploaded in time") and the time is released.
+   - **Cash at the car wash**: you pay when you arrive and the administrator records it. You can only
+     have **one active cash booking**; with another one still active you are asked to pay or cancel
+     it, or to choose digital payment.
+6. Confirm. The booking is **confirmed immediately** with a free bay, and you get a notification
    and an email.
-6. If someone took that time a second before you, you are offered other free times of the same day.
+7. If someone took that time a second before you, you are offered other free times of the same day
+   (only times your vehicle can take: never one that overlaps another booking of the same vehicle).
 
 You receive reminders **24 hours and 1 hour before** (inbox, push and, if you keep that switch on,
 email). Once your service starts, the pending reminders stop.
@@ -68,8 +78,12 @@ transfer) with their QR and instructions:
 5. Once the payment is **approved**, the screen only shows the booking summary: the method, QR,
    receipt and pay steps disappear and the coupon (if one was used) can no longer be removed.
 
-**Cash:** choose **Cash** and confirm. Nothing is sent from the app: you pay at the shop when you pick
-up your vehicle, and the administrator records the payment, which is approved at once.
+**Cash:** only for bookings made with **Cash at the car wash**; a booking made with digital payment
+does not offer cash. Nothing is sent from the app: you pay at the shop when you pick up your vehicle,
+and the administrator records the payment, which is approved at once.
+
+**Deadline of a digital booking:** send the receipt before the time shown ("You have a deadline to
+pay"). Once it is sent, the deadline no longer applies, even if the administrator reviews it later.
 
 ### Loyalty points and coupons
 Each paid booking adds the points of its services when the administrator **approves the payment**
@@ -93,7 +107,7 @@ rating shows who served you ("Served by Juan Camilo").
 |---|---|
 | See and filter bookings | **Reservations**. The dashboard lists the **bookings without operator** |
 | Close a booking nobody registered | Dashboard → **To close** (only shown when there is something): bookings whose time ended with an operator who did not press Start, or started and not finished. Press **Attended** if the car was washed (it counts in reports and in the operator's services) or **No-show** if the client did not come. A booking that never had an operator becomes no-show by itself one hour after its end |
-| Book for a client | **Reservations → New** → search the vehicle by plate → services → date/time. The bay is assigned automatically |
+| Book for a client | **Reservations → New** → search the vehicle by plate → services (up to 10) → date/time. The bay is assigned automatically. A booking made by the administrator has no payment deadline and does not count toward the client's cash limit; the booking detail shows the payment mode the client chose |
 | Move a booking forward | Booking detail → **Start** → **Complete**; or **No show**; or **Cancel** (the client is notified) |
 | Business hours, lunch break, exceptions (holidays, closed days) | **Schedule**. In an exception that opens, the closing time must be after the opening time |
 | Bays (active / maintenance / inactive) | **Schedule → Bays**. Only active bays are used for new bookings; two vehicles at the same time never share a bay |
@@ -141,6 +155,8 @@ ended and nobody pressed Start (or Finish): close it from **To close**.
 |---|---|
 | "Session expired" | Sign in again |
 | A message that the time is no longer available | Pick one of the offered times |
+| "You already have an active booking paid in cash" | Pay or cancel that booking, or book this one with digital payment |
+| A booking cancelled with "The payment receipt was not uploaded in time" | The 30 minutes of a digital booking passed without a receipt; book again if the time is still free |
 | An operator cannot be assigned | The message says why (not on shift, absent, busy, inactive, or the booking's time has passed); fix the shift in **Operators**, choose another operator, or mark an old booking as no-show |
 | "You cannot start this service yet" | Wait until 15 minutes before the booking time |
 | A payment cannot be sent | The booking already has a payment in review or approved, it is cancelled, or the reference was already used |
