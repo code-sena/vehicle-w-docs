@@ -21,12 +21,12 @@
 - [ ] Changes do not break other services (integration tests pass)
 - [ ] If API changes: OpenAPI contract updated in `07-api/contracts/`
 - [ ] If data model changes: service `data-model.md` updated
-- [ ] If new/modified events: `event-catalog.md` updated
+- [ ] If new/modified events: the `events.md` of the publishing and consuming services (`09-microservices/services/*/events.md`) and `02-domain/domain-events.md` updated
 
 ### Deployment
 - [ ] Code is mergeable to `develop` (no conflicts)
 - [ ] CI/CD green on the branch
-- [ ] Runs locally via Docker Compose, following `05-architecture/deployment.md`; the only shared environment is the academic Azure server, updated by hand with `deploy/update-server.sh` (the manual deploy workflow and the continuous deployment from `main` still need their secrets, `10-devops/ci-cd.md`)
+- [ ] Runs locally via Docker Compose, following `05-architecture/deployment.md`; the only shared environment is the academic Azure server, which runs `main` and is deployed by the continuous deployment on every merge to `main` (`10-devops/ci-cd.md`)
 - [ ] Basic smoke test passing locally
 
 ### Documentation
