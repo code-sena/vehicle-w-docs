@@ -1,7 +1,7 @@
 # 07 — API Contracts
 
 > How LavaRápido's services expose their HTTP APIs: conventions, authentication and the OpenAPI
-> contract of each service. **Last updated: 2026-10-26** (payment at booking: booking and payment), against `origin/develop` of every service.
+> contract of each service. **Last updated: 2026-10-27** (booking: input validation, alternatives per vehicle and `bookedBy`; 2026-10-26: payment at booking in booking and payment), against `origin/develop` of every service and, for the booking changes of 2026-10-27, `main` (`506feca`, `v1.1.1`).
 
 ---
 
@@ -29,7 +29,10 @@ payment-service), checked one by one against the code.
 
 They are **rebuilt from the source code** of `origin/develop`, not exported from running services
 (the earlier springdoc/Swashbuckle exports had no error responses, no roles and, in payment, no
-security scheme). The code read on 2026-10-24 (booking and payment on 2026-10-26):
+security scheme). The code read on 2026-10-24 (booking and payment on 2026-10-26; the booking changes
+of 2026-10-27 — `serviceIds` with `maxItems: 10` and no `null` items, `bookedBy` only in the staff views,
+400 `VALIDATION_ERROR` on `PUT /admin/schedule/business-hours`, alternatives without the vehicle's other
+bookings — were edited by hand in `booking-service.yaml` after checking them on `main`, commit `506feca`):
 
 | Repository | Commit |
 |---|---|
