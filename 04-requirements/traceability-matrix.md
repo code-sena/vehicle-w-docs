@@ -3,7 +3,7 @@
 > Connects `04-requirements/functional.md` (RF) → `04-requirements/user-stories.md` (HU) → tests → service.
 > Status as of 2026-10-27, checked against `origin/main` of the 10 code repositories after the releases
 > of that day (api-gateway `v1.1.0`, security `v1.1.0`, customer `v1.1.1`, booking `v1.1.1`, operations
-> `v1.1.0`, notification `v1.1.0`, payment `v1.1.2`, infra `v1.1.2`, web `v1.1.2`, mobile `v1.1.1`). The
+> `v1.1.0`, notification `v1.1.0`, payment `v1.1.2`, infra `v1.1.2`, web `v1.1.2`, mobile `v1.1.2`). The
 > six microservices (security, customer, booking, operations, payment, notification) and the
 > api-gateway are built, released on `main`, connected to the web and the Android app and deployed on
 > the academic Azure server, which runs `main` and is updated by the continuous deployment on every

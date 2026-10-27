@@ -21,10 +21,10 @@
 
 | Component | State |
 |---|---|
-| Releases | On `main` of the 10 code repositories: api-gateway `v1.1.0`, security `v1.1.0`, customer `v1.1.1`, booking `v1.1.1`, operations `v1.1.0`, notification `v1.1.0`, payment `v1.1.2`, infra `v1.1.2`, web `v1.1.2` and the mobile app `v1.1.1`. `main` is protected in all 10 (pull request, one approval, green CI) |
+| Releases | On `main` of the 10 code repositories: api-gateway `v1.1.0`, security `v1.1.0`, customer `v1.1.1`, booking `v1.1.1`, operations `v1.1.0`, notification `v1.1.0`, payment `v1.1.2`, infra `v1.1.2`, web `v1.1.2` and the mobile app `v1.1.2`. `main` is protected in all 10 (pull request, one approval, green CI) |
 | api-gateway (8080) and the six services: security (3001), customer (3002), booking (3003), operations (3004), payment (3005, .NET 8), notification (3006) | Built and tested (989 backend tests green in CI on `main` on 2026-10-27); running with Docker Compose locally and on the Azure server behind Caddy (HTTPS), which runs `main` and is updated by the continuous deployment on every merge |
 | Web (Angular 21, zoneless, feature-based MVVM — ADR-019) | The three roles, connected to the six services through the gateway; data refreshed without reloading (WEB-16); 242 tests |
-| Android app (Expo SDK 57, version 1.1.1) | The three roles; the APK is served at `/app/` on the public server and updates arrive by EAS Update, published by `cd.yml` on every merge to `main` (ADR-018); 106 tests |
+| Android app (Expo SDK 57, APK 1.1.1, release `v1.1.2`) | The three roles; the APK is served at `/app/` on the public server and updates arrive by EAS Update, published by `cd.yml` on every merge to `main` (ADR-018); 106 tests |
 | Database | SQL Server 2022: 58 tables and 1 view in 9 schemas, 166 changesets; last structure migration 049, last seed 117 (payment keeps its own numbering, 023) |
 | Requirements | 38 of 41 functional requirements done and 3 partial; 3 of 12 non-functional met (`04-requirements/traceability-matrix.md`) |
 | CI/CD | GitHub Actions in the 10 code repositories (1,337 tests green on `main` on 2026-10-27); continuous deployment active: a merge to `main` deploys to Azure through the infra workflow, payment included (ADR-017; automatic deploys on 2026-10-26 and 2026-10-27) |
