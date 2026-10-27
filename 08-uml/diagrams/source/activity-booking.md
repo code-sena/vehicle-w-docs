@@ -4,7 +4,7 @@ Built from the web and app booking screens and `booking-service` (`BookingUseCas
 create / reschedule / cancel`). Sequence with the services: [seq-booking](./seq-booking.md). The client
 cancels from the history or the payment screen (confirm dialog, no reason asked); neither the web nor the app has a reschedule
 screen for the client, so a new date is set by the administrator from Bookings (CU29). Checked on
-2026-10-20.
+2026-10-20; payment mode, cash limit and payment deadline added on 2026-10-27 (ADR-021).
 
 ```mermaid
 flowchart TD
@@ -20,16 +20,20 @@ flowchart TD
     hasfree -- yes --> time[Choose a time]
     time --> op{Choose an operator?}
     op -- yes --> chooseop[Pick one of the free operators]
-    op -- no --> confirm
-    chooseop --> confirm[Confirm the summary]
+    op -- no --> paymode
+    chooseop --> paymode[Choose how to pay<br/>digital QR or cash at the shop]
+    paymode --> confirm[Confirm the summary]
     confirm --> create[System takes the schedule lock<br/>and looks for a free bay]
     create --> ok{Bay free and vehicle<br/>without another booking?}
-    ok -- no --> alt[409: reason + nearest times] --> time
-    ok -- yes --> done[Booking CONFIRMED with code RES-…<br/>event booking.confirmed]
+    ok -- no --> alt[409: reason + up to 5 times<br/>the vehicle can take] --> time
+    ok -- yes --> cash{Cash, with another<br/>active cash booking?}
+    cash -- "yes: 409 CASH_BOOKING_LIMIT" --> paymode
+    cash -- no --> done[Booking CONFIRMED with code RES-…<br/>event booking.confirmed<br/>digital: pay within 30 min]
     done --> par1[Operator assigned automatically]
     done --> par2[Confirmation and reminders 24 h / 1 h]
     par1 & par2 --> wait{Any change<br/>before the start?}
-    wait -- "client cancels<br/>(confirm dialog)" --> cancelled[CANCELLED<br/>reminders removed]
+    wait -- "client cancels<br/>(confirm dialog)" --> cancelled[CANCELLED<br/>reminders removed, time freed]
+    wait -- "digital payment not reported<br/>by the deadline: PAYMENT_TIMEOUT" --> cancelled
     wait -- "admin reschedules<br/>from Bookings" --> resched[New date and time<br/>same checks as above] --> wait
     wait -- no --> service[Service day: see activity-operator-day]
     cancelled --> stop((End))
