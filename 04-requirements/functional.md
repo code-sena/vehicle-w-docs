@@ -15,7 +15,7 @@
  
 | ID | Service | Description | Source | Priority |
 |----|--------|-------------|--------|----------|
-| RF-005 | `booking-service` | The system must let a customer request a service by selecting date, time and wash type | HU-BOOK-001 | Must Have |
+| RF-005 | `booking-service` | The system must let a customer request a service by selecting date, time, wash type (one to ten services) and payment mode (`DIGITAL` or `CASH`) | HU-BOOK-001 | Must Have |
 | RF-006 | `booking-service` | The system must validate slot availability and suggest alternative times if the requested slot is taken | HU-BOOK-001 | Must Have |
 | RF-007 | `booking-service` | The system must let a customer cancel a booking before its start time (no reason is asked; the booking stores `CUSTOMER_REQUEST`) and let the Administrator reschedule it; both actions are blocked once the service is in progress | HU-BOOK-002 | Must Have |
 | RF-008 | `operations-service` | The system must automatically assign an available operator to a booking based on operator availability | HU-BOOK-003 | Must Have |
@@ -34,11 +34,11 @@
  
 | ID | Service | Description | Source | Priority |
 |----|--------|-------------|--------|----------|
-| RF-013 | `payment-service` | The system must show the customer the shop's payment methods (cash, Nequi, Daviplata, bank transfer) and, for each digital method, its QR code and account instructions — cash shows no QR | HU-PAY-001 | Must Have |
+| RF-013 | `payment-service` | The system must show the customer the shop's payment methods (cash, Nequi, Daviplata, bank transfer) and, for each digital method, its QR code and account instructions — cash shows no QR. A booking made with the `DIGITAL` mode does not offer cash | HU-PAY-001 | Must Have |
 | RF-013b | `payment-service` | For a digital payment method, the system must let the customer upload a payment receipt with the declared amount and transaction reference; cash needs no receipt | HU-PAY-001 | Must Have |
 | RF-014 | `payment-service` | The Administrator must be able to review a pending payment — comparing the receipt's declared amount against the amount due for a digital method, or confirming a cash payment directly — and approve or reject it | HU-PAY-003 | Must Have |
 | RF-015 | `payment-service` | The system must show the customer a payment history ordered by date and service | HU-PAY-002 | Should Have |
-| RF-016 | `payment-service` | The system must not collect or store card data, and must reject a receipt whose transaction reference was already used on a different approved payment | HU-PAY-001 | Must Have |
+| RF-016 | `payment-service` | The system must not collect or store card data, and must reject a receipt whose transaction reference already backs another live payment (`PENDING`, `IN_REVIEW` or `APPROVED`; guaranteed by the database since payment migration 023) | HU-PAY-001 | Must Have |
  
 ## Frontend (role-based dashboard and preferences)
  
@@ -90,8 +90,20 @@ are stated in the SRS (`lavarapido-docs`, section 5) and still need their user s
 >   one, and a successful reset also lifts a login lockout (RF-004b).
 > - RF-001: no address is collected — neither the data model nor the sign-up screen has one,
 >   and the service is at the shop, not at home (`01-context/scope.md`, Out of Scope #2).
+> - RF-005 (since 2026-10-26, ADR-021): the customer must send `paymentMode` = `DIGITAL` or `CASH`
+>   (400 `INVALID_PAYMENT_MODE`). A customer can hold one active cash booking (409
+>   `CASH_BOOKING_LIMIT`, `BOOKING_CASH_ACTIVE_LIMIT`). A `DIGITAL` booking gets a payment deadline,
+>   `min(creation + 30 min, start)`; if no payment is reported by then, a job that runs every 60 s
+>   cancels it with the reason `PAYMENT_TIMEOUT`, after asking payment-service that no payment was
+>   reported. Bookings made by the administrator have neither the deadline nor the cash limit, and a
+>   reschedule does not move the deadline. A booking carries at most 10 services, also on a
+>   reschedule (400 `VALIDATION_ERROR`, 2026-10-27).
 > - RF-006: when a bay is free the booking is confirmed at once; otherwise nothing is saved and
->   up to five alternative start times of that day are returned.
+>   up to five alternative start times of that day are returned. Since 2026-10-27 the alternatives
+>   skip the times when the same vehicle already has another booking.
+> - RF-013: the payment mode is chosen when booking (RF-005). A `DIGITAL` booking is paid with the
+>   QR and a receipt before its deadline; a `CASH` booking is paid at the shop and registered by the
+>   administrator.
 > - RF-008: if the customer chose an operator who is still free, that operator is assigned;
 >   otherwise the eligible operator (active account, shift covers the slot, no absence, no
 >   overlapping booking) with the fewest bookings that day is chosen; ties go to the lowest
