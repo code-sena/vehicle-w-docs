@@ -92,7 +92,7 @@ If there is code without an HU: possible gold-plating, or a change made without 
 | RNF-006 | Maintainability (PRs, commits, migrations) | GitHub history + code review | 🟡 Partial |
 | RNF-007 | Portability (Docker, no OS dependency) | Local setup reproduced from scratch | 🟡 Partial |
 | RNF-008 | Compatibility (Android 8+, browsers, 360 px) | `lavarapido-infra/e2e/width-360.js` and a wider review; devices by hand | 🟡 Partial (on 2026-10-17, 60 web screens at 360 and 768 px and 26 app screens at 360 px without overflow; Android 8 device still to try) |
-| RNF-009 | Usability (booking in ≤ 5 steps, form messages) | Flow and form review | 🟡 Partial (booking takes 5 steps: vehicle, service, date, time, confirm — choosing the operator is optional; form messages reviewed in 4 languages) |
+| RNF-009 | Usability (booking in ≤ 5 steps, form messages) | Flow and form review | 🟡 Partial (the web booking form has 4 numbered steps since 2026-10-26: vehicle, service, date and time, payment mode, then confirm — choosing the operator is optional; form messages reviewed in 4 languages) |
 | RNF-010 | Localisation (4 languages, COP, date formats) | Manual check per language | 🟡 Partial |
 | RNF-011 | Idempotence of events | Unit tests of the event consumer (`processed_event`) and of the loyalty credit | ✅ Done |
 | RNF-012 | Fault tolerance (SMTP, Expo Push, RabbitMQ down) | Test with the external service stopped | ✅ Done (since 2026-10-24 push and email are retried through `pending_delivery`, OPS-05, and operations retries and dead-letters `booking.confirmed`, OPS-04) |
