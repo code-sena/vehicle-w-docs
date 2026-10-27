@@ -51,7 +51,7 @@
 | GET | `/api/v1/vehicle-types` | public |
 | GET · POST | `/api/v1/vehicles` | CLIENT only (own vehicles; 403 for ADMIN and OPERATOR since BIZ-12) |
 | GET · PUT · DELETE | `/api/v1/vehicles/{id}` | CLIENT only — another client's vehicle is 404; DELETE with active bookings → 409 `VEHICLE_HAS_ACTIVE_BOOKINGS` (BIZ-08) |
-| GET | `/api/v1/admin/vehicles?ids=1,2` or `?plate=ABC123` | ADMIN or OPERATOR — vehicle + `ownerUserId` |
+| GET | `/api/v1/admin/vehicles?ids=1,2` or `?plate=ABC123` | ADMIN or OPERATOR — vehicle + `ownerUserId`; the owners of all the ids are read in one query (no query per vehicle, since 2026-10-27) |
 
 Full contract: [`07-api/contracts/openapi/customer-service.yaml`](../../../07-api/contracts/openapi/customer-service.yaml).
 
@@ -62,7 +62,7 @@ Full contract: [`07-api/contracts/openapi/customer-service.yaml`](../../../07-ap
 ```bash
 cd lavarapido-customer-service
 ./mvnw spring-boot:run           # http://localhost:3002 — Swagger: /swagger-ui.html (dev profile)
-./mvnw verify                    # 82 tests (CI run of 2026-10-24), no database needed
+./mvnw verify                    # 83 tests (CI on main, 2026-10-27), no database needed
 ```
 
 | Variable | Purpose |

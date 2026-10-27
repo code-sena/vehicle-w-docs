@@ -21,7 +21,7 @@ curl http://localhost:3002/actuator/health      # {"status":"UP"}
 
 ## Tests
 
-`./mvnw verify`: 82 tests in the CI run of 2026-10-24 (no database needed).
+`./mvnw verify`: 83 tests in CI on `main` on 2026-10-27 (`v1.1.1`; no database needed).
 
 ## Useful queries
 
