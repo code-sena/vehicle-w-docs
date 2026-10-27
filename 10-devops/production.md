@@ -35,7 +35,7 @@ mobile `preview` build points to (`EXPO_PUBLIC_API_URL` in `eas.json`).
 |---|---|
 | `SITE_ADDRESS`, `PUBLIC_URL` | Domain for Caddy and the public base URL (links in emails, the inspection report link, the APK button). Without a domain: `:80` and `http://<server IP>` |
 | `DB_PASSWORD`, `DB_NAME`, `DB_USERNAME` | SQL Server inside the stack (`sa`, an accepted risk: `15-project-control/risks.md`) |
-| `JWT_SECRET`, `INTERNAL_API_KEY` | New random values (`openssl rand -base64 48`). `docker-compose.prod.yml` refuses to start security, booking, operations and notification without the internal key (`${INTERNAL_API_KEY:?…}`). Since 2026-10-23 (E-01) it is also what lets the operator start and finish services: booking only accepts `/api/v1/operator/bookings/**` from operations-service with this key, so without it the operator flow answers 503 |
+| `JWT_SECRET`, `INTERNAL_API_KEY` | New random values (`openssl rand -base64 48`). `docker-compose.prod.yml` refuses to start security, customer, booking, operations, notification and payment without the internal key (`${INTERNAL_API_KEY:?…}`). Since 2026-10-23 (E-01) it is also what lets the operator start and finish services: booking only accepts `/api/v1/operator/bookings/**` from operations-service with this key, so without it the operator flow answers 503 |
 | `ALLOWED_EMAIL_DOMAINS` | Domains accepted on sign-up, account creation and email change (A-01; default `gmail.com`). Login and password recovery do not check it |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_FIRST_NAME`, `ADMIN_LAST_NAME`, `ADMIN_DOCUMENT`, `ADMIN_PHONE` | First administrator, see below; the email must belong to an allowed domain |
 | `MESSAGING_ENABLED`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` | Events between services (must be `true` in production; not `guest`) |
@@ -125,15 +125,17 @@ should be restricted to the package `com.vehiclecarwash.app` in the Google Cloud
 
 ## Updating the server
 
-**Today (2026-10-24) the server runs `develop`** (updated at 04:35, before the 128 fleet branches,
-which are **not deployed yet**) and is updated by hand, by a member with SSH access:
+**Since 2026-10-26 the server runs `main` and is updated by the continuous deployment**: every merge to
+`main` with green CI asks `deploy.yml` of `lavarapido-infra` to run `update-server.sh` on the server, for
+every repository, payment included (`DEVELOP_ONLY` is empty). The automatic deploys of the night of
+2026-10-26 and of 2026-10-27 succeeded and the web and the API answered 200 afterwards. A member with
+SSH access can still run it by hand as a fallback:
 
 ```bash
-BRANCH=develop bash ~/lavarapido/lavarapido-infra/deploy/update-server.sh      # everything
-BRANCH=develop bash ~/lavarapido/lavarapido-infra/deploy/update-server.sh web  # only the web
+bash ~/lavarapido/lavarapido-infra/deploy/update-server.sh      # everything, from main
+bash ~/lavarapido/lavarapido-infra/deploy/update-server.sh web  # only the web
 ```
 
-`BRANCH=develop` is required until `v1.1.0` is on `main`: the merged scripts default to `main`, and
 `setup-server.sh` refuses to move a repository to a branch that does not contain what is deployed
 (it stops with an error instead of downgrading; `ALLOW_DOWNGRADE=1` forces it).
 
@@ -150,22 +152,15 @@ BRANCH=develop bash ~/lavarapido/lavarapido-infra/deploy/update-server.sh web  #
 7. on a full update, writes `backups/deployed-heads`; removes `update-pending`;
 8. prunes dangling images and build cache older than 7 days.
 
-**The first update after the merge** still runs the old scripts, which do not restart Caddy: the new
-web listens on 8080 and the new Caddyfile says `web:8080`, so the web answers 502 until Caddy is
-restarted (`… --profile app restart caddy`) or the update is run a second time.
+The first update after the merge (old scripts, web at 502 until Caddy restarted) is already behind:
+the server has the scripts that restart Caddy when its Caddyfile changes.
 
 If an update leaves something broken: `deploy/rollback.sh [services]` (images) and, if a migration
 broke the data, `restore-db.sh` with the `pre-update` backup (`13-operations/README.md`).
 
-The **Desplegar en Azure** button of `lavarapido-infra` (`ci-cd.md`) does the same from GitHub, but
-on 2026-10-24 it had never run: the `AZURE_SSH_KEY` secret does not exist yet. The last update
-documented with evidence is 2026-10-24 at 04:35 (`auditoria-lavarapido-2026-10-24.md`).
-
-**Next: continuous deployment from `main`.** Merged into `develop` of the 10 repositories on
-2026-10-24, not run yet: every merge to `main` with green CI asks `deploy.yml` to update the server;
-the server switches to `main` (payment stays on `develop` until its first release), and, if the VM
-was off, catches up on the next boot (`boot-update.sh` compares `repo-heads.sh` with
-`backups/deployed-heads`). Flow, secrets and first-run steps: `ci-cd.md`.
+The **Desplegar en Azure** button of `lavarapido-infra` (`ci-cd.md`) runs the same update by hand
+from GitHub. If the VM was off during a merge, it catches up on the next boot (`boot-update.sh` compares
+`repo-heads.sh` with `backups/deployed-heads`). Flow and secrets: `ci-cd.md`.
 
 ### Access with a personal key
 
@@ -197,8 +192,8 @@ together with the `AZURE_SSH_KEY` secret (`ci-cd.md`). Deleting a line revokes t
 The VM runs on an *Azure for Students* subscription, so the project lead turns it on for reviews,
 demos and tests and off the rest of the time to save credit. While it is off the host still resolves
 (64.236.160.129) but ports 80 and 443 do not answer and the installed app cannot reach the API; starting
-the VM brings everything back with the data intact (`restart: unless-stopped`). After merging to
-`develop`, run `BRANCH=develop update-server.sh` so the server gets the new images.
+the VM brings everything back with the data intact (`restart: unless-stopped`) and `boot-update.sh`
+deploys whatever reached `main` while it was off.
 
 ---
 
@@ -224,11 +219,10 @@ checks: `13-operations/README.md`.
 ## Still missing for a sturdier deployment
 
 1. A database user of its own instead of `sa` (accepted risk for this version, `15-project-control/risks.md`).
-2. Creating the secrets and running the continuous deployment for the first time (`ci-cd.md`).
-3. Building the images in CI and pushing them to a registry, so the server stops compiling (CI already tests every repository, `ci-cd.md`).
-4. Uptime monitoring of `PUBLIC_URL` so an outage like the one above is noticed at once.
-5. A copy of the backups outside the VM (image pruning and backup retention exist since 2026-10-24).
-6. `rollback.sh` that detects a contract change against `:prev`, and the lock in `update-server.sh` run by hand (`15-project-control/risks.md`).
+2. Building the images in CI and pushing them to a registry, so the server stops compiling (CI already tests every repository, `ci-cd.md`).
+3. Uptime monitoring of `PUBLIC_URL` so an outage like the one above is noticed at once (H-15).
+4. A copy of the backups outside the VM (image pruning and backup retention exist since 2026-10-24).
+5. `rollback.sh` that detects a contract change against `:prev`, and the lock in `update-server.sh` run by hand (`15-project-control/risks.md`).
 
 ---
 
