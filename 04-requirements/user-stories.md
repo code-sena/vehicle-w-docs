@@ -19,8 +19,9 @@
 | EP-007 User experience & preferences | 3 | Should / Could Have |
 | **Total** | **20** | |
  
-> Status reviewed against the code on 2026-10-20: 19 stories done and HU-ADMIN-001 in progress
-> (RF-023). RF-027 to RF-038 were built without a story (`functional.md`).
+> Status reviewed against the code on 2026-10-27: 18 stories done, HU-ADMIN-001 in progress
+> (RF-023) and HU-PAY-002 partial (RF-015: the web has no payment history screen). RF-027 to RF-038
+> were built without a story (`functional.md`).
 
 > Project-level planning lives in `plan de actividades/scrum1.1.xlsx`.
 > The 21 HUs in that file describe project activities; the stories below
@@ -208,6 +209,23 @@ Scenario 2: Slot already taken
   Given I select a date and time that is already fully booked
   When  I submit the request
   Then  the system shows alternative available times instead of confirming
+  And   it does not offer times when my vehicle already has another booking
+
+Scenario 3: Payment mode is required
+  Given I select a date, time and wash type
+  When  I submit the request without choosing digital or cash payment
+  Then  the booking is refused with INVALID_PAYMENT_MODE
+
+Scenario 4: Only one active cash booking
+  Given I already have an active booking to be paid in cash
+  When  I request another booking paid in cash
+  Then  the booking is refused with CASH_BOOKING_LIMIT
+  And   I can still book it with digital payment
+
+Scenario 5: Digital payment not reported in time
+  Given I booked with digital payment
+  When  30 minutes pass (or the booking start, if sooner) without my payment being reported
+  Then  the system cancels the booking with the reason PAYMENT_TIMEOUT and frees the time slot
 ```
  
 | Field | Value |
@@ -483,7 +501,7 @@ Scenario 2: No payments yet
 |-------|-------|
 | Story Points | 2 |
 | Priority | Should Have |
-| Status | Done |
+| Status | Partial — the API lists the payments by date and service, but the web has no payment history screen (`/client/history` is the booking history) and no client screen uses the filters (RF-015) |
 | Affected service(s) | `payment-service` |
 | Covers | RF-015 |
  

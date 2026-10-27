@@ -15,16 +15,17 @@
 | [`traceability-matrix.md`](./traceability-matrix.md) ⭐ | RF → story → test → service → status, and every known gap |
 | `_template-hu.md` | Template for a new story |
 
-## Status at 2026-10-24 (from the traceability matrix, checked against the code)
+## Status at 2026-10-27 (from the traceability matrix, checked against the code)
 
-38 of the 41 functional requirements are done and 3 are partial (RF-005, RF-015, RF-023); none is
-missing. Eight went from partial to done with the fixes merged into `develop` on 2026-10-24 (RF-001,
-RF-009, RF-016, RF-018, RF-025, RF-027, RF-028, RF-030); each row names the finding and its merge
-commit, and they still need the live check after the next deployment. RF-027 to RF-038 still have no
-user story. Of the 12 non-functional requirements, 3 are met (RNF-001, RNF-011, RNF-012) and 9 are
-partial; RNF-003 and RNF-004 improved a lot on 2026-10-24 but stay partial (no tests against SQL
-Server; accepted risks of ADR-020). The requirements specification of `lavarapido-docs` (v7.8 of 2026-10-21) still
-counts 40 RF as implemented.
+38 of the 41 functional requirements are done and 3 are partial (RF-005: the web sends one service per
+booking; RF-015: the web has no payment history screen; RF-023: reports built in the browser); none
+is missing. Everything is released on `main` of the 10 repositories and deployed on the Azure server
+by the continuous deployment (ADR-017). Since 2026-10-26 the customer chooses the payment mode when
+booking, with a cash limit and a 30-minute deadline for digital payments (RF-005, RF-013, ADR-021).
+RF-027 to RF-038 still have no user story. Of the 12 non-functional requirements, 3 are met (RNF-001,
+RNF-011, RNF-012) and 9 are partial; RNF-003 now has 17 integration tests against SQL Server in the CI
+of payment, but not in the other services, and RNF-004 keeps the accepted risks of ADR-020. The requirements
+specification of `lavarapido-docs` (v7.8 of 2026-10-21) still counts 40 RF as implemented.
 
 ## Rules
 
