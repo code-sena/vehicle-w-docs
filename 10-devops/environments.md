@@ -11,7 +11,7 @@
 |-------------|--------|-------------|------|
 | **local (dev profile)** | 🟢 In use | Infra in Docker (`docker compose up -d`, includes `payment-migrate`), each Java service with `./mvnw spring-boot:run`, payment with `dotnet run`, web with `ng serve` (+ `proxy.conf.json` → gateway) | Liquibase seeds + demo accounts |
 | **local Docker (app profile)** | 🟢 Available | `docker compose --profile app up -d --build`: every service (payment included) and the API gateway in containers | Same database |
-| **production** | 🟢 In use, turned on on demand | `docker-compose.yml` + `docker-compose.prod.yml` on an Azure VM: Caddy on 80/443, web in nginx, SQL Server Express (see `production.md`). Follows `develop`, updated by hand; continuous deployment from `main` is prepared but not pushed (`ci-cd.md`) | Empty database plus the first administrator from `ADMIN_*`; daily and on-boot backups |
+| **production** | 🟢 In use, turned on on demand | `docker-compose.yml` + `docker-compose.prod.yml` on an Azure VM: Caddy on 80/443, web in nginx, SQL Server Express (see `production.md`). Runs `main`, updated by the continuous deployment on every merge to `main` since 2026-10-26, payment included (`ci-cd.md`) | Empty database plus the first administrator from `ADMIN_*`; daily and on-boot backups |
 | **staging** | 🔴 Not set up | — | — |
 | **CI** | 🟢 GitHub Actions | `ci.yml` in every repository on each push/PR to `develop` and `main` (`ci-cd.md`) | — |
 
@@ -75,10 +75,14 @@ passed by the compose files: the services use their defaults, which fit the serv
 
 ## What production still needs
 
-1. Creating the secrets (`AZURE_SSH_KEY`, `DEPLOY_DISPATCH_TOKEN`, `EXPO_TOKEN`, `E2E_*`) and running the continuous deployment for the first time; it is merged since 2026-10-24 (`ci-cd.md`).
-2. Building the Docker images in CI and pushing them to a registry (the CI pipelines already build and test each repository, `ci-cd.md`).
-3. Uptime monitoring of `PUBLIC_URL`.
+1. Uptime monitoring of `PUBLIC_URL` (H-15).
+2. Restricting the Firebase API key of the mobile `google-services.json` to the package
+   `com.vehiclecarwash.app` in the Google Cloud console (H-09).
+3. Building the Docker images in CI and pushing them to a registry (the CI pipelines already build and test each repository, `ci-cd.md`).
 4. A copy of the backups outside the VM (scheduled backups already exist, `production.md`).
+
+The continuous deployment and its secrets (`AZURE_SSH_KEY`, `DEPLOY_DISPATCH_TOKEN`, `EXPO_TOKEN`) are
+in use since 2026-10-26; only the `E2E_*` secrets of `e2e.yml` are still missing (`ci-cd.md`).
 
 Accepted for this version and not planned (`15-project-control/risks.md`): the shared `sa`
 database user and the absence of an Outbox for events (ADR-004).
