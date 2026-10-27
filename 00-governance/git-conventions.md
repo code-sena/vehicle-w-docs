@@ -101,10 +101,11 @@ chore(deps): upgrade Spring Boot to 3.2.0
 
 Follow [SemVer](https://semver.org/): `MAJOR.MINOR.PATCH`
 
-State on 2026-10-23: `v1.0.0` is tagged on `main` in 8 code repositories (api-gateway, security,
-customer, booking, operations, notification, infra and web), released through a reviewed pull request
-`develop` → `main`. payment-service and the mobile app are still without it. The fixes merged into
-`develop` after the release go out as `v1.1.0`.
+State on 2026-10-27: the 10 code repositories have their release on `main`, each one through a
+reviewed pull request `develop` → `main`: api-gateway `v1.1.0`, security `v1.1.0`, customer `v1.1.1`,
+booking `v1.1.1`, operations `v1.1.0`, notification `v1.1.0`, payment `v1.1.2`, infra `v1.1.2`, web
+`v1.1.2` and the mobile app `v1.1.1`. `main` is protected in all 10 (pull request, one approval from
+another member, green CI); Brayan approved the releases of 2026-10-27.
 
 ```bash
 # When releasing to production
