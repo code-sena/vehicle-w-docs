@@ -6,7 +6,7 @@ because it has every kind of adapter. ADR-002, ADR-009.
 
 ```mermaid
 flowchart LR
-    subgraph IN["Adapters in (web)"]
+    subgraph IN["Adapters in (web, messaging, scheduling)"]
         BC[BookingController<br/>/api/v1/bookings]
         ABC[AdminBookingController<br/>/api/v1/admin/bookings]
         OBC[OperatorBookingController<br/>/api/v1/operator/bookings<br/>JWT + X-Internal-Key]
@@ -14,7 +14,7 @@ flowchart LR
         CC[CatalogController]
         SC[ScheduleController]
         EH[ApiExceptionHandler<br/>code + HTTP status]
-        PEL[PaymentEventsListener<br/>queue booking.payment-events]
+        PEL[PaymentEventsListener<br/>payment.reported, payment.confirmed]
         PDJ[PaymentDeadlineJob<br/>every 60 s]
     end
 
@@ -62,6 +62,7 @@ flowchart LR
     customer[customer-service]
     payment[payment-service]
     mq[[RabbitMQ carwash.events]]
+    mqin[[RabbitMQ<br/>queue booking.payment-events]]
 
     BC & ABC & OBC & IBC & PEL & PDJ --> BU
     CC --> CU
@@ -81,7 +82,7 @@ flowchart LR
     BPA & BAPA & CPA & SPA --> db
     CSD --> customer
     RP --> mq
-    mq --> PEL
+    mqin --> PEL
     PSA --> payment
 ```
 
