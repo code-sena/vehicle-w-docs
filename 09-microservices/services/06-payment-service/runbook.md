@@ -30,8 +30,10 @@ curl http://localhost:3005/health               # {"status":"ok"}
 
 ## Tests
 
-`dotnet test PaymentService.sln`: 225 tests (134 domain + 52 application + 34 API + 5 infrastructure)
-in the CI run of 2026-10-24; the 11 integration tests skip themselves without SQL Server.
+`dotnet test PaymentService.sln`: 264 tests (142 domain + 61 application + 44 API + 17 integration)
+in CI on `main` on 2026-10-27 (`v1.1.2`). Since 2026-10-27 the 17 integration tests run in CI in the job
+"Pruebas de integración", against SQL Server 2022 as a service container with the Liquibase migrations
+applied (0 skipped); on a machine without a database 12 of them skip themselves.
 
 ## Useful queries
 
