@@ -1,6 +1,6 @@
 # Deployment
 
-**Last updated:** 2026-10-23
+**Last updated:** 2026-10-27
 
 The project runs on the team's machines (local development and integration testing) and on one
 Azure virtual machine (production, used for the demos). There is no staging environment.
@@ -11,7 +11,7 @@ Azure virtual machine (production, used for the demos). There is no staging envi
 |---|---|---|
 | Local | In use | Development, integration testing and demos with Docker Compose |
 | Staging | Out of scope | Not built in this academic version |
-| Production | In use | Azure VM with `docker-compose.yml` + `docker-compose.prod.yml` behind Caddy (HTTPS), running `develop`; diagram `08-uml/diagrams/source/deployment-production.md`, details `10-devops/production.md`, decision ADR-016 |
+| Production | In use | Azure VM with `docker-compose.yml` + `docker-compose.prod.yml` behind Caddy (HTTPS), running `main`, updated by the continuous deployment on every merge (ADR-017); diagram `08-uml/diagrams/source/deployment-production.md`, details `10-devops/production.md`, decision ADR-016 |
 
 ## 2. Runtime components
 
@@ -59,7 +59,8 @@ security customer  booking  operations  payment  notification
  (3001)  (3002)    (3003)    (3004)     (3005)     (3006)
 REST: customer → security · booking → customer · operations → booking, security
       payment → booking · notification → security (X-Internal-Key)
-Events: security, booking, operations, payment ──publish──► RabbitMQ ──► customer, operations, notification
+      booking → payment · customer → booking (X-Internal-Key)
+Events: security, booking, operations, payment ──publish──► RabbitMQ ──► customer, booking, operations, notification
    all ──► SQL Server (1433) · database LavaRapido · one schema owner per service
 security (recovery code), notification (emails) ──► SMTP (Gmail or Mailpit)
 notification ──► Expo Push API
@@ -109,11 +110,12 @@ before a demo → `13-operations/README.md`.
 
 ## 9. CI/CD boundary
 
-CI runs on GitHub Actions in every repository. The Azure server is updated by hand from `develop`
-(`BRANCH=develop update-server.sh`, or the manual `deploy.yml` workflow once its secret exists).
-Continuous deployment from `main` (with `:prev` images, `rollback.sh` and the guard that never
-downgrades a repository) is merged into `develop` of the 10 repositories since 2026-10-24 but has not
-run yet (ADR-017); details in `10-devops/ci-cd.md`.
+CI runs on GitHub Actions in every repository. The Azure server runs `main`: since 2026-10-26 a merge
+to `main` in any of the 10 repositories asks the `deploy.yml` workflow of `lavarapido-infra` to deploy
+it (continuous deployment, with `:prev` images, `rollback.sh` and the guard that never downgrades a
+repository; payment deploys from `main` like the others). The automatic deploys of 2026-10-26 and
+2026-10-27 succeeded (ADR-017); `update-server.sh` by hand stays as the fallback. Details in
+`10-devops/ci-cd.md`.
 
 ## References
 
