@@ -6,8 +6,9 @@
 > here was checked against the code on 2026-10-19 (the ER diagrams were generated from the production
 > database that day); the containers, booking components, operations/booking/notification classes,
 > production deployment, assignment sequence and booking states were checked again against
-> `origin/develop` on 2026-10-23 (their PNGs are pending re-export, see `README.md`). Update the
-> source and its image in the same PR that changes the behavior.
+> `origin/develop` on 2026-10-23, and the booking and payment flows (payment mode, cash limit, payment
+> deadline, `payment.reported`) against `main` on 2026-10-27, when every outdated PNG was exported
+> again (`README.md`). Update the source and its image in the same PR that changes the behavior.
 
 ---
 
@@ -45,7 +46,7 @@
 | ID | Name | Source | Covers |
 |----|------|--------|--------|
 | SEQ-01 | Sign-up and welcome | [`source/seq-registration.md`](./diagrams/source/seq-registration.md) | RF-001, RF-018 |
-| SEQ-02 | Book a wash (and why a time is not available) | [`source/seq-booking.md`](./diagrams/source/seq-booking.md) | RF-005, RF-006, RF-010 |
+| SEQ-02 | Book a wash (and why a time is not available), payment mode and payment deadline | [`source/seq-booking.md`](./diagrams/source/seq-booking.md) | RF-005, RF-006, RF-010, ADR-021 |
 | SEQ-03 | Booking reminder | [`source/seq-reminder.md`](./diagrams/source/seq-reminder.md) | ADR-011 §7 |
 | SEQ-04 | Operator assignment, execution and rating | [`source/seq-assignment-execution.md`](./diagrams/source/seq-assignment-execution.md) | RF-009, RF-011, RF-012, RF-012b, ADR-014 |
 | SEQ-05 | Payment by receipt, review, manual payment and refund | [`source/seq-payment.md`](./diagrams/source/seq-payment.md) | RF-013, RF-013b, RF-014, RF-016, ADR-008 |
@@ -77,7 +78,7 @@
 ### Data (entity-relationship)
 
 Generated from the `LavaRapido` database (`sys.tables`, `sys.columns`, `sys.foreign_keys`) with every
-migration applied (up to 039 when they were generated): 57 tables in 9 schemas. On 2026-10-24 the model has 58 tables and 1 view (migrations up to 047, seeds up to 116, payment up to 023; the new table is `notification.pending_delivery`); see `06-data/models.md`. Each file also lists the references to other
+migration applied (up to 039 when they were generated): 57 tables in 9 schemas. On 2026-10-27 the model has 58 tables and 1 view (migrations up to 049, seeds up to 117, payment up to 023; the new table is `notification.pending_delivery`); see `06-data/models.md`. Each file also lists the references to other
 services, which have no foreign key (ADR-003). The full dictionary stays in `06-data/models.md`.
 
 | ID | Schemas | Source | Tables |
@@ -87,7 +88,7 @@ services, which have no foreign key (ADR-003). The full dictionary stays in `06-
 | ER-03 | catalog, booking | [`source/erd-booking.md`](./diagrams/source/erd-booking.md) | 13 |
 | ER-04 | execution | [`source/erd-operations.md`](./diagrams/source/erd-operations.md) | 11 |
 | ER-05 | promotion, payment | [`source/erd-payment.md`](./diagrams/source/erd-payment.md) | 12 |
-| ER-06 | notification | [`source/erd-notification.md`](./diagrams/source/erd-notification.md) | 6 |
+| ER-06 | notification | [`source/erd-notification.md`](./diagrams/source/erd-notification.md) | 7 |
 
 ---
 

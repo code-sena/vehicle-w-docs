@@ -50,14 +50,14 @@ always the `.md` file; the images in `diagrams/exports/` are a copy for Word, PD
   its declarations (same content) and keeps the first one with no crossings.
 - The 41 images were exported on 2026-10-20 with Mermaid 11.17.2 and ELK and checked one by one: no
   syntax errors, no curved lines, no crossings and no overlaps.
-- **Pending re-export (2026-10-23):** these sources were updated to the code of `origin/develop` and
-  their PNGs still show the previous version: `c2-containers` (events, session check, E-01),
-  `c3-booking-components`, `class-booking`, `class-operations`, `class-notification`,
-  `deployment-production` (backups), `seq-assignment-execution` (internal key, new codes) and
-  `state-booking`. On 2026-10-24 `c2-containers` (new queue, `execution.operator_unassigned`),
-  `seq-auto-assignment` (DLQ, E-12), `deployment-production` (web on 8080, rollback) and
-  `state-booking` (expiry job removed) changed again. Run the exporter above before copying them to
-  Word, PDF or slides; the Markdown sources are the up-to-date version.
+- **Re-export of 2026-10-27:** the PNGs whose source was newer than the image were exported again and
+  checked one by one (`activity-booking`, `c2-containers` 1 to 3, `c3-booking-components`, `class-booking`,
+  `class-notification`, `class-operations`, `class-payment`, `deployment-production`, the six `erd-*`,
+  `seq-assignment-execution`, `seq-auto-assignment`, `seq-booking`, `seq-payment`, `state-booking`): 41
+  diagrams, 0 errors, 0 crossings, 0 overlaps. **Pending re-export:** none. Since that day `untangle.js`
+  also moves `class X {` blocks as one unit (before it only understood ER entities), which is how
+  `class-payment` lost its crossing; in `class-booking` the arrow `PaymentPolicy ..> PaymentMode` was left
+  out and is described under the figure.
 
 ---
 
