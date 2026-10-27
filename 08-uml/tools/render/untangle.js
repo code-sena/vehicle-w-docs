@@ -10,8 +10,8 @@ function split(code) {
   while (i < L.length && /^\s*(direction |%%)/.test(L[i])) head.push(L[i++]);
   while (i < L.length) {
     const l = L[i];
-    if (/^\s*[\w~]+\s*\{/.test(l) && !/\}\s*$/.test(l)) { const u = [l]; i++; while (i < L.length && !/\}\s*$/.test(L[i])) u.push(L[i++]); u.push(L[i++]); units.push(u.join('\n')); }
-    else if (/^\s*[\w~]+\s*\{.*\}\s*$/.test(l)) { units.push(l); i++; }
+    if (/^\s*(class\s+)?[\w~]+\s*\{/.test(l) && !/\}\s*$/.test(l)) { const u = [l]; i++; while (i < L.length && !/\}\s*$/.test(L[i])) u.push(L[i++]); u.push(L[i++]); units.push(u.join('\n')); }
+    else if (/^\s*(class\s+)?[\w~]+\s*\{.*\}\s*$/.test(l)) { units.push(l); i++; }
     else if (/(--|\.\.|\|\||\}\||\|\{|o\{|\}o)/.test(l)) { rels.push(l); i++; }
     else if (l.trim()) { units.push(l); i++; } else i++;
   }
