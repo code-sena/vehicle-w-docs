@@ -17,18 +17,18 @@
 | Know what is done and what is missing | [`04-requirements/traceability-matrix.md`](./04-requirements/traceability-matrix.md), [`15-project-control/`](./15-project-control/README.md) |
 | Join the team | [`14-training/technical-onboarding.md`](./14-training/technical-onboarding.md) |
 
-## Status (2026-10-24)
+## Status (2026-10-27)
 
 | Component | State |
 |---|---|
-| Releases | `v1.0.0` in 8 repositories (api-gateway, security, customer, booking, operations, notification, infra, web); payment-service and the mobile app pending. `develop` is ahead with the fixes of 2026-10-22 to 2026-10-24 (128 branches merged on 2026-10-24), waiting for `v1.1.0` |
-| api-gateway (8080) and the six services: security (3001), customer (3002), booking (3003), operations (3004), payment (3005, .NET 8), notification (3006) | Built and tested (907 backend tests green in CI on 2026-10-24); running with Docker Compose locally and on the Azure server behind Caddy (HTTPS), which still follows `develop`, is updated by hand and does not have the fleet round of 2026-10-24 yet |
-| Web (Angular 21, zoneless, feature-based MVVM — ADR-019) | The three roles, connected to the six services through the gateway; data refreshed without reloading (WEB-16); 212 tests |
-| Android app (Expo SDK 57, version 1.1.0) | The three roles; the APK is served at `/app/` on the public server and updates arrive by EAS Update (ADR-018; automatic OTA with `cd.yml` merged, not run yet); 73 tests |
-| Database | SQL Server 2022: 58 tables and 1 view in 9 schemas, 162 changesets; last structure migration 047, last seed 116 (payment keeps its own numbering, 023) |
+| Releases | On `main` of the 10 code repositories: api-gateway `v1.1.0`, security `v1.1.0`, customer `v1.1.1`, booking `v1.1.1`, operations `v1.1.0`, notification `v1.1.0`, payment `v1.1.2`, infra `v1.1.2`, web `v1.1.2` and the mobile app `v1.1.1`. `main` is protected in all 10 (pull request, one approval, green CI) |
+| api-gateway (8080) and the six services: security (3001), customer (3002), booking (3003), operations (3004), payment (3005, .NET 8), notification (3006) | Built and tested (989 backend tests green in CI on `main` on 2026-10-27); running with Docker Compose locally and on the Azure server behind Caddy (HTTPS), which runs `main` and is updated by the continuous deployment on every merge |
+| Web (Angular 21, zoneless, feature-based MVVM — ADR-019) | The three roles, connected to the six services through the gateway; data refreshed without reloading (WEB-16); 242 tests |
+| Android app (Expo SDK 57, version 1.1.1) | The three roles; the APK is served at `/app/` on the public server and updates arrive by EAS Update, published by `cd.yml` on every merge to `main` (ADR-018); 106 tests |
+| Database | SQL Server 2022: 58 tables and 1 view in 9 schemas, 166 changesets; last structure migration 049, last seed 117 (payment keeps its own numbering, 023) |
 | Requirements | 38 of 41 functional requirements done and 3 partial; 3 of 12 non-functional met (`04-requirements/traceability-matrix.md`) |
-| CI/CD | GitHub Actions in the 10 code repositories (1,192 tests green on `develop`); continuous deployment from `main` merged in the 10 repositories on 2026-10-24 but never run: the secrets do not exist yet (ADR-017) |
-| Open findings | Severity and owner in `15-project-control/risks.md` (highest: E-10 in the web and the first run of the continuous deployment; SEC-01, BIZ-01, BIZ-02 and OPS-01 closed on 2026-10-24) |
+| CI/CD | GitHub Actions in the 10 code repositories (1,337 tests green on `main` on 2026-10-27); continuous deployment active: a merge to `main` deploys to Azure through the infra workflow, payment included (ADR-017; automatic deploys on 2026-10-26 and 2026-10-27) |
+| Open findings | Severity and owner in `15-project-control/risks.md` (highest: E-10 in the web; the first run of the continuous deployment is closed; still open: Firebase key restriction H-09, uptime monitor H-15, sample legal contact data, OpenAPI export H-23) |
 
 Stack: Java 21 · Spring Boot 4 · Spring Cloud Gateway · .NET 8 (payment) · SQL Server 2022 ·
 Liquibase · RabbitMQ · Angular 21 · React Native (Expo) · Docker.
@@ -166,7 +166,7 @@ Choose the guide that matches your project's primary language:
 | Architecture (05) | ADRs (05/decisions), each affected microservice (09) |
 | A data model (06) | Owner service API contract (07, 09), ER diagrams (08) |
 | An API contract (07) | Owner microservice (09), contract consumers (09) |
-| A microservice (09) | dependency-map (09), event-catalog (09), data-ownership-matrix (09) |
+| A microservice (09) | Its `events.md` and `data-model.md` (`09-microservices/services/*/`), [`09-microservices/service-catalog.md`](./09-microservices/service-catalog.md), messaging in [`05-architecture/cross-cutting.md`](./05-architecture/cross-cutting.md) |
 | CI/CD pipeline (10) | Release checklist (10), environments (10) |
 
 ---
