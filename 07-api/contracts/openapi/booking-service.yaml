@@ -1,11 +1,11 @@
-# Contract of booking-service, rebuilt on 2026-10-24 (payment at booking added on 2026-10-26) from the code on origin/develop (see 07-api/README.md).
+# Contract of booking-service, rebuilt on 2026-10-24 (payment at booking added on 2026-10-26, input validation, alternatives per vehicle and bookedBy on 2026-10-27) from the code (see 07-api/README.md).
 # Regenerate it from the code instead of editing by hand, so it never drifts.
 openapi: 3.0.3
 info:
   title: LavaRápido booking-service API
   version: v1
   description: |-
-    Contract of booking-service, rebuilt from the controllers of `lavarapido-booking-service` on `origin/develop` (`db156cb`, 2026-10-26) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
+    Contract of booking-service, rebuilt from the controllers of `lavarapido-booking-service` on `origin/develop` (`db156cb`, 2026-10-26; the changes of 2026-10-27 checked on `main`, `506feca`) and checked against them (`07-api/README.md`, "How the contracts are checked"). Paths, methods, parameters, bodies, success codes and roles are the ones in the code; the error codes of each operation were traced from the controller method through the use cases, domain and adapters it calls.
 
     **Security.** Operations without `security` use the bearer JWT (`bearerAuth`). `security: []` = public. `x-roles` = roles the service accepts on that path (from its `SecurityConfig`); `x-access` = `public`, `authenticated` (any role), `roles`, `internal` (only `X-Internal-Key`, not published by the gateway) or `roles + internal key`. Ownership checks (a client only sees its own data) answer 404, not 403.
 
@@ -48,7 +48,7 @@ info:
     | `PRICES_REQUIRED` | 400 | `InvalidValueException` — `POST /api/v1/admin/catalog/services`, `PUT /api/v1/admin/catalog/services/{id}` |
     | `SERVICES_REQUIRED` | 400 | `InvalidValueException` — 5 operations (see `x-codes` of each response) |
     | `TIME_REQUIRED` | 400 | `InvalidValueException` — 4 operations (see `x-codes` of each response) |
-    | `VALIDATION_ERROR` | 400 | Bean Validation failed on the body (`errors`: field → message) or, where the service maps it, a path/query parameter has the wrong type |
+    | `VALIDATION_ERROR` | 400 | Bean Validation failed on the body (`errors`: field → message), including the items of a list (`serviceIds`, the business-hours week: `ConstraintViolationException`, 2026-10-27), or, where the service maps it, a path/query parameter has the wrong type |
     | `VEHICLE_REQUIRED` | 400 | `InvalidValueException` — `POST /api/v1/admin/bookings`, `POST /api/v1/bookings` |
     | `UNAUTHORIZED` | 401 | No `Authorization: Bearer` token, invalid or expired token, closed session (the gateway checks it), or missing/wrong `X-Internal-Key` on `/internal/**` |
     | `FORBIDDEN` | 403 | The token is valid but its role is not allowed on this path. Also `ForbiddenException` — 13 operations (see `x-codes` of each response) |
@@ -1224,7 +1224,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/BusinessHourDto"
         "400":
-          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_BREAK`, `INVALID_DATE`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_REASON`, `INVALID_TOKEN`, `INVALID_WEEK`."
+          description: "Bad Request. `code`: `BAD_REQUEST`, `INVALID_BREAK`, `INVALID_DATE`, `INVALID_DAY`, `INVALID_HOURS`, `INVALID_REASON`, `INVALID_TOKEN`, `INVALID_WEEK`, `VALIDATION_ERROR` (an invalid day of the week, `ConstraintViolationException`, since 2026-10-27; before it answered 500)."
           x-codes:
             - BAD_REQUEST
             - INVALID_BREAK
@@ -1234,6 +1234,7 @@ paths:
             - INVALID_REASON
             - INVALID_TOKEN
             - INVALID_WEEK
+            - VALIDATION_ERROR
           content:
             application/problem+json:
               schema:
@@ -1521,6 +1522,8 @@ paths:
         Payment at booking (2026-10-26, ADR-021): `paymentMode` is required (`DIGITAL` or `CASH`; missing or unknown → 400 `INVALID_PAYMENT_MODE`). `CASH`: at most `BOOKING_CASH_ACTIVE_LIMIT` (1) active cash bookings (`SCHEDULED`, `CONFIRMED`, `IN_PROGRESS`) made by the client, otherwise 409 `CASH_BOOKING_LIMIT`. `DIGITAL`: the response carries `paymentDeadline` = min(creation + `BOOKING_PAYMENT_WINDOW` (30 min), start); without a reported payment by then the booking is cancelled with `PAYMENT_TIMEOUT`.
 
         Javadoc: 201 con la reserva ya confirmada y su bahia. Si la hora esta ocupada: 409 SLOT_UNAVAILABLE con hasta 5 horas alternativas del mismo dia (no se guarda nada).
+
+        Since 2026-10-27 the alternatives of 409 `SLOT_UNAVAILABLE` skip the times when the same vehicle already has another booking (`AvailabilityPolicy.withoutBusyTimes`).
       x-access: roles
       x-roles:
         - CLIENT
@@ -2796,6 +2799,8 @@ components:
         bookedBy:
           type: integer
           format: int64
+          nullable: true
+          description: User id of who made the booking (client or administrator). Only in the staff views (admin and operator routes); `null` for the client and on the internal routes (2026-10-27).
         services:
           type: array
           items:
@@ -2972,7 +2977,12 @@ components:
           items:
             type: integer
             format: int32
+            minimum: 0
+            exclusiveMinimum: true
+            nullable: false
           minItems: 1
+          maxItems: 10
+          description: One to ten services; a missing list, a `null` item or more than 10 → 400 `VALIDATION_ERROR` (2026-10-27).
         date:
           type: string
           format: date
@@ -3187,6 +3197,11 @@ components:
           items:
             type: integer
             format: int32
+            minimum: 0
+            exclusiveMinimum: true
+            nullable: false
+          maxItems: 10
+          description: Up to ten services; a `null` item or more than 10 → 400 `VALIDATION_ERROR` (2026-10-27).
         date:
           type: string
           format: date
