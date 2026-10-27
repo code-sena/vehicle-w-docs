@@ -42,8 +42,8 @@ installed APK does not have crashes the app.
   server); `appVersionSource: remote`. Since MOV-08 the `production` profile has the same HTTPS URL
   and channel, and `config.ts` refuses an `http` or local URL outside `__DEV__`.
 - **Automatic OTA (`.github/workflows/cd.yml`, merged on 2026-10-24, in use on `main`):** its first run, for
-  `v1.1.0` on 2026-10-26, failed because `EXPO_TOKEN` did not exist yet; the release `v1.1.1` published
-  its OTA update through it. It runs on a
+  `v1.1.0` on 2026-10-26, failed because `EXPO_TOKEN` did not exist yet; the releases `v1.1.1` and `v1.1.2`
+  published their OTA updates through it. It runs on a
   push to `main` (not for `.md`/`docs/` only) or by hand, and publishes only from `main`. Job `check`
   repeats `tsc` and jest. Job `publish` needs the `EXPO_TOKEN` secret (fails clearly without it), reads
   the channel and URL from `eas.json` (`build.preview`, URL must be https), resolves the fingerprint

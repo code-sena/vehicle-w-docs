@@ -82,7 +82,7 @@ request the gate for production; the boot catch-up covers the VM being off most 
 - The automatic deploys of the night of 2026-10-26 and of 2026-10-27 succeeded, and the web and the
   API answered 200 afterwards. The risks of the first run (missing secrets, server on `develop`, 502
   until Caddy restarts) are closed.
-- The mobile `cd.yml` published the OTA update of `v1.1.1`; its first run, for `v1.1.0` on 2026-10-26,
+- The mobile `cd.yml` published the OTA updates of `v1.1.1` and `v1.1.2` (2026-10-27); its first run, for `v1.1.0` on 2026-10-26,
   failed because `EXPO_TOKEN` did not exist yet.
 
 ---
