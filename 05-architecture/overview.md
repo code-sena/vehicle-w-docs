@@ -1,6 +1,6 @@
 # System Architecture Overview
 
-**Last updated:** 2026-10-20 (checked against the code)
+**Last updated:** 2026-10-27 (checked against the code on `main`)
 
 ## 1. Architectural style
 
@@ -19,14 +19,14 @@ The current decomposition is:
 
 The API Gateway is the single external entry point. It is infrastructure and is not counted as a seventh domain service.
 
-### Implementation status (2026-10-20)
+### Implementation status (2026-10-27)
 
 | Component | Port | State |
 |---|---|---|
 | `api-gateway` | 8080 | Built: routes the six services, CORS; JWT checked by each service |
 | `security-service` | 3001 | Built |
 | `customer-service` | 3002 | Built |
-| `booking-service` | 3003 | Built (catalog, schedule, bays, availability, bookings) |
+| `booking-service` | 3003 | Built (catalog, schedule, bays, availability, bookings, payment mode with cash limit and digital payment deadline — ADR-021) |
 | `operations-service` | 3004 | Built (operators, shifts, absences, automatic and manual assignment, execution, ratings, inspection report) |
 | `payment-service` | 3005 | Built, .NET 8 (payment accounts with QR, payments with receipt and admin review, in-person payments, refunds, promotions, loyalty points and their events); in Docker Compose with `payment-migrate` for its tables |
 | `notification-service` | 3006 | Built (inbox, push tokens, email, booking reminders, alerts to the admins, app-update notice) |
@@ -36,7 +36,7 @@ The web reaches all six services through the gateway; the screens still on local
 
 ## 2. Data ownership
 
-The system has one physical SQL Server database with nine schemas, 58 tables and 1 view (2026-10-24: structure migrations up to 047, seeds up to 116, payment up to 023). Logical ownership is enforced by service boundaries and application validation:
+The system has one physical SQL Server database with nine schemas, 58 tables and 1 view (2026-10-27: structure migrations up to 049, seeds up to 117, payment up to 023; 166 changesets). Logical ownership is enforced by service boundaries and application validation:
 
 ```text
 SQL Server database
@@ -136,7 +136,7 @@ flowchart TB
 |---|---|---|---|
 | security-service | Identity, roles, sessions, preferences and audit | `security`, `audit` | Publishes `security.user_registered` |
 | customer-service | Customers, vehicles and loyalty display copy | `customer` | Consumes `security.user_registered` |
-| booking-service | Catalog, prices, shop schedule and bookings | `catalog`, `booking` | Publishes booking events |
+| booking-service | Catalog, prices, shop schedule and bookings | `catalog`, `booking` | Publishes booking events, consumes `payment.reported` and `payment.confirmed` |
 | operations-service | Operators, assignment, execution and ratings | `execution` | Publishes execution events, consumes `booking.confirmed` |
 | payment-service | Payments, receipts, promotions and loyalty ledger | `payment`, `promotion` | Publishes payment, coupon and loyalty events |
 | notification-service | In-app notifications, push, email and booking reminders | `notification` | Consumes the notification events |
@@ -144,6 +144,8 @@ flowchart TB
 | REST call between services | Credential |
 |---|---|
 | booking → customer: validates vehicles | User token |
+| booking → payment: asks whether an overdue digital booking has a reported payment | Internal key |
+| customer → booking: counts the active bookings of a vehicle before retiring it | Internal key |
 | customer → security: reads the user's profile | User token |
 | notification → security: reads email and name | Internal key |
 | operations → booking: reads bookings, moves their status | User token or internal key |
@@ -156,18 +158,20 @@ flowchart TB
 
 REST is used when a caller needs an answer before continuing. Examples include validating a customer vehicle before creating a booking, validating a current service price, checking an operator's availability and validating a booking before creating a payment.
 
-Service-to-service calls do not pass through the API Gateway. Today there are six pairs:
+Service-to-service calls do not pass through the API Gateway. Today there are eight pairs:
 
 | Caller → callee | Why | Credential |
 |---|---|---|
 | booking → customer | Validate the vehicle and its type before booking; plates for the admin list | The user's JWT, forwarded |
+| booking → payment | Before cancelling an overdue `DIGITAL` booking with `PAYMENT_TIMEOUT`, ask whether it has a reported payment (`/internal/v1/payments/bookings/{id}/reported`, ADR-021) | `X-Internal-Key` (a job, no user involved) |
+| customer → booking | Count the active bookings of a vehicle before retiring it (`/internal/v1/bookings/active-count`, BIZ-08) | `X-Internal-Key` |
 | customer → security | Create the customer profile on first use from the user's data | The user's JWT, forwarded |
 | notification → security | Email and name of the user to email a notification (`/internal/v1/users/{id}/contact`) | `X-Internal-Key` (no user is involved; ADR-011 §8) |
 | operations → booking | Read bookings to assign; move them to `IN_PROGRESS` / `COMPLETED`; check the client's booking before rating | The user's JWT, forwarded; `X-Internal-Key` on `/internal/v1/bookings` for the automatic assignment (no user involved) |
 | operations → security | Operator accounts and names (`/admin/users?role=OPERATOR`); whether an operator's account is still active during the automatic assignment (`/internal/v1/users/{id}/contact`) | The admin's JWT, forwarded; `X-Internal-Key` for the internal route |
 | payment → booking | Booking total, status and owner before reporting or approving a payment | The user's JWT, forwarded |
 
-booking → customer, operations → booking/security and payment → booking forward the caller's `X-Correlation-Id`; customer → security, notification → security and the RabbitMQ events do not yet (gap in `13-operations/observability.md`).
+booking → customer, booking → payment (when there is one in context; the deadline job has none), operations → booking/security and payment → booking forward the caller's `X-Correlation-Id`; customer → security, customer → booking, notification → security and the RabbitMQ events do not yet (gap in `13-operations/observability.md`).
 
 The script that publishes a new APK (`lavarapido-infra/deploy/publish-apk.sh`) also calls notification-service on `/internal/v1/notifications/app-update` with `X-Internal-Key`, from inside the Docker network.
 
@@ -182,6 +186,7 @@ RabbitMQ (topic exchange `carwash.events`) is used for work that can happen afte
 | `booking.confirmed` | booking | operations (automatic operator assignment) |
 | `execution.operator_assigned`, `execution.service_started`, `execution.service_completed`, `execution.inspection_shared` | operations | notification (operator and client; started and completed also cancel the reminders) |
 | `payment.confirmed`, `payment.rejected`, `payment.refunded`, `payment.promotion_redeemed`, `payment.loyalty_points_earned` | payment | notification (client) |
+| `payment.reported`, `payment.confirmed` | payment | booking (queue `booking.payment-events`: records that the payment was reported, so the digital payment deadline stops; ADR-021) |
 
 customer-service raises `CustomerProvisioned` and vehicle events in its domain but only logs them (no consumer needs them yet); security-service does the same with its email, password and deactivation events. Diagram of every link: `08-uml/diagrams/source/c2-containers.md`. Event names and payloads → `09-microservices/services/*/events.md`.
 
