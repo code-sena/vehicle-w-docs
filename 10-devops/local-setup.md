@@ -82,7 +82,7 @@ Every service reads `../lavarapido-infra/.env` automatically. Required values:
 |---|---|
 | `DB_PASSWORD` | SQL Server `sa` password |
 | `JWT_SECRET` | ≥ 32 bytes, **same for all services** |
-| `INTERNAL_API_KEY` | Shared key for `/internal/**` between security, customer, booking, operations and notification (booking emails, reminders, automatic operator assignment, active bookings of a vehicle). **Needed for the operator to start and finish services** (E-01) and, since 2026-10-24, for a client to remove a vehicle (BIZ-08): without it those flows answer 503 |
+| `INTERNAL_API_KEY` | Shared key for `/internal/**` between security, customer, booking, operations, notification and payment (booking emails, reminders, automatic operator assignment, active bookings of a vehicle, whether a booking has a reported payment). **Needed for the operator to start and finish services** (E-01) and, since 2026-10-24, for a client to remove a vehicle (BIZ-08): without it those flows answer 503. Since 2026-10-26 payment requires it too: with an empty or different key booking cannot check a reported payment and no overdue digital booking is cancelled (ADR-021) |
 | `DEMO_ADMIN_PASSWORD`, `DEMO_OPERATOR_PASSWORD`, `DEMO_CLIENT_PASSWORD` | Optional: each one set creates that demo account in the `dev` profile (E-05); empty means no demo account |
 | `ALLOWED_EMAIL_DOMAINS` | Defaults to `gmail.com`: sign-up, account creation and email change only accept these domains |
 | `MAIL_*` | Gmail app password, or leave Mailpit defaults |
