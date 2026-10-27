@@ -20,9 +20,9 @@ debugging (`EXPO_PUBLIC_CUSTOMER_API_URL`, `…_BOOKING_…`, `…_OPERATIONS_�
 │
 ├── /client                         → (authGuard, role CLIENT)
 │   ├── /                           → Dashboard: vehicles, next booking, points and coupons, shop address
-│   ├── /reserve                    → Book a wash (vehicle → service → date/time → confirm)
+│   ├── /reserve                    → Book a wash (vehicle → service → date/time → payment mode: digital or cash → confirm)
 │   ├── /vehicles                   → My vehicles
-│   ├── /history                    → Booking history, newest first (click → detail → Go to payment)
+│   ├── /history                    → Booking history, newest first, with the "pay before" badge and deadline of digital bookings (click → detail → Go to payment)
 │   ├── /payment                    → Pay a booking
 │   ├── /notifications              → Notification inbox
 │   ├── /profile                    → Profile
