@@ -1,6 +1,6 @@
 # Security Threat Model
 
-**Last updated:** 2026-10-20 (status column checked against the code)
+**Last updated:** 2026-10-27 (status column checked against the code on `main`)
 
 This threat model uses STRIDE for the current web/mobile, gateway, six-service, SQL Server and RabbitMQ architecture. It describes current mitigations and identifies risks that still require implementation work.
 
@@ -46,12 +46,13 @@ The browser/mobile client is untrusted. Service code validates authorization eve
 | Spoofing | Stolen credentials used to log in | BCrypt passwords, JWT authentication, inactive accounts rejected, account locked 15 minutes after 5 failed attempts in 15 minutes (RF-004b; concurrent attempts serialised with `sp_getapplock` since 2026-10-22; wrong current passwords count too since SEC-12); changing or recovering the password closes the other sessions; 60 requests per minute per IP on `/api/v1/auth/**` (SEC-04); recovery code burnt after 5 failures (SEC-05) | Implemented |
 | Spoofing | A closed-session token reused | security-service rejects it; the gateway cuts it before other services (30 s cache), with any `Authorization` scheme and on any path since 2026-10-24 (SEC-01 closed) | Implemented |
 | Spoofing | A client fakes its IP to dodge the rate limit | The gateway trusts `X-Forwarded-For` only from `TRUSTED_PROXIES` and reads it right to left; Caddy rewrites it; security trusts it only from private or local addresses (SEC-11) | Implemented |
-| Spoofing | Forged service-to-service identity | Forwarded user token (booking → customer, customer → security, operations → booking/security, payment → booking); `X-Internal-Key` on `/internal/**` (notification → security, operations → booking/security, APK script → notification), not routed by the gateway; since 2026-10-23 also on booking's `/api/v1/operator/bookings/**`, which only operations calls (E-01) | Implemented |
+| Spoofing | Forged service-to-service identity | Forwarded user token (booking → customer, customer → security, operations → booking/security, payment → booking); `X-Internal-Key` on `/internal/**` (notification → security, operations → booking/security, customer → booking for the active bookings of a vehicle, booking → payment for the reported payment of an overdue booking — ADR-021, APK script → notification), not routed by the gateway; since 2026-10-23 also on booking's `/api/v1/operator/bookings/**`, which only operations calls (E-01) | Implemented |
 | Tampering | Customer changes another customer's booking id | Ownership checks inside owning service (booking-service answers 404 for a booking that is not the caller's) | Implemented |
 | Tampering | Receipt reference reused | Use-case check: a reference already used on another booking is rejected (409 `TRANSACTION_REFERENCE_REUSED`); since migration 023 (2026-10-24, A-16) an indexed view keeps references unique among live payments and a filtered index allows one open payment per booking | Implemented |
 | Repudiation | User denies changing a booking | `created_by` / `updated_by` / `deleted_by` with timestamps on each row; `audit.audit_log` exists but nothing writes to it yet | Partial |
 | Information disclosure | Password/token appears in logs | Logging rules prohibit secrets | Design |
 | Information disclosure | User reads another user's payment | Role plus ownership checks (payment-service asks booking-service for the booking with the client's token) | Implemented |
+| Denial of Service | A bot or a person makes many bookings to block the schedule | Since 2026-10-26 (ADR-021): the client must choose the payment mode; at most one active cash booking per client (409 `CASH_BOOKING_LIMIT`); a digital booking without a reported payment is cancelled with `PAYMENT_TIMEOUT` 30 minutes after it was made (or at its start, if sooner) and the slot is released; plus the rule that a vehicle cannot hold overlapping bookings and the rate limit on `/auth` | Implemented (a bot with several accounts can still hold digital slots for up to 30 minutes each) |
 | Denial of Service | Excessive requests | Rate limit only on `/api/v1/auth/**` (60/min per IP, in memory, SEC-04); route timeouts 5 s / 60 s (SEC-16); the Azure server only opens 80/443 (Caddy) and each container has a memory limit. The rest of the API is not limited | Partial |
 | Elevation of privilege | Customer calls administrator operation | Role checks in each service (Spring Security rules by path, `[Authorize(Roles = ...)]` in payment-service) | Implemented |
 | Elevation of privilege | Operator changes another operator's execution | The operator starts or finishes only the service lines assigned to them (`OperationsService.myLines`); since 2026-10-23 (E-01) the operator cannot call booking's status route directly: it needs the internal key that only operations has | Implemented |
@@ -119,7 +120,7 @@ The current design does not define message-level encryption or a separate servic
 | Closed-session token sent as `bearer` (SEC-01) | High | Closed on 2026-10-24 (gateway `2e20204`) |
 | Receipts and inspection photos stored inside the database | Medium | Images only (no SVG, no external links), inspection photos up to 2 MB; a file storage is a future option |
 | SMTP credentials (Gmail app password) in `.env` | Medium | `.env` is git-ignored; never logged; rotate if shared |
-| Internal API key leaked | Medium | Grants read of a user's contact data and of the admins list, read of bookings and the app-update notice; separate from `JWT_SECRET`; rotate in `.env` |
+| Internal API key leaked | Medium | Grants read of a user's contact data and of the admins list, read of bookings, the active-booking count of a vehicle, whether a booking has a reported payment, and the app-update notice; separate from `JWT_SECRET`; rotate in `.env` |
 | Rate limiting only on `/api/v1/auth/**`, in memory (SEC-04) | Low | Closed for `/auth` on 2026-10-24; per replica, IPv6 not grouped by /64; the rest of the API is not limited |
 
 ## References
