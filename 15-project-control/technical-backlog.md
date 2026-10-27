@@ -1,8 +1,8 @@
 # Technical Backlog
 
 > Things that work but not as they should, found while building and documenting the system.
-> Separate from the product user stories. Last review: **2026-10-24** (checked against `origin/develop` of every
-> repository after the 128 branches merged that day; review findings and their severity in `risks.md`).
+> Separate from the product user stories. Last review: **2026-10-27** (checked against `main` of every
+> repository after the releases of that day; review findings and their severity in `risks.md`).
 
 | ID | Description | Where | Impact if not resolved | Effort | Priority |
 |----|-------------|-------|------------------------|--------|----------|
@@ -23,7 +23,7 @@
 | TD-015 | payment-service did not publish its events | payment-service | — | 3 SP | ✅ Resolved (payment.confirmed, rejected, refunded, promotion_redeemed and loyalty_points_earned) |
 | TD-016 | A transaction reference could be reused on another payment | payment-service | — | 1 SP | ✅ Resolved (409 `TRANSACTION_REFERENCE_REUSED`) |
 | TD-017 | payment-service had no `X-Correlation-Id` handling and its health did not check the database | payment-service | — | 1 SP | ✅ Resolved (`CorrelationIdMiddleware`; `/health` and `/actuator/health` answer 503 DOWN when SQL Server does not answer within 3 s) |
-| TD-018 | payment-service only tested its domain | payment-service | — | 2 SP | ✅ Resolved (domain, application, API and integration test projects: 225 tests in CI on 2026-10-24, plus 11 against SQL Server that skip themselves in CI) |
+| TD-018 | payment-service only tested its domain | payment-service | — | 2 SP | ✅ Resolved (domain, application, API and integration test projects: 264 tests in CI on `main` on 2026-10-27; the 17 integration tests run against SQL Server 2022 in the CI job "Pruebas de integración" since that day) |
 | TD-019 | payment changelogs use their own `001`–`023` numbering, repeating the global numbers (`06-data/migration-strategy.md`) | payment-service | Confusing history; risk of picking a wrong number | 0.5 SP | Low |
 | TD-020 | Automatic operator assignment on `booking.confirmed` (RF-008) | operations-service | — | 3 SP | ✅ Resolved (`BookingConfirmedListener` + `AutoAssignmentPolicy`, with the optional operator chosen by the client, RF-010) |
 | TD-021 | `OperatorServiceResponse.startable` was uncommitted | operations-service | — | 0.5 SP | ✅ Resolved (committed with its tests) |
@@ -38,7 +38,7 @@
 | TD-030 | `finish`/`start` move booking before saving the execution; a failure in between blocks the operator (OPS-01 = E-13) | operations-service | — | 1 SP | ✅ Resolved 2026-10-24 (operations `6d18916`); the false notices of a `COMPLETED` booking with open lines are TD-046 |
 | TD-031 | Approving a payment does not compare its amount with what the booking costs now; the client can change the services of a paid booking (BIZ-01) | payment-service, booking-service | — | 2 SP | ✅ Resolved 2026-10-24 (`AMOUNT_CHANGED`, payment `a898a98`; `BOOKING_SERVICES_LOCKED`, booking `2983d76`) |
 | TD-032 | The client has no endpoint for the amount due and the applied coupon; the web and the mobile compute the total (BIZ-02, rest of E-08) | payment-service, Web, mobile | — | 1.5 SP | ✅ Resolved 2026-10-24 (payment `fb90b0c`, web `0bdc8c1`, mobile `2ce105f`) |
-| TD-033 | Continuous deployment: merge it, create the secrets and run it the first time (CD-01, CD-02, CD-04) | infra and 8 repos, mobile | The server keeps following `develop` by hand | 2 SP | **Critical** — merged into `develop` of the 10 repositories on 2026-10-24 (infra `cf28ed0`); still missing: the secrets and the first run (operational items 1, 3 and 5 of `risks.md`) |
+| TD-033 | Continuous deployment: merge it, create the secrets and run it the first time (CD-01, CD-02, CD-04) | infra and 8 repos, mobile | — | 2 SP | ✅ Resolved 2026-10-26: secrets created, every repository released on `main`, `DEVELOP_ONLY` empty; the automatic deploys of 2026-10-26 and 2026-10-27 succeeded (`10-devops/ci-cd.md`) |
 | TD-034 | `BookingStatusChanged` does not cancel pending reminders (rest of A-11) | notification-service | — | 0.5 SP | ✅ Resolved 2026-10-24 (notification `952cd7e`) |
 | TD-035 | The operator's services do not include the assignment notes; reassigning without notes erases them (rest of B-01) | operations-service, Web, mobile | — | 1 SP | ✅ Resolved 2026-10-24 (operations `b943858`, web `7ac143d`, mobile `558d848`) |
 | TD-036 | Require the Law 1581 consent in `POST /auth/register` (SEC-07) | security-service | — | 0.5 SP | ✅ Resolved 2026-10-24 (security `c5ecf17`) |
@@ -57,6 +57,10 @@
 | TD-049 | Not done in the fleet round: WEB-06 (26 silenced errors), WEB-07, WEB-08 and RF-015 filters, WEB-11, WEB-13, WEB-14, H-21, RF-005 (one service per web booking); MOV-04 (four view models), MOV-11 (on purpose: it would change the fingerprint), MOV-15 (coupon button label), MOV-17, MOV-18; SEC-14 (Sonar false positives); Expo receipts; the outbox of operations events (H-11, accepted) | Web, mobile, security, notification | Smaller gaps, listed in the fleet reports | 5 SP | Low |
 | TD-050 | Low contract gaps of the cross review: `reasonCode` not used by notification, automatic no-show without event, PACKAGE promotions not editable, FIXED amount missing in the coupon notice, `BOOKING_EXPIRY_CHECK_*` left in infra, `markDelivered` inside the send `try`, the fill of payment 022 and the view of 023 | notification, booking, payment, infra | Small inconsistencies (`risks.md`, open findings) | 2 SP | Low |
 | TD-051 | Lateness tolerance for cash bookings: cancel a `CASH` booking that has not started N minutes after its time, to free the bay (payment at booking, 2026-10-26; left out on purpose, ADR-021) | booking-service (operations-service decides whether the service started) | A client can hold a cash booking and not come; the slot stays blocked until the admin or the follow-up job closes it. The cash limit (1 active, INV-BOOK-011) bounds it to one booking per client | 2 SP | Low (future improvement) |
+| TD-052 | Restrict the Firebase API key of the mobile `google-services.json` to the package `com.vehiclecarwash.app` (H-09) | mobile, Google Cloud console | The key could be used by another app against the project's quota | To estimate | Medium |
+| TD-053 | Replace the sample contact data in the legal texts (`datos@expresscarwash.co`, `+57 300 123 4567`, NIT, address of "Express Car Wash S.A.S.") with the real business data | Web, mobile | The terms and the data policy point to a contact that does not exist | To estimate | Medium |
+| TD-054 | Export OpenAPI from the running services and compare it with the hand-checked contracts of `07-api` (H-23) | All services, `07-api` | The contracts can drift from the code between reviews | To estimate | Low |
+| TD-055 | Page the booking lists (`/api/v1/bookings/me`, `/api/v1/admin/bookings`) | booking-service, Web, mobile | Long lists with real data: all of a client's bookings, or of the admin's range, in one answer | To estimate | Low |
 
 ---
 
