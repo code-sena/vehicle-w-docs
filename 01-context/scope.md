@@ -17,7 +17,7 @@ What the system **DOES build and maintain**:
 | 1 | User management | Sign-up, login, password recovery and change, and profiles with different roles and permissions | `security-service` |
 | 2 | Wash service management | Service request with selection of date, time and service type; cancellation by the customer before the start time; rescheduling by the Administrator | `booking-service` |
 | 3 | Operator assignment | Automatic by availability, direct selection by the customer, or manual override by the Administrator when needed | `operations-service` |
-| 4 | Payment management | QR-based payment (cash, Nequi, Daviplata, bank transfer) with an uploaded receipt reviewed by an administrator; transaction recording and payment history | `payment-service` |
+| 4 | Payment management | QR-based payment (cash, Nequi, Daviplata, bank transfer) with an uploaded receipt reviewed by an administrator; payment mode (digital or cash) chosen when booking, with a 30-minute deadline for the digital receipt and one active cash booking per customer (ADR-021); transaction recording and payment history | `payment-service` |
 | 5 | Ratings and reviews | Customers rate and comment on the service once it is completed | `operations-service` |
 | 6 | Role-based dashboard and user preferences | Dashboard and notifications tailored to each user role, theme customisation, and interface available in four languages (Spanish, English, French, Portuguese) | `security-service` (preferences), `notification-service` (dashboard itself is frontend-only) |
 | 7 | Administrative management | Management of the shop's settings and business hours, wash bays, operator schedules and availability, plus operational reports and statistics | `booking-service` (shop data, hours, bays), `operations-service` (schedules, operator reports), `payment-service` (revenue) |
@@ -41,8 +41,8 @@ transmitted.
 | Environment | Purpose |
 |-------------|---------|
 | Local | Development and testing on each team member's machine, with Docker for the database and services |
-| Academic demo server | An Azure virtual machine with Docker Compose and Caddy (HTTPS), turned on on demand for reviews and demonstrations. On 2026-10-24 it runs the `develop` branch and is updated by hand (`BRANCH=develop update-server.sh`); continuous deployment from `main` (merge → CI → "Pedir despliegue" → `deploy.yml`) is merged in the 10 repositories but has not run yet (`10-devops/ci-cd.md`, `10-devops/production.md`) |
-| CI | GitHub Actions `ci.yml` in the 10 repositories on every push and pull request to `develop` and `main` (1,192 tests green on `develop`, 2026-10-24) |
+| Academic demo server | An Azure virtual machine with Docker Compose and Caddy (HTTPS), turned on on demand for reviews and demonstrations. It runs the `main` branch and is updated by the continuous deployment (merge → CI → "Pedir despliegue" → `deploy.yml`), active in the 10 repositories since 2026-10-26 (`10-devops/ci-cd.md`, `10-devops/production.md`) |
+| CI | GitHub Actions `ci.yml` in the 10 repositories on every push and pull request to `develop` and `main` (1,337 tests green on `main`, 2026-10-27) |
 
 ---
 
