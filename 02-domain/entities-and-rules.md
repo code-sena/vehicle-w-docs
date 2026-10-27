@@ -204,9 +204,9 @@ The booking cannot be created without a valid customer vehicle.
 
 The selected vehicle must belong to the customer creating the booking.
 
-**INV-BOOK-003 — At least one service line is required**
+**INV-BOOK-003 — At least one service line is required, at most ten**
 
-A booking without a selected wash service is not a valid booking.
+A booking without a selected wash service is not a valid booking, and a booking carries at most 10 services. The same limit applies when the services are changed on a reschedule. An empty, missing or longer list, or one with an empty item, is refused with 400 `VALIDATION_ERROR` (since 2026-10-27; before, some of these cases answered 500).
 
 **INV-BOOK-004 — The scheduled range is valid**
 
@@ -725,7 +725,7 @@ booking yet, minimum purchase, total limit and limit per customer.
 |---|---|
 | INV-BOOK-001 | Booking requires a customer vehicle. |
 | INV-BOOK-002 | Vehicle must belong to the customer. |
-| INV-BOOK-003 | Booking requires at least one service line. |
+| INV-BOOK-003 | Booking requires at least one service line and at most 10 (also on reschedule); otherwise 400 `VALIDATION_ERROR`. |
 | INV-BOOK-004 | Scheduled end must be later than scheduled start. |
 | INV-BOOK-005 | Booking availability must be validated before confirmation. |
 | INV-BOOK-006 | A service bay cannot be double-booked in overlapping active intervals. |
