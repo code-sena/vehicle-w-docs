@@ -22,7 +22,7 @@ This folder contains the decisions that define the architecture of LavaRápido.
 | ADR-014 | Operations: booking integration by REST, operator provisioning, assignment, the follow-up of bookings nobody closed, locks, retries and the start window (§12) | Accepted |
 | ADR-015 | Loyalty points, promotions, fixed-role permissions and per-booking bays (amends ADR-010) | Accepted |
 | ADR-016 | Deployment: one Azure VM with Docker Compose and Caddy | Accepted |
-| ADR-017 | CI/CD with GitHub Actions and continuous deployment from `main` | Accepted (2026-10-24; the continuous deployment is merged but has not run: no secrets yet) |
+| ADR-017 | CI/CD with GitHub Actions and continuous deployment from `main` | Accepted (2026-10-24); running since 2026-10-26, every merge to `main` deploys (status update 2026-10-27) |
 | ADR-018 | Mobile app updates: EAS Update by fingerprint, automatic OTA with `cd.yml` and a mandatory APK | Accepted |
 | ADR-019 | Frontend architecture: feature-based MVVM (web, zoneless) and a layered mobile app | Accepted |
 | ADR-020 | Risks accepted for version 1 (no Outbox, shared `sa`, JWT in `localStorage`, reports in the browser) | Accepted |

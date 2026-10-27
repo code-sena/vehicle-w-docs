@@ -2,7 +2,7 @@
 
 - **ID:** ADR-013
 - **Date:** 2026-10-06 (updated 2026-10-13: sections 1 and 3 match the current code)
-- **Status:** Accepted (2026-10-23) — payment-service is built this way (its `v1.0.0` release is still pending)
+- **Status:** Accepted (2026-10-23) — payment-service is built this way; released on `main` (`v1.1.2` on 2026-10-27)
 - **Authors:** Development team
 
 ---

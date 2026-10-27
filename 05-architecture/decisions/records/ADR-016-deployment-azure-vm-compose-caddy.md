@@ -2,7 +2,7 @@
 
 - **ID:** ADR-016
 - **Date:** 2026-10-23 (records the deployment in use since 2026-10-15, when `docker-compose.prod.yml` and the `Caddyfile` were added)
-- **Status:** Accepted (updated 2026-10-24: web on port 8080 without root, `:prev` images, rollback, clean-up)
+- **Status:** Accepted (updated 2026-10-24: web on port 8080 without root, `:prev` images, rollback, clean-up; updated 2026-10-27: the server runs `main`, deployed by ADR-017)
 - **Authors:** Development team
 
 ---
@@ -39,7 +39,7 @@ update it several times a week.
 | Data | SQL Server Express in the `sqlserver-data` volume; RabbitMQ and Caddy certificates in volumes; nothing but Caddy reachable from outside |
 | Secrets | `.env.production` on the server (git-ignored); `INTERNAL_API_KEY`, `JWT_SECRET` and the RabbitMQ user are mandatory (`${VAR:?…}`) |
 | Backups | `deploy/backup-db.sh` + `verify-backup.sh` by cron (daily 23:00 UTC and 5 minutes after boot) and before every update (`pre-update`, the last 10 kept apart from the 14 regular ones); `restore-db.sh` by hand, with the deploy lock and a typed confirmation |
-| Updates | `deploy/update-server.sh` pulls the repositories (never downgrading), tags the running images `:prev`, runs `up -d --build`, waits for health and prunes old images; today it follows `develop` by hand (`BRANCH=develop`; ADR-017 for the move to `main`). `deploy/rollback.sh` goes back to `:prev` without compiling |
+| Updates | `deploy/update-server.sh` pulls the repositories (never downgrading), tags the running images `:prev`, runs `up -d --build`, waits for health and prunes old images; it follows `main` and runs on every merge to `main` through the continuous deployment since 2026-10-26 (ADR-017); by hand it stays as the fallback. `deploy/rollback.sh` goes back to `:prev` without compiling |
 
 **Justification:** it is the smallest setup that gives a real public URL with HTTPS for the web
 and the app, reuses the local Compose files unchanged, and fits the free credit. Caddy obtains and

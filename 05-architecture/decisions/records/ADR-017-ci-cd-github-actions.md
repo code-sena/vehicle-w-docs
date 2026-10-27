@@ -1,10 +1,11 @@
 # ADR-017 — CI/CD with GitHub Actions and Continuous Deployment from `main`
 
 - **ID:** ADR-017
-- **Date:** 2026-10-23 (updated 2026-10-24: the continuous deployment is merged and accepted)
-- **Status:** Accepted (2026-10-24). CI is in use in the 10 repositories. The continuous deployment
-  is merged into `develop` of the 10 repositories on 2026-10-24 (infra `cf28ed0`); it has **not run
-  yet** because the secrets do not exist and it only acts from `main` (after `v1.1.0`).
+- **Date:** 2026-10-23 (updated 2026-10-24: the continuous deployment is merged and accepted;
+  updated 2026-10-27: it is running)
+- **Status:** Accepted and in use. CI runs in the 10 repositories. The continuous deployment runs
+  from `main` since 2026-10-26: every merge to `main` deploys to the Azure server, payment included
+  (see "Status update 2026-10-27" below).
 - **Authors:** Development team
 
 ---
@@ -32,16 +33,15 @@ pipeline and for releases that go through review.
 push and pull request to `develop` and `main` and by hand: `./mvnw verify` (Java 21) in the six Java
 repositories, `dotnet build` + `dotnet test` in payment, production build + Vitest in the web,
 `tsc --noEmit` + jest-expo in the mobile app, and script/Compose/e2e syntax checks in infra.
-A branch is merged into `develop` only with CI green. On 2026-10-24 the last runs on `develop` were
-green with 1,192 tests (838 on 2026-10-23; `10-devops/ci-cd.md`). Since 2026-10-24 infra also runs
+A branch is merged into `develop` only with CI green. On 2026-10-27 the last runs on `main` were
+green with 1,337 tests (1,192 on `develop` on 2026-10-24, 838 on 2026-10-23; `10-devops/ci-cd.md`). Since 2026-10-24 infra also runs
 actionlint on its workflows and the web measures coverage.
 
 **2. Releases through `main`.** `develop` integrates; `main` receives a reviewed pull request and
-the `v1.0.0` tag (8 of 10 repositories; payment's PR #2 is approved and mobile has no PR yet on
-2026-10-24). `main` is protected in those 8. The next release, `v1.1.0`, carries the 128 branches
-merged on 2026-10-24.
+the release tag. On 2026-10-27 the 10 repositories have their release on `main` (from `v1.1.0` to
+`v1.1.2`, `00-governance/git-conventions.md`) and `main` is protected in all 10.
 
-**3. Continuous deployment from `main` (accepted, merged 2026-10-24, not run yet).** In
+**3. Continuous deployment from `main` (accepted, merged 2026-10-24, running since 2026-10-26).** In
 `lavarapido-infra` (`deploy.yml`, `deploy/*.sh`) and in the `ci.yml` of 8 repositories (web,
 api-gateway, security, customer, booking, operations, notification, payment):
 
@@ -51,8 +51,8 @@ api-gateway, security, customer, booking, operations, notification, payment):
 - `deploy.yml` connects with `AZURE_SSH_KEY`, a key that on the server can only run
   `deploy/ci-deploy.sh` (`restrict,command=…`), with the host key pinned. One deployment at a time
   (`concurrency: deploy-azure`); `ci-deploy.sh` waits up to 20 minutes for another update.
-- `update-server.sh` pulls `main` of every repository (payment stays on `develop` until it has
-  `v1.0.0`), backs up the database, rebuilds, restarts Caddy if its `Caddyfile` changed and **waits
+- `update-server.sh` pulls `main` of every repository (payment too since it has its release on
+  `main`: `DEVELOP_ONLY` is empty in `setup-server.sh`), backs up the database, rebuilds, restarts Caddy if its `Caddyfile` changed and **waits
   up to 8 minutes for every container to be healthy**; only a full, healthy update writes
   `backups/deployed-heads`. Before building it tags the running images as `:prev` (`rollback.sh`
   goes back to them) and after a healthy update it prunes old images and build cache (CD-10, CD-11).
@@ -69,6 +69,21 @@ api-gateway, security, customer, booking, operations, notification, payment):
 **Justification:** Actions runs next to the code at no cost, needs no server of its own, and each
 owner can see the result next to their commit. Deploying only from `main` makes the reviewed pull
 request the gate for production; the boot catch-up covers the VM being off most of the time.
+
+### Status update 2026-10-27
+
+- The secrets exist (`DEPLOY_DISPATCH_TOKEN` in the repositories that dispatch, `AZURE_SSH_KEY` in
+  infra, `EXPO_TOKEN` in mobile). The 8 repositories with "Pedir despliegue" (web, api-gateway,
+  security, customer, booking, operations, notification, payment) dispatch `deploy.yml` after a green
+  CI on `main`, and infra's own `deploy.yml` also runs on a push to `main` that touches Compose or
+  `deploy/`.
+- The server runs `main`; `DEVELOP_ONLY` is empty in `deploy/setup-server.sh`, so payment deploys
+  from `main` like the others.
+- The automatic deploys of the night of 2026-10-26 and of 2026-10-27 succeeded, and the web and the
+  API answered 200 afterwards. The risks of the first run (missing secrets, server on `develop`, 502
+  until Caddy restarts) are closed.
+- The mobile `cd.yml` published the OTA update of `v1.1.1`; its first run, for `v1.1.0` on 2026-10-26,
+  failed because `EXPO_TOKEN` did not exist yet.
 
 ---
 
@@ -87,18 +102,16 @@ request the gate for production; the boot catch-up covers the VM being off most 
 ## Consequences
 
 **Positive:**
-- Every push gets a ✓/✗ in minutes; 1,192 tests run on each `develop` change (2026-10-24).
+- Every push gets a ✓/✗ in minutes; 1,337 tests run on `main` (2026-10-27).
 - Once pushed, a reviewed merge reaches the server with nobody connecting by SSH, and a broken
   container turns the deployment red instead of looking green.
 
 **Negative / Trade-offs:**
-- CI has no coverage gate nor static analysis inside the pipeline; the end-to-end suites and the
-  payment integration tests are run by hand (`e2e.yml` is a button, not a gate).
-- The continuous deployment has not been tested: on 2026-10-24 `deploy.yml` has 0 runs and the
-  repositories have 0 secrets; `cd.yml` and `e2e.yml` cannot be launched until they are on `main`;
-  the server still follows `develop`.
-- The first run uses the old server scripts, which do not restart Caddy: the web answers 502 until
-  Caddy is restarted or the update runs a second time (A1).
+- CI has no coverage gate nor static analysis inside the pipeline; the end-to-end suites are run by
+  hand (`e2e.yml` is a button, not a gate). The payment integration tests run in CI since 2026-10-27
+  (job "Pruebas de integración", SQL Server 2022 as a service container).
+- ~~The continuous deployment has not been tested~~ and ~~the first run leaves the web at 502 until
+  Caddy restarts (A1)~~: both closed, see the status update below.
 - `rollback.sh` reuses the current Compose and Caddyfile with the `:prev` images, so a contract change
   between versions (port, variables) is not detected; `update-server.sh` by hand does not take the
   lock (M3, M4; `15-project-control/risks.md`).
@@ -113,8 +126,8 @@ request the gate for production; the boot catch-up covers the VM being off most 
 
 | Risk | Probability | Impact | Mitigation |
 |------|------------|--------|-----------|
-| A merge to `main` fails red because `DEPLOY_DISPATCH_TOKEN` is missing | High until the secrets exist | Low | Create the secrets before the `v1.1.0` merges (SEC-10); booking, customer, payment and mobile need their owners or the Admin role |
-| The scripts switch the server to `main` before `v1.1.0` is there | Medium | High | `setup-server.sh` refuses to downgrade; release infra **last** with `DEVELOP_ONLY=""`, keep `BRANCH=develop` by hand until then (the other repos' dispatch answers 422 meanwhile, harmless) |
+| ~~A merge to `main` fails red because `DEPLOY_DISPATCH_TOKEN` is missing~~ | Closed | — | The secrets exist in the repositories (2026-10-26) |
+| ~~The scripts switch the server to `main` before `v1.1.0` is there~~ | Closed | — | Every repository has its release on `main`, `DEVELOP_ONLY` is empty and the server runs `main` |
 | A merge during the exposition recreates containers for 1–2 minutes | Medium | Medium | Freeze `main` on 2026-10-27 (CD-15) |
 | The deploy key is usable from any branch's workflow | Low | High | GitHub Environment limited to `main` (CD-12) |
 
