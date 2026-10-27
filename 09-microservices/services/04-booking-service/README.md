@@ -29,9 +29,11 @@
 - **Availability (RF-006):** free start times of a day for a set of services and a vehicle type,
   on a 30-minute grid, inside the opening hours, outside the break, not in the past, and with at
   least one active bay free for the whole duration.
-- **Bookings:** created already `CONFIRMED` with a bay when one is free; otherwise nothing is
-  saved and up to 5 alternative times of the same day are returned (409 `SLOT_UNAVAILABLE`) with
-  the `reason`: `CLOSED_DAY`, `OUTSIDE_HOURS`, `TIME_PASSED` or `NO_FREE_BAY`
+- **Bookings:** one to ten services per booking (also on a reschedule; a missing list, a `null` item or
+  more than 10 → 400 `VALIDATION_ERROR`, 2026-10-27). Created already `CONFIRMED` with a bay when one is
+  free; otherwise nothing is saved and up to 5 alternative times of the same day are returned (409
+  `SLOT_UNAVAILABLE`), skipping the times when the same vehicle already has another booking
+  (`AvailabilityPolicy.withoutBusyTimes`, 2026-10-27), with the `reason`: `CLOSED_DAY`, `OUTSIDE_HOURS`, `TIME_PASSED` or `NO_FREE_BAY`
   (`AvailabilityPolicy.whyUnavailable`). The code stays the same so older apps keep working.
   A vehicle cannot hold two overlapping bookings. A client can cancel their booking only before the
   start time (RF-007); the client is not asked for a reason, the booking stores `CUSTOMER_REQUEST`.
@@ -48,6 +50,10 @@
   customer keeps its code and a database outage answers 503 `BOOKING_SERVICE_UNAVAILABLE` (BIZ-13);
   `/api/v1/bookings/**` is for `CLIENT` only, except `availability` and `cancellation-reasons`, also open
   to ADMIN (BIZ-12); seed 113 clears the sample "Express Car Wash" data (E-19).
+- **Since 2026-10-27:** `bookedBy` (who made the booking) only appears in the staff views (admin and
+  operator routes); the client and the internal routes get `null`. An invalid day in the business-hours
+  week of `PUT /admin/schedule/business-hours` answers 400 `VALIDATION_ERROR` (handler of
+  `ConstraintViolationException`) instead of 500.
 - **Payment at booking (2026-10-26, ADR-021):** the client must choose `paymentMode` = `DIGITAL` or `CASH`
   in `POST /api/v1/bookings` (missing or unknown → 400 `INVALID_PAYMENT_MODE`); for the admin it is optional
   and their bookings have neither a limit nor a deadline. Bookings older than the change keep `NULL` and
@@ -131,7 +137,7 @@ carry the UTC instants.
 ```bash
 cd lavarapido-booking-service
 ./mvnw spring-boot:run           # http://localhost:3003 — Swagger: /swagger-ui.html (dev profile)
-./mvnw verify                    # 133 tests (2026-10-26, payment at booking), no database needed
+./mvnw verify                    # 137 tests (2026-10-27, CI on main), no database needed
 ```
 
 | Variable | Default | Purpose |

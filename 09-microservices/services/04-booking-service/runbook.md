@@ -35,7 +35,7 @@ curl http://localhost:3003/actuator/health      # {"status":"UP"}
 
 ## Tests
 
-`./mvnw verify`: 133 tests on 2026-10-26, after the payment at booking (no database needed).
+`./mvnw verify`: 137 tests on 2026-10-27, green in CI on `main` (`v1.1.1`; no database needed).
 
 ## Useful queries
 
