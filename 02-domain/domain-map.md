@@ -249,6 +249,7 @@ The relationships below describe business dependencies, not physical database re
                      Notification
 
  Booking ───────────────────────────────▶ Payment
+ Payment ── payment reported / confirmed ▶ Booking
  Payment ───────────────────────────────▶ Promotions & Loyalty
  Booking ───────────────────────────────▶ Promotions & Loyalty
  Relevant business events ──────────────▶ Notification
@@ -262,6 +263,7 @@ The relationships below describe business dependencies, not physical database re
 | Service Catalog | provides | Booking | Booking selects one or more catalog services and their applicable prices. |
 | Booking | collaborates with | Operations & Assignment | Confirmed bookings become service work that must be assigned and executed. |
 | Booking | enables | Payment | A payment attempt belongs to a booking. |
+| Payment | informs | Booking | When the customer reports a payment (or the administrator approves it), Payment tells Booking with `PaymentReported` / `PaymentConfirmed`, so the digital payment deadline stops running; before cancelling an overdue booking, Booking also asks Payment whether a payment was reported (internal query, ADR-021). |
 | Operations & Assignment | enables | Feedback & Rating | Rating is available after the related service execution is completed. |
 | Booking / Payment | collaborates with | Promotions & Loyalty | Promotions and loyalty rules can affect the booking/payment amount when applicable. |
 | Identity & Access | provides identity | All protected contexts | Operations depend on the user's identity and role. |
@@ -419,6 +421,7 @@ The following events describe meaningful changes in the business domain. Their t
 | `ServiceStarted` | Operations & Assignment | A service execution started. |
 | `ServiceCompleted` | Operations & Assignment | A service execution was completed. |
 | `PaymentInitiated` | Payment | A payment attempt was registered. |
+| `PaymentReported` | Payment | The customer reported a payment with its receipt (`payment.reported`); Booking consumes it and records when the payment was reported. |
 | `PaymentConfirmed` | Payment | An administrator approved a payment. |
 | `PaymentRejected` | Payment | An administrator rejected a payment. |
 | `RatingSubmitted` | Feedback & Rating | A customer submitted feedback for a completed service line. |
@@ -445,7 +448,7 @@ The domain model intentionally does not decide implementation details that belon
 | Notification delivery channels | Inbox, push (Expo) and email, as built in notification-service | `05-architecture` / `09-microservices` |
 | Promotion formulas | Percentage or fixed amount with optional cap, as built in payment-service | `09-microservices` (payment-service) |
 | Loyalty earning/redemption formula | Points of the booked services credited on an approved payment; points are not spent | `09-microservices` (payment-service) / `06-data` |
-| Payment-before-service policy | Not required: a booking can be paid while `CONFIRMED`, `IN_PROGRESS` or `COMPLETED` | `09-microservices` (payment-service) |
+| Payment-before-service policy | Set by the payment mode chosen at booking (ADR-021): a `DIGITAL` booking must have its payment reported before `min(creation + 30 min, start)` or it is cancelled with `PAYMENT_TIMEOUT`; a `CASH` booking is paid at the shop and a customer can hold one active cash booking. Admin bookings have no deadline. Once reported, the payment can be reviewed while the booking is `CONFIRMED`, `IN_PROGRESS` or `COMPLETED` | `02-domain/entities-and-rules.md` (INV-BOOK-010 to 012), `09-microservices` (booking and payment) |
 
 ---
 
