@@ -12,6 +12,8 @@ curl http://localhost:3005/health               # {"status":"ok"}
 | Symptom | Likely cause | What to do |
 |---|---|---|
 | Does not start: `JWT_SECRET is not set` | `lavarapido-infra/.env` not found or empty | Fill `JWT_SECRET`, or set it as an environment variable |
+| Does not start: `DB_PASSWORD is not set` (since `v1.1.3`) | No `DB_PASSWORD` and no `ConnectionStrings__PaymentDb` | Fill `DB_PASSWORD` in `lavarapido-infra/.env`, or set the connection string |
+| Does not start: `MESSAGING_ENABLED=true with RABBITMQ_HOST=… requires RABBITMQ_USERNAME and RABBITMQ_PASSWORD` (since `v1.1.3`) | Messaging on against a RabbitMQ that is not on `localhost`, without credentials (before `v1.1.3` it fell back to `guest` silently) | Fill `RABBITMQ_USERNAME` and `RABBITMQ_PASSWORD` |
 | Address already in use (3005) | Another instance is running | Stop it or set `PAYMENT_PORT` |
 | `Invalid object name 'payment.payment'` | Migrations not applied | `docker compose up -d` in `lavarapido-infra` (runs `payment-migrate`) |
 | 409 `BOOKING_NOT_PAYABLE` | Booking cancelled, no-show or still `SCHEDULED` | Expected |
@@ -30,10 +32,14 @@ curl http://localhost:3005/health               # {"status":"ok"}
 
 ## Tests
 
-`dotnet test PaymentService.sln`: 264 tests (142 domain + 61 application + 44 API + 17 integration)
-in CI on `main` on 2026-10-27 (`v1.1.2`). Since 2026-10-27 the 17 integration tests run in CI in the job
-"Pruebas de integración", against SQL Server 2022 as a service container with the Liquibase migrations
-applied (0 skipped); on a machine without a database 12 of them skip themselves.
+`dotnet test PaymentService.sln`: 275 tests (142 domain + 61 application + 47 API + 25 infrastructure)
+in CI on `main` on 2026-10-27 (`v1.1.3`, run 40595106824). Of the 25 infrastructure tests, 13 need no
+database and 12 are integration tests (`PersistenceTests`); since 2026-10-27 the job "Pruebas de
+integración" runs them against SQL Server 2022 as a service container with the Liquibase migrations
+applied (0 skipped). On a machine without a database those 12 skip themselves (263 pass). To run them
+locally, `docker compose up --abort-on-container-exit migrate` in the payment repository creates
+`LavaRapidoPaymentIT` on `localhost:1434` (SQL Server 2022, like the CI) and `PAYMENT_INTEGRATION_DB`
+points the tests to it.
 
 ## Useful queries
 

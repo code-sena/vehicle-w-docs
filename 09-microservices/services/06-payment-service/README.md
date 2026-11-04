@@ -132,15 +132,17 @@ dotnet run --project src/PaymentService.Api      # http://localhost:3005 — Swa
 | Variable | Default | Purpose |
 |---|---|---|
 | `PAYMENT_PORT` | `3005` | HTTP port |
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` | `localhost`, `1433`, `LavaRapido`, `sa`, — | SQL Server (or `ConnectionStrings__PaymentDb` complete) |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` | `localhost`, `1433`, `LavaRapido`, `sa`, — | SQL Server (or `ConnectionStrings__PaymentDb` complete). Since `v1.1.3` the service does not start without `DB_PASSWORD` when there is no `ConnectionStrings__PaymentDb` |
 | `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE` | —, `lavarapido-security-service`, `lavarapido-api` | Verify tokens (the service does not start without `JWT_SECRET`) |
 | `BOOKING_SERVICE_URL` | `http://localhost:3003/api/v1` | Booking total, status and owner |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:4200` | CORS |
 | `INTERNAL_API_KEY` | empty | Key of `/internal/**` (`X-Internal-Key`); empty → those routes answer 401. Required in `docker-compose.prod.yml` |
-| `MESSAGING_ENABLED`, `RABBITMQ_*` | `false` | Publish events (otherwise a null publisher drops them) |
+| `MESSAGING_ENABLED`, `RABBITMQ_*` | `false` | Publish events (otherwise a null publisher drops them). Since `v1.1.3`, with messaging on and a RabbitMQ that is not on `localhost`, `RABBITMQ_USERNAME` and `RABBITMQ_PASSWORD` are required (the service does not start); `guest` is only used against a local RabbitMQ |
 
-The repository also has its own `docker-compose.yml` (SQL Server on `1434`, database
-`lavado_vehicular`) to test only the migrations. The running service uses the shared `LavaRapido`
+The repository also has its own `docker-compose.yml` (SQL Server 2022 on `1434`, database
+`LavaRapidoPaymentIT`, the same image and name as the CI job "Pruebas de integración" since `v1.1.3`;
+password `MSSQL_SA_PASSWORD` from the repository's `.env`, copied from `.env.example`) to test only the
+migrations and the integration tests. The running service uses the shared `LavaRapido`
 database on `1433`.
 
 ---
