@@ -16,11 +16,11 @@
 - Built and running in Docker: api-gateway (8080), security (3001), customer (3002), booking (3003),
   operations (3004), payment (3005, .NET 8) and notification (3006); web app and Android app (APK
   published from the public server). The 10 repositories have their release on `main` (api-gateway,
-  security, operations and notification `v1.1.0`; customer and booking `v1.1.1`; payment, infra, web and
-  mobile `v1.1.2`), `main` is protected in all of them, and Azure runs `main`, updated by the continuous
+  security, operations and notification `v1.1.0`; customer and booking `v1.1.1`; infra, web and mobile
+  `v1.1.2`; payment `v1.1.3`, merged to `main` on 2026-10-27 and tagged on 2026-11-04), `main` is protected in all of them, and Azure runs `main`, updated by the continuous
   deployment on every merge (2026-10-26 and 2026-10-27 succeeded).
-- Tests: 1,337 automated tests green in CI on `main` on 2026-10-27 (backend 989, web 242, mobile 106;
-  payment's 17 integration tests run against SQL Server in CI); the 19 end-to-end tests passed 19/19 on
+- Tests: 1,348 automated tests green in CI on `main` (checked 2026-11-04; backend 1,000, web 242, mobile 106;
+  payment's 12 integration tests run against SQL Server in CI); the 19 end-to-end tests passed 19/19 on
   2026-10-27 and the 42 functional cases on 2026-10-19 (`11-quality/testing-strategy.md`).
 - Requirements: 38 of 41 RF done, 3 partial (RF-005, RF-015, RF-023); 3 of 12 RNF met
   (`04-requirements/traceability-matrix.md`).

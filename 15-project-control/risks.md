@@ -126,10 +126,10 @@ review of 2026-10-23 is closed below, with its merge commit.
 | # | Item | Who | State |
 |---|------|-----|-------|
 | 1 | Create the secrets: `AZURE_SSH_KEY` and `DEPLOY_DISPATCH_TOKEN` in the project lead's 6 repositories; `DEPLOY_DISPATCH_TOKEN` and `EXPO_TOKEN` in Camilo's and Merari's (CD-01) | project lead, Camilo, Merari | ✅ Done: the continuous deployment runs since 2026-10-26 |
-| 2 | Merge the documentation: `lavarapido-docs` to `main` and `vehicle-w-docs` to `docs` | project lead | `vehicle-w-docs` is integrated in `docs` as it changes; `lavarapido-docs` is kept by its owner |
+| 2 | Merge the documentation: `lavarapido-docs` to `main` and `vehicle-w-docs` to `docs` | project lead | `vehicle-w-docs` is integrated in `docs` as it changes and `main` is moved forward to `docs` (equal since 2026-11-04); `lavarapido-docs` is kept by its owner |
 | 3 | Deploy on Azure; the first run with the old scripts needed a Caddy restart | DevOps | ✅ Done: the server runs `main`, deployed by the continuous deployment (2026-10-26 and 2026-10-27, web and API 200) |
 | 4 | Before the release, in the production database: look for duplicated open payments (migration 023) and count the `COMPLETED` bookings with open lines | DevOps, payment and operations owners | Not recorded here. Migration 023 is deployed (its first changeset already rejects the older duplicated open payment) |
-| 5 | Releases to `main` with infra last; payment and mobile by Merari; then remove payment from `DEVELOP_ONLY` | whole team | ✅ Done: the 10 repositories have their release on `main` (payment `v1.1.2`, mobile `v1.1.2`) and `DEVELOP_ONLY` is empty |
+| 5 | Releases to `main` with infra last; payment and mobile by Merari; then remove payment from `DEVELOP_ONLY` | whole team | ✅ Done: the 10 repositories have their release on `main` (payment `v1.1.2`, mobile `v1.1.2`) and `DEVELOP_ONLY` is empty. Payment `v1.1.3` was merged to `main` on 2026-10-27; tag and GitHub release on 2026-11-04 |
 | 6 | End-to-end tests against Azure with `e2e.yml` and the test accounts the team creates | project lead | Open: `e2e.yml` has not run (no `E2E_*` secrets); the local suite passed 19/19 on 2026-10-27 |
 | 7 | Regenerate the PDF and Word deliverables with the team's APA 7 generator | documentation owner | Kept by the owner of `lavarapido-docs` |
 
