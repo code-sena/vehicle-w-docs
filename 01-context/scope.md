@@ -42,7 +42,7 @@ transmitted.
 |-------------|---------|
 | Local | Development and testing on each team member's machine, with Docker for the database and services |
 | Academic demo server | An Azure virtual machine with Docker Compose and Caddy (HTTPS), turned on on demand for reviews and demonstrations. It runs the `main` branch and is updated by the continuous deployment (merge → CI → "Pedir despliegue" → `deploy.yml`), active in the 10 repositories since 2026-10-26 (`10-devops/ci-cd.md`, `10-devops/production.md`) |
-| CI | GitHub Actions `ci.yml` in the 10 repositories on every push and pull request to `develop` and `main` (1,337 tests green on `main`, 2026-10-27) |
+| CI | GitHub Actions `ci.yml` in the 10 repositories on every push and pull request to `develop` and `main` (1,348 tests green on `main`, checked 2026-11-04) |
 
 ---
 
