@@ -1,11 +1,13 @@
 # CI/CD
 
-> **Status (checked 2026-10-27):** continuous integration runs with GitHub Actions in the 10
-> repositories and is green on `main` in all of them (1,337 tests). The continuous deployment (merge to
+> **Status (checked 2026-11-04):** continuous integration runs with GitHub Actions in the 10
+> repositories and is green on `main` in all of them (1,348 tests). The continuous deployment (merge to
 > `main` → CI → "Pedir despliegue" → `deploy.yml`, plus the mobile OTA `cd.yml`) is **active**: the
 > secrets exist, every repository has its release on `main` and the Azure server runs `main`, payment
 > included. The automatic deploys of the night of 2026-10-26 and of 2026-10-27 succeeded (web and API
-> answered 200). Jenkins, the tool first planned, was not used: GitHub Actions needs no server of its
+> answered 200). The deploy that payment `v1.1.3` asked for on 2026-10-27 (run 40595202472) found the
+> VM turned off and did not deploy; `deploy/boot-update.sh` brings the server to the last `main` when
+> it is turned on again. Jenkins, the tool first planned, was not used: GitHub Actions needs no server of its
 > own and runs next to the code.
 
 ---
@@ -20,7 +22,7 @@ next to each commit on GitHub. Every workflow has `permissions: contents: read`.
 | Repository | Runner | Steps | Kept on failure |
 |---|---|---|---|
 | security, customer, booking, operations, notification, api-gateway | Temurin JDK 21, Maven cache | `./mvnw -B -ntp verify` (builds and runs the tests) | `target/surefire-reports/` (7 days) |
-| `lavarapido-payment-service` | .NET SDK 8.0 | Job "Compilar y probar": `dotnet restore` → `dotnet build -c Release` → `dotnet test`. Job "Pruebas de integración" (since 2026-10-27): SQL Server 2022 as a service container, the database created, the Liquibase migrations applied like `payment-migrate`, then the 17 integration tests (none skipped) | `test-results/` and `integration-test-results/` `.trx` (7 days) |
+| `lavarapido-payment-service` | .NET SDK 8.0 | Job "Compilar y probar": `dotnet restore` → `dotnet build -c Release` → `dotnet test`. Job "Pruebas de integración" (since 2026-10-27): SQL Server 2022 as a service container, the database created, the Liquibase migrations applied like `payment-migrate`, then the 25 tests of `PaymentService.Infrastructure.IntegrationTests` (none skipped; in the first job the 12 that need the database are skipped) | `test-results/` and `integration-test-results/` `.trx` (7 days) |
 | `Front-end-proyecto-web` | Node 22, npm cache | `npm ci` → `ng build --configuration production` → `ng test --watch=false --coverage` (Vitest + jsdom, `@vitest/coverage-v8`; report kept as an artifact, F-02) | `coverage/` |
 | `LavadoVehicular-Movil` | Node 22, npm cache | `npm ci` → `tsc --noEmit` → `npm test -- --ci` (jest-expo); the APK is still built with EAS | — |
 | `lavarapido-infra` | Ubuntu runner | `bash -n` and `shellcheck --severity=error` on `deploy/*.sh` (a broken script anywhere fails the loop, CD-14), `docker compose config` for the local and production files (placeholder secrets), `node --check` on `e2e/*.js` and `e2e/remote/*.js`, and **actionlint 1.7.7** (by Docker) on the workflows | — |
@@ -31,7 +33,7 @@ payment's integration job. The end-to-end suites
 (`lavarapido-infra/e2e`) need the whole system: the local one is run by hand, the remote one with
 `e2e.yml` (below).
 
-### Last run on `main` (2026-10-27)
+### Last run on `main` (checked 2026-11-04)
 
 Counted from the log of the last `ci.yml` run on `main` of each repository (`gh run view <id> --log`):
 
@@ -42,14 +44,14 @@ Counted from the log of the last `ci.yml` run on `main` of each repository (`gh 
 | `lavarapido-customer-service` | 40461925271 | `83d322e` (`v1.1.1`) | 83 |
 | `lavarapido-booking-service` | 40461919301 | `506feca` (`v1.1.1`) | 137 |
 | `lavarapido-operation-service` | 40383776759 | `9511328` (`v1.1.0`) | 110 |
-| `lavarapido-payment-service` | 40461931061 | `42dac3d` (`v1.1.2`) | 264 (142 domain + 61 application + 44 API + 17 integration against SQL Server, 0 skipped) |
+| `lavarapido-payment-service` | 40595106824 (2026-10-27) | `1eba3d9` (`v1.1.3`) | 275 (142 domain + 61 application + 47 API + 25 infrastructure: 13 without database and 12 against SQL Server 2022 in the job "Pruebas de integración", 0 skipped) |
 | `lavarapido-notification-service` | 40383796954 | `7fdfd1e` (`v1.1.0`) | 133 |
 | `Front-end-proyecto-web` | 40458685993 | `acea5e3` (`v1.1.2`) | 242 (68 files) |
 | `LavadoVehicular-Movil` | 40569787378 | `f8300d6` (`v1.1.2`) | 106 (28 suites) |
 | `lavarapido-infra` | 40461663875 | `682f629` (`v1.1.2`) | no tests: script, Compose, e2e syntax and actionlint checks |
-| **Total** | | | **1,337 passing** (backend 989, web 242, mobile 106) |
+| **Total** | | | **1,348 passing** (backend 1,000, web 242, mobile 106) |
 
-On 2026-10-24 the total on `develop` was 1,192 (backend 907, web 212, mobile 73) and on 2026-10-23, 838.
+With payment `v1.1.2` (run 40461931061, 2026-10-27) the total was 1,337 (payment 264). On 2026-10-24 the total on `develop` was 1,192 (backend 907, web 212, mobile 73) and on 2026-10-23, 838.
 
 **Rule:** a branch is merged into `develop` only with CI green
 (`00-governance/definition-of-done.md`).
@@ -67,9 +69,9 @@ On 2026-10-24 the total on `develop` was 1,192 (backend 907, web 212, mobile 73)
 
 ## Branches and releases
 
-| Item | State on 2026-10-27 |
+| Item | State on 2026-11-04 |
 |---|---|
-| Releases on `main` | api-gateway `v1.1.0`, security `v1.1.0`, customer `v1.1.1`, booking `v1.1.1`, operations `v1.1.0`, notification `v1.1.0`, payment `v1.1.2`, infra `v1.1.2`, web `v1.1.2`, mobile `v1.1.2` (an OTA update on top of the APK 1.1.1) |
+| Releases on `main` | api-gateway `v1.1.0`, security `v1.1.0`, customer `v1.1.1`, booking `v1.1.1`, operations `v1.1.0`, notification `v1.1.0`, payment `v1.1.3` (merged on 2026-10-27, tag and GitHub release on 2026-11-04), infra `v1.1.2`, web `v1.1.2`, mobile `v1.1.2` (an OTA update on top of the APK 1.1.1) |
 | `main` protected | All 10 repositories: pull request, one approval from another member, green CI (`Compilar y probar`, `Revisar configuración` in infra, `Revisar tipos` in mobile), no force push |
 | `develop` protected | None |
 | Release flow | `develop` → pull request `Release vX.Y.Z` → approval → merge commit → tag and GitHub release → `develop` fast-forwarded to `main`; the releases of 2026-10-27 were approved by Brayan |
