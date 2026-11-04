@@ -33,13 +33,13 @@ pipeline and for releases that go through review.
 push and pull request to `develop` and `main` and by hand: `./mvnw verify` (Java 21) in the six Java
 repositories, `dotnet build` + `dotnet test` in payment, production build + Vitest in the web,
 `tsc --noEmit` + jest-expo in the mobile app, and script/Compose/e2e syntax checks in infra.
-A branch is merged into `develop` only with CI green. On 2026-10-27 the last runs on `main` were
-green with 1,337 tests (1,192 on `develop` on 2026-10-24, 838 on 2026-10-23; `10-devops/ci-cd.md`). Since 2026-10-24 infra also runs
+A branch is merged into `develop` only with CI green. On 2026-11-04 the last runs on `main` were
+green with 1,348 tests (1,337 before payment `v1.1.3` on 2026-10-27, 1,192 on `develop` on 2026-10-24, 838 on 2026-10-23; `10-devops/ci-cd.md`). Since 2026-10-24 infra also runs
 actionlint on its workflows and the web measures coverage.
 
 **2. Releases through `main`.** `develop` integrates; `main` receives a reviewed pull request and
 the release tag. On 2026-10-27 the 10 repositories have their release on `main` (from `v1.1.0` to
-`v1.1.2`, `00-governance/git-conventions.md`) and `main` is protected in all 10.
+`v1.1.3`, payment `v1.1.3` tagged on 2026-11-04; `00-governance/git-conventions.md`) and `main` is protected in all 10.
 
 **3. Continuous deployment from `main` (accepted, merged 2026-10-24, running since 2026-10-26).** In
 `lavarapido-infra` (`deploy.yml`, `deploy/*.sh`) and in the `ci.yml` of 8 repositories (web,
@@ -102,7 +102,7 @@ request the gate for production; the boot catch-up covers the VM being off most 
 ## Consequences
 
 **Positive:**
-- Every push gets a ✓/✗ in minutes; 1,337 tests run on `main` (2026-10-27).
+- Every push gets a ✓/✗ in minutes; 1,348 tests run on `main` (checked 2026-11-04).
 - Once pushed, a reviewed merge reaches the server with nobody connecting by SSH, and a broken
   container turns the deployment red instead of looking green.
 

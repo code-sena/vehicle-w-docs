@@ -2,7 +2,7 @@
 
 - **ID:** ADR-013
 - **Date:** 2026-10-06 (updated 2026-10-13: sections 1 and 3 match the current code)
-- **Status:** Accepted (2026-10-23) — payment-service is built this way; released on `main` (`v1.1.2` on 2026-10-27)
+- **Status:** Accepted (2026-10-23) — payment-service is built this way; released on `main` (`v1.1.2` on 2026-10-27; `v1.1.3` merged to `main` the same day, tag and GitHub release on 2026-11-04)
 - **Authors:** Development team
 
 ---
@@ -55,7 +55,7 @@ PaymentService.Api ──► PaymentService.Application ──► PaymentService
 | JWT (ADR-006) | `AddJwtBearer` with `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, HS256 only, roles from the `roles` claim. Does not start without `JWT_SECRET` |
 | Errors | `GlobalExceptionHandler` → Problem Details with `code` (400, 404, 409, 503) |
 | Health | `GET /actuator/health` → `{"status":"UP"}` (fixed, no database check) and `GET /health` |
-| Configuration | `EnvFile.Load()` reads `lavarapido-infra/.env` without overriding real environment variables. Port `PAYMENT_PORT` (3005); database from `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` or `ConnectionStrings__PaymentDb` |
+| Configuration | `EnvFile.Load()` reads `lavarapido-infra/.env` without overriding real environment variables. Port `PAYMENT_PORT` (3005); database from `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` or `ConnectionStrings__PaymentDb`. Since `v1.1.3` it does not start without `DB_PASSWORD` (like `JWT_SECRET`), and with messaging on against a RabbitMQ that is not on `localhost` it requires `RABBITMQ_USERNAME` and `RABBITMQ_PASSWORD` instead of falling back to `guest` |
 | Migrations (ADR-003) | Plain-SQL Liquibase changelogs in `db/`, applied by the `payment-migrate` container of `lavarapido-infra/docker-compose.yml` with `DATABASECHANGELOG_PAYMENT`. The service never migrates on startup |
 
 ### 3. Accepted differences with ADR-007
