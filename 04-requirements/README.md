@@ -23,7 +23,7 @@ is missing. Everything is released on `main` of the 10 repositories and deployed
 by the continuous deployment (ADR-017). Since 2026-10-26 the customer chooses the payment mode when
 booking, with a cash limit and a 30-minute deadline for digital payments (RF-005, RF-013, ADR-021).
 RF-027 to RF-038 still have no user story. Of the 12 non-functional requirements, 3 are met (RNF-001,
-RNF-011, RNF-012) and 9 are partial; RNF-003 now has 17 integration tests against SQL Server in the CI
+RNF-011, RNF-012) and 9 are partial; RNF-003 now has 12 integration tests against SQL Server in the CI
 of payment, but not in the other services, and RNF-004 keeps the accepted risks of ADR-020. The requirements
 specification of `lavarapido-docs` (v7.8 of 2026-10-21) still counts 40 RF as implemented.
 

@@ -3,7 +3,9 @@
 > Connects `04-requirements/functional.md` (RF) → `04-requirements/user-stories.md` (HU) → tests → service.
 > Status as of 2026-10-27, checked against `origin/main` of the 10 code repositories after the releases
 > of that day (api-gateway `v1.1.0`, security `v1.1.0`, customer `v1.1.1`, booking `v1.1.1`, operations
-> `v1.1.0`, notification `v1.1.0`, payment `v1.1.2`, infra `v1.1.2`, web `v1.1.2`, mobile `v1.1.2`). The
+> `v1.1.0`, notification `v1.1.0`, payment `v1.1.2`, infra `v1.1.2`, web `v1.1.2`, mobile `v1.1.2`); payment
+> `v1.1.3` (required database and RabbitMQ credentials) was merged to `main` later that day and tagged on
+> 2026-11-04, without changing any requirement. The
 > six microservices (security, customer, booking, operations, payment, notification) and the
 > api-gateway are built, released on `main`, connected to the web and the Android app and deployed on
 > the academic Azure server, which runs `main` and is updated by the continuous deployment on every
@@ -12,9 +14,9 @@
 > A requirement is *Done* only when the behaviour works end to end; *Partial* lists what is still
 > missing, with the finding id (`15-project-control/risks.md`). The evidence of each change is the
 > merge commit in `develop` of its repository.
-> CI on `main`, 2026-10-27: web 242, mobile 106, api-gateway 62, security 200, customer 83,
-> booking 137, operations 110, notification 133 and payment 264 (17 of them integration tests against
-> SQL Server 2022 in CI) — **1,337 automated tests**, all green. The 19 end-to-end tests
+> CI on `main` (last runs of 2026-10-27, checked 2026-11-04): web 242, mobile 106, api-gateway 62, security 200, customer 83,
+> booking 137, operations 110, notification 133 and payment 275 (12 of them integration tests against
+> SQL Server 2022 in CI) — **1,348 automated tests**, all green. The 19 end-to-end tests
 > (`lavarapido-infra/e2e`) passed 19/19 on 2026-10-27 (the suite sends `paymentMode`) and the 42
 > functional cases on 2026-10-19.
 ---
@@ -86,7 +88,7 @@ If there is code without an HU: possible gold-plating, or a change made without 
 |--------|-------------|----------------------|--------|
 | RNF-001 | Performance (p95 < 2 s) | `lavarapido-infra/e2e/performance.js` (p95 of the main reads through the gateway) | ✅ Met on 2026-10-14 (slowest p95 686 ms, `/payments/me`) |
 | RNF-002 | Availability during review sessions | Manual check before each session | 🟡 Partial — the services and the gateway answer when the VM is on (site 200 on 2026-10-24), but the VM is off most of the time to save credit and there is no uptime monitor (H-15). The continuous deployment with health wait, `:prev` images and `rollback.sh` runs on every merge to `main` since 2026-10-26 (web and API 200 after the deploys of 2026-10-26 and 2026-10-27) |
-| RNF-003 | Concurrency and data integrity | Integration tests on booking and payment | 🟡 Partial — since 2026-10-24: `@Version` plus trigger 045 on bookings (BIZ-09/E-11, booking `348683e`), `UPDLOCK` on executions (OPS-03, operations `16175fc`), one open payment per booking and unique live references (A-16, migration 023), attempt counters with `sp_getapplock` (SEC-05, SEC-12); also the bay overlap trigger and one approved payment per booking. payment has 17 integration tests that run in CI against SQL Server 2022 with the Liquibase migrations (job "Pruebas de integración"), and the migrations up to 049 and payment 023 are deployed. Missing: integration tests against SQL Server in the other services |
+| RNF-003 | Concurrency and data integrity | Integration tests on booking and payment | 🟡 Partial — since 2026-10-24: `@Version` plus trigger 045 on bookings (BIZ-09/E-11, booking `348683e`), `UPDLOCK` on executions (OPS-03, operations `16175fc`), one open payment per booking and unique live references (A-16, migration 023), attempt counters with `sp_getapplock` (SEC-05, SEC-12); also the bay overlap trigger and one approved payment per booking. payment has 12 integration tests that run in CI against SQL Server 2022 with the Liquibase migrations (job "Pruebas de integración"), and the migrations up to 049 and payment 023 are deployed. Missing: integration tests against SQL Server in the other services |
 | RNF-004 | Security (JWT, BCrypt, roles, lockout) | `ApiSecurityWebTest`, `CustomerApiWebTest`, `BookingApiWebTest` (401/403 per role, operator route needs the internal key), `PasswordPolicyTest`, `GatewayRoutesTest` (`/internal` and `/operator/bookings` not exposed), `SessionCheckFilterTest` + web guards | 🟡 Partial — JWT, BCrypt, roles, lockout, closed sessions, HTTPS with Caddy, E-01/E-02/E-05 (2026-10-23) and, on 2026-10-24, the session check with any scheme (SEC-01), 60 requests/min per IP on `/auth` (SEC-04), attempt caps (SEC-05, SEC-12), consent (SEC-07), client-only routes (BIZ-12) and the web without root (H-19); the demo passwords left `GUIA-EQUIPO.md` (infra `b63f85a`). Missing: the accepted risks of ADR-020 (shared `sa`, JWT in `localStorage`) and an old `sa` password still in the Git history of infra (rotate it) |
 | RNF-005 | Observability (service logs) | `/actuator/health` per service, `X-Correlation-Id` in every log line | 🟡 Partial |
 | RNF-006 | Maintainability (PRs, commits, migrations) | GitHub history + code review | 🟡 Partial |
