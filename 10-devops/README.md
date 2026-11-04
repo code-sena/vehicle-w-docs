@@ -24,7 +24,7 @@
 | Orchestration | `lavarapido-infra/docker-compose.yml`: SQL Server, RabbitMQ, Mailpit, the 6 services, payment migrations, api-gateway; `docker-compose.prod.yml` adds the web and Caddy |
 | Configuration | One `lavarapido-infra/.env` (template: `.env.example`), read by compose and by each service run with `./mvnw` |
 | Database migrations | Liquibase, run by each service at startup |
-| CI/CD | GitHub Actions: `ci.yml` in the 10 repositories (1,337 tests green on `main`, 2026-10-27), `deploy.yml` and `e2e.yml` in `lavarapido-infra`, `cd.yml` in the mobile app. Continuous deployment active: every merge to `main` deploys to the server, payment included (automatic deploys on 2026-10-26 and 2026-10-27) |
+| CI/CD | GitHub Actions: `ci.yml` in the 10 repositories (1,348 tests green on `main`, checked 2026-11-04), `deploy.yml` and `e2e.yml` in `lavarapido-infra`, `cd.yml` in the mobile app. Continuous deployment active: every merge to `main` deploys to the server, payment included (automatic deploys on 2026-10-26 and 2026-10-27) |
 | Backups and rollback | `backup-db.sh` + `verify-backup.sh` by cron (daily and 5 min after boot) and before each update; `restore-db.sh` and `rollback.sh` (`:prev` images) by hand (`13-operations/README.md`) |
 | Remote environments | Academic demo server ("production") on an Azure VM, turned on on demand (`production.md`); no staging |
 
