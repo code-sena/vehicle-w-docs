@@ -27,7 +27,8 @@ Counted from the log of the last `ci.yml` run on `main` of each repository on 20
 classes listed are the ones counted on 2026-10-21; the fixes of 2026-10-22 and 2026-10-23 added cases to
 them (E-01, E-02, E-05, A-01, A-09, A-11, A-13, A-20, B-01, E-07, E-08, E-09) and the web suite grew
 with F-02. The fleet round of 2026-10-24 added 354 tests (838 → 1,192) and the payment at booking and the
-fixes of 2026-10-26 and 2026-10-27 another 145 (1,192 → 1,337); the main new classes are named in each row.
+fixes of 2026-10-26 and 2026-10-27 another 145 (1,192 → 1,337); payment `v1.1.3` (merged on 2026-10-27,
+run 40595106824, checked 2026-11-04) added 11 more (1,337 → 1,348). The main new classes are named in each row.
 
 | Service | Tests | Test classes |
 |---|---|---|
@@ -37,11 +38,11 @@ fixes of 2026-10-26 and 2026-10-27 another 145 (1,192 → 1,337); the main new c
 | operations-service | 110 | `AssignmentPolicyTest`, `AutoAssignmentPolicyTest`, `StartPolicyTest`, `ServiceExecutionTest`, `InspectionReportTest`, `OperatorMetricsCalculatorTest`, `TeamSummaryCalculatorTest`, `OperationsServiceTest`, `OperatorProfileServiceTest`, `OperatorPersistenceAdapterTest` (operator row race), `OperationsApiWebTest`; `OperationsServiceTest` checks the unassigned rule and that the lock is taken before saving an assignment; `FollowUpPolicyTest` and `FollowUpServiceTest` cover the bookings that ended and nobody registered (no false no-shows, one notice, closing as attended without inventing times); since 2026-10-24 the atomic start and finish (OPS-01), locks (OPS-03), fail-closed account check (A-13), unassignment (E-12), `SERVICE_TOO_LATE` (A-12), the listener retries and DLQ (OPS-04), the 503 of sharing (OPS-08) and the database errors (OPS-12) |
 | notification-service | 133 | `NotificationTest`, `DeviceTokenTest`, `BookingReminderTest`, `NotificationFactoryTest`, `LocalizedNotificationsTest`, `NotificationUseCasesTest`, `BookingReminderServiceTest`, `StaffNotificationsTest`, `UnassignedBookingAlertTest`, `AppUpdateNoticeTest`, `DeliveryCommandsTest`, `AdminNotificationControllerTest`, `DomainEventEnvelopeTest` (a null payload field no longer sends the event to the DLQ); since 2026-10-24 reminders cancelled by status (A-11), `pending_delivery` dispatch (OPS-05), retried admin lookup (OPS-06), bindings and DLQ (OPS-10) and the unassigned notices (E-12) |
 | api-gateway | 62 | `GatewayRoutesTest`, `SessionCheckFilterTest` (closed sessions cut with any scheme, answer cached per token, logout in every variant, security-service down), `AuthRateLimitFilterTest`, `ClientIpResolverTest`, `GatewayAuthRateLimitTest`, `GatewayRouteTimeoutTest` |
-| payment-service (.NET, xUnit, `dotnet test`) | 264 | Domain 142 (`PaymentTests`, `PaymentPolicyTests`, `PromotionTests`, `LoyaltyTransactionTests`, `AggregateRootTests`; `PaymentReported` since 2026-10-26), Application 61 (`PaymentCommandServiceTests`, `PaymentQueryServiceTests`, `CustomerPromotionServiceTests`), API 44 (role and validation tests of F-04 and BIZ-13, `InternalApiKeyTests` of the internal reported route), Integration 17 (`PersistenceTests`, `UniqueIndexConflictsTests`): they run in CI against SQL Server 2022 with the Liquibase migrations (job "Pruebas de integración", 0 skipped); without `PAYMENT_INTEGRATION_DB` 12 of them skip themselves |
-| **Total backend** | **989** | Java 725 + .NET 264 |
+| payment-service (.NET, xUnit, `dotnet test`) | 275 | Domain 142 (`PaymentTests`, `PaymentPolicyTests`, `PromotionTests`, `LoyaltyTransactionTests`, `AggregateRootTests`; `PaymentReported` since 2026-10-26), Application 61 (`PaymentCommandServiceTests`, `PaymentQueryServiceTests`, `CustomerPromotionServiceTests`), API 47 (role and validation tests of F-04 and BIZ-13, `InternalApiKeyTests` of the internal reported route; since `v1.1.3` `PaymentConnectionStringTests`: the service does not start without `DB_PASSWORD`), Infrastructure 25: 13 without a database (`UniqueIndexConflictsTests`; since `v1.1.3` `RabbitMqOptionsTests`: a remote RabbitMQ requires user and password, `guest` only on localhost) and the 12 integration tests of `PersistenceTests`, which run in CI against SQL Server 2022 with the Liquibase migrations (job "Pruebas de integración", 0 skipped); without `PAYMENT_INTEGRATION_DB` those 12 skip themselves |
+| **Total backend** | **1,000** | Java 725 + .NET 275 |
 | Web (Angular, Vitest, `ng test`) | 242 | 68 spec files (66 on 2026-10-24, 59 on 2026-10-23; the fleet added the live refresh, the amount due from the server, the error codes in four languages and the real guard and interceptor; the payment at booking added `history-card.spec.ts` (pay-before badge) and cases in `car-wash-form.spec.ts` (payment step) and `payment.viewmodel.spec.ts`), including `api-error.spec.ts` (error codes and the slot reason), `payment.spec.ts` (two accounts of the same method), `auth.spec.ts` (tabs follow a sign-in or sign-out made in another tab), `reservations-store.spec.ts` and `reservations.spec.ts` (one unassigned rule, the to-close list, filters, paging, day labels), `management.spec.ts` (accounts and the fixed roles), `reports.spec.ts` (only completed bookings count as services done) and the client `dashboard.spec.ts` (loyalty bar) |
 | Mobile (React Native, jest-expo, `npm test`) | 106 | 28 suites (25 on 2026-10-24, 3 on 2026-10-23, F-01; `useReservePaymentStep` since 2026-10-26): validators, services, view models and hooks (`useClientPayment`, `useRefreshOnFocus`, `useOperatorRatings`…), the error codes and the push unregistration; no screen tests |
-| **Total** | **1,337** | none skipped in CI |
+| **Total** | **1,348** | none skipped in CI |
 
 On 2026-10-27 the 19 end-to-end tests of `lavarapido-infra/e2e` passed 19/19 against the complete
 system (with the gateway's session check on; the suite now sends `paymentMode` when it books). The 42 functional cases CP-01 to CP-42 (Test Documentation of
@@ -84,10 +85,12 @@ public vs protected routes, 401 without token, 403 for the wrong role, status co
 checks every route, token forwarding, CORS and that `/internal/**` is not exposed.
 `UserRegisteredListenerTest` feeds raw RabbitMQ messages to the listener.
 
-Only payment-service has **tests against a real SQL Server**: its 17 integration tests
-(`PersistenceTests`, `UniqueIndexConflictsTests`) run in CI since 2026-10-27, in the job "Pruebas de
-integración", against SQL Server 2022 as a service container with the Liquibase migrations applied (on a
-machine without a database 12 of them skip themselves). In the Java services the schema is validated at
+Only payment-service has **tests against a real SQL Server**: the 12 integration tests of
+`PersistenceTests` run in CI since 2026-10-27, in the job "Pruebas de integración" (which runs the whole
+infrastructure project, 25 tests), against SQL Server 2022 as a service container with the Liquibase
+migrations applied (on a machine without a database those 12 skip themselves). Since `v1.1.3` the local
+`docker-compose.yml` of payment uses the same SQL Server 2022 image and the same database name as the CI
+(`LavaRapidoPaymentIT`). In the Java services the schema is validated at
 startup (`ddl-auto: validate` + Liquibase) and by the manual end-to-end runs.
 
 ## Tier 5: End-to-end
@@ -184,8 +187,8 @@ every endpoint's security has a test (this is what the pyramid above covers).
 | The cross-service tests do not cover sign-up | Add it with a disposable account when a test mail domain is agreed |
 | The mobile app has few automated tests (H-04) | 106 jest-expo tests in 28 suites on 2026-10-27 (validators, services, view models and hooks, removing a coupon through `useClientPayment`); still no screen tests |
 | End-to-end tests are not in CI | Remote battery `e2e/remote` with `e2e.yml` (manual) since 2026-10-24; first run against Azure pending (secrets `E2E_*`). Running them on every push still needs the whole system as job containers |
-| No test against a real SQL Server in the Java services | payment has 17 in CI since 2026-10-27 (SQL Server 2022 service container, migrations 022/023 included). Still missing: Testcontainers or a service container for the Java persistence adapters (booking locking and triggers, migrations 044/045/049, notification 047, the `sp_getapplock` of SEC-05) — today they are checked live on Azure |
-| ~~payment-service has no API tests~~ | Done: 44 API tests (roles of F-04, `VALIDATION_ERROR` of BIZ-13) |
+| No test against a real SQL Server in the Java services | payment has 12 in CI since 2026-10-27 (SQL Server 2022 service container, migrations 022/023 included). Still missing: Testcontainers or a service container for the Java persistence adapters (booking locking and triggers, migrations 044/045/049, notification 047, the `sp_getapplock` of SEC-05) — today they are checked live on Azure |
+| ~~payment-service has no API tests~~ | Done: 47 API tests (roles of F-04, `VALIDATION_ERROR` of BIZ-13, startup without `DB_PASSWORD`) |
 | ~~operations-service has no test with booking-service down~~ | Done with OPS-01 (finish with booking down, partial failure) |
 
 ---

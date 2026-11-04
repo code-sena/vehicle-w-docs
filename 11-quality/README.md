@@ -5,15 +5,15 @@
 
 ---
 
-## State today (2026-10-27)
+## State today (2026-11-04)
 
 | Item | State |
 |---|---|
-| Backend automated tests | 989, all green in CI on `main` on 2026-10-27: Java 725 (security 200, customer 83, booking 137, operations 110, notification 133, api-gateway 62) + payment .NET 264 (17 of them integration tests that run in CI against SQL Server 2022) |
+| Backend automated tests | 1,000, all green in CI on `main` (last runs of 2026-10-27, checked 2026-11-04): Java 725 (security 200, customer 83, booking 137, operations 110, notification 133, api-gateway 62) + payment .NET 275 (`v1.1.3`; 25 in the infrastructure project, 12 of them integration tests that run in CI against SQL Server 2022) |
 | Web automated tests | 242 Vitest tests in 68 spec files, green in CI on 2026-10-27 (with coverage report) |
 | Mobile automated tests | 106 jest-expo tests in 28 suites, plus `tsc --noEmit` |
 | End-to-end | 19 automated tests in `lavarapido-infra/e2e`, 19/19 on 2026-10-27 (the suite sends `paymentMode`); the 42 functional cases passed on 2026-10-19. A remote battery (`e2e/remote`, 6 test files, launched with `e2e.yml`) is merged since 2026-10-24 but has only run against a simulator (44/44), not against Azure |
-| CI | GitHub Actions in the 10 repositories, 1,337 tests per run (`10-devops/ci-cd.md`) |
+| CI | GitHub Actions in the 10 repositories, 1,348 tests per run (`10-devops/ci-cd.md`) |
 | Coverage tool | Web only (`@vitest/coverage-v8`, report as a CI artifact, no gate); none in the backends |
 
 Details, tiers, tools and gaps → [`testing-strategy.md`](./testing-strategy.md).
