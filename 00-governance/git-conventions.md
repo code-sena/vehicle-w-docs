@@ -91,7 +91,7 @@ chore(deps): upgrade Spring Boot to 3.2.0
 ## Merge policy
 
 - Code repositories: pull `develop` with `--ff-only`, then `git merge --no-ff <branch>` into `develop`, so each branch stays visible in the history
-- This documentation repository: the branch is merged into `docs`; `lavarapido-docs` merges into `main`
+- This documentation repository: the branch is merged into `docs` (fast-forward only), and `main` is moved forward to `docs` without a merge commit (equal to `docs` since 2026-11-04); `lavarapido-docs` merges into `main`
 - Use **Merge Commit** for releases to `main` (preserves full history)
 - **Do not** use Rebase & Merge on shared branches (creates confusion in shared history)
 
@@ -104,7 +104,9 @@ Follow [SemVer](https://semver.org/): `MAJOR.MINOR.PATCH`
 State on 2026-10-27: the 10 code repositories have their release on `main`, each one through a
 reviewed pull request `develop` → `main`: api-gateway `v1.1.0`, security `v1.1.0`, customer `v1.1.1`,
 booking `v1.1.1`, operations `v1.1.0`, notification `v1.1.0`, payment `v1.1.2`, infra `v1.1.2`, web
-`v1.1.2` and the mobile app `v1.1.2` (an OTA update over the APK 1.1.1). `main` is protected in all 10 (pull request, one approval from
+`v1.1.2` and the mobile app `v1.1.2` (an OTA update over the APK 1.1.1). Later that day payment merged
+`v1.1.3` into `main` (pull request #16, approved by Brayan); its tag and GitHub release were created on
+2026-11-04. `main` is protected in all 10 (pull request, one approval from
 another member, green CI); Brayan approved the releases of 2026-10-27.
 
 ```bash
