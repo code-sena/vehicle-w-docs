@@ -59,8 +59,8 @@ the risks to validate before trusting this hypothesis, in
 
 ## Project contacts
 
-| Role | Name | Contact |
+| Role | Name | GitHub |
 |------|------|---------|
-| Project Lead | Brayan Estiven Patiño Cabrera | bspc1507@gmail.com |
-| Frontend Lead | Juan Camilo Guilombo Osorio | cguilombo587@gmail.com |
-| Backend Lead | Merari Urbano Quintero | merariurbano0322@gmail.com (GitHub: merari0322) |
+| Project Lead | Brayan Estiven Patiño Cabrera | `BrayanCABRERA123` |
+| Frontend Lead | Juan Camilo Guilombo Osorio | `camiloguilombo12` |
+| Backend Lead | Merari Urbano Quintero | `merari0322` |
